@@ -22,6 +22,21 @@ environment:
   sdk: ^3.12.0
   flutter: ">=3.44.0"
 
+# Build hook do libghostty. Sem este bloco o hook cai no modo padrão `prebuilt`
+# e baixa a dylib da release v0.0.11 (source 91f66da), que NÃO exporta
+# `ghostty_terminal_compression_activity`. Como os bindings da branch usada nos
+# dependency_overrides já chamam esse símbolo — no construtor do
+# TerminalControllerImpl —, todo terminal morria com `dlsym: symbol not found`.
+#
+# `source: compile` casa a dylib com o `ghostty.version` dos bindings.
+# Exige **Zig 0.16.0** na máquina de build (o ghostty declara
+# minimum_zig_version 0.16.0; 0.15.x falha). Compile a frio ~30s, depois cacheado.
+hooks:
+  user_defines:
+    libghostty:
+      source: compile
+      download: tarball
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
