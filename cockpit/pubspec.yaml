@@ -250,10 +250,10 @@ dependency_overrides:
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: flterm-cockpit-2
+      ref: fix/flterm-tui-scroll-forwarding
       path: packages/flterm
   libghostty:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: flterm-cockpit-2
+      ref: fix/flterm-tui-scroll-forwarding
       path: packages/libghostty
