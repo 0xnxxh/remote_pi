@@ -39,6 +39,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:cockpit/app/core/terminal/xterm/xterm.dart';
+import 'package:cockpit/app/core/utils/path_utils.dart';
 
 /// Folha do multiplexador: tab strip + corpo (agente: transcript+composer / empty;
 /// terminal: TerminalView). O foco aparece **só na aba ativa**.
@@ -1518,7 +1519,13 @@ class _OpenTabDropTargetState extends State<_OpenTabDropTarget> {
         if (_overExcluded(d.globalPosition)) return;
         for (final f in d.files) {
           if (Directory(f.path).existsSync()) continue; // ignora pastas
-          widget.vm.openFile(f.path, inPane: widget.paneId, isPreview: false);
+          // Fronteira: `desktop_drop` entrega o caminho nativo do SO (`\` no
+          // Windows) — canoniza antes de entrar no app.
+          widget.vm.openFile(
+            normalizePath(f.path),
+            inPane: widget.paneId,
+            isPreview: false,
+          );
         }
       },
       child: Stack(

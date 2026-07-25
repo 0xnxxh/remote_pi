@@ -43,6 +43,7 @@ import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+import 'package:cockpit/app/core/utils/path_utils.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
@@ -441,7 +442,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// ou `null` se o caminho está fora de todas (ex.: solto na pasta-mãe).
   String? rootContaining(String projectId, String absolutePath) {
     for (final r in rootsOf(projectId)) {
-      if (absolutePath == r || absolutePath.startsWith('$r/')) return r;
+      if (isUnderPath(absolutePath, r)) return r;
     }
     return null;
   }
@@ -1374,19 +1375,12 @@ class CockpitViewModel extends ChangeNotifier {
     return null;
   }
 
-  String _join(String dir, String name) {
-    final base = dir.endsWith('/') ? dir.substring(0, dir.length - 1) : dir;
-    return '$base/$name';
-  }
+  String _join(String dir, String name) => joinPath(dir, name);
 
-  String _parentOf(String path) {
-    final i = path.lastIndexOf('/');
-    return i <= 0 ? path : path.substring(0, i);
-  }
+  String _parentOf(String path) => dirnameOf(path);
 
   /// Um caminho é "sob" [root] se for ele mesmo ou um descendente (`root/...`).
-  bool _isUnder(String path, String root) =>
-      path == root || path.startsWith('$root/');
+  bool _isUnder(String path, String root) => isUnderPath(path, root);
 
   /// Reaponta as abas de viewer afetadas por um rename de [from] → [to]: o
   /// próprio arquivo e, se [from] for pasta, todos os descendentes (troca de
