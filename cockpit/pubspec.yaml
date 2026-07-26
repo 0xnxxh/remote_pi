@@ -262,13 +262,22 @@ dependency_overrides:
       url: https://github.com/media-kit/media-kit.git
       ref: 44ba261
       path: media_kit
+  # Pinados em SHA, não em branch de dev: consumir
+  # `fix/flterm-tui-scroll-forwarding` deixava o app à mercê de qualquer push
+  # na branch — foi assim que um terminal quebrado chegou aqui. As duas saem do
+  # mesmo main (695c00d), então são compatíveis entre si.
+  #
+  # O SHA do libghostty inclui o fix de isolamento do git no hook: sem ele, o
+  # `source: compile` lia a tag do repo CONSUMIDOR (cockpit-vX.Y.Z), não batia
+  # com o vX.Y.Z esperado pelo ghostty e abortava — quebrando todo release
+  # tagueado. Upstream: elias8/libghostty#120.
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: fix/flterm-tui-scroll-forwarding
+      ref: 2822cc2e1c8500b1d0c41a866060b7733068b19f
       path: packages/flterm
   libghostty:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: fix/flterm-tui-scroll-forwarding
+      ref: 45f783033804e2c0e77f4a0867bf42c362ade076
       path: packages/libghostty
