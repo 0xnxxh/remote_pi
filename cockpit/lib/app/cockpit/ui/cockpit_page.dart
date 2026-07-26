@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cockpit/app/core/app_intents.dart';
 import 'package:cockpit/app/cockpit/domain/entities/project.dart';
 import 'package:cockpit/app/core/routes.dart';
+import 'package:cockpit/app/core/ui/copilot_controller.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
@@ -703,6 +704,7 @@ class _CockpitPageState extends State<CockpitPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<CockpitViewModel>();
+    final copilot = context.watch<CopilotController>();
     final colors = context.colors;
 
     if (!vm.ready) {
@@ -858,6 +860,15 @@ class _CockpitPageState extends State<CockpitPage> {
                             onCommitStaged: vm.commitStaged,
                             onLoadCommits: vm.recentCommits,
                             onLoadCommitMessage: vm.commitMessage,
+                            onGenerateCommitMessage: copilot.status.isConnected
+                                ? vm.generateCommitMessageForFile
+                                : null,
+                            onGenerateStagedCommitMessage:
+                                copilot.status.isConnected
+                                ? vm.generateStagedCommitMessage
+                                : null,
+                            onCancelCommitMessageGeneration:
+                                vm.cancelCommitMessageGeneration,
                             revision: vm.fileTreeRevision,
                             selectedPath: vm.selectedFileInTree,
                             listChildren: vm.listChildren,

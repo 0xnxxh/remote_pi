@@ -29,6 +29,9 @@ class LspClientImpl implements LspClient {
 
   final StreamController<LspDiagnosticsBatch> _diagnostics =
       StreamController<LspDiagnosticsBatch>.broadcast();
+  final StreamController<LspNotification> _notifications =
+      StreamController<LspNotification>.broadcast();
+  final StreamController<int> _exitCodes = StreamController<int>.broadcast();
 
   /// Requests pendentes aguardando a `response` com o `id` correspondente.
   final Map<int, Completer<Object?>> _pending = <int, Completer<Object?>>{};
@@ -44,6 +47,12 @@ class LspClientImpl implements LspClient {
 
   @override
   Stream<LspDiagnosticsBatch> get diagnostics => _diagnostics.stream;
+
+  @override
+  Stream<LspNotification> get notifications => _notifications.stream;
+
+  @override
+  Stream<int> get exitCodes => _exitCodes.stream;
 
   @override
   bool get isRunning => _process != null;
@@ -81,7 +90,13 @@ class LspClientImpl implements LspClient {
       await _handshake();
       return const Success(null);
     } catch (error, stackTrace) {
+      final failed = _process;
       _process = null;
+      _initialized = false;
+      if (failed != null) {
+        failed.kill(ProcessSignal.sigterm);
+        unawaited(LspProcessRegistry.unregister(failed.pid));
+      }
       return Failure(
         LspError(
           'Failed to start "${spec.executable}": $error',
@@ -103,28 +118,43 @@ class LspClientImpl implements LspClient {
       'workspaceFolders': <Map<String, dynamic>>[
         {'uri': rootUri, 'name': rootPath.split(Platform.pathSeparator).last},
       ],
-      'capabilities': <String, dynamic>{
-        'textDocument': <String, dynamic>{
-          'publishDiagnostics': <String, dynamic>{'relatedInformation': false},
-          'synchronization': <String, dynamic>{
-            'didSave': true,
-            'dynamicRegistration': false,
-          },
-          'formatting': <String, dynamic>{'dynamicRegistration': false},
-        },
-      },
+      'capabilities': spec.capabilities.isEmpty
+          ? <String, dynamic>{
+              'workspace': <String, dynamic>{'workspaceFolders': true},
+              'textDocument': <String, dynamic>{
+                'publishDiagnostics': <String, dynamic>{
+                  'relatedInformation': false,
+                },
+                'synchronization': <String, dynamic>{
+                  'didSave': true,
+                  'dynamicRegistration': false,
+                },
+                'formatting': <String, dynamic>{'dynamicRegistration': false},
+              },
+            }
+          : spec.capabilities,
+      if (spec.initializationOptions.isNotEmpty)
+        'initializationOptions': spec.initializationOptions,
     });
     _notify('initialized', <String, dynamic>{});
     _initialized = true;
   }
 
   @override
-  Future<void> didOpen({required String path, required String text}) async {
+  Future<void> didOpen({required String path, required String text}) =>
+      didOpenWithLanguage(path: path, text: text, languageId: spec.languageId);
+
+  @override
+  Future<void> didOpenWithLanguage({
+    required String path,
+    required String text,
+    required String languageId,
+  }) async {
     if (!_initialized) return;
     _notify('textDocument/didOpen', <String, dynamic>{
       'textDocument': <String, dynamic>{
         'uri': _uri(path),
-        'languageId': spec.languageId,
+        'languageId': languageId,
         'version': 1,
         'text': text,
       },
@@ -160,13 +190,36 @@ class LspClientImpl implements LspClient {
   Future<Result<Object?, LspError>> request(
     String method,
     Map<String, dynamic> params,
+  ) => requestWithTimeout(method, params, const Duration(seconds: 15));
+
+  @override
+  Future<Result<Object?, LspError>> requestWithTimeout(
+    String method,
+    Map<String, dynamic> params,
+    Duration timeout,
   ) async {
     try {
-      return Success(await _request(method, params));
+      return Success(await _request(method, params, timeout: timeout));
     } on LspError catch (error) {
       return Failure(error);
     } catch (error, stackTrace) {
       return Failure(LspError('$error', cause: error, stackTrace: stackTrace));
+    }
+  }
+
+  @override
+  void notify(String method, Map<String, dynamic> params) {
+    _notify(method, params);
+  }
+
+  @override
+  void cancelPendingRequests() {
+    for (final id in _pending.keys.toList()) {
+      _notify(r'$/cancelRequest', <String, dynamic>{'id': id});
+      final completer = _pending.remove(id);
+      if (completer != null && !completer.isCompleted) {
+        completer.completeError(const LspError('Request cancelled.'));
+      }
     }
   }
 
@@ -212,6 +265,8 @@ class LspClientImpl implements LspClient {
     _stdoutSub?.cancel();
     _stderrSub?.cancel();
     if (!_diagnostics.isClosed) _diagnostics.close();
+    if (!_notifications.isClosed) _notifications.close();
+    if (!_exitCodes.isClosed) _exitCodes.close();
   }
 
   // --- wire ---
@@ -240,7 +295,7 @@ class LspClientImpl implements LspClient {
     // Request servidor→cliente (tem `id` E `method`): precisa de resposta pra
     // não travar o servidor. Respondemos o mínimo viável.
     if (method is String && id != null) {
-      _handleServerRequest(id, method);
+      unawaited(_handleServerRequest(id, method, message['params']));
       return;
     }
 
@@ -248,20 +303,43 @@ class LspClientImpl implements LspClient {
     if (method is String) _handleNotification(method, message['params']);
   }
 
-  void _handleServerRequest(Object id, String method) {
-    final Object? result = switch (method) {
-      // Configuração: devolve um item nulo por scope pedido (usa defaults).
-      'workspace/configuration' => <Object?>[null],
-      // Registro dinâmico de capability: aceitamos (no-op do nosso lado).
-      'client/registerCapability' ||
-      'client/unregisterCapability' ||
-      'window/workDoneProgress/create' => null,
-      _ => null,
-    };
-    _send(<String, dynamic>{'jsonrpc': '2.0', 'id': id, 'result': result});
+  Future<void> _handleServerRequest(
+    Object id,
+    String method,
+    Object? params,
+  ) async {
+    try {
+      final handler = spec.serverRequestHandler;
+      final Object? result;
+      if (handler != null) {
+        result = await handler.handle(method, params);
+      } else {
+        final itemCount = params is Map && params['items'] is List
+            ? (params['items'] as List).length
+            : 1;
+        result = switch (method) {
+          'workspace/configuration' => List<Object?>.filled(itemCount, null),
+          'client/registerCapability' ||
+          'client/unregisterCapability' ||
+          'window/workDoneProgress/create' => null,
+          'window/showDocument' => <String, dynamic>{'success': false},
+          _ => null,
+        };
+      }
+      _send(<String, dynamic>{'jsonrpc': '2.0', 'id': id, 'result': result});
+    } catch (error) {
+      _send(<String, dynamic>{
+        'jsonrpc': '2.0',
+        'id': id,
+        'error': <String, dynamic>{'code': -32603, 'message': '$error'},
+      });
+    }
   }
 
   void _handleNotification(String method, Object? params) {
+    if (!_notifications.isClosed) {
+      _notifications.add(LspNotification(method, params));
+    }
     if (method == 'textDocument/publishDiagnostics' &&
         params is Map<String, dynamic>) {
       final uri = params['uri'] as String? ?? '';
@@ -278,7 +356,11 @@ class LspClientImpl implements LspClient {
     // Demais notificações (logMessage, progress, …) são ignoradas por ora.
   }
 
-  Future<Object?> _request(String method, Map<String, dynamic> params) async {
+  Future<Object?> _request(
+    String method,
+    Map<String, dynamic> params, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
     if (_process == null) throw const LspError('Language server not running.');
     final id = ++_seq;
     final completer = Completer<Object?>();
@@ -290,9 +372,10 @@ class LspClientImpl implements LspClient {
       'params': params,
     });
     return completer.future.timeout(
-      const Duration(seconds: 15),
+      timeout,
       onTimeout: () {
         _pending.remove(id);
+        _notify(r'$/cancelRequest', <String, dynamic>{'id': id});
         throw LspError('Timed out waiting for "$method".');
       },
     );
@@ -321,7 +404,7 @@ class LspClientImpl implements LspClient {
   }
 
   void _onStderrLine(String line) {
-    if (line.trim().isEmpty) return;
+    if (!spec.logStderr || line.trim().isEmpty) return;
     debugPrint('[lsp:${spec.languageId}][err] $line');
   }
 
@@ -346,6 +429,7 @@ class LspClientImpl implements LspClient {
       }
     }
     _pending.clear();
+    if (!_exitCodes.isClosed) _exitCodes.add(code);
     debugPrint('[lsp:${spec.languageId}] exited code=$code');
   }
 }

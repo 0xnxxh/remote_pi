@@ -1,3 +1,4 @@
+import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -16,14 +17,19 @@ Future<void> showCommitMessageDialog(
   required String fileName,
   required bool staged,
   required Future<String?> Function(String message) onCommit,
+  Future<Result<String, String>> Function()? onGenerate,
+  Future<void> Function()? onCancelGenerate,
 }) {
   return showDialog<void>(
     context: context,
+    barrierDismissible: false,
     barrierColor: const Color(0x99000000),
     builder: (context) => _CommitMessageDialog(
       fileName: fileName,
       staged: staged,
       onCommit: onCommit,
+      onGenerate: onGenerate,
+      onCancelGenerate: onCancelGenerate,
     ),
   );
 }
@@ -33,11 +39,15 @@ class _CommitMessageDialog extends StatefulWidget {
     required this.fileName,
     required this.staged,
     required this.onCommit,
+    required this.onGenerate,
+    required this.onCancelGenerate,
   });
 
   final String fileName;
   final bool staged;
   final Future<String?> Function(String message) onCommit;
+  final Future<Result<String, String>> Function()? onGenerate;
+  final Future<void> Function()? onCancelGenerate;
 
   @override
   State<_CommitMessageDialog> createState() => _CommitMessageDialogState();
@@ -49,7 +59,9 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
 
   final TextEditingController _message = TextEditingController();
   bool _submitting = false;
+  bool _generating = false;
   String? _gitError;
+  String? _generationError;
 
   @override
   void dispose() {
@@ -89,7 +101,45 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
   }
 
   bool get _canCommit =>
-      _message.text.trim().isNotEmpty && _reason == null && !_submitting;
+      _message.text.trim().isNotEmpty &&
+      _reason == null &&
+      !_submitting &&
+      !_generating;
+
+  Future<void> _generate() async {
+    final generate = widget.onGenerate;
+    if (generate == null || _generating || _submitting) return;
+    setState(() {
+      _generating = true;
+      _generationError = null;
+      _gitError = null;
+    });
+    final result = await generate();
+    if (!mounted) return;
+    result.fold<void>(
+      (message) {
+        _message.value = TextEditingValue(
+          text: message,
+          selection: TextSelection.collapsed(offset: message.length),
+        );
+        setState(() => _generating = false);
+      },
+      (error) => setState(() {
+        _generating = false;
+        _generationError = error;
+      }),
+    );
+  }
+
+  Future<void> _cancel() async {
+    if (_submitting) return;
+    if (_generating) {
+      await widget.onCancelGenerate?.call();
+      if (!mounted) return;
+      setState(() => _generating = false);
+    }
+    Navigator.of(context).pop();
+  }
 
   Future<void> _submit() async {
     if (!_canCommit) return;
@@ -112,7 +162,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final reason = _gitError ?? _reason;
+    final reason = _gitError ?? _generationError ?? _reason;
     final showError = reason != null;
     final count = _subject.length;
 
@@ -144,9 +194,12 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
             TextField(
               controller: _message,
               autofocus: true,
-              enabled: !_submitting,
+              enabled: !_submitting && !_generating,
               maxLines: 4,
-              onChanged: (_) => setState(() => _gitError = null),
+              onChanged: (_) => setState(() {
+                _gitError = null;
+                _generationError = null;
+              }),
               placeholder: const Text('fix: short summary of the change'),
               style: context.typo.mono.copyWith(
                 fontSize: 13,
@@ -181,8 +234,28 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
       ),
       actions: [
         OutlineButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          onPressed: widget.onGenerate == null ? null : _generate,
+          child: _generating
+              ? const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(size: 14),
+                    SizedBox(width: 8),
+                    Text('Generating…'),
+                  ],
+                )
+              : const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.auto_awesome, size: 15),
+                    SizedBox(width: 7),
+                    Text('Generate with Copilot'),
+                  ],
+                ),
+        ),
+        OutlineButton(
+          onPressed: _submitting ? null : _cancel,
+          child: Text(_generating ? 'Cancel generation' : 'Cancel'),
         ),
         PrimaryButton(
           onPressed: _canCommit ? _submit : null,

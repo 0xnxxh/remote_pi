@@ -18,6 +18,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+typedef GenerateCommitMessage =
+    Future<Result<String, String>> Function(String absPath);
+typedef GenerateStagedCommitMessage = Future<Result<String, String>> Function();
+
 /// Root git de um workspace **multi-root** (multirepo) — alimenta o cabeçalho
 /// de seção na aba Files e no Source Control. Derivada em runtime pela VM
 /// (nunca persistida). Single-root chega como lista de 1 item e nenhum
@@ -88,6 +92,9 @@ class FileTreePanel extends StatefulWidget {
     this.onDiscardFile,
     this.isNewGitFile,
     this.onCommitFile,
+    this.onGenerateCommitMessage,
+    this.onGenerateStagedCommitMessage,
+    this.onCancelCommitMessageGeneration,
     this.revealPath,
     this.revealGen = 0,
   });
@@ -111,6 +118,12 @@ class FileTreePanel extends StatefulWidget {
   onCommitStaged;
   final Future<List<GitCommit>> Function()? onLoadCommits;
   final Future<String?> Function(String hash)? onLoadCommitMessage;
+
+  /// Source Control: gera uma mensagem a partir do diff isolado do arquivo.
+  /// `null` quando o Copilot não está conectado.
+  final GenerateCommitMessage? onGenerateCommitMessage;
+  final GenerateStagedCommitMessage? onGenerateStagedCommitMessage;
+  final Future<void> Function()? onCancelCommitMessageGeneration;
 
   /// Source Control: tira o arquivo do index (`git restore --staged`).
   /// `null` no retorno = sucesso; senão a mensagem de erro do git.
@@ -295,6 +308,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
   final FocusNode _treeFocus = FocusNode(debugLabel: 'fileTree');
   final TextEditingController _commitMessage = TextEditingController();
   bool _committing = false;
+  bool _generatingCommit = false;
   bool _amend = false;
   String? _amendHash;
   String? _amendSubject;
@@ -473,6 +487,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
           fileName: name,
           staged: staged,
           onCommit: (message) => widget.onCommitFile!(absPath, message),
+          onGenerate: widget.onGenerateCommitMessage == null
+              ? null
+              : () => widget.onGenerateCommitMessage!(absPath),
+          onCancelGenerate: widget.onCancelCommitMessageGeneration,
         );
       case 'stage':
         final err = await widget.onStageFile!(absPath);
@@ -483,6 +501,35 @@ class _FileTreePanelState extends State<FileTreePanel> {
       case 'discard':
         await _discardOne(absPath);
     }
+  }
+
+  Future<void> _generateStagedCommitMessage() async {
+    final generate = widget.onGenerateStagedCommitMessage;
+    if (generate == null || _generatingCommit || _committing) return;
+    setState(() {
+      _generatingCommit = true;
+      _commitError = null;
+    });
+    final result = await generate();
+    if (!mounted) return;
+    result.fold<void>(
+      (message) {
+        _commitMessage.value = TextEditingValue(
+          text: message,
+          selection: TextSelection.collapsed(offset: message.length),
+        );
+        setState(() => _generatingCommit = false);
+      },
+      (error) => setState(() {
+        _generatingCommit = false;
+        _commitError = error;
+      }),
+    );
+  }
+
+  Future<void> _cancelStagedCommitGeneration() async {
+    await widget.onCancelCommitMessageGeneration?.call();
+    if (mounted) setState(() => _generatingCommit = false);
   }
 
   Future<void> _commitStaged() async {
@@ -1022,6 +1069,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                 _commitHeight = (_commitHeight - delta).clamp(170.0, 520.0);
               }),
               submitting: _committing,
+              generating: _generatingCommit,
               amend: _amend,
               amendHash: _amendHash,
               amendSubject: _amendSubject,
@@ -1035,6 +1083,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
               }),
               error: _commitError,
               onChanged: () => setState(() => _commitError = null),
+              onGenerate: widget.onGenerateStagedCommitMessage == null
+                  ? null
+                  : _generateStagedCommitMessage,
+              onCancelGenerate: _cancelStagedCommitGeneration,
               onCommit: _commitStaged,
             ),
           if (!scMode) ?widget.tasksPanel,
@@ -1052,25 +1104,29 @@ class _CommitComposer extends StatelessWidget {
     required this.height,
     required this.onResize,
     required this.submitting,
+    required this.generating,
     required this.amend,
     required this.onAmendChanged,
     required this.onChanged,
+    required this.onCancelGenerate,
     required this.onCommit,
     this.amendHash,
     this.amendSubject,
     this.loadCommits,
     this.loadMessage,
+    this.onGenerate,
     this.error,
   });
   final TextEditingController controller;
   final double height;
   final ValueChanged<double> onResize;
-  final bool submitting, amend;
+  final bool submitting, generating, amend;
   final String? amendHash, amendSubject, error;
   final Future<List<GitCommit>> Function()? loadCommits;
   final Future<String?> Function(String hash)? loadMessage;
   final void Function(bool, String?, String?, String?) onAmendChanged;
-  final VoidCallback onChanged, onCommit;
+  final VoidCallback onChanged, onCancelGenerate, onCommit;
+  final VoidCallback? onGenerate;
 
   static String _truncate(String value, int max) =>
       value.length > max ? '${value.substring(0, max)}...' : value;
@@ -1119,7 +1175,7 @@ class _CommitComposer extends StatelessWidget {
         : _truncate(amendSubject!, 20);
 
     return HoverTap(
-      onTap: submitting ? null : () => _pickCommit(context),
+      onTap: submitting || generating ? null : () => _pickCommit(context),
       borderRadius: BorderRadius.circular(4),
       padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
       child: Row(
@@ -1129,7 +1185,7 @@ class _CommitComposer extends StatelessWidget {
             label,
             overflow: TextOverflow.ellipsis,
             style: context.typo.label.copyWith(
-              color: submitting ? colors.text4 : colors.accent,
+              color: submitting || generating ? colors.text4 : colors.accent,
               fontSize: 11,
               letterSpacing: 0.6,
             ),
@@ -1138,7 +1194,7 @@ class _CommitComposer extends StatelessWidget {
           Icon(
             Icons.keyboard_arrow_down,
             size: 14,
-            color: submitting ? colors.text4 : colors.accent,
+            color: submitting || generating ? colors.text4 : colors.accent,
           ),
         ],
       ),
@@ -1179,7 +1235,7 @@ class _CommitComposer extends StatelessWidget {
                             state: amend
                                 ? CheckboxState.checked
                                 : CheckboxState.unchecked,
-                            onChanged: submitting
+                            onChanged: submitting || generating
                                 ? null
                                 : (v) async {
                                     if (v != CheckboxState.checked) {
@@ -1222,7 +1278,7 @@ class _CommitComposer extends StatelessWidget {
                     Expanded(
                       child: TextField(
                         controller: controller,
-                        enabled: !submitting,
+                        enabled: !submitting && !generating,
                         maxLines: null,
                         expands: true,
                         textAlignVertical: TextAlignVertical.top,
@@ -1248,17 +1304,44 @@ class _CommitComposer extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: 7),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: PrimaryButton(
-                        onPressed: submitting ? null : onCommit,
-                        child: submitting
-                            ? const CircularProgressIndicator(
-                                size: 16,
-                                color: Colors.white,
-                              )
-                            : Text(amend ? 'Amend Commit' : 'Commit'),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlineButton(
+                          onPressed: submitting || amend
+                              ? null
+                              : generating
+                              ? onCancelGenerate
+                              : onGenerate,
+                          child: generating
+                              ? const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(size: 14),
+                                    SizedBox(width: 7),
+                                    Text('Cancel generation'),
+                                  ],
+                                )
+                              : const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.auto_awesome, size: 15),
+                                    SizedBox(width: 7),
+                                    Text('Generate with Copilot'),
+                                  ],
+                                ),
+                        ),
+                        const SizedBox(width: 8),
+                        PrimaryButton(
+                          onPressed: submitting || generating ? null : onCommit,
+                          child: submitting
+                              ? const CircularProgressIndicator(
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : Text(amend ? 'Amend Commit' : 'Commit'),
+                        ),
+                      ],
                     ),
                   ],
                 ),

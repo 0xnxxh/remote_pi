@@ -10,6 +10,10 @@ class LspServerSpec {
     required this.languageId,
     required this.executable,
     this.args = const <String>[],
+    this.capabilities = const <String, dynamic>{},
+    this.initializationOptions = const <String, dynamic>{},
+    this.serverRequestHandler,
+    this.logStderr = true,
   });
 
   /// `languageId` do LSP (ex.: `dart`, `typescript`, `php`). Vai no `didOpen`.
@@ -20,6 +24,30 @@ class LspServerSpec {
 
   /// Argumentos fixos (ex.: `language-server`, `--stdio`).
   final List<String> args;
+
+  /// Capabilities/initialization options adicionais para servidores que usam
+  /// extensões públicas do LSP (como inline completion). Vazio usa o conjunto
+  /// padrão do editor.
+  final Map<String, dynamic> capabilities;
+  final Map<String, dynamic> initializationOptions;
+
+  /// Adapter opcional para requests servidor→cliente. Mantém particularidades
+  /// de um servidor fora do transporte JSON-RPC genérico.
+  final LspServerRequestHandler? serverRequestHandler;
+
+  /// Alguns servidores podem incluir dados sensíveis nos logs. Adapters podem
+  /// desativar o encaminhamento sem afetar o transporte.
+  final bool logStderr;
+}
+
+class LspNotification {
+  const LspNotification(this.method, this.params);
+  final String method;
+  final Object? params;
+}
+
+abstract class LspServerRequestHandler {
+  Future<Object?> handle(String method, Object? params);
 }
 
 /// Cliente de **um** language server (um processo, uma raiz de projeto). Fala
@@ -31,6 +59,13 @@ abstract class LspClient {
   /// um batch por documento a cada publicação. Broadcast.
   Stream<LspDiagnosticsBatch> get diagnostics;
 
+  /// Todas as notificações servidor→cliente, inclusive extensões específicas.
+  Stream<LspNotification> get notifications =>
+      const Stream<LspNotification>.empty();
+
+  /// Exit codes do processo. Permite que adapters traduzam queda inesperada.
+  Stream<int> get exitCodes => const Stream<int>.empty();
+
   bool get isRunning;
 
   /// Raiz absoluta do projeto que este servidor atende.
@@ -41,6 +76,15 @@ abstract class LspClient {
 
   /// `textDocument/didOpen`. [path] é absoluto; vira `file://` URI internamente.
   Future<void> didOpen({required String path, required String text});
+
+  /// Variante usada por adapters que abrem documentos virtuais com um
+  /// `languageId` diferente do servidor. O default preserva compatibilidade
+  /// com clientes fake/alternativos que só implementam [didOpen].
+  Future<void> didOpenWithLanguage({
+    required String path,
+    required String text,
+    required String languageId,
+  }) => didOpen(path: path, text: text);
 
   /// `textDocument/didChange` (full sync). [version] cresce a cada edição.
   Future<void> didChange({
@@ -58,6 +102,22 @@ abstract class LspClient {
     String method,
     Map<String, dynamic> params,
   );
+
+  /// Request com timeout customizado. O default mantém implementações antigas
+  /// compatíveis; o transporte oficial sobrescreve para também remover o
+  /// request do mapa interno ao expirar.
+  Future<Result<Object?, LspError>> requestWithTimeout(
+    String method,
+    Map<String, dynamic> params,
+    Duration timeout,
+  ) => request(method, params).timeout(timeout);
+
+  /// Notificação genérica cliente→servidor. Default no-op para transports que
+  /// suportam apenas o subconjunto histórico usado pelo editor.
+  void notify(String method, Map<String, dynamic> params) {}
+
+  /// Cancela todos os requests pendentes com `$/cancelRequest`.
+  void cancelPendingRequests() {}
 
   /// Encerra graciosamente (`shutdown`/`exit` → close stdin → SIGTERM → SIGKILL).
   Future<void> kill();

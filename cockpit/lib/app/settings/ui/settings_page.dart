@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/setup_check.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
+import 'package:cockpit/app/core/domain/entities/copilot.dart';
+import 'package:cockpit/app/core/ui/copilot_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/macos_notification_instructions_dialog.dart';
 import 'package:cockpit/app/settings/domain/cron_schedule.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
@@ -33,6 +35,7 @@ import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -53,6 +56,7 @@ enum _Category {
   appearance,
   terminal,
   languages,
+  copilot,
   shortcuts,
   notifications,
   connectivity,
@@ -108,6 +112,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _Category.appearance => const _AppearancePanel(),
                     _Category.terminal => const _TerminalPanel(),
                     _Category.languages => const _LanguagesPanel(),
+                    _Category.copilot => const _CopilotPanel(),
                     _Category.shortcuts => const _ShortcutsPanel(),
                     _Category.notifications => const _NotificationsPanel(),
                     _Category.connectivity => const _ConnectivityPanel(),
@@ -205,6 +210,12 @@ class _CategoryNav extends StatelessWidget {
             label: 'Language',
             selected: selected == _Category.languages,
             onTap: () => onSelect(_Category.languages),
+          ),
+          _NavItem(
+            icon: Icons.auto_awesome_outlined,
+            label: 'GitHub Copilot',
+            selected: selected == _Category.copilot,
+            onTap: () => onSelect(_Category.copilot),
           ),
           _NavItem(
             icon: Icons.keyboard_outlined,
@@ -431,6 +442,179 @@ class _GeneralPanel extends StatelessWidget {
                   style: context.typo.label.copyWith(color: colors.text),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GitHub Copilot
+// ---------------------------------------------------------------------------
+
+class _CopilotPanel extends StatelessWidget {
+  const _CopilotPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<CopilotController>();
+    final status = controller.status;
+    final authentication = controller.authentication;
+    final colors = context.colors;
+    final statusColor = status.isConnected
+        ? colors.online
+        : status.isBusy
+        ? colors.warn
+        : switch (status.state) {
+            CopilotState.authenticationFailed ||
+            CopilotState.subscriptionUnavailable ||
+            CopilotState.quotaReached ||
+            CopilotState.networkUnavailable ||
+            CopilotState.languageServerUnavailable ||
+            CopilotState.error => colors.error,
+            _ => colors.text3,
+          };
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Section(
+                label: 'GitHub Copilot',
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: 'Status',
+                      description: status.message,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            status.isConnected ? 'Connected' : 'Not connected',
+                            style: context.typo.label.copyWith(
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (status.isConnected)
+                      _Row(
+                        title: 'Account',
+                        description:
+                            status.account ??
+                            'GitHub Copilot account connected.',
+                        trailing: OutlineButton(
+                          onPressed: status.isBusy
+                              ? null
+                              : () => unawaited(controller.disconnect()),
+                          child: const Text('Disconnect'),
+                        ),
+                      )
+                    else if (authentication != null)
+                      _Row(
+                        title: 'Device code',
+                        description:
+                            'Copy the code, then open GitHub to authorize Cockpit.',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              authentication.userCode,
+                              style: context.typo.mono.copyWith(
+                                fontSize: 13,
+                                color: colors.text,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlineButton(
+                              onPressed: () => unawaited(
+                                Clipboard.setData(
+                                  ClipboardData(text: authentication.userCode),
+                                ),
+                              ),
+                              child: const Text('Copy'),
+                            ),
+                            const SizedBox(width: 8),
+                            PrimaryButton(
+                              onPressed: controller.completingAuthentication
+                                  ? null
+                                  : () => unawaited(
+                                      controller.completeAuthentication(),
+                                    ),
+                              child: controller.completingAuthentication
+                                  ? const CircularProgressIndicator(
+                                      size: 16,
+                                      color: Colors.white,
+                                    )
+                                  : const Text('Open GitHub'),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      _Row(
+                        title: 'Connect account',
+                        description:
+                            'Uses the official GitHub Copilot Language Server. '
+                            'Node.js is required.',
+                        trailing: PrimaryButton(
+                          onPressed: status.isBusy
+                              ? null
+                              : () => unawaited(controller.connect()),
+                          child: status.isBusy
+                              ? const CircularProgressIndicator(
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : const Text('Connect GitHub'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _Section(
+                label: 'Commit messages',
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: 'Generate from Source Control',
+                      description:
+                          'When connected, the commit dialog can send the diff '
+                          'of the selected file and recent commit subjects to '
+                          'GitHub Copilot. Cockpit redacts common credential '
+                          'patterns and never sends unrelated files.',
+                      trailing: Icon(
+                        Icons.auto_awesome,
+                        size: 18,
+                        color: status.isConnected
+                            ? colors.accent
+                            : colors.text4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (controller.errorMessage != null)
+                Text(
+                  controller.errorMessage!,
+                  style: context.typo.label.copyWith(color: colors.error),
+                ),
             ],
           ),
         ),
