@@ -7,6 +7,7 @@ import 'package:cockpit/app/cockpit/domain/entities/redis_key.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/domain/services/redis_browse_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'fakes/ssh_fakes.dart';
 
 /// Runner fake: grava os lotes enviados e devolve replies roteirizados por
 /// comando (chave = primeiro token, ex.: 'SCAN', 'TYPE').
@@ -90,6 +91,8 @@ void main() {
       _NoSecrets(),
       _NoRegistry(),
       runner,
+      FakeSshTunnel(),
+      FakeSshKeyInspector(),
     );
     service = RedisBrowseService(db)
       ..target(workspaceRoot: '/ws', workspaceId: 'ws1', connName: 'cache');

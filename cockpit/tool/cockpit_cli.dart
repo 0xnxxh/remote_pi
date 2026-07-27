@@ -1147,6 +1147,51 @@ Cockpit tabs (it is not on the global PATH).
   gitignored overlay lives in `.cockpit/databases.local.json` (same shape,
   merged on top by name). The panel picks up edits on reload; `cockpit db
   list` confirms what's registered.
+- **Connecting through a bastion (SSH tunnel)** — a connection may carry an
+  optional `ssh` block. The app opens the tunnel and points the driver at a
+  local port; every `cockpit db|redis|mongo` command works unchanged.
+
+  ```json
+  {
+    "databases": [
+      {
+        "name": "prod",
+        "url": "postgres://appuser@localhost:5432/appdb",
+        "savePassword": true,
+        "ssh": {
+          "host": "bastion.acme.dev",
+          "port": 22,
+          "user": "deploy",
+          "keyPath": "~/.ssh/id_ed25519",
+          "savePassphrase": false
+        }
+      }
+    ]
+  }
+  ```
+
+  With a tunnel, the database `host`/`port` are resolved **from the SSH
+  server** — `localhost` means the bastion itself, not your machine.
+  Authentication is **key only**; the block never holds a secret (the
+  passphrase, when the key has one, lives in the OS keychain).
+
+  **Agents need the credential pre-saved.** If the key is passphrase-protected
+  and the human hasn't enabled "Save passphrase" on the connection, your
+  command fails fast with kind `ssh_credential_required` — there is no prompt
+  on the CLI path. Ask the human to enable it rather than working around it.
+  Other SSH failures come back as `ssh_host_key_unknown` (first connection
+  must be approved once in the UI), `ssh_host_key_changed`, `ssh_auth_failed`,
+  `ssh_key_missing` and `ssh_connect_failed`.
+
+  **How the tunnel routes**, which matters when you read a failure: SQL engines
+  and Redis go through a local **port forward** (they speak to one address).
+  MongoDB goes through a local **SOCKS5 proxy** instead, because the driver
+  discovers replica set members via `hello` and then dials the hostnames the
+  server announces — a fixed local port would only ever reach the first node,
+  and `mongodb+srv://` not even that. With SOCKS the driver picks each
+  destination and the tunnel just routes, so Atlas/SRV and replica sets work
+  unchanged. This requires a MongoDB driver built with SOCKS5 support; without
+  it the driver rejects `proxyHost` loudly rather than connecting directly.
 - `cockpit read-tab [<label|tab-id>] [--lines N] [--offset N] [--from-start]`
   (alias: `read-pane`) — read a tab's **rendered output** as plain text (no
   ANSI escapes; covers TUIs on the alt-screen too). Without a target it reads

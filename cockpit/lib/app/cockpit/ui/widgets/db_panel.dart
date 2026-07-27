@@ -77,7 +77,11 @@ class _DbPanelState extends State<DbPanel> {
       builder: (context) => DbConnectionDialog(engine: engine, viewModel: vm),
     );
     if (result?.connection == null) return;
-    await vm.upsert(result!.connection!, password: result.password);
+    await vm.upsert(
+      result!.connection!,
+      password: result.password,
+      sshPassphrase: result.sshPassphrase,
+    );
   }
 
   /// Conexões expandidas (schema visível). Estado local do painel.
@@ -142,6 +146,7 @@ class _DbPanelState extends State<DbPanel> {
       await vm.upsert(
         result.connection!,
         password: result.password,
+        sshPassphrase: result.sshPassphrase,
         previousName: conn.name,
       );
     }
