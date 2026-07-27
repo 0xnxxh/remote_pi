@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.15.1+43
+version: 1.15.2+44
 
 environment:
   sdk: ^3.12.0
@@ -262,22 +262,31 @@ dependency_overrides:
       url: https://github.com/media-kit/media-kit.git
       ref: 44ba261
       path: media_kit
-  # Pinados em SHA, não em branch de dev: consumir
+  # Pinados em TAG, não em branch nem em SHA de branch de dev. Consumir
   # `fix/flterm-tui-scroll-forwarding` deixava o app à mercê de qualquer push
-  # na branch — foi assim que um terminal quebrado chegou aqui. As duas saem do
-  # mesmo main (695c00d), então são compatíveis entre si.
+  # na branch — foi assim que um terminal quebrado chegou aqui. Pinar o SHA
+  # resolveu isso mas criou outro problema: revisão de PR reescreve a branch
+  # (force-push) e o SHA vira commit órfão — some de todo clone frio, e o
+  # release quebra em TODAS as plataformas no CI ("Could not find a file named
+  # packages/libghostty/pubspec.yaml"), enquanto a máquina com pub-cache quente
+  # segue compilando. Foi o que derrubou o cockpit-v1.15.1. Tag não move em
+  # force-push, então é o único pin realmente imutável aqui.
   #
-  # O SHA do libghostty inclui o fix de isolamento do git no hook: sem ele, o
+  # O commit do libghostty inclui o fix de isolamento do git no hook: sem ele, o
   # `source: compile` lia a tag do repo CONSUMIDOR (cockpit-vX.Y.Z), não batia
   # com o vX.Y.Z esperado pelo ghostty e abortava — quebrando todo release
-  # tagueado. Upstream: elias8/libghostty#120.
+  # tagueado. Upstream: elias8/libghostty#120 (785a21c = versão revisada do
+  # mesmo fix, depois do force-push da revisão).
+  #
+  # Voltar pro pub.dev quando elias8/libghostty#119 e #120 forem merjados e
+  # sair release.
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: 2822cc2e1c8500b1d0c41a866060b7733068b19f
+      ref: cockpit-pin-flterm-2822cc2
       path: packages/flterm
   libghostty:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: 45f783033804e2c0e77f4a0867bf42c362ade076
+      ref: cockpit-pin-libghostty-785a21c
       path: packages/libghostty
