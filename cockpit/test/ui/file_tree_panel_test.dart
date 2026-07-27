@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cockpit/app/cockpit/domain/entities/file_node.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_file_status.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_tree_panel.dart';
@@ -220,5 +222,88 @@ void main() {
       expect(find.text('CHANGES (1)'), findsOneWidget);
       expect(find.text('app'), findsNothing);
     });
+
+    testWidgets(
+      'staged Copilot action follows amend picker and shows loading',
+      (tester) async {
+        const changedPath = '/workspace/lib/app/main.dart';
+        final generation = Completer<Result<String, String>>();
+
+        await tester.pumpWidget(
+          ShadcnApp(
+            theme: buildTheme(brightness: Brightness.dark),
+            home: Scaffold(
+              child: FileTreePanel(
+                rootPath: '/workspace',
+                revision: 1,
+                listChildren: (_) async => const [],
+                gitStatusOf: (_) => GitFileStatus.staged,
+                onOpenFile: (_) {},
+                onOpenDiff: (_) {},
+                isGitRepo: true,
+                changedPaths: const [changedPath],
+                stagedPaths: const [changedPath],
+                onGenerateStagedCommitMessage: () => generation.future,
+                onOpenWith: (_) {},
+                onCreateInFolder: (_, _) {},
+                onCreate: (_, _, _) async => const Success(null),
+                onRename: (_, _) async => const Success(null),
+                onDelete: (_) async => const Success(null),
+                onMove: (_, _) async => const Success(null),
+                onCopy: (_) {},
+                onCut: (_) {},
+                onPaste: (_) async => const Success(null),
+                canPaste: false,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('source-control-tab')));
+        await tester.pumpAndSettle();
+
+        final picker = find.byKey(const ValueKey('amend-commit-picker'));
+        final generate = find.byKey(
+          const ValueKey('generate-staged-commit-message'),
+        );
+        final toolbar = tester.widget<Row>(
+          find.byKey(const ValueKey('commit-composer-toolbar')),
+        );
+        expect(toolbar.mainAxisAlignment, MainAxisAlignment.spaceBetween);
+        expect(
+          tester.getTopRight(picker).dx,
+          lessThan(tester.getTopLeft(generate).dx),
+        );
+        expect(find.text('Generate with Copilot'), findsNothing);
+        expect(
+          find.descendant(
+            of: generate,
+            matching: find.byIcon(Icons.auto_awesome),
+          ),
+          findsOneWidget,
+        );
+
+        await tester.tap(generate);
+        await tester.pump();
+
+        expect(
+          find.descendant(
+            of: generate,
+            matching: find.byType(CircularProgressIndicator),
+          ),
+          findsOneWidget,
+        );
+
+        generation.complete(const Success('feat: generated message'));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: generate,
+            matching: find.byIcon(Icons.auto_awesome),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

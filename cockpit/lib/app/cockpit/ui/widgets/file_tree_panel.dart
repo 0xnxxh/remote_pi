@@ -1175,6 +1175,7 @@ class _CommitComposer extends StatelessWidget {
         : _truncate(amendSubject!, 20);
 
     return HoverTap(
+      key: const ValueKey('amend-commit-picker'),
       onTap: submitting || generating ? null : () => _pickCommit(context),
       borderRadius: BorderRadius.circular(4),
       padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
@@ -1229,48 +1230,79 @@ class _CommitComposer extends StatelessWidget {
                     SizedBox(
                       height: 34.0,
                       child: Row(
-                        spacing: 4.0,
+                        key: const ValueKey('commit-composer-toolbar'),
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Checkbox(
-                            state: amend
-                                ? CheckboxState.checked
-                                : CheckboxState.unchecked,
-                            onChanged: submitting || generating
-                                ? null
-                                : (v) async {
-                                    if (v != CheckboxState.checked) {
-                                      onAmendChanged(false, null, null, null);
-                                      return;
-                                    }
-                                    final commits =
-                                        await loadCommits?.call() ??
-                                        const <GitCommit>[];
-                                    if (commits.isEmpty || !context.mounted) {
-                                      return;
-                                    }
-                                    final first = commits.first;
-                                    final message = await loadMessage?.call(
-                                      first.hash,
-                                    );
-                                    if (context.mounted) {
-                                      onAmendChanged(
-                                        true,
-                                        first.hash,
-                                        message,
-                                        first.subject,
-                                      );
-                                    }
-                                  },
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 4.0,
+                            children: [
+                              Checkbox(
+                                state: amend
+                                    ? CheckboxState.checked
+                                    : CheckboxState.unchecked,
+                                onChanged: submitting || generating
+                                    ? null
+                                    : (v) async {
+                                        if (v != CheckboxState.checked) {
+                                          onAmendChanged(
+                                            false,
+                                            null,
+                                            null,
+                                            null,
+                                          );
+                                          return;
+                                        }
+                                        final commits =
+                                            await loadCommits?.call() ??
+                                            const <GitCommit>[];
+                                        if (commits.isEmpty ||
+                                            !context.mounted) {
+                                          return;
+                                        }
+                                        final first = commits.first;
+                                        final message = await loadMessage?.call(
+                                          first.hash,
+                                        );
+                                        if (context.mounted) {
+                                          onAmendChanged(
+                                            true,
+                                            first.hash,
+                                            message,
+                                            first.subject,
+                                          );
+                                        }
+                                      },
+                              ),
+                              Text(
+                                'Amend',
+                                style: context.typo.label.copyWith(
+                                  color: colors.text,
+                                  fontSize: 11,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              _commitPicker(context),
+                            ],
                           ),
-                          Text(
-                            'Amend',
-                            style: context.typo.label.copyWith(
-                              color: colors.text,
-                              fontSize: 11,
-                              letterSpacing: 0.6,
+                          AppTooltip(
+                            message: generating
+                                ? 'Cancel generation'
+                                : 'Generate with Copilot',
+                            child: IconButton.outline(
+                              key: const ValueKey(
+                                'generate-staged-commit-message',
+                              ),
+                              onPressed: submitting || amend
+                                  ? null
+                                  : generating
+                                  ? onCancelGenerate
+                                  : onGenerate,
+                              icon: generating
+                                  ? const CircularProgressIndicator(size: 14)
+                                  : const Icon(Icons.auto_awesome, size: 15),
                             ),
                           ),
-                          _commitPicker(context),
                         ],
                       ),
                     ),
@@ -1307,31 +1339,6 @@ class _CommitComposer extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        OutlineButton(
-                          onPressed: submitting || amend
-                              ? null
-                              : generating
-                              ? onCancelGenerate
-                              : onGenerate,
-                          child: generating
-                              ? const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircularProgressIndicator(size: 14),
-                                    SizedBox(width: 7),
-                                    Text('Cancel generation'),
-                                  ],
-                                )
-                              : const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.auto_awesome, size: 15),
-                                    SizedBox(width: 7),
-                                    Text('Generate with Copilot'),
-                                  ],
-                                ),
-                        ),
-                        const SizedBox(width: 8),
                         PrimaryButton(
                           onPressed: submitting || generating ? null : onCommit,
                           child: submitting
