@@ -13,6 +13,14 @@ class CopilotController extends ChangeNotifier {
   CopilotController(this._gateway) : _status = _gateway.currentStatus {
     _subscription = _gateway.status.listen((value) {
       _status = value;
+      // O servidor pode restaurar uma sessão autenticada logo depois de uma
+      // tentativa de device flow responder sem código. Nesse caso o status
+      // Connected é a fonte de verdade e qualquer erro/autenticação pendente
+      // da tentativa anterior ficou obsoleto.
+      if (value.isConnected) {
+        _authentication = null;
+        _errorMessage = null;
+      }
       notifyListeners();
     });
   }
@@ -59,7 +67,17 @@ class CopilotController extends ChangeNotifier {
       notifyListeners();
       return Success(authentication);
     } on CopilotError catch (error) {
-      _errorMessage = error.message;
+      // `didChangeStatus: Normal` pode chegar enquanto `signIn` ainda está
+      // respondendo. Não publique um erro de device code depois que o próprio
+      // servidor já confirmou que a conta está conectada.
+      final current = _gateway.currentStatus;
+      if (current.isConnected) {
+        _status = current;
+        _authentication = null;
+        _errorMessage = null;
+      } else {
+        _errorMessage = error.message;
+      }
       notifyListeners();
       return Failure(error);
     }
@@ -84,7 +102,13 @@ class CopilotController extends ChangeNotifier {
       return const Success(null);
     } on CopilotError catch (error) {
       _authentication = null;
-      _errorMessage = error.message;
+      final current = _gateway.currentStatus;
+      if (current.isConnected) {
+        _status = current;
+        _errorMessage = null;
+      } else {
+        _errorMessage = error.message;
+      }
       return Failure(error);
     } finally {
       _completingAuthentication = false;
