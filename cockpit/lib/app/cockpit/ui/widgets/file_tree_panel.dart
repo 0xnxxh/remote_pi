@@ -7,6 +7,7 @@ import 'package:cockpit/app/cockpit/domain/entities/git_info.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/commit_message_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/panel_resize_handle.dart';
+import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -82,6 +83,7 @@ class FileTreePanel extends StatefulWidget {
     this.searchFocusSignal,
     this.tasksPanel,
     this.roots = const <WorkspaceRoot>[],
+    this.sourceControlViewMode = SourceControlViewMode.list,
     this.onStageFile,
     this.onStageFiles,
     this.onCommitStaged,
@@ -140,6 +142,10 @@ class FileTreePanel extends StatefulWidget {
   /// Roots git do workspace (derivadas). Usadas só pelo **Source Control**
   /// (2+ = mudanças seccionadas por root); a árvore de Files é sempre única.
   final List<WorkspaceRoot> roots;
+
+  /// Layout inicial compartilhado do Source Control. O toggle do header pode
+  /// alterá-lo temporariamente enquanto este painel permanece montado.
+  final SourceControlViewMode sourceControlViewMode;
 
   /// Notificado a cada Cmd+Shift+F → ativa a aba de busca (além de focar o
   /// campo, que o próprio [searchPanel] faz). `null` = sem projeto.
@@ -290,9 +296,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
   /// Aba ativa do painel: árvore de arquivos, busca ou source control.
   _RightPaneTab _tab = _RightPaneTab.files;
 
-  /// Source Control começa na lista compacta e pode alternar para a hierarquia
-  /// de pastas sem afetar a árvore principal de arquivos.
-  bool _sourceControlTree = false;
+  /// Source Control começa no default global e pode alternar temporariamente
+  /// sem afetar a árvore principal de arquivos.
+  late bool _sourceControlTree;
 
   /// Expansão das pastas do Source Control, chaveada pelo caminho absoluto e
   /// compartilhada entre Changes/Staged. Não removemos entradas quando uma
@@ -318,6 +324,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
   @override
   void initState() {
     super.initState();
+    _sourceControlTree =
+        widget.sourceControlViewMode == SourceControlViewMode.tree;
     widget.searchFocusSignal?.addListener(_onSearchFocusRequested);
   }
 
@@ -327,6 +335,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
     if (oldWidget.searchFocusSignal != widget.searchFocusSignal) {
       oldWidget.searchFocusSignal?.removeListener(_onSearchFocusRequested);
       widget.searchFocusSignal?.addListener(_onSearchFocusRequested);
+    }
+    if (oldWidget.sourceControlViewMode != widget.sourceControlViewMode) {
+      _sourceControlTree =
+          widget.sourceControlViewMode == SourceControlViewMode.tree;
     }
     // Novo pedido de reveal (seleção de tab FileView): calcula os ancestrais do
     // alvo e publica o set pros folders expandirem.

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cockpit/app/cockpit/domain/entities/file_node.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_file_status.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_tree_panel.dart';
+import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:flutter/gestures.dart';
@@ -140,6 +141,49 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('lib/app'), findsOneWidget);
+    });
+
+    testWidgets('source control honors the configured tree default', (
+      tester,
+    ) async {
+      const changedPath = '/workspace/lib/app/main.dart';
+
+      await tester.pumpWidget(
+        ShadcnApp(
+          theme: buildTheme(brightness: Brightness.dark),
+          home: Scaffold(
+            child: FileTreePanel(
+              rootPath: '/workspace',
+              revision: 1,
+              sourceControlViewMode: SourceControlViewMode.tree,
+              listChildren: (_) async => const [],
+              gitStatusOf: (_) => GitFileStatus.modified,
+              onOpenFile: (_) {},
+              onOpenDiff: (_) {},
+              isGitRepo: true,
+              changedPaths: const [changedPath],
+              unstagedPaths: const [changedPath],
+              onOpenWith: (_) {},
+              onCreateInFolder: (_, _) {},
+              onCreate: (_, _, _) async => const Success(null),
+              onRename: (_, _) async => const Success(null),
+              onDelete: (_) async => const Success(null),
+              onMove: (_, _) async => const Success(null),
+              onCopy: (_) {},
+              onCut: (_) {},
+              onPaste: (_) async => const Success(null),
+              canPaste: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('source-control-tab')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('lib/app'), findsNothing);
+      expect(find.text('lib'), findsOneWidget);
+      expect(find.text('app'), findsOneWidget);
     });
 
     testWidgets('folder expansion survives stage and unstage', (tester) async {

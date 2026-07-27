@@ -56,7 +56,7 @@ enum _Category {
   appearance,
   terminal,
   languages,
-  copilot,
+  sourceControl,
   shortcuts,
   notifications,
   connectivity,
@@ -112,7 +112,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _Category.appearance => const _AppearancePanel(),
                     _Category.terminal => const _TerminalPanel(),
                     _Category.languages => const _LanguagesPanel(),
-                    _Category.copilot => const _CopilotPanel(),
+                    _Category.sourceControl => const _SourceControlPanel(),
                     _Category.shortcuts => const _ShortcutsPanel(),
                     _Category.notifications => const _NotificationsPanel(),
                     _Category.connectivity => const _ConnectivityPanel(),
@@ -214,8 +214,8 @@ class _CategoryNav extends StatelessWidget {
           _NavItem(
             icon: Icons.account_tree_outlined,
             label: 'Source Control',
-            selected: selected == _Category.copilot,
-            onTap: () => onSelect(_Category.copilot),
+            selected: selected == _Category.sourceControl,
+            onTap: () => onSelect(_Category.sourceControl),
           ),
           _NavItem(
             icon: Icons.keyboard_outlined,
@@ -451,15 +451,16 @@ class _GeneralPanel extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// GitHub Copilot
+// Source Control
 // ---------------------------------------------------------------------------
 
-class _CopilotPanel extends StatelessWidget {
-  const _CopilotPanel();
+class _SourceControlPanel extends StatelessWidget {
+  const _SourceControlPanel();
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<CopilotController>();
+    final settings = context.watch<SettingsController>();
     final status = controller.status;
     final authentication = controller.authentication;
     final colors = context.colors;
@@ -485,6 +486,23 @@ class _CopilotPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _Section(
+                label: 'View',
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: 'Default view mode',
+                      description:
+                          'Initial layout shared by every workspace, worktree, '
+                          'and Changes/Staged section.',
+                      trailing: _SourceControlViewModeDropdown(
+                        value: settings.settings.sourceControlViewMode,
+                        onChanged: settings.setSourceControlViewMode,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               _Section(
                 label: 'GitHub Copilot',
                 child: _Card(
@@ -619,6 +637,49 @@ class _CopilotPanel extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SourceControlViewModeDropdown extends StatelessWidget {
+  const _SourceControlViewModeDropdown({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final SourceControlViewMode value;
+  final ValueChanged<SourceControlViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    String label(SourceControlViewMode mode) => switch (mode) {
+      SourceControlViewMode.list => 'List',
+      SourceControlViewMode.tree => 'Tree',
+    };
+    IconData icon(SourceControlViewMode mode) => switch (mode) {
+      SourceControlViewMode.list => Icons.view_list_outlined,
+      SourceControlViewMode.tree => Icons.account_tree_outlined,
+    };
+
+    return _DropdownChip(
+      icon: icon(value),
+      label: label(value),
+      onTap: () async {
+        final picked = await showAppMenu<SourceControlViewMode>(
+          context,
+          minWidth: 160,
+          items: [
+            for (final mode in SourceControlViewMode.values)
+              AppMenuItem(
+                value: mode,
+                label: label(mode),
+                icon: icon(mode),
+                selected: mode == value,
+              ),
+          ],
+        );
+        if (picked != null) onChanged(picked);
+      },
     );
   }
 }

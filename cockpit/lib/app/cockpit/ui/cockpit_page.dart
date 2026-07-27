@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:cockpit/app/core/app_intents.dart';
 import 'package:cockpit/app/cockpit/domain/entities/project.dart';
+import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/routes.dart';
 import 'package:cockpit/app/core/ui/copilot_controller.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
@@ -86,6 +87,7 @@ class _CockpitPageState extends State<CockpitPage> {
     // O motor/perfil precisam chegar antes do init: ele já pode restaurar ou
     // criar terminais, e a preferência do usuário deve valer desde o 1º buffer.
     final initialSettings = context.read<SettingsController>().settings;
+    _sourceControlViewMode = initialSettings.sourceControlViewMode;
     context.read<CockpitViewModel>()
       ..setDefaultTerminalProfileId(initialSettings.defaultTerminalProfileId)
       ..setDefaultTerminalEngine(initialSettings.terminalEngine);
@@ -110,7 +112,8 @@ class _CockpitPageState extends State<CockpitPage> {
     _settings = context.read<SettingsController>()
       ..addListener(_syncLspCommands)
       ..addListener(_syncNotifications)
-      ..addListener(_syncCockpit);
+      ..addListener(_syncCockpit)
+      ..addListener(_syncSourceControlViewMode);
     _syncLspCommands();
     _syncNotifications();
     _syncCockpit();
@@ -158,6 +161,7 @@ class _CockpitPageState extends State<CockpitPage> {
   DbQueryService? _dbService;
 
   SettingsController? _settings;
+  SourceControlViewMode _sourceControlViewMode = SourceControlViewMode.list;
   Map<String, String> _lastLspCommands = const <String, String>{};
 
   /// Bridge do menu File (New Agent/Terminal) + a VM que observamos pra saber se
@@ -231,6 +235,12 @@ class _CockpitPageState extends State<CockpitPage> {
     _vm.setCockpitEnabled(_settings!.settings.showCockpit);
   }
 
+  void _syncSourceControlViewMode() {
+    final next = _settings!.settings.sourceControlViewMode;
+    if (next == _sourceControlViewMode || !mounted) return;
+    setState(() => _sourceControlViewMode = next);
+  }
+
   void _syncLspCommands() {
     final next = _settings!.settings.lspCommands;
     _vm.applyLspCommands(next);
@@ -280,6 +290,7 @@ class _CockpitPageState extends State<CockpitPage> {
     _settings?.removeListener(_syncLspCommands);
     _settings?.removeListener(_syncNotifications);
     _settings?.removeListener(_syncCockpit);
+    _settings?.removeListener(_syncSourceControlViewMode);
     _menuVm?.removeListener(_syncWorkspaceMenu);
     _workspaceMenu?.setWorkspace(hasWorkspace: false);
     // Túneis SSH abertos morrem com o shell — e os prompts vão junto, senão
@@ -842,6 +853,7 @@ class _CockpitPageState extends State<CockpitPage> {
                             width: _treeWidth,
                             rootPath: vm.selectedProject?.path ?? '',
                             // Roots derivadas (multi-root = seções por repo).
+                            sourceControlViewMode: _sourceControlViewMode,
                             roots: [
                               for (final r
                                   in vm.selectedProject == null
