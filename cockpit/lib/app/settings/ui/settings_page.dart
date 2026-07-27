@@ -212,8 +212,8 @@ class _CategoryNav extends StatelessWidget {
             onTap: () => onSelect(_Category.languages),
           ),
           _NavItem(
-            icon: Icons.auto_awesome_outlined,
-            label: 'GitHub Copilot',
+            icon: Icons.account_tree_outlined,
+            label: 'Source Control',
             selected: selected == _Category.copilot,
             onTap: () => onSelect(_Category.copilot),
           ),
