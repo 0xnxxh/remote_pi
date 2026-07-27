@@ -66,6 +66,9 @@ class _CockpitPageState extends State<CockpitPage> {
   @override
   void initState() {
     super.initState();
+    // Sobe o LS no boot para restaurar a sessão já autenticada. Não inicia
+    // OAuth/device flow quando não houver credencial persistida.
+    unawaited(context.read<CopilotController>().initialize());
     // Registra a ponte do ⌘L global (handler em main.dart) → foca o input do
     // agente focado, mesmo quando o foco caiu num espaço vazio do shell.
     requestFocusActiveComposer = _focusActiveComposer;

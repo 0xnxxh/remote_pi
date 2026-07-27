@@ -10,8 +10,11 @@ class _Gateway implements CopilotGateway {
   final _statuses = StreamController<CopilotStatus>.broadcast();
 
   CopilotStatus _current = const CopilotStatus.disconnected();
+  CopilotStatus? statusOnStart;
   CopilotError? authenticationError;
   bool connectBeforeAuthenticationError = false;
+  final List<String> startedWorkspaces = <String>[];
+  int authenticationRequests = 0;
 
   @override
   CopilotStatus get currentStatus => _current;
@@ -25,10 +28,15 @@ class _Gateway implements CopilotGateway {
   }
 
   @override
-  Future<void> start({required String workspacePath}) async {}
+  Future<void> start({required String workspacePath}) async {
+    startedWorkspaces.add(workspacePath);
+    final restored = statusOnStart;
+    if (restored != null) emit(restored);
+  }
 
   @override
   Future<CopilotAuthentication> beginAuthentication() async {
+    authenticationRequests++;
     final error = authenticationError;
     if (error != null) {
       if (connectBeforeAuthenticationError) {
@@ -77,6 +85,28 @@ void main() {
     CopilotErrorKind.protocol,
     'GitHub Copilot did not provide a device code.',
   );
+
+  test('initialize restores the saved session without device flow', () async {
+    final gateway = _Gateway()
+      ..statusOnStart = const CopilotStatus(
+        CopilotState.connected,
+        'Connected',
+        account: 'octocat',
+      );
+    final controller = CopilotController(gateway);
+
+    final result = await controller.initialize(workspacePath: '/workspace');
+
+    expect(result.isSuccess, isTrue);
+    expect(gateway.startedWorkspaces, <String>['/workspace']);
+    expect(gateway.authenticationRequests, 0);
+    expect(controller.status.isConnected, isTrue);
+    expect(controller.status.account, 'octocat');
+    expect(controller.errorMessage, isNull);
+
+    controller.dispose();
+    await gateway.disposeStream();
+  });
 
   test('connected status clears a stale device-flow error', () async {
     final gateway = _Gateway()..authenticationError = missingDeviceCode;

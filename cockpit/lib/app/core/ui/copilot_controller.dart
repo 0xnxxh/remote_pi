@@ -31,6 +31,7 @@ class CopilotController extends ChangeNotifier {
   CopilotAuthentication? _authentication;
   String? _errorMessage;
   bool _completingAuthentication = false;
+  Future<void>? _startingGateway;
 
   CopilotStatus get status => _status;
   CopilotAuthentication? get authentication => _authentication;
@@ -42,13 +43,50 @@ class CopilotController extends ChangeNotifier {
       Platform.environment['USERPROFILE'] ??
       Directory.current.path;
 
+  /// Inicia o language server no boot para que ele restaure silenciosamente a
+  /// sessão persistida. Isso não abre device flow: se não houver credencial, o
+  /// estado simplesmente permanece desconectado e Settings oferece Connect.
+  Future<Result<void, CopilotError>> initialize({String? workspacePath}) async {
+    try {
+      await _ensureGatewayStarted(workspacePath ?? _defaultWorkspace);
+      final current = _gateway.currentStatus;
+      _status = current;
+      if (current.isConnected) {
+        _authentication = null;
+        _errorMessage = null;
+      }
+      notifyListeners();
+      return const Success(null);
+    } on CopilotError catch (error) {
+      _status = _gateway.currentStatus;
+      _errorMessage = error.message;
+      notifyListeners();
+      return Failure(error);
+    }
+  }
+
+  Future<void> _ensureGatewayStarted(String workspacePath) {
+    final pending = _startingGateway;
+    if (pending != null) {
+      // Depois do start em andamento, uma segunda chamada ainda registra seu
+      // workspace no gateway já vivo (start é idempotente nesse estado).
+      return pending.then((_) => _gateway.start(workspacePath: workspacePath));
+    }
+    late final Future<void> operation;
+    operation = _gateway.start(workspacePath: workspacePath).whenComplete(() {
+      if (identical(_startingGateway, operation)) _startingGateway = null;
+    });
+    _startingGateway = operation;
+    return operation;
+  }
+
   Future<Result<CopilotAuthentication, CopilotError>> connect({
     String? workspacePath,
   }) async {
     _errorMessage = null;
     notifyListeners();
     try {
-      await _gateway.start(workspacePath: workspacePath ?? _defaultWorkspace);
+      await _ensureGatewayStarted(workspacePath ?? _defaultWorkspace);
       final current = _gateway.currentStatus;
       if (current.isConnected) {
         return const Failure(
