@@ -7,6 +7,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/db_engine_icon.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/app/core/utils/path_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -186,8 +187,10 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
     final sshDir = home == null ? null : '$home/.ssh';
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: 'Choose SSH private key',
+      // Nativo, não canônico: o diálogo do Windows rejeita `/` (ver
+      // NativeFolderPicker) e não abre.
       initialDirectory: sshDir != null && Directory(sshDir).existsSync()
-          ? sshDir
+          ? toNativePath(sshDir)
           : null,
       type: FileType.any,
     );
@@ -316,7 +319,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
     final root = widget.viewModel.workspaceRoot;
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: 'Choose SQLite database',
-      initialDirectory: root,
+      initialDirectory: root == null ? null : toNativePath(root),
       type: FileType.any,
     );
     if (!mounted || result == null) return;
