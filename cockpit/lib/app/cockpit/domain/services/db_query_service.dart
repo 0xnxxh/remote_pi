@@ -46,7 +46,17 @@ class DbQueryService {
   /// Limite default de linhas quando nem chamada nem `.dbq` especificam.
   static const defaultLimit = 200;
 
-  Future<void> _queue = Future.value();
+  /// Uma fila **por engine**, não global.
+  ///
+  /// O anaki guarda a conexão num `static CONNECTOR` — mas esse estático é por
+  /// **dylib**, e cada engine compila a sua. Logo o que precisa ser serializado
+  /// é o acesso a um mesmo dylib: um Postgres lento não tem por que segurar uma
+  /// query de SQLite, Redis ou Mongo.
+  ///
+  /// Duas conexões do MESMO engine continuam serializadas — elas realmente
+  /// disputam o mesmo slot. Sair disso depende do anaki devolver um handle por
+  /// conexão em vez de manter uma global.
+  final Map<DbEngine, Future<void>> _queues = {};
 
   Future<List<DbConnection>> connections(String workspaceRoot) =>
       _store.load(workspaceRoot);
@@ -60,21 +70,26 @@ class DbQueryService {
     required String sql,
     int? limit,
     bool dml = false,
-  }) => _serialized(() async {
+  }) async {
+    // Resolver conexão e abrir túnel ficam FORA da fila: não tocam o dylib, e
+    // prender o slot durante um handshake SSH atrasaria as outras queries do
+    // mesmo engine à toa.
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     final driver = _driverFor(conn);
     final password = await _passwordFor(conn, workspaceId);
     final resolved = _resolvePaths(workspaceRoot, conn);
-    if (dml) {
-      return driver.execute(resolved, sql, password: password);
-    }
-    return driver.query(
-      resolved,
-      sql,
-      limit: limit ?? defaultLimit,
-      password: password,
-    );
-  });
+    return _serialized(conn.engine, () async {
+      if (dml) {
+        return driver.execute(resolved, sql, password: password);
+      }
+      return driver.query(
+        resolved,
+        sql,
+        limit: limit ?? defaultLimit,
+        password: password,
+      );
+    });
+  }
 
   /// Introspecção normalizada (tabelas ou colunas de [table]).
   Future<DbResult> schema({
@@ -83,17 +98,21 @@ class DbQueryService {
     required String connName,
     String? table,
     String? schema,
-  }) => _serialized(() async {
+  }) async {
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     final driver = _driverFor(conn);
     final password = await _passwordFor(conn, workspaceId);
-    return driver.schema(
-      _resolvePaths(workspaceRoot, conn),
-      table: table,
-      schema: schema,
-      password: password,
+    final resolved = _resolvePaths(workspaceRoot, conn);
+    return _serialized(
+      conn.engine,
+      () => driver.schema(
+        resolved,
+        table: table,
+        schema: schema,
+        password: password,
+      ),
     );
-  });
+  }
 
   /// Executa [statements] **em sequência** (mesma conexão lógica, execuções
   /// serializadas) e devolve o resultado do **último** — semântica de "run
@@ -107,7 +126,7 @@ class DbQueryService {
     required String connName,
     required List<String> statements,
     int? limit,
-  }) => _serialized(cap: _scriptCap(statements.length), () async {
+  }) async {
     if (statements.isEmpty) {
       throw const DbQueryException('query_failed', 'Nothing to run.');
     }
@@ -115,17 +134,23 @@ class DbQueryService {
     final driver = _driverFor(conn);
     final password = await _passwordFor(conn, workspaceId);
     final resolved = _resolvePaths(workspaceRoot, conn);
-    DbResult? last;
-    for (final sql in statements) {
-      last = await driver.query(
-        resolved,
-        sql,
-        limit: limit ?? defaultLimit,
-        password: password,
-      );
-    }
-    return last!;
-  });
+    return _serialized(
+      conn.engine,
+      cap: _scriptCap(statements.length),
+      () async {
+        DbResult? last;
+        for (final sql in statements) {
+          last = await driver.query(
+            resolved,
+            sql,
+            limit: limit ?? defaultLimit,
+            password: password,
+          );
+        }
+        return last!;
+      },
+    );
+  }
 
   /// Redis (CLI-only): envia `parts` e devolve o reply JSON-serializável.
   Future<Object?> redisCommand({
@@ -133,17 +158,15 @@ class DbQueryService {
     required String workspaceId,
     required String connName,
     required List<String> parts,
-  }) => _serialized(() async {
+  }) async {
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
-    if (conn.engine != DbEngine.redis) {
-      throw DbQueryException(
-        'unsupported_engine',
-        '"$connName" is a ${conn.engine.label} connection, not Redis.',
-      );
-    }
+    _requireEngine(conn, DbEngine.redis, connName);
     final password = await _passwordFor(conn, workspaceId);
-    return _nosql.redis(conn, parts, password: password);
-  });
+    return _serialized(
+      conn.engine,
+      () => _nosql.redis(conn, parts, password: password),
+    );
+  }
 
   /// Redis em lote (tabela do plano 52): [commands] em sequência numa única
   /// conexão, replies na mesma ordem. Mesma resolução de conexão/senha do
@@ -153,17 +176,15 @@ class DbQueryService {
     required String workspaceId,
     required String connName,
     required List<List<String>> commands,
-  }) => _serialized(() async {
+  }) async {
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
-    if (conn.engine != DbEngine.redis) {
-      throw DbQueryException(
-        'unsupported_engine',
-        '"$connName" is a ${conn.engine.label} connection, not Redis.',
-      );
-    }
+    _requireEngine(conn, DbEngine.redis, connName);
     final password = await _passwordFor(conn, workspaceId);
-    return _nosql.redisMany(conn, commands, password: password);
-  });
+    return _serialized(
+      conn.engine,
+      () => _nosql.redisMany(conn, commands, password: password),
+    );
+  }
 
   /// Mongo (CLI-only): roda `command` (runCommand) e devolve o doc JSON.
   Future<Object?> mongoCommand({
@@ -171,17 +192,25 @@ class DbQueryService {
     required String workspaceId,
     required String connName,
     required Map<String, dynamic> command,
-  }) => _serialized(() async {
+  }) async {
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
-    if (conn.engine != DbEngine.mongo) {
-      throw DbQueryException(
-        'unsupported_engine',
-        '"$connName" is a ${conn.engine.label} connection, not MongoDB.',
-      );
-    }
+    _requireEngine(conn, DbEngine.mongo, connName);
     final password = await _passwordFor(conn, workspaceId);
-    return _nosql.mongo(conn, command, password: password);
-  });
+    return _serialized(
+      conn.engine,
+      () => _nosql.mongo(conn, command, password: password),
+    );
+  }
+
+  /// Recusa cedo quando a conexão nomeada é de outro engine.
+  void _requireEngine(DbConnection conn, DbEngine expected, String connName) {
+    if (conn.engine == expected) return;
+    throw DbQueryException(
+      'unsupported_engine',
+      '"$connName" is a ${conn.engine.label} connection, '
+          'not ${expected.label}.',
+    );
+  }
 
   /// Teto de um script: cada statement pode legitimamente levar o timeout
   /// inteiro do driver, então o limite acompanha o tamanho do script em vez de
@@ -233,22 +262,24 @@ class DbQueryService {
     required String workspaceId,
     String? password,
     String? sshPassphrase,
-  }) => _serialized(() async {
+  }) async {
     final target = await _tunneled(conn, workspaceId, override: sshPassphrase);
-    switch (conn.engine) {
-      case DbEngine.redis:
-        await _nosql.redis(target, const ['PING'], password: password);
-      case DbEngine.mongo:
-        await _nosql.mongo(target, const {'ping': 1}, password: password);
-      case DbEngine.sqlite:
-      case DbEngine.postgres:
-      case DbEngine.mysql:
-      case DbEngine.mssql:
-        await _driverFor(
-          conn,
-        ).query(target, 'SELECT 1', limit: 1, password: password);
-    }
-  });
+    return _serialized(conn.engine, () async {
+      switch (conn.engine) {
+        case DbEngine.redis:
+          await _nosql.redis(target, const ['PING'], password: password);
+        case DbEngine.mongo:
+          await _nosql.mongo(target, const {'ping': 1}, password: password);
+        case DbEngine.sqlite:
+        case DbEngine.postgres:
+        case DbEngine.mysql:
+        case DbEngine.mssql:
+          await _driverFor(
+            conn,
+          ).query(target, 'SELECT 1', limit: 1, password: password);
+      }
+    });
+  }
 
   Future<DbConnection> _tunneled(
     DbConnection conn,
@@ -413,20 +444,24 @@ class DbQueryService {
   /// abandonada fazia todo o resto — inclusive outros workspaces e engines —
   /// esperar sem explicação. Ao estourar, esta chamada **não executa** (preserva
   /// a serialização) e a fila segue encadeada na anterior.
-  Future<T> _serialized<T>(Future<T> Function() action, {Duration? cap}) async {
-    final previous = _queue;
+  Future<T> _serialized<T>(
+    DbEngine engine,
+    Future<T> Function() action, {
+    Duration? cap,
+  }) async {
+    final previous = _queues[engine] ?? Future<void>.value();
     final gate = Completer<void>();
-    _queue = gate.future;
+    _queues[engine] = gate.future;
     try {
       await previous.timeout(queueWait);
     } on TimeoutException {
       // Encadeia o portão na anterior em vez de abri-lo: quem chegar depois
       // continua atrás de quem ainda está rodando.
       gate.complete(previous.then((_) {}, onError: (_) {}));
-      throw const DbQueryException(
+      throw DbQueryException(
         'busy',
-        'Another database operation is still running. It may be a connection '
-            'that is slow or unreachable — try again in a moment.',
+        'Another ${engine.label} operation is still running. It may be a '
+            'connection that is slow or unreachable — try again in a moment.',
       );
     }
     try {

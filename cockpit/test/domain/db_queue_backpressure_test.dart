@@ -66,6 +66,36 @@ void main() {
     expect(driver.calls, 1);
   });
 
+  test('engine diferente NÃO espera a fila do outro', () async {
+    // O `static CONNECTOR` do anaki é por dylib, e cada engine compila a sua:
+    // serializar tudo junto fazia um Postgres inalcançável travar SQLite,
+    // Redis e Mongo do app inteiro.
+    unawaited(call().catchError((Object _) => empty)); // Postgres preso
+    final sqlite = await service
+        .query(
+          workspaceRoot: '/ws',
+          workspaceId: 'w1',
+          connName: 'local',
+          sql: 'SELECT 1',
+        )
+        .timeout(const Duration(seconds: 2));
+    expect(sqlite.rows, isEmpty, reason: 'passou sem esperar o Postgres');
+  });
+
+  test('mesmo engine, conexões distintas: continuam serializadas', () async {
+    // Duas conexões Postgres disputam o MESMO dylib — aqui a fila é obrigatória.
+    unawaited(call().catchError((Object _) => empty));
+    await expectLater(
+      service.query(
+        workspaceRoot: '/ws',
+        workspaceId: 'w1',
+        connName: 'db2',
+        sql: 'SELECT 1',
+      ),
+      throwsA(isA<DbQueryException>().having((e) => e.kind, 'kind', 'busy')),
+    );
+  });
+
   test('operação travada é abandonada e LIBERA a fila (auto-cura)', () async {
     // Sem isto, uma única operação presa deixava o serviço em `busy` para
     // sempre — só reiniciando o app. Foi o que aconteceu no E2E do plano 54.
@@ -134,6 +164,13 @@ class _Store implements DbConnectionStore {
       host: 'h',
       database: 'd',
     ),
+    DbConnection.network(
+      name: 'db2',
+      engine: DbEngine.postgres,
+      host: 'h2',
+      database: 'd',
+    ),
+    DbConnection.sqlite('local', '/tmp/x.db'),
   ];
   @override
   Future<void> save(String root, List<DbConnection> connections) async {}
@@ -148,11 +185,48 @@ class _NoSecrets implements DbSecrets {
   Future<void> delete(String key) async {}
 }
 
+/// Só o Postgres usa o driver que trava; os demais respondem na hora, pra que
+/// o teste consiga distinguir "bloqueado pela fila" de "driver lento".
 class _Registry implements DbDriverRegistry {
   _Registry(this.driver);
   final DbDriver driver;
   @override
-  DbDriver? forEngine(DbEngine engine) => driver;
+  DbDriver? forEngine(DbEngine engine) =>
+      engine == DbEngine.postgres ? driver : _InstantDriver();
+}
+
+class _InstantDriver implements DbDriver {
+  static final _empty = DbResult(
+    columns: const [],
+    rows: const [],
+    elapsed: Duration.zero,
+  );
+
+  @override
+  Future<DbResult> query(
+    DbConnection conn,
+    String sql, {
+    required int limit,
+    Duration timeout = const Duration(seconds: 30),
+    String? password,
+  }) async => _empty;
+
+  @override
+  Future<DbResult> execute(
+    DbConnection conn,
+    String sql, {
+    Duration timeout = const Duration(seconds: 30),
+    String? password,
+  }) async => _empty;
+
+  @override
+  Future<DbResult> schema(
+    DbConnection conn, {
+    String? table,
+    String? schema,
+    Duration timeout = const Duration(seconds: 30),
+    String? password,
+  }) async => _empty;
 }
 
 class _NoRunner implements NoSqlRunner {
