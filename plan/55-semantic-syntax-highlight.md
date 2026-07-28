@@ -1,4 +1,4 @@
-# 54 — Semantic syntax highlight (LSP `semanticTokens`)
+# 55 — Semantic syntax highlight (LSP `semanticTokens`)
 
 ## Contexto
 

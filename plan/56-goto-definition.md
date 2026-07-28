@@ -1,4 +1,4 @@
-# 55 — Go to definition (⌘/Ctrl+clique num símbolo)
+# 56 — Go to definition (⌘/Ctrl+clique num símbolo)
 
 ## Contexto
 
@@ -6,7 +6,7 @@ Pergunta do usuário: ao segurar Command (macOS) ou Control (Windows/Linux) e
 clicar numa classe/símbolo usado em algum ponto do código, quer pular direto
 pro arquivo/linha onde ela é definida — como VSCode/IntelliJ fazem.
 
-Depende da mesma infra LSP do [`plano 54`](54-semantic-syntax-highlight.md)
+Depende da mesma infra LSP do [`plano 55`](55-semantic-syntax-highlight.md)
 (client já fala JSON-RPC, `request()` genérico em
 `core/data/lsp/lsp_client_impl.dart:160`), mas é feature **de navegação**, não
 de cor — arquivo de plano separado porque o trabalho de UI (gesture + hit-test
@@ -64,7 +64,7 @@ posição LSP" → "`textDocument/definition`" → "abrir resultado".
 ## Nota técnica: hit-test de clique → offset de texto
 
 O editor é um `TextField` padrão (`CodeEditingController extends
-TextEditingController`, ver plano 54/`code_editing_controller.dart:11`), não
+TextEditingController`, ver plano 55/`code_editing_controller.dart:11`), não
 um widget de texto custom. Duas rotas possíveis pra saber **onde** o usuário
 clicou (offset no texto):
 
