@@ -164,19 +164,60 @@ class DatabaseViewModel extends ChangeNotifier {
 
   /// Collections de uma conexão Mongo (lazy, cacheada até [reload] — análogo
   /// do [tables] SQL). O painel chama ao expandir.
+  ///
+  /// Chave inclui o database escolhido: trocar de database no seletor precisa
+  /// listar as collections do novo, não devolver as do anterior.
   final _collectionsCache = <String, List<String>>{};
 
-  Future<List<String>> collections(DbConnection conn) async {
-    final cached = _collectionsCache[conn.name];
+  /// [database] lista as collections daquele database específico (o painel
+  /// mostra todos os databases expansíveis); omitido, usa o database efetivo
+  /// da conexão.
+  Future<List<String>> collections(
+    DbConnection conn, {
+    String? database,
+  }) async {
+    final root = _workspaceRoot;
+    final wsId = _workspaceId;
+    if (root == null || wsId == null) return const [];
+    final db = database ?? service.mongoDatabase(wsId, conn);
+    final key = '${conn.name}@${db ?? ''}';
+    final cached = _collectionsCache[key];
     if (cached != null) return cached;
+    final svc = MongoBrowseService(service)
+      ..target(workspaceRoot: root, workspaceId: wsId, connName: conn.name);
+    final names = await svc.listCollections(database: database);
+    _collectionsCache[key] = names;
+    return names;
+  }
+
+  /// Database em uso pela conexão Mongo (URL, ou escolha salva). `null` = ainda
+  /// não escolhido → o painel pede a escolha antes de listar collections.
+  String? mongoDatabase(DbConnection conn) {
+    final wsId = _workspaceId;
+    return wsId == null ? null : service.mongoDatabase(wsId, conn);
+  }
+
+  /// `true` quando a URL não traz database e o seletor é necessário.
+  bool mongoNeedsDatabase(DbConnection conn) =>
+      service.mongoNeedsDatabase(conn);
+
+  /// Databases disponíveis no deployment (para o seletor).
+  Future<List<String>> mongoDatabases(DbConnection conn) async {
     final root = _workspaceRoot;
     final wsId = _workspaceId;
     if (root == null || wsId == null) return const [];
     final svc = MongoBrowseService(service)
       ..target(workspaceRoot: root, workspaceId: wsId, connName: conn.name);
-    final names = await svc.listCollections();
-    _collectionsCache[conn.name] = names;
-    return names;
+    return svc.listDatabases();
+  }
+
+  /// Fixa o database da conexão e invalida as collections cacheadas.
+  Future<void> selectMongoDatabase(DbConnection conn, String database) async {
+    final wsId = _workspaceId;
+    if (wsId == null) return;
+    await service.selectMongoDatabase(wsId, conn.name, database);
+    _collectionsCache.removeWhere((k, _) => k.startsWith('${conn.name}@'));
+    if (!_disposed) notifyListeners();
   }
 
   /// Aponta pro workspace ativo; recarrega quando muda (ou em [force]).

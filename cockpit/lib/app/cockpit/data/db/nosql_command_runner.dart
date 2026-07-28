@@ -105,13 +105,18 @@ class NoSqlRunnerImpl implements NoSqlRunner {
     DbConnection conn,
     Map<String, dynamic> command, {
     String? password,
+    String? database,
   }) async {
     // Conecta pela **URI**, não por campos soltos: só assim `mongodb+srv://`
     // (Atlas), TLS e query params como `authSource` sobrevivem. A forma antiga
     // (host/port/user/pass/db) descartava tudo isso — Atlas nunca conectava e
     // `?authSource=admin` autenticava contra o banco errado.
     final uri = _mongoUri(conn, password);
-    final database = _mongoDatabase(conn);
+    // Escolha explícita do chamador (seletor de database do painel) vence a
+    // URL; sem ela, o fallback histórico.
+    final target = (database != null && database.isNotEmpty)
+        ? database
+        : _mongoDatabase(conn);
     return _guard(
       () => Isolate.run(() async {
         // extendedJsonCodec OFF (plano 53, decisão C): replies mantêm
@@ -119,7 +124,7 @@ class NoSqlRunnerImpl implements NoSqlRunner {
         // collection browser e saída canônica no CLI (ObjectId como hex cru
         // era ambíguo). Comandos de entrada já são extended JSON do chamador.
         final mongo = AnakiMongoDb(
-          MongoDriver.uri(uri, database: database),
+          MongoDriver.uri(uri, database: target),
           extendedJsonCodec: false,
         );
         await mongo.open();
