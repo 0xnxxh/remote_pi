@@ -14,6 +14,27 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
   meio da frase).
 -->
 
+## [1.15.4] — 2026-07-28
+
+Conexão de banco por túnel SSH: o Mongo em Atlas finalmente funciona.
+
+### Fixed
+- **Túnel SSH pendurava o primeiro comando pra sempre:** o registro de abertura
+  em voo era limpo com `whenComplete(() => map.remove(key))` e o future passava
+  a esperar por si mesmo — só o primeiro chamador travava, o que aparecia como
+  "o painel carrega pra sempre mas a CLI responde".
+- **Proxy SOCKS do túnel morria em silêncio** a cada teardown de pool do driver
+  Mongo; agora é nosso, sobrevive a reset e o cache reabre quando ele cai.
+- **Comando Mongo custava ~7s:** `anaki_mongodb` 0.1.7 devolve o `close()` na
+  hora (era 5s, e 59s antes disso em `mongodb+srv://`).
+
+### Added
+- **Mongo escolhe o database:** URL de Atlas não traz database e o painel caía
+  no `admin`, mostrando `system.*`. A conexão agora expande nos databases.
+- **`cockpit mongo --database <nome>`:** o agente escolhe a base sem mexer no
+  que o humano vê; sem database resolvível, erro listando as disponíveis.
+- **"Copy name"** no menu da conexão (o nome que a CLI usa em `--db`).
+
 ## [1.14.6] — 2026-07-20
 
 Correção de digitação de acentos no terminal.
