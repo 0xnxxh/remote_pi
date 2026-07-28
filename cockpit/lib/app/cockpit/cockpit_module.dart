@@ -8,6 +8,12 @@ import 'package:cockpit/app/cockpit/data/db/db_driver_registry_impl.dart';
 import 'package:cockpit/app/cockpit/data/db/nosql_command_runner.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/data/db/db_secrets_impl.dart';
+import 'package:cockpit/app/cockpit/data/db/hive_mongo_database_store.dart';
+import 'package:cockpit/app/cockpit/data/db/hive_ssh_host_key_store.dart';
+import 'package:cockpit/app/cockpit/data/db/ssh_key_pem.dart';
+import 'package:cockpit/app/cockpit/data/db/ssh_tunnel_impl.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/mongo_database_store.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/app_launcher_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/content_searcher_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/file_reader_impl.dart';
@@ -146,6 +152,14 @@ Future<Module> buildCockpitModule() async {
         ..addInstance<DbSecrets>(const DbSecretsImpl())
         ..addInstance<DbDriverRegistry>(const DbDriverRegistryImpl())
         ..addInstance<NoSqlRunner>(const NoSqlRunnerImpl())
+        // Database escolhido por conexão Mongo (URL de Atlas vem sem path):
+        // reusa a box de settings, como o host key store abaixo.
+        ..addInstance<MongoDatabaseStore>(HiveMongoDatabaseStore(settingsBox))
+        // Plano 54 — túnel SSH opcional por conexão. O host key store reusa a
+        // box de settings (mesmo padrão do DismissedUpdateStore).
+        ..addInstance<SshHostKeyStore>(HiveSshHostKeyStore(settingsBox))
+        ..addInstance<SshKeyInspector>(const SshKeyPemInspector())
+        ..addLazySingleton<SshTunnel>(SshTunnelImpl.new)
         ..addLazySingleton<DbQueryService>(DbQueryService.new)
         ..addInstance<FileSearcher>(FileSearcherImpl())
         ..addInstance<ContentSearcher>(const ContentSearcherImpl())

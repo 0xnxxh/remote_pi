@@ -1,11 +1,13 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show FileSystemException, Platform;
+import 'dart:ui' show AppExitResponse;
 
 import 'package:cockpit/app/app_module.dart';
 import 'package:cockpit/app/app_widget.dart';
 import 'package:cockpit/app/cockpit/data/hooks/claude_hook_installer_impl.dart';
 import 'package:cockpit/app/cockpit/data/rpc/pi_process_registry.dart';
 import 'package:cockpit/app/cockpit/data/tasks/task_process_registry.dart';
+import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_process_registry.dart';
 import 'package:cockpit/app/core/data/repositories/hive_settings_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
@@ -16,7 +18,9 @@ import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/bootstrap_error_view.dart';
+import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
 import 'package:cockpit/app/core/ui/widgets/loading_screen.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/core/utils/login_shell.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -50,12 +54,35 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
   SettingsController? _settings;
   Box<dynamic>? _winBox;
 
+  AppLifecycleListener? _lifecycle;
+
+  /// Chave do Navigator raiz (dentro do `ModularApp`). O `context` deste
+  /// State fica **acima** do `ShadcnApp`, então `showDialog` a partir dele
+  /// não acha Navigator — era exatamente isso que quebrava a oferta de
+  /// crash report no boot (loop de crash no Windows).
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   void initState() {
     super.initState();
+    // Saída pela janela/menu conta como limpa — sem isso o boot seguinte
+    // acusaria crash em todo fechamento normal, e o aviso viraria ruído que o
+    // usuário aprende a ignorar.
+    _lifecycle = AppLifecycleListener(
+      onExitRequested: () async {
+        DiagnosticsLog.instance.markCleanExit();
+        return AppExitResponse.exit;
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initApp();
     });
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
   }
 
   Future<void> _initApp() async {
@@ -70,13 +97,11 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
       // produção. As boxes das features são abertas pelos próprios builders
       // async (ver buildCockpitModule); aqui só settings + window_state.
       Hive.init(await StorageLocation.hiveDir());
-      final settingsBox = await Hive.openBox<dynamic>(
-        HiveSettingsStore.boxName,
-      );
+      final settingsBox = await _openBox(HiveSettingsStore.boxName);
       final settings = SettingsController(HiveSettingsStore(settingsBox));
       await settings.load();
 
-      final winBox = await Hive.openBox<dynamic>('window_state');
+      final winBox = await _openBox('window_state');
 
       if (mounted) {
         setState(() {
@@ -127,16 +152,100 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
           _initialized = true;
         });
       }
+
+      // Sessão anterior morreu sem passar pelo encerramento limpo (SIGPIPE,
+      // segfault, força bruta). Nenhum handler Dart vê isso — só o marcador.
+      // Oferecido depois do boot pra não competir com a tela de loading.
+      final crash = DiagnosticsLog.instance.previousCrash;
+      if (crash != null && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_offerCrashReport(crash));
+        });
+      }
     } catch (e, stack) {
       // Boundary do bootstrap: qualquer falha (Hive corrompido, config, DI)
       // vira tela de erro com retry em vez de app morto sem feedback.
-      debugPrint('[bootstrap] falhou: $e\n$stack');
+      DiagnosticsLog.instance.logError('bootstrap', e, stack);
       if (mounted) {
         setState(() {
           _error = e;
         });
       }
     }
+  }
+
+  /// Abre uma box tolerando o lock de arquivo ainda preso por uma instância
+  /// que acabou de morrer (Windows, `errno 33`): o SO/OneDrive segura o
+  /// `.lock` por alguns instantes depois do processo sair, e um boot logo em
+  /// seguida falhava direto na tela de erro. Tenta por ~3s antes de desistir.
+  Future<Box<dynamic>> _openBox(String name) async {
+    Object? last;
+    for (var i = 0; i < 10; i++) {
+      try {
+        return await Hive.openBox<dynamic>(name);
+      } on FileSystemException catch (e) {
+        last = e;
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      }
+    }
+    throw last!;
+  }
+
+  /// Avisa que a sessão anterior morreu e oferece reportar. Discreto de
+  /// propósito: um dialog dispensável, não um bloqueio — o usuário abriu o app
+  /// pra trabalhar, não pra preencher relatório.
+  ///
+  /// Roda **sobre o Navigator raiz** (`_navigatorKey`), não sobre o context
+  /// deste State — que é ancestral do `ShadcnApp` e não tem Navigator. E
+  /// nunca lança: aviso de crash que crasha o app vira loop de boot.
+  Future<void> _offerCrashReport(DirtySession crash) async {
+    final navContext = await _waitForNavigatorContext();
+    if (navContext == null || !navContext.mounted) return;
+    try {
+      await _showCrashReport(navContext, crash);
+    } on Object catch (e, stack) {
+      DiagnosticsLog.instance.logError('crash-report', e, stack);
+    }
+  }
+
+  /// O Navigator raiz só existe depois que o `ModularApp` monta a primeira
+  /// rota — que pode levar alguns frames. Tenta por até ~2s e desiste em
+  /// silêncio (o crash já está no log; o dialog é cortesia).
+  Future<BuildContext?> _waitForNavigatorContext() async {
+    for (var i = 0; i < 20; i++) {
+      if (!mounted) return null;
+      final ctx = _navigatorKey.currentContext;
+      if (ctx != null && ctx.mounted) return ctx;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return null;
+  }
+
+  Future<void> _showCrashReport(
+    BuildContext context,
+    DirtySession crash,
+  ) async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Cockpit closed unexpectedly',
+      message:
+          'The previous session (version ${crash.appVersion}) ended without '
+          'shutting down cleanly. Want to report it? The log is included and '
+          'you can review everything before sending.',
+      confirmLabel: 'Report',
+      cancelLabel: 'Dismiss',
+    );
+    if (!ok || !context.mounted) return;
+    await showErrorReportDialog(
+      context,
+      title: 'Unexpected shutdown',
+      error:
+          'Session started at ${crash.startedAt.toIso8601String()} '
+          '(pid ${crash.pid}) ended without a clean shutdown.',
+      description:
+          'No error was captured — the app was terminated by the system. The '
+          'log below is from that session and is the most useful part.',
+    );
   }
 
   /// Brilho efetivo pras telas fora do ModularApp (loading/erro): preferência
@@ -220,6 +329,7 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
       box: _winBox!,
       child: ModularApp(
         module: _appModule!,
+        navigatorKey: _navigatorKey,
         provide: (s) => s
           ..addChangeNotifier<SettingsController>(() => _settings!)
           ..addChangeNotifier<EditorMenuBridge>(EditorMenuBridge.new)

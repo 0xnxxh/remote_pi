@@ -13,10 +13,10 @@ packages:
     dependency: "direct main"
     description:
       name: anaki_mongodb
-      sha256: "023d1bbf873db0a68309e4897036d7e96474406fc59eba2701774a74aca3d7bd"
+      sha256: "289d995ffd5fdba8897417cb516df22583b78f72d8bf27e073f874b5eae522ec"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.4"
+    version: "0.1.7"
   anaki_mssql:
     dependency: "direct main"
     description:
@@ -97,6 +97,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.7.0"
+  asn1lib:
+    dependency: transitive
+    description:
+      name: asn1lib
+      sha256: "9a8f69025044eb466b9b60ef3bc3ac99b4dc6c158ae9c56d25eeccf5bc56d024"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.6.5"
   async:
     dependency: transitive
     description:
@@ -272,6 +280,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.9"
+  dartssh2:
+    dependency: "direct main"
+    description:
+      name: dartssh2
+      sha256: "2d8e31174f2ebcb0db4f636eabb9b604ae4f40b0402a66779f0943752538356e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.22.4"
   data_widget:
     dependency: transitive
     description:
@@ -356,8 +372,8 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/flterm"
-      ref: flterm-cockpit-2
-      resolved-ref: "9ea4b01973f87182ed7cac4de73a88cc618d5621"
+      ref: cockpit-pin-flterm-2822cc2
+      resolved-ref: "2822cc2e1c8500b1d0c41a866060b7733068b19f"
       url: "https://github.com/jacobaraujo7/libghostty.git"
     source: git
     version: "0.0.4"
@@ -673,8 +689,8 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/libghostty"
-      ref: flterm-cockpit-2
-      resolved-ref: "9ea4b01973f87182ed7cac4de73a88cc618d5621"
+      ref: cockpit-pin-libghostty-785a21c
+      resolved-ref: "785a21cae686fa6c3f9532498d5d9f473aa88adc"
       url: "https://github.com/jacobaraujo7/libghostty.git"
     source: git
     version: "0.0.11"
@@ -919,6 +935,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.4"
+  pinenacl:
+    dependency: transitive
+    description:
+      name: pinenacl
+      sha256: "57e907beaacbc3c024a098910b6240758e899674de07d6949a67b52fd984cbdf"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.0"
   platform:
     dependency: transitive
     description:
@@ -935,6 +959,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  pointycastle:
+    dependency: transitive
+    description:
+      name: pointycastle
+      sha256: "92aa3841d083cc4b0f4709b5c74fd6409a3e6ba833ffc7dc6a8fee096366acf5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.0"
   posix:
     dependency: transitive
     description:

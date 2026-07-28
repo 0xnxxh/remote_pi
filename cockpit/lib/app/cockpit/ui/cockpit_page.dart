@@ -28,6 +28,10 @@ import 'package:flutter/services.dart'
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
+import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/ssh_prompts.dart';
 
 /// Shell do Cockpit: top bar + rail de projetos + multiplexador (árvore de
 /// splits). Cada folha é uma [PaneView] com abas; cada aba é um agente.
@@ -120,7 +124,35 @@ class _CockpitPageState extends State<CockpitPage> {
       _tasksMin,
       _tasksMax,
     );
+    _wireSshPrompts();
   }
+
+  /// Liga os prompts de SSH (plano 54) ao motor de queries. É aqui e não no
+  /// módulo porque eles precisam de `BuildContext` — e é o que separa a GUI
+  /// (pode perguntar) da CLI (não pode: prompts nulos → erro honesto).
+  void _wireSshPrompts() {
+    final service = _dbService = context.read<DatabaseViewModel>().service;
+    service
+      ..passphrasePrompt = (connectionName, keyPath) async {
+        if (!mounted) return null;
+        return showSshPassphraseDialog(
+          context,
+          connectionName: connectionName,
+          keyPath: keyPath,
+        );
+      }
+      ..hostKeyPrompt = (endpoint, fingerprint) async {
+        if (!mounted) return HostKeyVerdict.reject;
+        return showSshHostKeyDialog(
+          context,
+          endpoint: endpoint,
+          fingerprint: fingerprint,
+        );
+      };
+  }
+
+  /// Capturado no initState pra uso seguro no dispose (sem `context`).
+  DbQueryService? _dbService;
 
   SettingsController? _settings;
   Map<String, String> _lastLspCommands = const <String, String>{};
@@ -247,6 +279,12 @@ class _CockpitPageState extends State<CockpitPage> {
     _settings?.removeListener(_syncCockpit);
     _menuVm?.removeListener(_syncWorkspaceMenu);
     _workspaceMenu?.setWorkspace(hasWorkspace: false);
+    // Túneis SSH abertos morrem com o shell — e os prompts vão junto, senão
+    // ficariam apontando pra um contexto desmontado.
+    _dbService
+      ?..passphrasePrompt = null
+      ..hostKeyPrompt = null
+      ..closeSshTunnels();
     if (requestFocusActiveComposer == _focusActiveComposer) {
       requestFocusActiveComposer = null;
     }
@@ -821,9 +859,16 @@ class _CockpitPageState extends State<CockpitPage> {
                                     git: vm.gitInfoForRoot(r),
                                   ),
                               ],
+                              onStageFile: vm.stageFile,
+                              onStageFiles: vm.stageFiles,
                               onUnstageFile: vm.unstageFile,
+                              onUnstageFiles: vm.unstageFiles,
                               onDiscardFile: vm.discardFile,
+                              isNewGitFile: vm.isNewGitFile,
                               onCommitFile: vm.commitFile,
+                              onCommitStaged: vm.commitStaged,
+                              onLoadCommits: vm.recentCommits,
+                              onLoadCommitMessage: vm.commitMessage,
                               revision: vm.fileTreeRevision,
                               selectedPath: vm.selectedFileInTree,
                               listChildren: vm.listChildren,
@@ -843,6 +888,8 @@ class _CockpitPageState extends State<CockpitPage> {
                                   vm.selectedProject != null &&
                                   vm.isGitRepo(vm.selectedProject!.id),
                               changedPaths: vm.changedAbsolutePaths(),
+                              stagedPaths: vm.stagedAbsolutePaths(),
+                              unstagedPaths: vm.unstagedAbsolutePaths(),
                               onOpenWith: vm.openWithDefaultApp,
                               onCreateInFolder: (sub, terminal) =>
                                   vm.newTabIn(sub, terminal: terminal),

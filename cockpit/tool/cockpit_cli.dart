@@ -1,5 +1,5 @@
 // `cockpit` — CLI **interna** do Cockpit. Fica visível apenas dentro dos
-// terminais que o app spawna (o app prependa `~/.cockpit/bin` no PATH só dessas
+// terminais que o app spawna (o app prependa `~/.cockpit/bin[-debug]` no PATH só dessas
 // abas) e fala com o app pelo **mesmo socket** do `cockpit-hook`
 // (`COCKPIT_STATUS_SOCK` no POSIX; `COCKPIT_STATUS_PORT`+`COCKPIT_STATUS_TOKEN`
 // no Windows), discriminando `type:"cmd"` no wire (request/response).
@@ -624,19 +624,37 @@ Future<void> _cmdRedis(List<String> args) async {
   }, tabId);
 }
 
-/// `cockpit mongo --db <conn> --command '<json>'` — MongoDB (CLI-only). O
-/// comando é um documento runCommand (`{"find":"users","filter":{}}`).
-/// `cockpit mongo browse --db <conn> <collection> [--filter '<json>']` abre o
-/// collection browser no app (view pro humano — não devolve documentos).
+/// `cockpit mongo --db conn [--database name] --command json` — MongoDB
+/// (CLI-only). O comando é um documento runCommand
+/// (`{"find":"users","filter":{}}`).
+///
+/// `--database` escolhe a base **desta chamada** sem tocar na seleção do painel:
+/// URL de Atlas (`mongodb+srv://…/?…`) não traz database, e sem isso o agente
+/// ficava preso na última base que o humano abriu na UI.
+///
+/// `cockpit mongo browse --db conn [--database name] collection
+/// [--filter json]` abre o collection browser no app (view pro humano — não
+/// devolve documentos); ali o `--database` **fixa** a base da conexão, porque a
+/// tab aberta passa a ser o que o humano vê.
 Future<void> _cmdMongo(List<String> args) async {
   if (args.isEmpty || args.first == '--help' || args.first == '-h') {
     stdout.writeln(
-      "cockpit mongo --db <conn> --command '<json>'\n"
+      "cockpit mongo --db <conn> [--database <name>] --command '<json>'\n"
       "  e.g. cockpit mongo --db app --command '{\"find\":\"users\",\"filter\":{}}'\n"
       '  The command is a MongoDB runCommand document. Output: one JSON line.\n'
-      "cockpit mongo browse --db <conn> <collection> [--filter '<json>']\n"
+      '  --database <name>  which database to run against, for this call only.\n'
+      "                     Needed when the connection URL has no database in\n"
+      '                     its path (typical of Atlas, mongodb+srv://…/?…).\n'
+      '                     Omitted, the database picked in the app panel is\n'
+      "                     used; if none was ever picked, the command fails\n"
+      '                     and lists the databases available.\n'
+      "                     List them anytime with --command '{\"listDatabases\":1}'.\n"
+      "cockpit mongo browse --db <conn> [--database <name>] <collection> "
+      "[--filter '<json>']\n"
       '  Opens the collection browser in the app, pre-filtered. Opens a '
-      'view — returns no documents.',
+      'view — returns no documents.\n'
+      '  Here --database also becomes the connection\'s current database (the '
+      'tab is what the human sees).',
     );
     exit(args.isEmpty ? 2 : 0);
   }
@@ -645,6 +663,7 @@ Future<void> _cmdMongo(List<String> args) async {
     return;
   }
   String? db;
+  String? database;
   String? command;
   String? workspace;
   String? tabId;
@@ -657,6 +676,7 @@ Future<void> _cmdMongo(List<String> args) async {
     }
 
     db = take('--db') ?? db;
+    database = take('--database') ?? database;
     command = take('--command') ?? command;
     workspace = take('--workspace') ?? workspace;
     tabId = take('--tab-id') ?? tabId;
@@ -668,6 +688,7 @@ Future<void> _cmdMongo(List<String> args) async {
   await _nosqlRequest('mongo-cmd', {
     'db': db,
     'command': command,
+    'database': ?database,
     'workspace': ?workspace,
   }, tabId);
 }
@@ -677,6 +698,7 @@ Future<void> _cmdMongo(List<String> args) async {
 /// `--filter`).
 Future<void> _cmdBrowse(String wire, List<String> args) async {
   String? db;
+  String? database;
   String? workspace;
   String? tabId;
   String? pattern;
@@ -694,12 +716,13 @@ Future<void> _cmdBrowse(String wire, List<String> args) async {
       stdout.writeln(
         wire == 'redis-browse'
             ? "cockpit redis browse --db <conn> [--pattern 'user:*']"
-            : "cockpit mongo browse --db <conn> <collection> "
-                  "[--filter '<json>']",
+            : "cockpit mongo browse --db <conn> [--database <name>] "
+                  "<collection> [--filter '<json>']",
       );
       exit(0);
     }
     db = take('--db') ?? db;
+    database = take('--database') ?? database;
     workspace = take('--workspace') ?? workspace;
     tabId = take('--tab-id') ?? tabId;
     pattern = take('--pattern') ?? pattern;
@@ -712,6 +735,7 @@ Future<void> _cmdBrowse(String wire, List<String> args) async {
     if (positionals.isEmpty) _dbFail('error', 'missing <collection>');
     cmdArgs['collection'] = positionals.first;
     if (filter != null) cmdArgs['filter'] = filter;
+    if (database != null) cmdArgs['database'] = database;
   } else if (pattern != null) {
     cmdArgs['pattern'] = pattern;
   }
@@ -970,7 +994,8 @@ USAGE:
                                                open a new terminal tab (prints its id)
   cockpit db <list|schema|query|run|execute>   SQL databases (see `cockpit db --help`)
   cockpit redis [browse] --db <conn> ...       Redis command / open key table
-  cockpit mongo [browse] --db <conn> ...       MongoDB runCommand / open browser
+  cockpit mongo [browse] --db <conn> [--database <name>] ...
+                                               MongoDB runCommand / open browser
   cockpit install-skill   [--force]            install the Claude Code skill
   cockpit --help | --version
 
@@ -1114,18 +1139,34 @@ Cockpit tabs (it is not on the global PATH).
 - `cockpit redis --db <conn> <CMD> [args...]` — Redis/cache command. One
   JSON line reply. e.g. `cockpit redis --db cache HGETALL user:42`. Covers
   Redis/Valkey/KeyDB.
-- `cockpit mongo --db <conn> --command '<json>'` — MongoDB runCommand.
-  The command is a runCommand document, e.g.
+- `cockpit mongo --db <conn> [--database <name>] --command '<json>'` — MongoDB
+  runCommand. The command is a runCommand document, e.g.
   `cockpit mongo --db app --command '{"find":"users","filter":{"active":true}}'`.
   Output: one JSON line `{"ok": <reply>}` / `{"error":{kind,message}}`.
   Documents use relaxed extended JSON (`{"$oid":…}`, `{"$date":…}`) both ways.
+  - **Which database it runs against**: the one in the connection URL's path,
+    if it has one; otherwise the one the human picked in the Database panel;
+    otherwise the command fails and the error lists the databases available.
+    `--database <name>` overrides all of it **for that call only** — it never
+    changes what the human is looking at, so prefer it whenever you are not
+    sure. Atlas URLs (`mongodb+srv://…/?…`) carry no database, so a connection
+    can legitimately have none until someone picks one.
+  - Discover databases with `--command '{"listDatabases":1}'` (routed to
+    `admin` for you — that is the only database the server accepts it on), then
+    collections with
+    `--database <name> --command '{"listCollections":1,"nameOnly":true}'`.
+    Running `listCollections` without knowing the database is the classic
+    mistake: you get `system.users`/`system.roles`/`system.version` back, which
+    is the `admin` database answering — not an empty deployment.
 - **Browse commands open a view for the human — they return no data.** Use
   them to *show* what you found (after investigating with the commands above),
   not to query:
   - `cockpit redis browse --db <conn> [--pattern 'user:*']` — opens the
     editable Redis key table, pre-filtered. On an already-open table the
     pattern **replaces** the current filter.
-  - `cockpit mongo browse --db <conn> <collection> [--filter '<json>']` —
+  - `cockpit mongo browse --db <conn> [--database <name>] <collection>
+    [--filter '<json>']` — here `--database` **does** change the connection's
+    current database, because the tab you open becomes what the human sees —
     opens the Mongo collection browser (JSON document cards) pre-filtered.
     The filter lands in the visible filter bar, editable by the human.
 - **Registering a connection** (`.cockpit/databases.json` at the workspace
@@ -1147,6 +1188,51 @@ Cockpit tabs (it is not on the global PATH).
   gitignored overlay lives in `.cockpit/databases.local.json` (same shape,
   merged on top by name). The panel picks up edits on reload; `cockpit db
   list` confirms what's registered.
+- **Connecting through a bastion (SSH tunnel)** — a connection may carry an
+  optional `ssh` block. The app opens the tunnel and points the driver at a
+  local port; every `cockpit db|redis|mongo` command works unchanged.
+
+  ```json
+  {
+    "databases": [
+      {
+        "name": "prod",
+        "url": "postgres://appuser@localhost:5432/appdb",
+        "savePassword": true,
+        "ssh": {
+          "host": "bastion.acme.dev",
+          "port": 22,
+          "user": "deploy",
+          "keyPath": "~/.ssh/id_ed25519",
+          "savePassphrase": false
+        }
+      }
+    ]
+  }
+  ```
+
+  With a tunnel, the database `host`/`port` are resolved **from the SSH
+  server** — `localhost` means the bastion itself, not your machine.
+  Authentication is **key only**; the block never holds a secret (the
+  passphrase, when the key has one, lives in the OS keychain).
+
+  **Agents need the credential pre-saved.** If the key is passphrase-protected
+  and the human hasn't enabled "Save passphrase" on the connection, your
+  command fails fast with kind `ssh_credential_required` — there is no prompt
+  on the CLI path. Ask the human to enable it rather than working around it.
+  Other SSH failures come back as `ssh_host_key_unknown` (first connection
+  must be approved once in the UI), `ssh_host_key_changed`, `ssh_auth_failed`,
+  `ssh_key_missing` and `ssh_connect_failed`.
+
+  **How the tunnel routes**, which matters when you read a failure: SQL engines
+  and Redis go through a local **port forward** (they speak to one address).
+  MongoDB goes through a local **SOCKS5 proxy** instead, because the driver
+  discovers replica set members via `hello` and then dials the hostnames the
+  server announces — a fixed local port would only ever reach the first node,
+  and `mongodb+srv://` not even that. With SOCKS the driver picks each
+  destination and the tunnel just routes, so Atlas/SRV and replica sets work
+  unchanged. This requires a MongoDB driver built with SOCKS5 support; without
+  it the driver rejects `proxyHost` loudly rather than connecting directly.
 - `cockpit read-tab [<label|tab-id>] [--lines N] [--offset N] [--from-start]`
   (alias: `read-pane`) — read a tab's **rendered output** as plain text (no
   ANSI escapes; covers TUIs on the alt-screen too). Without a target it reads
