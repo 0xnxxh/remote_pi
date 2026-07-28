@@ -42,6 +42,7 @@ import 'package:cockpit/app/cockpit/domain/entities/worktree.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
+import 'package:cockpit/app/core/domain/entities/lsp_semantic_tokens.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/utils/path_utils.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
@@ -193,6 +194,46 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Pane focada por projeto.
   final Map<String, String> _focused = <String, String>{};
+
+  /// Histórico de abas ativadas por pane (LIFO), pro botão "voltar" do mouse
+  /// (`kBackMouseButton`). Cada entrada é a aba que estava ativa ANTES da
+  /// troca — `goBackInPane` reativa a última. Suprimido durante o próprio
+  /// `goBackInPane` pra não empurrar de volta o que acabou de sair.
+  final Map<String, List<String>> _backHistory = <String, List<String>>{};
+  bool _suppressHistory = false;
+
+  void _recordHistoryBeforeSwitch(String paneId) {
+    if (_suppressHistory) return;
+    final tree = _activeTree;
+    if (tree == null) return;
+    final leaf = findLeaf(tree, paneId);
+    if (leaf == null || leaf.active.isEmpty) return;
+    final stack = _backHistory.putIfAbsent(paneId, () => <String>[]);
+    if (stack.isNotEmpty && stack.last == leaf.active) return;
+    stack.add(leaf.active);
+    if (stack.length > 100) stack.removeAt(0);
+  }
+
+  /// "Voltar" (botão lateral do mouse / `kBackMouseButton`): reativa a aba que
+  /// estava ativa antes da navegação mais recente na pane [paneId] (default:
+  /// pane focada). No-op silencioso sem histórico — mesma UX de degradação
+  /// graciosa do resto do LSP/navegação.
+  void goBackInPane([String? paneId]) {
+    final pid = paneId ?? _focusedLeaf()?.$1;
+    final tree = _activeTree;
+    if (pid == null || tree == null) return;
+    final stack = _backHistory[pid];
+    if (stack == null || stack.isEmpty) return;
+    final tabId = stack.removeLast();
+    final leaf = findLeaf(tree, pid);
+    if (leaf == null || !leaf.tabs.contains(tabId)) {
+      goBackInPane(pid); // aba foi fechada nesse meio tempo → pula
+      return;
+    }
+    _suppressHistory = true;
+    selectTab(pid, tabId);
+    _suppressHistory = false;
+  }
 
   /// Documentos de layout carregados do Hive no boot (lazy: o projeto só é
   /// reconstruído quando selecionado). `null` = projeto sem layout salvo.
@@ -554,6 +595,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (projectId == null || tree == null || paneId == null) return;
     final leaf = findLeaf(tree, paneId);
     if (leaf == null) return;
+    _recordHistoryBeforeSwitch(paneId);
     // Soltar um arquivo numa pane específica também a foca.
     if (inPane != null) _focused[projectId] = inPane;
 
@@ -1156,6 +1198,10 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Abre [path] no LSP (didOpen). O fallback de raiz é o caminho do projeto —
   /// usado quando o walk-up de marcadores não acha raiz (ex.: arquivo solto).
+  /// A raiz do workspace vai **sempre** como `fallbackRoot`, inclusive pra
+  /// arquivos fora dele (classe do SDK aberta por go-to-definition): o pool usa
+  /// isso pra rotear o arquivo externo ao servidor que já existe, em vez de
+  /// subir um novo com raiz no SDK. Ver `LspServerPool._rootFor`.
   Future<void> lspOpenDocument(String path, String text, String projectId) =>
       _lsp.openDocument(
         path: path,
@@ -1216,6 +1262,29 @@ class CockpitViewModel extends ChangeNotifier {
   Future<List<LspTextEdit>> lspFormat(String path, String text) async {
     await _lsp.changeDocument(path: path, text: text);
     return _lsp.formatDocument(path);
+  }
+
+  /// Tokens semânticos do documento via LSP. Lista vazia se sem servidor /
+  /// sem suporte / erro.
+  Future<SemanticTokens> lspSemanticTokensFull(String path) =>
+      _lsp.semanticTokensFull(path);
+
+  /// Go to definition: resolve location no servidor, abre arquivo + revela linha.
+  /// No-op silencioso se sem servidor / sem definição / erro.
+  Future<void> goToDefinition(String path, int line, int character) async {
+    final location = await _lsp.definition(path, line, character);
+    if (location == null) return;
+    // Resolve uri → path absoluto (file:// → /path/to/file).
+    final targetPath = Uri.parse(location.uri).toFilePath();
+    if (targetPath.isEmpty) return;
+    await openFile(targetPath, isPreview: false);
+    // Revela a linha (base 1, do range.start).
+    final targetLine = location.range.start.line + 1;
+    for (final s in _sessions.values) {
+      if (s is FileViewerSession && s.path == targetPath) {
+        s.reveal(targetLine);
+      }
+    }
   }
 
   // ---- mutação de arquivos (criar / renomear / deletar) ---------------------
@@ -2351,6 +2420,7 @@ class CockpitViewModel extends ChangeNotifier {
   void selectTab(String paneId, String agentId) {
     final tree = _activeTree;
     if (tree == null) return;
+    _recordHistoryBeforeSwitch(paneId);
     _setActiveTree(
       updateLeaf(tree, paneId, (p) => p.copyWith(active: agentId)),
     );
