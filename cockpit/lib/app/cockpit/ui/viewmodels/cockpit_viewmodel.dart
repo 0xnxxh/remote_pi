@@ -3090,13 +3090,15 @@ class CockpitViewModel extends ChangeNotifier {
     }
   }
 
-  /// Env de PATH escopado: prepend `~/.cockpit/bin` (onde o binário `cockpit` é
-  /// materializado no boot) ao PATH **só dos terminais do Cockpit** — a CLI fica
-  /// visível dentro das abas e invisível fora, sem poluir o PATH global.
+  /// Env de PATH escopado: prepend o diretório da CLI (onde o binário `cockpit`
+  /// é materializado no boot) ao PATH **só dos terminais do Cockpit** — a CLI
+  /// fica visível dentro das abas e invisível fora, sem poluir o PATH global.
+  ///
+  /// O diretório é por flavor (`bin` / `bin-debug`), então uma aba da build de
+  /// dev enxerga a CLI da build de dev — nunca a da instalada.
   Map<String, String> _cliPathEnv() {
-    final home = remotePiHome();
-    if (home == null) return const <String, String>{};
-    final binDir = '$home/.cockpit/bin';
+    final binDir = cockpitCliDir();
+    if (binDir == null) return const <String, String>{};
     final sep = Platform.isWindows ? ';' : ':';
     final existing = Platform.environment['PATH'] ?? '';
     return <String, String>{
