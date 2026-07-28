@@ -187,7 +187,7 @@ dependencies:
   # Mongo atrás de bastion (replica set / Atlas SRV) não tem caminho: o driver
   # descobre os membros pelo `hello` e disca os hostnames anunciados, furando
   # qualquer port-forward.
-  anaki_mongodb: ^0.1.5
+  anaki_mongodb: ^0.1.7
 
   # Plano 54 — túnel SSH opcional por conexão de banco. Dart puro de propósito
   # (decisão C): o binário `ssh` só *provavelmente* existe no Windows (Feature

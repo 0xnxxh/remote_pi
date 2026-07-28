@@ -13,10 +13,10 @@ packages:
     dependency: "direct main"
     description:
       name: anaki_mongodb
-      sha256: "4fc9869d0e565c89a35c87e2efe1f7bb60a192e962e0b0b175f3ea1bf34eeb0a"
+      sha256: "289d995ffd5fdba8897417cb516df22583b78f72d8bf27e073f874b5eae522ec"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.5"
+    version: "0.1.7"
   anaki_mssql:
     dependency: "direct main"
     description:
