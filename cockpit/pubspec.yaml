@@ -295,7 +295,9 @@ dependency_overrides:
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: cockpit-pin-flterm-2822cc2
+      # Tag combinada: scroll de TUI + fix do IME (dead key/acentos parando de
+      # funcionar quando outro cliente rouba a TextInputConnection singleton).
+      ref: cockpit-pin-flterm-scroll-ime
       path: packages/flterm
   libghostty:
     git:

@@ -372,8 +372,8 @@ packages:
     dependency: "direct main"
     description:
       path: "packages/flterm"
-      ref: cockpit-pin-flterm-2822cc2
-      resolved-ref: "2822cc2e1c8500b1d0c41a866060b7733068b19f"
+      ref: cockpit-pin-flterm-scroll-ime
+      resolved-ref: e7bd226553892ae3e1934aa9e315201f64a107d9
       url: "https://github.com/jacobaraujo7/libghostty.git"
     source: git
     version: "0.0.4"
