@@ -553,7 +553,7 @@ class _StorageSectionState extends State<_StorageSection> {
     setState(() => _busy = true);
     // Copia os dados atuais pra nova pasta (se estiver vazia) — evita a
     // surpresa de "meus projetos sumiram" após o restart.
-    await StorageLocation.migrateHiveTo(picked);
+    await StorageLocation.migrateStateTo(picked);
     await StorageLocation.setOverrideRoot(picked);
     if (!mounted) return;
     setState(() => _busy = false);

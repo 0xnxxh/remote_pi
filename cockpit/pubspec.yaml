@@ -72,9 +72,15 @@ dependencies:
   # Manager / Secret Service). Nunca em .cockpit/databases.json.
   flutter_secure_storage: ^9.0.0
 
-  # Wave 2 — persistência local dos projetos (pasta salva = projeto).
+  # Persistência local virou JSON puro (JsonStateStore, write-temp+rename
+  # atômico) — o Hive fica SÓ pra migração one-shot dos dados legados
+  # (core/data/setup/hive_migration.dart é o único import). Remover numa
+  # release futura, quando a base instalada tiver migrado.
   hive: ^2.2.3
-  hive_flutter: ^1.1.0
+
+  # Montagem de paths ciente de plataforma (Windows usa `\`; interpolar `/`
+  # na mão corrompia a resolução de diretórios de storage).
+  path: ^1.9.0
 
   # Wave 2 — fontes da identidade visual (Space Grotesk / Hanken Grotesk /
   # JetBrains Mono), servidas em runtime + cacheadas pelo google_fonts.

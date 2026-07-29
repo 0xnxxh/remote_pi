@@ -80,13 +80,12 @@ Future<String?> resolveRemotePiIndexJs() async {
 /// Resolve o `node` em caminhos conhecidos (mesma estratégia do `pi`).
 /// Cacheado por processo: a resolução via `which` num shell de login pode
 /// levar segundos (carrega o `.zshrc`) e o resultado é estável.
-Future<String> resolveNode() =>
-    _cachedNode ??= resolveExecutable(
-      'node',
-      unixCandidates: const ['/opt/homebrew/bin/node', '/usr/local/bin/node'],
-      unixHomeRelative: const ['.local/bin/node'],
-      windowsExtraDirs: const [r'C:\Program Files\nodejs'],
-    );
+Future<String> resolveNode() => _cachedNode ??= resolveExecutable(
+  'node',
+  unixCandidates: const ['/opt/homebrew/bin/node', '/usr/local/bin/node'],
+  unixHomeRelative: const ['.local/bin/node'],
+  windowsExtraDirs: const [r'C:\Program Files\nodejs'],
+);
 
 Future<String>? _cachedNode;
 
