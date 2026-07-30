@@ -90,7 +90,7 @@ dependencies:
   gpt_markdown: ^1.1.8
 
   # Wave 2 — notificações nativas do SO (agente terminou um turno).
-  flutter_local_notifications: ^18.0.1
+  flutter_local_notifications: ^22.2.0
 
   # Wave 2 — esconde a barra nativa da janela (temos a customizada) e permite
   # arrastar/min/max pela nossa barra. macOS/Windows/Linux.
