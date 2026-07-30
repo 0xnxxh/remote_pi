@@ -31,6 +31,7 @@ import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -845,6 +846,20 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
+                label: context.t.settings.language.title,
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: context.t.settings.language.title,
+                      trailing: _LocaleDropdown(
+                        value: s.locale,
+                        onChanged: controller.setLocale,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _Section(
                 label: 'Fonts',
                 child: _Card(
                   children: [
@@ -1368,6 +1383,69 @@ class _ThemeDropdown extends StatelessWidget {
           ],
         );
         if (picked != null) onChanged(picked);
+      },
+    );
+  }
+}
+
+/// Opções de idioma da interface. `system` = seguir o locale do SO
+/// (`AppSettings.locale == null`); as demais mapeiam pro código raw persistido
+/// e repassado ao `slang` (`LocaleSettings.setLocaleRaw`).
+enum _LocaleOption { system, en, es, ptBr }
+
+class _LocaleDropdown extends StatelessWidget {
+  const _LocaleDropdown({required this.value, required this.onChanged});
+
+  /// Código raw persistido (`null` = System). Ver [AppSettings.locale].
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  static const _codes = <_LocaleOption, String?>{
+    _LocaleOption.system: null,
+    _LocaleOption.en: 'en',
+    _LocaleOption.es: 'es',
+    _LocaleOption.ptBr: 'pt-BR',
+  };
+
+  _LocaleOption _optionOf(String? code) => switch (code) {
+    'en' => _LocaleOption.en,
+    'es' => _LocaleOption.es,
+    'pt-BR' => _LocaleOption.ptBr,
+    _ => _LocaleOption.system,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.t.settings.language;
+    final labels = <_LocaleOption, ({String label, IconData icon})>{
+      _LocaleOption.system: (
+        label: tr.system,
+        icon: Icons.desktop_windows_outlined,
+      ),
+      _LocaleOption.en: (label: tr.english, icon: Icons.language),
+      _LocaleOption.es: (label: tr.spanish, icon: Icons.language),
+      _LocaleOption.ptBr: (label: tr.portugueseBr, icon: Icons.language),
+    };
+    final current = _optionOf(value);
+    final currentMeta = labels[current]!;
+    return _DropdownChip(
+      icon: currentMeta.icon,
+      label: currentMeta.label,
+      onTap: () async {
+        final picked = await showAppMenu<_LocaleOption>(
+          context,
+          minWidth: 180,
+          items: [
+            for (final e in labels.entries)
+              AppMenuItem(
+                value: e.key,
+                label: e.value.label,
+                icon: e.value.icon,
+                selected: e.key == current,
+              ),
+          ],
+        );
+        if (picked != null) onChanged(_codes[picked]);
       },
     );
   }

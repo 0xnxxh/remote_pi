@@ -35,6 +35,7 @@ class AppSettings {
     this.showCockpit = true,
     this.defaultTerminalProfileId,
     this.terminalEngine = TerminalEngine.ghostty,
+    this.locale,
   });
 
   final AppThemeMode themeMode;
@@ -123,6 +124,12 @@ class AppSettings {
   /// motor no descritor de layout e não são recriadas ao trocar esta opção.
   final TerminalEngine terminalEngine;
 
+  /// Idioma escolhido (código raw pro `AppLocale.languageCode`/`countryCode`
+  /// do slang, ex.: `'en'`, `'es'`, `'pt-BR'`). `null` = seguir o locale do SO
+  /// (`LocaleSettings.useDeviceLocale()`). Editado na seção "Language" das
+  /// Configurações.
+  final String? locale;
+
   AppSettings copyWith({
     AppThemeMode? themeMode,
     String? interfaceFont,
@@ -150,6 +157,8 @@ class AppSettings {
     String? defaultTerminalProfileId,
     bool clearDefaultTerminalProfileId = false,
     TerminalEngine? terminalEngine,
+    String? locale,
+    bool clearLocale = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -180,6 +189,7 @@ class AppSettings {
           ? null
           : (defaultTerminalProfileId ?? this.defaultTerminalProfileId),
       terminalEngine: terminalEngine ?? this.terminalEngine,
+      locale: clearLocale ? null : (locale ?? this.locale),
     );
   }
 
@@ -213,6 +223,8 @@ class AppSettings {
     if (defaultTerminalProfileId != null)
       'terminal.default_profile_id': defaultTerminalProfileId,
     'terminal.engine': terminalEngine.name,
+    // Só quando escolhido: ausência = seguir o locale do SO.
+    if (locale != null) 'locale': locale,
   };
 
   factory AppSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -256,6 +268,7 @@ class AppSettings {
         json['terminal.engine'],
         TerminalEngine.ghostty,
       ),
+      locale: str(json['locale']),
     );
   }
 }

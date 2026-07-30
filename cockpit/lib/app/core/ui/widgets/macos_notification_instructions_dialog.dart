@@ -1,4 +1,5 @@
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 const Color _barrier = Color(0x99000000);
@@ -10,6 +11,11 @@ class MacosNotificationInstructionsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.core.macosNotifications;
+    final stepStyle = context.typo.body.copyWith(
+      fontSize: 13,
+      color: colors.text2,
+    );
     return AlertDialog(
       title: Row(
         mainAxisSize: MainAxisSize.min,
@@ -17,7 +23,7 @@ class MacosNotificationInstructionsDialog extends StatelessWidget {
           Icon(Icons.notifications_active, color: colors.accentText, size: 20),
           const SizedBox(width: 10),
           Text(
-            'Enable Notifications on macOS',
+            tr.title,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -31,105 +37,15 @@ class MacosNotificationInstructionsDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Notifications are currently disabled in your system settings. Follow the steps below to enable them:',
-              style: context.typo.body.copyWith(
-                fontSize: 13,
-                color: colors.text2,
-              ),
-            ),
+            Text(tr.intro, style: stepStyle),
             const SizedBox(height: 14),
-            _InstructionStep(
-              step: '1',
-              content: Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: 'Open '),
-                    TextSpan(
-                      text: 'System Settings',
-                      style: context.typo.body.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.text,
-                      ),
-                    ),
-                    const TextSpan(text: ' on your Mac.'),
-                  ],
-                ),
-                style: context.typo.body.copyWith(
-                  fontSize: 13,
-                  color: colors.text2,
-                ),
-              ),
-            ),
+            _InstructionStep(step: '1', content: Text(tr.step1, style: stepStyle)),
             const SizedBox(height: 8),
-            _InstructionStep(
-              step: '2',
-              content: Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: 'Navigate to the '),
-                    TextSpan(
-                      text: 'Notifications',
-                      style: context.typo.body.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.text,
-                      ),
-                    ),
-                    const TextSpan(text: ' section in the left sidebar.'),
-                  ],
-                ),
-                style: context.typo.body.copyWith(
-                  fontSize: 13,
-                  color: colors.text2,
-                ),
-              ),
-            ),
+            _InstructionStep(step: '2', content: Text(tr.step2, style: stepStyle)),
             const SizedBox(height: 8),
-            _InstructionStep(
-              step: '3',
-              content: Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: 'Find and select the '),
-                    TextSpan(
-                      text: 'Cockpit',
-                      style: context.typo.body.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.text,
-                      ),
-                    ),
-                    const TextSpan(text: ' application from the list.'),
-                  ],
-                ),
-                style: context.typo.body.copyWith(
-                  fontSize: 13,
-                  color: colors.text2,
-                ),
-              ),
-            ),
+            _InstructionStep(step: '3', content: Text(tr.step3, style: stepStyle)),
             const SizedBox(height: 8),
-            _InstructionStep(
-              step: '4',
-              content: Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: 'Toggle the '),
-                    TextSpan(
-                      text: 'Allow Notifications',
-                      style: context.typo.body.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colors.text,
-                      ),
-                    ),
-                    const TextSpan(text: ' switch on.'),
-                  ],
-                ),
-                style: context.typo.body.copyWith(
-                  fontSize: 13,
-                  color: colors.text2,
-                ),
-              ),
-            ),
+            _InstructionStep(step: '4', content: Text(tr.step4, style: stepStyle)),
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(10),
@@ -145,7 +61,7 @@ class MacosNotificationInstructionsDialog extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Tip: If the app does not appear in the list, close and reopen it to trigger its registration in the system.',
+                      tr.tip,
                       style: context.typo.label.copyWith(
                         color: colors.text3,
                         fontSize: 11.5,
@@ -161,7 +77,7 @@ class MacosNotificationInstructionsDialog extends StatelessWidget {
       actions: [
         PrimaryButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Got it'),
+          child: Text(tr.gotIt),
         ),
       ],
     );

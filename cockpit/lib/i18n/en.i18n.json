@@ -1,0 +1,27 @@
+{
+  "core": {
+    "bootstrapError": {
+      "title": "Failed to initialize Cockpit",
+      "retry": "Retry"
+    },
+    "macosNotifications": {
+      "title": "Enable Notifications on macOS",
+      "intro": "Notifications are currently disabled in your system settings. Follow the steps below to enable them:",
+      "step1": "Open System Settings on your Mac.",
+      "step2": "Navigate to the Notifications section in the left sidebar.",
+      "step3": "Find and select the Cockpit application from the list.",
+      "step4": "Toggle the Allow Notifications switch on.",
+      "tip": "Tip: If the app does not appear in the list, close and reopen it to trigger its registration in the system.",
+      "gotIt": "Got it"
+    }
+  },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "system": "System",
+      "english": "English",
+      "portugueseBr": "Português (BR)",
+      "spanish": "Español"
+    }
+  }
+}

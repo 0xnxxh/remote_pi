@@ -1,5 +1,6 @@
 import 'package:cockpit/app/core/domain/contracts/settings_store.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/foundation.dart';
 
 /// Estado global das preferências do app. Vive **acima do `ShadcnApp`** pra
@@ -16,6 +17,12 @@ class SettingsController extends ChangeNotifier {
   /// Carrega o que está salvo (chamado no boot, antes do primeiro frame).
   Future<void> load() async {
     _settings = await _store.load();
+    // `main.dart` já chamou `useDeviceLocale()` como fallback; só agimos aqui
+    // se há preferência explícita salva. Evita depender do
+    // `WidgetsBinding` (via `useDeviceLocale`) em testes que chamam `load()`
+    // sem `runApp`/`testWidgets` — `setLocaleRaw` não precisa dele.
+    final locale = _settings.locale;
+    if (locale != null) await LocaleSettings.setLocaleRaw(locale);
     notifyListeners();
   }
 
@@ -59,6 +66,16 @@ class SettingsController extends ChangeNotifier {
 
   void setSyntaxTheme(SyntaxThemeId id) =>
       _apply(_settings.copyWith(syntaxTheme: id));
+
+  /// Define (ou limpa, se `null` = "System") o idioma da interface.
+  void setLocale(String? code) {
+    _apply(_settings.copyWith(locale: code, clearLocale: code == null));
+    _applyLocale(code);
+  }
+
+  Future<void> _applyLocale(String? code) => code == null
+      ? LocaleSettings.useDeviceLocale()
+      : LocaleSettings.setLocaleRaw(code);
 
   void setPinUserMessage(bool value) =>
       _apply(_settings.copyWith(pinUserMessage: value));

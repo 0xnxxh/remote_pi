@@ -1,0 +1,11 @@
+{
+  "settings": {
+    "language": {
+      "title": "Idioma",
+      "system": "Sistema",
+      "english": "Inglés",
+      "portugueseBr": "Portugués (BR)",
+      "spanish": "Español"
+    }
+  }
+}
