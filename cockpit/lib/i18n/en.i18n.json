@@ -283,6 +283,27 @@
       "english": "English",
       "portugueseBr": "Português (BR)",
       "spanish": "Español"
+    },
+    "revokeDialog": {
+      "deviceRemoved": "Device removed.",
+      "failedToRevoke": "Failed to revoke the device.",
+      "revoking": "Revoking…",
+      "revokingDevice": "Revoking ${name}…",
+      "connectingMessage": "Connecting to the relay and removing access.",
+      "ok": "Ok"
+    },
+    "pairingDialog": {
+      "title": "Pair device",
+      "connectingToRelay": "Connecting to the relay…",
+      "step1": "Open the Remote Pi app on your phone.",
+      "step2": "Tap add / pair device.",
+      "step3": "Point the camera at the QR below.",
+      "qrGenerationFailed": "Could not generate the QR.",
+      "autoRefreshHint": "The code refreshes on its own. Keep this window open.",
+      "pairingFailed": "Pairing failed.",
+      "tryAgain": "Try again",
+      "copied": "Copied!",
+      "copyData": "Copy data"
     }
   }
 }

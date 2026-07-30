@@ -134,6 +134,8 @@ class Translations$settings$en {
 
 	// Translations
 	late final Translations$settings$language$en language = Translations$settings$language$en.internal(_root);
+	late final Translations$settings$revokeDialog$en revokeDialog = Translations$settings$revokeDialog$en.internal(_root);
+	late final Translations$settings$pairingDialog$en pairingDialog = Translations$settings$pairingDialog$en.internal(_root);
 }
 
 // Path: core.bootstrapError
@@ -976,6 +978,75 @@ class Translations$settings$language$en {
 	String get spanish => 'Español';
 }
 
+// Path: settings.revokeDialog
+class Translations$settings$revokeDialog$en {
+	Translations$settings$revokeDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Device removed.'
+	String get deviceRemoved => 'Device removed.';
+
+	/// en: 'Failed to revoke the device.'
+	String get failedToRevoke => 'Failed to revoke the device.';
+
+	/// en: 'Revoking…'
+	String get revoking => 'Revoking…';
+
+	/// en: 'Revoking ${name}…'
+	String revokingDevice({required Object name}) => 'Revoking ${name}…';
+
+	/// en: 'Connecting to the relay and removing access.'
+	String get connectingMessage => 'Connecting to the relay and removing access.';
+
+	/// en: 'Ok'
+	String get ok => 'Ok';
+}
+
+// Path: settings.pairingDialog
+class Translations$settings$pairingDialog$en {
+	Translations$settings$pairingDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Pair device'
+	String get title => 'Pair device';
+
+	/// en: 'Connecting to the relay…'
+	String get connectingToRelay => 'Connecting to the relay…';
+
+	/// en: 'Open the Remote Pi app on your phone.'
+	String get step1 => 'Open the Remote Pi app on your phone.';
+
+	/// en: 'Tap add / pair device.'
+	String get step2 => 'Tap add / pair device.';
+
+	/// en: 'Point the camera at the QR below.'
+	String get step3 => 'Point the camera at the QR below.';
+
+	/// en: 'Could not generate the QR.'
+	String get qrGenerationFailed => 'Could not generate the QR.';
+
+	/// en: 'The code refreshes on its own. Keep this window open.'
+	String get autoRefreshHint => 'The code refreshes on its own. Keep this window open.';
+
+	/// en: 'Pairing failed.'
+	String get pairingFailed => 'Pairing failed.';
+
+	/// en: 'Try again'
+	String get tryAgain => 'Try again';
+
+	/// en: 'Copied!'
+	String get copied => 'Copied!';
+
+	/// en: 'Copy data'
+	String get copyData => 'Copy data';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -1208,6 +1279,23 @@ extension on Translations {
 			'settings.language.english' => 'English',
 			'settings.language.portugueseBr' => 'Português (BR)',
 			'settings.language.spanish' => 'Español',
+			'settings.revokeDialog.deviceRemoved' => 'Device removed.',
+			'settings.revokeDialog.failedToRevoke' => 'Failed to revoke the device.',
+			'settings.revokeDialog.revoking' => 'Revoking…',
+			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revoking ${name}…',
+			'settings.revokeDialog.connectingMessage' => 'Connecting to the relay and removing access.',
+			'settings.revokeDialog.ok' => 'Ok',
+			'settings.pairingDialog.title' => 'Pair device',
+			'settings.pairingDialog.connectingToRelay' => 'Connecting to the relay…',
+			'settings.pairingDialog.step1' => 'Open the Remote Pi app on your phone.',
+			'settings.pairingDialog.step2' => 'Tap add / pair device.',
+			'settings.pairingDialog.step3' => 'Point the camera at the QR below.',
+			'settings.pairingDialog.qrGenerationFailed' => 'Could not generate the QR.',
+			'settings.pairingDialog.autoRefreshHint' => 'The code refreshes on its own. Keep this window open.',
+			'settings.pairingDialog.pairingFailed' => 'Pairing failed.',
+			'settings.pairingDialog.tryAgain' => 'Try again',
+			'settings.pairingDialog.copied' => 'Copied!',
+			'settings.pairingDialog.copyData' => 'Copy data',
 			_ => null,
 		};
 	}
