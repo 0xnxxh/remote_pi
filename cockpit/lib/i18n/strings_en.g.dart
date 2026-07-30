@@ -82,6 +82,18 @@ class Translations$common$en {
 
 	/// en: 'Close'
 	String get close => 'Close';
+
+	/// en: 'Delete'
+	String get delete => 'Delete';
+
+	/// en: 'Done'
+	String get done => 'Done';
+
+	/// en: 'Add'
+	String get add => 'Add';
+
+	/// en: 'Test'
+	String get test => 'Test';
 }
 
 // Path: cockpit
@@ -103,6 +115,9 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
 	late final Translations$cockpit$fileViewer$en fileViewer = Translations$cockpit$fileViewer$en.internal(_root);
+	late final Translations$cockpit$workspaceSettingsDialog$en workspaceSettingsDialog = Translations$cockpit$workspaceSettingsDialog$en.internal(_root);
+	late final Translations$cockpit$realmDialogs$en realmDialogs = Translations$cockpit$realmDialogs$en.internal(_root);
+	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
 }
 
 // Path: settings
@@ -595,6 +610,159 @@ class Translations$cockpit$fileViewer$en {
 	String get source => 'Source';
 }
 
+// Path: cockpit.workspaceSettingsDialog
+class Translations$cockpit$workspaceSettingsDialog$en {
+	Translations$cockpit$workspaceSettingsDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Choose workspace photo'
+	String get choosePhotoTitle => 'Choose workspace photo';
+
+	/// en: 'Workspace settings'
+	String get title => 'Workspace settings';
+
+	/// en: 'Workspace name'
+	String get namePlaceholder => 'Workspace name';
+
+	/// en: 'Add photo'
+	String get addPhoto => 'Add photo';
+
+	/// en: 'Change photo'
+	String get changePhoto => 'Change photo';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Color'
+	String get color => 'Color';
+
+	/// en: 'Folder'
+	String get folder => 'Folder';
+}
+
+// Path: cockpit.realmDialogs
+class Translations$cockpit$realmDialogs$en {
+	Translations$cockpit$realmDialogs$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Realm name'
+	String get namePlaceholder => 'Realm name';
+
+	/// en: 'A realm with this name already exists.'
+	String get duplicateName => 'A realm with this name already exists.';
+
+	/// en: 'New realm'
+	String get newRealmTitle => 'New realm';
+
+	/// en: 'Rename realm'
+	String get renameRealmTitle => 'Rename realm';
+
+	/// en: 'Rename'
+	String get rename => 'Rename';
+
+	/// en: 'Delete realm'
+	String get deleteRealmTitle => 'Delete realm';
+
+	/// en: 'Delete "${name}"? No workspace is deleted — the folder list just changes.${suffix}'
+	String deleteMessage({required Object name, required Object suffix}) => 'Delete "${name}"? No workspace is deleted — the folder list just changes.${suffix}';
+
+	/// en: ' Its workspace will move to Default.'
+	String get deleteSuffixOne => ' Its workspace will move to Default.';
+
+	/// en: ' Its ${count} workspaces will move to Default.'
+	String deleteSuffixMany({required Object count}) => ' Its ${count} workspaces will move to Default.';
+
+	/// en: 'Manage realms'
+	String get manageRealmsTitle => 'Manage realms';
+
+	/// en: '(one) {1 workspace} (other) {${n} workspaces}'
+	String workspaceCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 workspace',
+		other: '${n} workspaces',
+	);
+}
+
+// Path: cockpit.dbConnectionDialog
+class Translations$cockpit$dbConnectionDialog$en {
+	Translations$cockpit$dbConnectionDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Choose SQLite database'
+	String get chooseFileTitle => 'Choose SQLite database';
+
+	/// en: 'File'
+	String get file => 'File';
+
+	/// en: 'Choose a SQLite file…'
+	String get chooseFilePlaceholder => 'Choose a SQLite file…';
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'Host'
+	String get host => 'Host';
+
+	/// en: 'Port'
+	String get port => 'Port';
+
+	/// en: 'Database'
+	String get database => 'Database';
+
+	/// en: 'User'
+	String get user => 'User';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'Save Password'
+	String get savePassword => 'Save Password';
+
+	/// en: 'Use SSL/TLS'
+	String get useTls => 'Use SSL/TLS';
+
+	/// en: 'implied by mongodb+srv'
+	String get tlsHintSrv => 'implied by mongodb+srv';
+
+	/// en: 'managed DBs (RDS, Atlas…) usually require it'
+	String get tlsHintManaged => 'managed DBs (RDS, Atlas…) usually require it';
+
+	/// en: 'Allow writes (agents)'
+	String get allowWrites => 'Allow writes (agents)';
+
+	/// en: 'off = agents can only read via CLI'
+	String get allowWritesHint => 'off = agents can only read via CLI';
+
+	/// en: 'Visible to agents'
+	String get visibleToAgents => 'Visible to agents';
+
+	/// en: 'off = hidden from the CLI, GUI only'
+	String get visibleToAgentsHint => 'off = hidden from the CLI, GUI only';
+
+	/// en: 'Testing connection…'
+	String get testing => 'Testing connection…';
+
+	/// en: 'Connection OK'
+	String get connectionOk => 'Connection OK';
+
+	/// en: 'Connection failed'
+	String get connectionFailed => 'Connection failed';
+
+	/// en: 'Edit connection'
+	String get editTitle => 'Edit connection';
+
+	/// en: 'New connection'
+	String get newTitle => 'New connection';
+}
+
 // Path: settings.language
 class Translations$settings$language$en {
 	Translations$settings$language$en.internal(this._root);
@@ -643,6 +811,10 @@ extension on Translations {
 			'common.gotIt' => 'Got it',
 			'common.save' => 'Save',
 			'common.close' => 'Close',
+			'common.delete' => 'Delete',
+			'common.done' => 'Done',
+			'common.add' => 'Add',
+			'common.test' => 'Test',
 			'cockpit.confirmDialog.unsavedChangesTitle' => 'Unsaved changes',
 			'cockpit.confirmDialog.unsavedChangesMessage' => ({required Object fileName}) => '“${fileName}” has unsaved changes. Save them before closing?',
 			'cockpit.confirmDialog.dontSave' => 'Don\'t save',
@@ -751,6 +923,47 @@ extension on Translations {
 			'cockpit.fileViewer.couldNotLoadImage' => 'Could not load the image.',
 			'cockpit.fileViewer.preview' => 'Preview',
 			'cockpit.fileViewer.source' => 'Source',
+			'cockpit.workspaceSettingsDialog.choosePhotoTitle' => 'Choose workspace photo',
+			'cockpit.workspaceSettingsDialog.title' => 'Workspace settings',
+			'cockpit.workspaceSettingsDialog.namePlaceholder' => 'Workspace name',
+			'cockpit.workspaceSettingsDialog.addPhoto' => 'Add photo',
+			'cockpit.workspaceSettingsDialog.changePhoto' => 'Change photo',
+			'cockpit.workspaceSettingsDialog.remove' => 'Remove',
+			'cockpit.workspaceSettingsDialog.color' => 'Color',
+			'cockpit.workspaceSettingsDialog.folder' => 'Folder',
+			'cockpit.realmDialogs.namePlaceholder' => 'Realm name',
+			'cockpit.realmDialogs.duplicateName' => 'A realm with this name already exists.',
+			'cockpit.realmDialogs.newRealmTitle' => 'New realm',
+			'cockpit.realmDialogs.renameRealmTitle' => 'Rename realm',
+			'cockpit.realmDialogs.rename' => 'Rename',
+			'cockpit.realmDialogs.deleteRealmTitle' => 'Delete realm',
+			'cockpit.realmDialogs.deleteMessage' => ({required Object name, required Object suffix}) => 'Delete "${name}"? No workspace is deleted — the folder list just changes.${suffix}',
+			'cockpit.realmDialogs.deleteSuffixOne' => ' Its workspace will move to Default.',
+			'cockpit.realmDialogs.deleteSuffixMany' => ({required Object count}) => ' Its ${count} workspaces will move to Default.',
+			'cockpit.realmDialogs.manageRealmsTitle' => 'Manage realms',
+			'cockpit.realmDialogs.workspaceCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 workspace', other: '${n} workspaces', ), 
+			'cockpit.dbConnectionDialog.chooseFileTitle' => 'Choose SQLite database',
+			'cockpit.dbConnectionDialog.file' => 'File',
+			'cockpit.dbConnectionDialog.chooseFilePlaceholder' => 'Choose a SQLite file…',
+			'cockpit.dbConnectionDialog.name' => 'Name',
+			'cockpit.dbConnectionDialog.host' => 'Host',
+			'cockpit.dbConnectionDialog.port' => 'Port',
+			'cockpit.dbConnectionDialog.database' => 'Database',
+			'cockpit.dbConnectionDialog.user' => 'User',
+			'cockpit.dbConnectionDialog.password' => 'Password',
+			'cockpit.dbConnectionDialog.savePassword' => 'Save Password',
+			'cockpit.dbConnectionDialog.useTls' => 'Use SSL/TLS',
+			'cockpit.dbConnectionDialog.tlsHintSrv' => 'implied by mongodb+srv',
+			'cockpit.dbConnectionDialog.tlsHintManaged' => 'managed DBs (RDS, Atlas…) usually require it',
+			'cockpit.dbConnectionDialog.allowWrites' => 'Allow writes (agents)',
+			'cockpit.dbConnectionDialog.allowWritesHint' => 'off = agents can only read via CLI',
+			'cockpit.dbConnectionDialog.visibleToAgents' => 'Visible to agents',
+			'cockpit.dbConnectionDialog.visibleToAgentsHint' => 'off = hidden from the CLI, GUI only',
+			'cockpit.dbConnectionDialog.testing' => 'Testing connection…',
+			'cockpit.dbConnectionDialog.connectionOk' => 'Connection OK',
+			'cockpit.dbConnectionDialog.connectionFailed' => 'Connection failed',
+			'cockpit.dbConnectionDialog.editTitle' => 'Edit connection',
+			'cockpit.dbConnectionDialog.newTitle' => 'New connection',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cockpit/app/cockpit/ui/widgets/workspace_avatar.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -111,7 +112,7 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['png', 'jpg', 'jpeg', 'svg'],
-      dialogTitle: 'Choose workspace photo',
+      dialogTitle: context.t.cockpit.workspaceSettingsDialog.choosePhotoTitle,
     );
     if (!mounted || result == null) return;
     final path = result.files.single.path;
@@ -127,9 +128,10 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
         ? '?'
         : _name.text.trim()[0].toUpperCase();
 
+    final tr = context.t.cockpit.workspaceSettingsDialog;
     return AlertDialog(
       title: Text(
-        'Workspace settings',
+        tr.title,
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: ConstrainedBox(
@@ -153,7 +155,7 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
                     controller: _name,
                     focusNode: _nameFocus,
                     onChanged: (_) => setState(() {}),
-                    placeholder: const Text('Workspace name'),
+                    placeholder: Text(tr.namePlaceholder),
                     style: context.typo.body.copyWith(
                       fontSize: 14,
                       color: colors.text,
@@ -168,14 +170,14 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
               children: [
                 _PhotoButton(
                   icon: Icons.image_outlined,
-                  label: _imagePath == null ? 'Add photo' : 'Change photo',
+                  label: _imagePath == null ? tr.addPhoto : tr.changePhoto,
                   onTap: _pickImage,
                 ),
                 if (_imagePath != null) ...[
                   const SizedBox(width: 8),
                   _PhotoButton(
                     icon: Icons.delete_outline,
-                    label: 'Remove',
+                    label: tr.remove,
                     danger: true,
                     onTap: () => setState(() => _imagePath = null),
                   ),
@@ -184,7 +186,7 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Color',
+              tr.color,
               style: context.typo.label.copyWith(color: colors.text2),
             ),
             const SizedBox(height: 10),
@@ -202,7 +204,7 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
             ),
             const SizedBox(height: 18),
             Text(
-              'Folder',
+              tr.folder,
               style: context.typo.label.copyWith(color: colors.text2),
             ),
             const SizedBox(height: 6),
@@ -232,9 +234,9 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
             Navigator.of(context).pop();
             _trace('cancel:after-pop');
           },
-          child: const Text('Cancel'),
+          child: Text(context.t.common.cancel),
         ),
-        PrimaryButton(onPressed: _save, child: const Text('Save')),
+        PrimaryButton(onPressed: _save, child: Text(context.t.common.save)),
       ],
     );
   }

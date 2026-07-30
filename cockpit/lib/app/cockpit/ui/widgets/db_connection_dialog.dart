@@ -3,6 +3,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/db_engine_icon.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -173,7 +174,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
   Future<void> _pickFile() async {
     final root = widget.viewModel.workspaceRoot;
     final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Choose SQLite database',
+      dialogTitle: context.t.cockpit.dbConnectionDialog.chooseFileTitle,
       initialDirectory: root,
       type: FileType.any,
     );
@@ -228,7 +229,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'File',
+            context.t.cockpit.dbConnectionDialog.file,
             style: typo.label.copyWith(fontSize: 11, color: colors.text3),
           ),
           const SizedBox(height: 4),
@@ -241,7 +242,9 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    hasFile ? _file.text : 'Choose a SQLite file…',
+                    hasFile
+                        ? _file.text
+                        : context.t.cockpit.dbConnectionDialog.chooseFilePlaceholder,
                     overflow: TextOverflow.ellipsis,
                     style: typo.mono.copyWith(
                       fontSize: 12.5,
@@ -319,13 +322,14 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
   }
 
   Widget _dialog(AppColors colors, AppTypography typo) {
+    final tr = context.t.cockpit.dbConnectionDialog;
     return AlertDialog(
       title: Row(
         children: [
           DbEngineIcon(_engine, size: 18),
           const SizedBox(width: 8),
           Text(
-            _editing ? 'Edit connection' : 'New connection',
+            _editing ? tr.editTitle : tr.newTitle,
             style: typo.title.copyWith(fontSize: 15, color: colors.text),
           ),
         ],
@@ -336,25 +340,25 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _field('Name', _name, hint: 'dev-local'),
+            _field(tr.name, _name, hint: 'dev-local'),
             if (_engine == DbEngine.sqlite)
               _fileField()
             else ...[
-              _field('Host', _host),
+              _field(tr.host, _host),
               Row(
                 children: [
                   Expanded(
                     child: _field(
-                      'Port',
+                      tr.port,
                       _port,
                       hint: '${_engine.defaultPort}',
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: _field('Database', _db, hint: 'app_dev')),
+                  Expanded(child: _field(tr.database, _db, hint: 'app_dev')),
                 ],
               ),
-              _field('User', _user, hint: 'postgres'),
+              _field(tr.user, _user, hint: 'postgres'),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -365,7 +369,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Save Password',
+                      tr.savePassword,
                       style: typo.label.copyWith(
                         fontSize: 12,
                         color: colors.text2,
@@ -379,7 +383,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               // ON, vai pro cofre — placeholder `*******` sinaliza que existe
               // senha guardada e campo vazio ao salvar MANTÉM a atual.
               _field(
-                'Password',
+                tr.password,
                 _pass,
                 obscure: true,
                 hint: _editing && widget.initial!.savePassword
@@ -387,28 +391,26 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
                     : null,
               ),
               _switchRow(
-                'Use SSL/TLS',
+                tr.useTls,
                 _isSrv || _useTls,
                 (v) {
                   if (!_isSrv) setState(() => _useTls = v);
                 },
-                hint: _isSrv
-                    ? 'implied by mongodb+srv'
-                    : 'managed DBs (RDS, Atlas…) usually require it',
+                hint: _isSrv ? tr.tlsHintSrv : tr.tlsHintManaged,
               ),
             ],
             // Guardrails dos agentes (CLI). GUI nunca é bloqueada.
             _switchRow(
-              'Allow writes (agents)',
+              tr.allowWrites,
               _allowWrites,
               (v) => setState(() => _allowWrites = v),
-              hint: 'off = agents can only read via CLI',
+              hint: tr.allowWritesHint,
             ),
             _switchRow(
-              'Visible to agents',
+              tr.visibleToAgents,
               _visibleToAgents,
               (v) => setState(() => _visibleToAgents = v),
-              hint: 'off = hidden from the CLI, GUI only',
+              hint: tr.visibleToAgentsHint,
             ),
             if (_testing || _testOk != null) ...[
               const SizedBox(height: 4),
@@ -432,10 +434,10 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
                   Expanded(
                     child: Text(
                       _testing
-                          ? 'Testing connection…'
+                          ? tr.testing
                           : _testOk!
-                          ? 'Connection OK'
-                          : (_testMessage ?? 'Connection failed'),
+                          ? tr.connectionOk
+                          : (_testMessage ?? tr.connectionFailed),
                       style: typo.label.copyWith(
                         fontSize: 11.5,
                         color: _testing
@@ -458,17 +460,17 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
             onPressed: () => Navigator.of(
               context,
             ).pop(const DbConnectionDialogResult.deleted()),
-            child: const Text('Delete'),
+            child: Text(context.t.common.delete),
           ),
           const Spacer(),
         ],
         GhostButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.t.common.cancel),
         ),
         OutlineButton(
           onPressed: _testing ? null : _test,
-          child: const Text('Test'),
+          child: Text(context.t.common.test),
         ),
         PrimaryButton(
           onPressed: () => Navigator.of(context).pop(
@@ -477,7 +479,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               _pass.text.isEmpty ? null : _pass.text,
             ),
           ),
-          child: Text(_editing ? 'Save' : 'Add'),
+          child: Text(_editing ? context.t.common.save : context.t.common.add),
         ),
       ],
     );
