@@ -130,6 +130,31 @@
     },
     "modelPicker": {
       "search": "Search model (${count})"
+    },
+    "paneView": {
+      "closePaneTitle": "Close pane?",
+      "closePaneMessage": "This closes all ${count} tab(s) in this pane and ends the agents/terminals in it.",
+      "close": "Close",
+      "allTabs": "All tabs",
+      "pinTab": "Pin tab",
+      "rename": "Rename",
+      "resetTitle": "Reset Title",
+      "copyId": "Copy Id",
+      "autoRelay": "Auto-relay",
+      "history": "History",
+      "newTab": "New tab",
+      "newTerminal": "New terminal…",
+      "splitRight": "Split right",
+      "splitDown": "Split down",
+      "closePane": "Close pane",
+      "dropHereToMove": "Drop here to move the tab",
+      "dockAsTab": "Dock as tab"
+    },
+    "fileViewer": {
+      "cantOpen": "Can't open this file.",
+      "couldNotLoadImage": "Could not load the image.",
+      "preview": "Preview",
+      "source": "Source"
     }
   },
   "settings": {

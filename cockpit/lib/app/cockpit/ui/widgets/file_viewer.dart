@@ -20,6 +20,7 @@ import 'package:cockpit/app/core/ui/widgets/code_highlight.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/media_view.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 // SelectionArea (Material) envolve o scroll do markdown/código → seleção +
 // auto-scroll com âncora estável (content-space). SelectionContainer.disabled
@@ -694,7 +695,7 @@ class _FileViewerState extends State<FileViewer> {
       ),
       FileViewUnsupported() => Center(
         child: Text(
-          'Can\'t open this file.',
+          context.t.cockpit.fileViewer.cantOpen,
           style: context.typo.body.copyWith(color: colors.text3),
         ),
       ),
@@ -875,8 +876,8 @@ class _Toolbar extends StatelessWidget {
           if (hasPreview) ...[
             const SizedBox(width: 4),
             _Segmented(
-              leftLabel: 'Preview',
-              rightLabel: 'Source',
+              leftLabel: context.t.cockpit.fileViewer.preview,
+              rightLabel: context.t.cockpit.fileViewer.source,
               leftActive: previewing,
               onTap: onToggle,
             ),
@@ -1166,7 +1167,7 @@ class _ImageView extends StatelessWidget {
                   file,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stack) => Text(
-                    'Could not load the image.',
+                    context.t.cockpit.fileViewer.couldNotLoadImage,
                     style: context.typo.body.copyWith(color: colors.text3),
                   ),
                 ),

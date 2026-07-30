@@ -101,6 +101,8 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$agentComposer$en agentComposer = Translations$cockpit$agentComposer$en.internal(_root);
 	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
+	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
+	late final Translations$cockpit$fileViewer$en fileViewer = Translations$cockpit$fileViewer$en.internal(_root);
 }
 
 // Path: settings
@@ -512,6 +514,87 @@ class Translations$cockpit$modelPicker$en {
 	String search({required Object count}) => 'Search model (${count})';
 }
 
+// Path: cockpit.paneView
+class Translations$cockpit$paneView$en {
+	Translations$cockpit$paneView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Close pane?'
+	String get closePaneTitle => 'Close pane?';
+
+	/// en: 'This closes all ${count} tab(s) in this pane and ends the agents/terminals in it.'
+	String closePaneMessage({required Object count}) => 'This closes all ${count} tab(s) in this pane and ends the agents/terminals in it.';
+
+	/// en: 'Close'
+	String get close => 'Close';
+
+	/// en: 'All tabs'
+	String get allTabs => 'All tabs';
+
+	/// en: 'Pin tab'
+	String get pinTab => 'Pin tab';
+
+	/// en: 'Rename'
+	String get rename => 'Rename';
+
+	/// en: 'Reset Title'
+	String get resetTitle => 'Reset Title';
+
+	/// en: 'Copy Id'
+	String get copyId => 'Copy Id';
+
+	/// en: 'Auto-relay'
+	String get autoRelay => 'Auto-relay';
+
+	/// en: 'History'
+	String get history => 'History';
+
+	/// en: 'New tab'
+	String get newTab => 'New tab';
+
+	/// en: 'New terminal…'
+	String get newTerminal => 'New terminal…';
+
+	/// en: 'Split right'
+	String get splitRight => 'Split right';
+
+	/// en: 'Split down'
+	String get splitDown => 'Split down';
+
+	/// en: 'Close pane'
+	String get closePane => 'Close pane';
+
+	/// en: 'Drop here to move the tab'
+	String get dropHereToMove => 'Drop here to move the tab';
+
+	/// en: 'Dock as tab'
+	String get dockAsTab => 'Dock as tab';
+}
+
+// Path: cockpit.fileViewer
+class Translations$cockpit$fileViewer$en {
+	Translations$cockpit$fileViewer$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Can't open this file.'
+	String get cantOpen => 'Can\'t open this file.';
+
+	/// en: 'Could not load the image.'
+	String get couldNotLoadImage => 'Could not load the image.';
+
+	/// en: 'Preview'
+	String get preview => 'Preview';
+
+	/// en: 'Source'
+	String get source => 'Source';
+}
+
 // Path: settings.language
 class Translations$settings$language$en {
 	Translations$settings$language$en.internal(this._root);
@@ -647,6 +730,27 @@ extension on Translations {
 			'cockpit.welcomeView.subtitle' => 'Open a folder to start a workspace.',
 			'cockpit.welcomeView.createWorkspace' => 'Create workspace',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Search model (${count})',
+			'cockpit.paneView.closePaneTitle' => 'Close pane?',
+			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'This closes all ${count} tab(s) in this pane and ends the agents/terminals in it.',
+			'cockpit.paneView.close' => 'Close',
+			'cockpit.paneView.allTabs' => 'All tabs',
+			'cockpit.paneView.pinTab' => 'Pin tab',
+			'cockpit.paneView.rename' => 'Rename',
+			'cockpit.paneView.resetTitle' => 'Reset Title',
+			'cockpit.paneView.copyId' => 'Copy Id',
+			'cockpit.paneView.autoRelay' => 'Auto-relay',
+			'cockpit.paneView.history' => 'History',
+			'cockpit.paneView.newTab' => 'New tab',
+			'cockpit.paneView.newTerminal' => 'New terminal…',
+			'cockpit.paneView.splitRight' => 'Split right',
+			'cockpit.paneView.splitDown' => 'Split down',
+			'cockpit.paneView.closePane' => 'Close pane',
+			'cockpit.paneView.dropHereToMove' => 'Drop here to move the tab',
+			'cockpit.paneView.dockAsTab' => 'Dock as tab',
+			'cockpit.fileViewer.cantOpen' => 'Can\'t open this file.',
+			'cockpit.fileViewer.couldNotLoadImage' => 'Could not load the image.',
+			'cockpit.fileViewer.preview' => 'Preview',
+			'cockpit.fileViewer.source' => 'Source',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',

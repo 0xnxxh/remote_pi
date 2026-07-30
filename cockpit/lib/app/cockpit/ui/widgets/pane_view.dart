@@ -37,6 +37,7 @@ import 'package:flutter/gestures.dart' show HitTestResult;
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:cockpit/app/core/terminal/xterm/xterm.dart';
 
@@ -253,13 +254,12 @@ class _TabStripState extends State<_TabStrip> {
 
   Future<void> _confirmClosePane(BuildContext context) async {
     final count = widget.pane.tabs.length;
+    final tr = context.t.cockpit.paneView;
     final ok = await showConfirmDialog(
       context,
-      title: 'Close pane?',
-      message:
-          'This closes all $count tab(s) in this pane and ends the agents/'
-          'terminals in it.',
-      confirmLabel: 'Close',
+      title: tr.closePaneTitle,
+      message: tr.closePaneMessage(count: count),
+      confirmLabel: tr.close,
       danger: true,
     );
     if (ok) widget.vm.closePane(widget.pane.id);
@@ -378,7 +378,7 @@ class _TabStripState extends State<_TabStrip> {
               Builder(
                 builder: (ctx) => _StripButton(
                   icon: Icons.keyboard_arrow_down,
-                  tooltip: 'All tabs',
+                  tooltip: context.t.cockpit.paneView.allTabs,
                   onTap: () => _showTabList(ctx),
                 ),
               ),
@@ -594,56 +594,57 @@ class _TabState extends State<_Tab> {
     final isPreview = viewer?.isPreview ?? false;
     final terminal = s is TerminalSession ? s : null;
 
+    final tr = context.t.cockpit.paneView;
     final value = await showAppMenu<String>(
       menuCtx,
       minWidth: 150,
       items: [
         if (viewer != null && isPreview)
-          const AppMenuItem(
+          AppMenuItem(
             value: 'pin',
-            label: 'Pin tab',
+            label: tr.pinTab,
             icon: Icons.push_pin_outlined,
           ),
         // Só em abas de terminal: o id (pane id) copiável pra usar na CLI
         // `cockpit` (`--tab-id`).
         if (terminal != null) ...[
-          const AppMenuItem(
+          AppMenuItem(
             value: 'rename',
-            label: 'Rename',
+            label: tr.rename,
             icon: Icons.edit_outlined,
           ),
           // Só oferecido quando há rótulo manual travado.
           if (terminal.titleLocked)
-            const AppMenuItem(
+            AppMenuItem(
               value: 'reset-label',
-              label: 'Reset Title',
+              label: tr.resetTitle,
               icon: Icons.restart_alt,
             ),
-          const AppMenuItem(
+          AppMenuItem(
             value: 'copy-id',
-            label: 'Copy Id',
+            label: tr.copyId,
             icon: Icons.content_copy,
           ),
         ],
         if (agent != null && !isEmpty) ...[
-          const AppMenuItem(
+          AppMenuItem(
             value: 'rename',
-            label: 'Rename',
+            label: tr.rename,
             icon: Icons.edit_outlined,
           ),
           AppMenuItem(
             value: 'relay',
-            label: 'Auto-relay',
+            label: tr.autoRelay,
             icon: Icons.cell_tower_outlined,
             selected: agent.autoStartRelay,
           ),
-          const AppMenuItem(
+          AppMenuItem(
             value: 'history',
-            label: 'History',
+            label: tr.history,
             icon: Icons.history,
           ),
         ],
-        const AppMenuItem(value: 'close', label: 'Close', icon: Icons.close),
+        AppMenuItem(value: 'close', label: tr.close, icon: Icons.close),
       ],
     );
     if (!mounted) return;
@@ -939,7 +940,7 @@ class _TabAdd extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return AppTooltip(
-      message: 'New tab',
+      message: context.t.cockpit.paneView.newTab,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -1014,7 +1015,7 @@ class _TabProfilePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return AppTooltip(
-      message: 'New terminal…',
+      message: context.t.cockpit.paneView.newTerminal,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _open(context),
@@ -1048,6 +1049,7 @@ class _PaneTools extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.cockpit.paneView;
     final iconColor = colors.text3;
     const spacing = 13.0;
     Widget btn(Widget icon, String tip, VoidCallback onTap) => AppTooltip(
@@ -1072,7 +1074,7 @@ class _PaneTools extends StatelessWidget {
               type: _SplitterScreenIconType.horizontal,
               color: iconColor,
             ),
-            'Split right',
+            tr.splitRight,
             onSplitRight,
           ),
           btn(
@@ -1080,7 +1082,7 @@ class _PaneTools extends StatelessWidget {
               type: _SplitterScreenIconType.vertical,
               color: iconColor,
             ),
-            'Split down',
+            tr.splitDown,
             onSplitDown,
           ),
           btn(
@@ -1088,7 +1090,7 @@ class _PaneTools extends StatelessWidget {
               type: _SplitterScreenIconType.close,
               color: iconColor,
             ),
-            'Close pane',
+            tr.closePane,
             onClosePane,
           ),
         ],
@@ -1888,6 +1890,7 @@ class _ZonePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.cockpit.paneView;
 
     if (zone == _DropZone.strip) {
       return Align(
@@ -1901,7 +1904,7 @@ class _ZonePreview extends StatelessWidget {
             border: Border(bottom: BorderSide(color: colors.accent, width: 2)),
           ),
           child: Text(
-            'Drop here to move the tab',
+            tr.dropHereToMove,
             style: context.typo.tab.copyWith(color: colors.accentText),
           ),
         ),
@@ -1909,7 +1912,7 @@ class _ZonePreview extends StatelessWidget {
     }
 
     final (align, wf, hf, label) = switch (zone) {
-      _DropZone.center => (Alignment.center, 1.0, 1.0, 'Dock as tab'),
+      _DropZone.center => (Alignment.center, 1.0, 1.0, tr.dockAsTab),
       _DropZone.left => (Alignment.centerLeft, 0.5, 1.0, null),
       _DropZone.right => (Alignment.centerRight, 0.5, 1.0, null),
       _DropZone.top => (Alignment.topCenter, 1.0, 0.5, null),
