@@ -15,6 +15,63 @@
       "gotIt": "Got it"
     }
   },
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "create": "Create",
+    "gotIt": "Got it"
+  },
+  "cockpit": {
+    "confirmDialog": {
+      "unsavedChangesTitle": "Unsaved changes",
+      "unsavedChangesMessage": "“${fileName}” has unsaved changes. Save them before closing?",
+      "dontSave": "Don't save",
+      "saveAndClose": "Save & close"
+    },
+    "historyDialog": {
+      "title": "Session history",
+      "subtitle": "Opening one replaces this agent's current transcript",
+      "empty": "No saved sessions in this folder.",
+      "untitledSession": "Untitled session",
+      "justNow": "now",
+      "minutesAgo": "${n} min ago",
+      "hoursAgo": "${n} h ago",
+      "daysAgo": "${n} d ago"
+    },
+    "worktreeCreateDialog": {
+      "forkTitle": "Fork worktree",
+      "createTitle": "Create worktree",
+      "forkSubtitle": "New worktree branched from ${root}.",
+      "createSubtitle": "New feature in ${root} — new branch from the current HEAD.",
+      "namePlaceholder": "feat/minha-feature",
+      "errorWhitespace": "No spaces in the name.",
+      "errorInvalidChar": "Invalid character for a branch name.",
+      "errorInvalidSequence": "Invalid sequence (e.g. \"..\", \"//\", starting/ending with \"/\").",
+      "errorReserved": "Reserved position (do not start with \"-\"/\".\" or end with \".lock\").",
+      "errorDuplicateBranch": "A branch with that name already exists.",
+      "errorDuplicateWorktree": "A worktree with that name already exists.",
+      "fork": "Fork"
+    },
+    "subfolderDialog": {
+      "title": "Where to work?",
+      "empty": "No subfolders here.",
+      "useRoot": "Use the root of ${project}",
+      "usePath": "Use ${project}/${rel}",
+      "useThisFolder": "Use this folder"
+    },
+    "commitMessageDialog": {
+      "commitTitle": "Commit",
+      "stageAndCommitTitle": "Stage and Commit",
+      "scopeNote": "Commit \"${fileName}\" only.",
+      "placeholder": "fix: short summary of the change",
+      "errorEmptySubject": "The first line (subject) cannot be empty.",
+      "errorTooShort": "Subject too short (min ${min} characters).",
+      "errorTooLong": "Subject too long (max ${max} characters).",
+      "errorTrailingPeriod": "Subject should not end with a period.",
+      "errorControlChars": "Subject contains control characters.",
+      "errorBlankSecondLine": "Leave the second line blank (git subject/body separator)."
+    }
+  },
   "settings": {
     "language": {
       "title": "Language",

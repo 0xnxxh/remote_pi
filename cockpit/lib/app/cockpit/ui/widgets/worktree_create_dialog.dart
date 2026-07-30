@@ -1,6 +1,7 @@
 import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
 import 'package:cockpit/app/cockpit/domain/validators/worktree_name_validator.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Dialog de criar worktree. Valida o nome **ao vivo** (decisões 10, 11) contra
@@ -68,19 +69,18 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
       _name.text.isNotEmpty && _check.isValid && !_submitting;
 
   /// Mensagem por causa de validação (null quando válido ou campo intacto).
-  String? _reason(WorktreeNameCheck check) => switch (check.error) {
-    null || WorktreeNameError.empty => null,
-    WorktreeNameError.whitespace => 'No spaces in the name.',
-    WorktreeNameError.invalidChar => 'Invalid character for a branch name.',
-    WorktreeNameError.invalidSequence =>
-      'Invalid sequence (e.g. "..", "//", starting/ending with "/").',
-    WorktreeNameError.reserved =>
-      'Reserved position (do not start with "-"/"." or end with ".lock").',
-    WorktreeNameError.duplicateBranch =>
-      'A branch with that name already exists.',
-    WorktreeNameError.duplicateWorktree =>
-      'A worktree with that name already exists.',
-  };
+  String? _reason(WorktreeNameCheck check) {
+    final tr = context.t.cockpit.worktreeCreateDialog;
+    return switch (check.error) {
+      null || WorktreeNameError.empty => null,
+      WorktreeNameError.whitespace => tr.errorWhitespace,
+      WorktreeNameError.invalidChar => tr.errorInvalidChar,
+      WorktreeNameError.invalidSequence => tr.errorInvalidSequence,
+      WorktreeNameError.reserved => tr.errorReserved,
+      WorktreeNameError.duplicateBranch => tr.errorDuplicateBranch,
+      WorktreeNameError.duplicateWorktree => tr.errorDuplicateWorktree,
+    };
+  }
 
   Future<void> _submit() async {
     if (!_canCreate) return;
@@ -106,6 +106,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
     final check = _check;
     final reason = _gitError ?? _reason(check);
     final showError = reason != null;
+    final tr = context.t.cockpit.worktreeCreateDialog;
 
     return AlertDialog(
       title: Column(
@@ -113,7 +114,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.fork ? 'Fork worktree' : 'Create worktree',
+            widget.fork ? tr.forkTitle : tr.createTitle,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -122,9 +123,8 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
           const SizedBox(height: 4),
           Text(
             widget.fork
-                ? 'New worktree branched from ${widget.rootName}.'
-                : 'New feature in ${widget.rootName} — new branch from the '
-                      'current HEAD.',
+                ? tr.forkSubtitle(root: widget.rootName)
+                : tr.createSubtitle(root: widget.rootName),
             style: context.typo.label.copyWith(color: colors.text3),
           ),
         ],
@@ -141,7 +141,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
               enabled: !_submitting,
               onChanged: (_) => setState(() => _gitError = null),
               onSubmitted: (_) => _submit(),
-              placeholder: const Text('feat/minha-feature'),
+              placeholder: Text(tr.namePlaceholder),
               style: context.typo.mono.copyWith(
                 fontSize: 13,
                 color: colors.text,
@@ -162,13 +162,13 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
       actions: [
         OutlineButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.t.common.cancel),
         ),
         PrimaryButton(
           onPressed: _canCreate ? _submit : null,
           child: _submitting
               ? const CircularProgressIndicator(size: 16, color: Colors.white)
-              : Text(widget.fork ? 'Fork' : 'Create'),
+              : Text(widget.fork ? tr.fork : context.t.common.create),
         ),
       ],
     );

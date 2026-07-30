@@ -1,4 +1,5 @@
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Dialog de mensagem de commit (Source Control → "Commit"/"Stage and Commit").
@@ -67,23 +68,24 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
   String? get _reason {
     final text = _message.text;
     if (text.isEmpty) return null; // intacto: sem erro, botão desabilitado
+    final tr = context.t.cockpit.commitMessageDialog;
     final subject = _subject;
-    if (subject.isEmpty) return 'The first line (subject) cannot be empty.';
+    if (subject.isEmpty) return tr.errorEmptySubject;
     if (subject.length < _subjectMin) {
-      return 'Subject too short (min $_subjectMin characters).';
+      return tr.errorTooShort(min: _subjectMin);
     }
     if (subject.length > _subjectMax) {
-      return 'Subject too long (max $_subjectMax characters).';
+      return tr.errorTooLong(max: _subjectMax);
     }
     if (subject.endsWith('.')) {
-      return 'Subject should not end with a period.';
+      return tr.errorTrailingPeriod;
     }
     if (subject.codeUnits.any((c) => c < 0x20)) {
-      return 'Subject contains control characters.';
+      return tr.errorControlChars;
     }
     final lines = text.split('\n');
     if (lines.length > 1 && lines[1].trim().isNotEmpty) {
-      return 'Leave the second line blank (git subject/body separator).';
+      return tr.errorBlankSecondLine;
     }
     return null;
   }
@@ -115,6 +117,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
     final reason = _gitError ?? _reason;
     final showError = reason != null;
     final count = _subject.length;
+    final tr = context.t.cockpit.commitMessageDialog;
 
     return AlertDialog(
       title: Column(
@@ -122,7 +125,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.staged ? 'Commit' : 'Stage and Commit',
+            widget.staged ? tr.commitTitle : tr.stageAndCommitTitle,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -130,7 +133,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Commit "${widget.fileName}" only.',
+            tr.scopeNote(fileName: widget.fileName),
             style: context.typo.label.copyWith(color: colors.text3),
           ),
         ],
@@ -147,7 +150,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
               enabled: !_submitting,
               maxLines: 4,
               onChanged: (_) => setState(() => _gitError = null),
-              placeholder: const Text('fix: short summary of the change'),
+              placeholder: Text(tr.placeholder),
               style: context.typo.mono.copyWith(
                 fontSize: 13,
                 color: colors.text,
@@ -182,13 +185,13 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
       actions: [
         OutlineButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.t.common.cancel),
         ),
         PrimaryButton(
           onPressed: _canCommit ? _submit : null,
           child: _submitting
               ? const CircularProgressIndicator(size: 16, color: Colors.white)
-              : const Text('Commit'),
+              : Text(tr.commitTitle),
         ),
       ],
     );
