@@ -117,6 +117,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$fileViewer$en fileViewer = Translations$cockpit$fileViewer$en.internal(_root);
 	late final Translations$cockpit$workspaceSettingsDialog$en workspaceSettingsDialog = Translations$cockpit$workspaceSettingsDialog$en.internal(_root);
 	late final Translations$cockpit$realmDialogs$en realmDialogs = Translations$cockpit$realmDialogs$en.internal(_root);
+	late final Translations$cockpit$dbRedisTable$en dbRedisTable = Translations$cockpit$dbRedisTable$en.internal(_root);
 	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
 }
 
@@ -688,6 +689,75 @@ class Translations$cockpit$realmDialogs$en {
 	);
 }
 
+// Path: cockpit.dbRedisTable
+class Translations$cockpit$dbRedisTable$en {
+	Translations$cockpit$dbRedisTable$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Delete key'
+	String get deleteKeyTitle => 'Delete key';
+
+	/// en: 'Delete "${key}" from this Redis database?'
+	String deleteKeyMessage({required Object key}) => 'Delete "${key}" from this Redis database?';
+
+	/// en: 'Refresh'
+	String get refresh => 'Refresh';
+
+	/// en: 'New key'
+	String get newKey => 'New key';
+
+	/// en: 'KEY'
+	String get columnKey => 'KEY';
+
+	/// en: 'VALUE'
+	String get columnValue => 'VALUE';
+
+	/// en: 'TYPE'
+	String get columnType => 'TYPE';
+
+	/// en: 'TTL'
+	String get columnTtl => 'TTL';
+
+	/// en: '(one) {1 key} (other) {${n} keys}'
+	String keyCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 key',
+		other: '${n} keys',
+	);
+
+	/// en: 'No keys in this database.'
+	String get noKeys => 'No keys in this database.';
+
+	/// en: 'No keys match "${pattern}".'
+	String noKeysMatch({required Object pattern}) => 'No keys match "${pattern}".';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Loading full value…'
+	String get loadingFullValue => 'Loading full value…';
+
+	/// en: 'TTL must be a number of seconds.'
+	String get ttlMustBeNumber => 'TTL must be a number of seconds.';
+
+	/// en: 'Add key'
+	String get addKey => 'Add key';
+
+	/// en: 'key'
+	String get keyFieldHint => 'key';
+
+	/// en: 'ttl (s, optional)'
+	String get ttlFieldHint => 'ttl (s, optional)';
+
+	/// en: 'value'
+	String get valueFieldHint => 'value';
+
+	/// en: 'Search — pattern, e.g. user:*'
+	String get searchHint => 'Search — pattern, e.g. user:*';
+}
+
 // Path: cockpit.dbConnectionDialog
 class Translations$cockpit$dbConnectionDialog$en {
 	Translations$cockpit$dbConnectionDialog$en.internal(this._root);
@@ -942,6 +1012,25 @@ extension on Translations {
 			'cockpit.realmDialogs.deleteSuffixMany' => ({required Object count}) => ' Its ${count} workspaces will move to Default.',
 			'cockpit.realmDialogs.manageRealmsTitle' => 'Manage realms',
 			'cockpit.realmDialogs.workspaceCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 workspace', other: '${n} workspaces', ), 
+			'cockpit.dbRedisTable.deleteKeyTitle' => 'Delete key',
+			'cockpit.dbRedisTable.deleteKeyMessage' => ({required Object key}) => 'Delete "${key}" from this Redis database?',
+			'cockpit.dbRedisTable.refresh' => 'Refresh',
+			'cockpit.dbRedisTable.newKey' => 'New key',
+			'cockpit.dbRedisTable.columnKey' => 'KEY',
+			'cockpit.dbRedisTable.columnValue' => 'VALUE',
+			'cockpit.dbRedisTable.columnType' => 'TYPE',
+			'cockpit.dbRedisTable.columnTtl' => 'TTL',
+			'cockpit.dbRedisTable.keyCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 key', other: '${n} keys', ), 
+			'cockpit.dbRedisTable.noKeys' => 'No keys in this database.',
+			'cockpit.dbRedisTable.noKeysMatch' => ({required Object pattern}) => 'No keys match "${pattern}".',
+			'cockpit.dbRedisTable.loadMore' => 'Load more',
+			'cockpit.dbRedisTable.loadingFullValue' => 'Loading full value…',
+			'cockpit.dbRedisTable.ttlMustBeNumber' => 'TTL must be a number of seconds.',
+			'cockpit.dbRedisTable.addKey' => 'Add key',
+			'cockpit.dbRedisTable.keyFieldHint' => 'key',
+			'cockpit.dbRedisTable.ttlFieldHint' => 'ttl (s, optional)',
+			'cockpit.dbRedisTable.valueFieldHint' => 'value',
+			'cockpit.dbRedisTable.searchHint' => 'Search — pattern, e.g. user:*',
 			'cockpit.dbConnectionDialog.chooseFileTitle' => 'Choose SQLite database',
 			'cockpit.dbConnectionDialog.file' => 'File',
 			'cockpit.dbConnectionDialog.chooseFilePlaceholder' => 'Choose a SQLite file…',

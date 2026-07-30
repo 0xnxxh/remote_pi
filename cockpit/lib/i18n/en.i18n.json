@@ -186,6 +186,30 @@
         "other": "${n} workspaces"
       }
     },
+    "dbRedisTable": {
+      "deleteKeyTitle": "Delete key",
+      "deleteKeyMessage": "Delete \"${key}\" from this Redis database?",
+      "refresh": "Refresh",
+      "newKey": "New key",
+      "columnKey": "KEY",
+      "columnValue": "VALUE",
+      "columnType": "TYPE",
+      "columnTtl": "TTL",
+      "keyCount": {
+        "one": "1 key",
+        "other": "${n} keys"
+      },
+      "noKeys": "No keys in this database.",
+      "noKeysMatch": "No keys match \"${pattern}\".",
+      "loadMore": "Load more",
+      "loadingFullValue": "Loading full value…",
+      "ttlMustBeNumber": "TTL must be a number of seconds.",
+      "addKey": "Add key",
+      "keyFieldHint": "key",
+      "ttlFieldHint": "ttl (s, optional)",
+      "valueFieldHint": "value",
+      "searchHint": "Search — pattern, e.g. user:*"
+    },
     "dbConnectionDialog": {
       "chooseFileTitle": "Choose SQLite database",
       "file": "File",
