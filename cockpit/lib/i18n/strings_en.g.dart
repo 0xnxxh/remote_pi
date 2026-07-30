@@ -122,6 +122,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$realmDialogs$en realmDialogs = Translations$cockpit$realmDialogs$en.internal(_root);
 	late final Translations$cockpit$dbRedisTable$en dbRedisTable = Translations$cockpit$dbRedisTable$en.internal(_root);
 	late final Translations$cockpit$dbQueryView$en dbQueryView = Translations$cockpit$dbQueryView$en.internal(_root);
+	late final Translations$cockpit$dbMongoView$en dbMongoView = Translations$cockpit$dbMongoView$en.internal(_root);
 	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
 }
 
@@ -831,6 +832,51 @@ class Translations$cockpit$dbQueryView$en {
 	String get copy => 'Copy';
 }
 
+// Path: cockpit.dbMongoView
+class Translations$cockpit$dbMongoView$en {
+	Translations$cockpit$dbMongoView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Delete document'
+	String get deleteDocumentTitle => 'Delete document';
+
+	/// en: 'Delete the document with _id ${id} from "${collection}"?'
+	String deleteDocumentMessage({required Object id, required Object collection}) => 'Delete the document with _id ${id} from "${collection}"?';
+
+	/// en: 'Filter — JSON, e.g. {"status": "active"}'
+	String get filterHint => 'Filter — JSON, e.g. {"status": "active"}';
+
+	/// en: '(one) {1 doc} (other) {${n} docs}'
+	String docCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 doc',
+		other: '${n} docs',
+	);
+
+	/// en: 'Refresh'
+	String get refresh => 'Refresh';
+
+	/// en: 'Insert document'
+	String get insertDocument => 'Insert document';
+
+	/// en: 'No documents in this collection.'
+	String get noDocuments => 'No documents in this collection.';
+
+	/// en: 'No documents match this filter.'
+	String get noDocumentsMatch => 'No documents match this filter.';
+
+	/// en: 'Load more'
+	String get loadMore => 'Load more';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Insert'
+	String get insert => 'Insert';
+}
+
 // Path: cockpit.dbConnectionDialog
 class Translations$cockpit$dbConnectionDialog$en {
 	Translations$cockpit$dbConnectionDialog$en.internal(this._root);
@@ -1124,6 +1170,17 @@ extension on Translations {
 			'cockpit.dbQueryView.saved' => 'saved',
 			'cockpit.dbQueryView.copied' => 'Copied',
 			'cockpit.dbQueryView.copy' => 'Copy',
+			'cockpit.dbMongoView.deleteDocumentTitle' => 'Delete document',
+			'cockpit.dbMongoView.deleteDocumentMessage' => ({required Object id, required Object collection}) => 'Delete the document with _id ${id} from "${collection}"?',
+			'cockpit.dbMongoView.filterHint' => 'Filter — JSON, e.g. {"status": "active"}',
+			'cockpit.dbMongoView.docCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 doc', other: '${n} docs', ), 
+			'cockpit.dbMongoView.refresh' => 'Refresh',
+			'cockpit.dbMongoView.insertDocument' => 'Insert document',
+			'cockpit.dbMongoView.noDocuments' => 'No documents in this collection.',
+			'cockpit.dbMongoView.noDocumentsMatch' => 'No documents match this filter.',
+			'cockpit.dbMongoView.loadMore' => 'Load more',
+			'cockpit.dbMongoView.edit' => 'Edit',
+			'cockpit.dbMongoView.insert' => 'Insert',
 			'cockpit.dbConnectionDialog.chooseFileTitle' => 'Choose SQLite database',
 			'cockpit.dbConnectionDialog.file' => 'File',
 			'cockpit.dbConnectionDialog.chooseFilePlaceholder' => 'Choose a SQLite file…',

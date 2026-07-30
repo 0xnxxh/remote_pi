@@ -235,6 +235,22 @@
       "copied": "Copied",
       "copy": "Copy"
     },
+    "dbMongoView": {
+      "deleteDocumentTitle": "Delete document",
+      "deleteDocumentMessage": "Delete the document with _id ${id} from \"${collection}\"?",
+      "filterHint": "Filter — JSON, e.g. {\"status\": \"active\"}",
+      "docCount": {
+        "one": "1 doc",
+        "other": "${n} docs"
+      },
+      "refresh": "Refresh",
+      "insertDocument": "Insert document",
+      "noDocuments": "No documents in this collection.",
+      "noDocumentsMatch": "No documents match this filter.",
+      "loadMore": "Load more",
+      "edit": "Edit",
+      "insert": "Insert"
+    },
     "dbConnectionDialog": {
       "chooseFileTitle": "Choose SQLite database",
       "file": "File",
