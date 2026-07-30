@@ -15,6 +15,7 @@ import 'package:cockpit/app/cockpit/ui/widgets/model_picker.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
@@ -83,7 +84,7 @@ class _AgentComposerState extends State<AgentComposer> {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       withData: true,
-      dialogTitle: 'Attach file',
+      dialogTitle: context.t.cockpit.agentComposer.attachFile,
     );
     if (result == null) return;
     for (final file in result.files) {
@@ -191,10 +192,12 @@ class _AgentComposerState extends State<AgentComposer> {
     showToast(
       context: context,
       location: ToastLocation.bottomRight,
-      builder: (context, overlay) => const SurfaceCard(
+      builder: (context, overlay) => SurfaceCard(
         child: Padding(
-          padding: EdgeInsets.all(12),
-          child: Text('Maximum of $_maxImages images.'),
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            context.t.cockpit.agentComposer.maxImages(max: _maxImages),
+          ),
         ),
       ),
     );
@@ -292,13 +295,13 @@ class _AgentComposerState extends State<AgentComposer> {
   }
 
   // --- slash command data ---
-  static const List<PiCommand> _builtins = <PiCommand>[
-    PiCommand(
-      name: 'new',
-      description: 'New session — clears the conversation',
-    ),
-    PiCommand(name: 'compact', description: 'Compacts the agent context'),
-  ];
+  List<PiCommand> get _builtins {
+    final tr = context.t.cockpit.agentComposer;
+    return <PiCommand>[
+      PiCommand(name: 'new', description: tr.cmdNewDescription),
+      PiCommand(name: 'compact', description: tr.cmdCompactDescription),
+    ];
+  }
 
   /// Embutidos + comandos das extensions, **suprimindo os `/remote-pi`**.
   List<PiCommand> get _allCommands => <PiCommand>[
@@ -646,7 +649,7 @@ class _AgentComposerState extends State<AgentComposer> {
                         decoration: const BoxDecoration(),
                         padding: EdgeInsets.zero,
                         placeholder: Text(
-                          'Message to the agent, use @files or /commands',
+                          context.t.cockpit.agentComposer.placeholder,
                           style: context.typo.body.copyWith(
                             fontSize: 13.5,
                             color: colors.text3,
@@ -662,7 +665,7 @@ class _AgentComposerState extends State<AgentComposer> {
                     children: [
                       _BarIcon(
                         icon: Icons.add,
-                        tooltip: 'Attach file',
+                        tooltip: context.t.cockpit.agentComposer.attachFile,
                         onTap: _pickAttachment,
                       ),
                       _ModelChip(session: session, enabled: controlsEnabled),
@@ -873,7 +876,7 @@ class _ModelChip extends StatelessWidget {
     return _Chip(
       icon: Icons.auto_awesome,
       iconColor: context.colors.accentText,
-      label: model?.name ?? 'model',
+      label: model?.name ?? context.t.cockpit.agentComposer.modelFallback,
       enabled: enabled && session.models.isNotEmpty,
       onTap: () async {
         final picked = await showModelPicker(
@@ -1030,7 +1033,7 @@ class _ContextGauge extends StatelessWidget {
         : (fraction >= 0.75 ? colors.warn : colors.accentText);
     final pct = percent.toStringAsFixed(percent < 10 ? 1 : 0);
     return AppTooltip(
-      message: 'Context: $pct% of the window',
+      message: context.t.cockpit.agentComposer.contextTooltip(pct: pct),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: SizedBox(
@@ -1170,7 +1173,7 @@ class _SendButton extends StatelessWidget {
       icon = Icons.arrow_upward;
     }
     return AppTooltip(
-      message: streaming ? 'Stop' : 'Send',
+      message: streaming ? context.t.cockpit.agentComposer.stop : context.t.cockpit.agentComposer.send,
       // borderRadius 15 num quadrado 30×30 = círculo (substitui o CircleBorder
       // do Material; HoverTap só aceita BorderRadius).
       child: HoverTap(
@@ -1201,21 +1204,18 @@ class _RelayButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final status = session.relayStatus;
+    final tr = context.t.cockpit.agentComposer;
     final (icon, color, tooltip) = switch (status) {
-      RelayStatus.connected => (
-        Icons.cell_tower,
-        colors.online,
-        'Relay online',
-      ),
+      RelayStatus.connected => (Icons.cell_tower, colors.online, tr.relayOnline),
       RelayStatus.reconnecting => (
         Icons.cell_tower,
         colors.warn,
-        'Relay reconnecting...',
+        tr.relayReconnecting,
       ),
       RelayStatus.disconnected => (
         Icons.cell_tower_outlined,
         colors.text3,
-        'Relay offline',
+        tr.relayOffline,
       ),
     };
     return AppTooltip(
@@ -1292,7 +1292,7 @@ class _ImageModelWarning extends StatelessWidget {
             const SizedBox(width: 7),
             Flexible(
               child: Text(
-                'The current model cannot see images — switch to one with vision.',
+                context.t.cockpit.agentComposer.visionWarning,
                 style: context.typo.label.copyWith(color: colors.warn),
               ),
             ),

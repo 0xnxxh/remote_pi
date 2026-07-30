@@ -19,7 +19,9 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "create": "Create",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "save": "Save",
+    "close": "Close"
   },
   "cockpit": {
     "confirmDialog": {
@@ -70,6 +72,64 @@
       "errorTrailingPeriod": "Subject should not end with a period.",
       "errorControlChars": "Subject contains control characters.",
       "errorBlankSecondLine": "Leave the second line blank (git subject/body separator)."
+    },
+    "agentEditDialog": {
+      "title": "Edit agent",
+      "agentName": "Agent name",
+      "relaySection": "Relay (remote-pi)",
+      "autoConnect": "Auto-connect on start",
+      "informationSection": "Information",
+      "folder": "Folder",
+      "model": "Model",
+      "state": "State",
+      "context": "Context",
+      "statusEmpty": "empty",
+      "statusStarting": "starting",
+      "statusReady": "ready",
+      "statusStreaming": "streaming",
+      "statusEnded": "ended"
+    },
+    "agentSetupChecklist": {
+      "title": "Set up the agent environment",
+      "intro": "Running an agent needs Pi installed. Complete the steps below — terminals and files work without any of this.",
+      "step1Title": "Pi Code installed",
+      "step1Description": "The `pi` binary must be accessible.",
+      "step2Title": "remote-pi extension on Pi",
+      "step2Description": "Registered in ~/.pi/agent/settings.json.",
+      "step3Title": "Supervisor installed",
+      "step3Description": "pi-supervisord service (remote-pi install).",
+      "install": "Install",
+      "installExtensionTitle": "Install remote-pi extension",
+      "installSupervisorTitle": "Install supervisor",
+      "createAgent": "Create agent",
+      "back": "Back",
+      "checkAgain": "Check again",
+      "notRequired": "Not required in this setup",
+      "installing": "Installing…",
+      "installedSuccessfully": "Installed successfully."
+    },
+    "agentComposer": {
+      "cmdNewDescription": "New session — clears the conversation",
+      "cmdCompactDescription": "Compacts the agent context",
+      "attachFile": "Attach file",
+      "maxImages": "Maximum of ${max} images.",
+      "placeholder": "Message to the agent, use @files or /commands",
+      "stop": "Stop",
+      "send": "Send",
+      "relayOnline": "Relay online",
+      "relayReconnecting": "Relay reconnecting...",
+      "relayOffline": "Relay offline",
+      "contextTooltip": "Context: ${pct}% of the window",
+      "visionWarning": "The current model cannot see images — switch to one with vision.",
+      "modelFallback": "model"
+    },
+    "welcomeView": {
+      "title": "Welcome to Cockpit",
+      "subtitle": "Open a folder to start a workspace.",
+      "createWorkspace": "Create workspace"
+    },
+    "modelPicker": {
+      "search": "Search model (${count})"
     }
   },
   "settings": {

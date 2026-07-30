@@ -76,6 +76,12 @@ class Translations$common$en {
 
 	/// en: 'Got it'
 	String get gotIt => 'Got it';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Close'
+	String get close => 'Close';
 }
 
 // Path: cockpit
@@ -90,6 +96,11 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$worktreeCreateDialog$en worktreeCreateDialog = Translations$cockpit$worktreeCreateDialog$en.internal(_root);
 	late final Translations$cockpit$subfolderDialog$en subfolderDialog = Translations$cockpit$subfolderDialog$en.internal(_root);
 	late final Translations$cockpit$commitMessageDialog$en commitMessageDialog = Translations$cockpit$commitMessageDialog$en.internal(_root);
+	late final Translations$cockpit$agentEditDialog$en agentEditDialog = Translations$cockpit$agentEditDialog$en.internal(_root);
+	late final Translations$cockpit$agentSetupChecklist$en agentSetupChecklist = Translations$cockpit$agentSetupChecklist$en.internal(_root);
+	late final Translations$cockpit$agentComposer$en agentComposer = Translations$cockpit$agentComposer$en.internal(_root);
+	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
+	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 }
 
 // Path: settings
@@ -312,6 +323,195 @@ class Translations$cockpit$commitMessageDialog$en {
 	String get errorBlankSecondLine => 'Leave the second line blank (git subject/body separator).';
 }
 
+// Path: cockpit.agentEditDialog
+class Translations$cockpit$agentEditDialog$en {
+	Translations$cockpit$agentEditDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Edit agent'
+	String get title => 'Edit agent';
+
+	/// en: 'Agent name'
+	String get agentName => 'Agent name';
+
+	/// en: 'Relay (remote-pi)'
+	String get relaySection => 'Relay (remote-pi)';
+
+	/// en: 'Auto-connect on start'
+	String get autoConnect => 'Auto-connect on start';
+
+	/// en: 'Information'
+	String get informationSection => 'Information';
+
+	/// en: 'Folder'
+	String get folder => 'Folder';
+
+	/// en: 'Model'
+	String get model => 'Model';
+
+	/// en: 'State'
+	String get state => 'State';
+
+	/// en: 'Context'
+	String get context => 'Context';
+
+	/// en: 'empty'
+	String get statusEmpty => 'empty';
+
+	/// en: 'starting'
+	String get statusStarting => 'starting';
+
+	/// en: 'ready'
+	String get statusReady => 'ready';
+
+	/// en: 'streaming'
+	String get statusStreaming => 'streaming';
+
+	/// en: 'ended'
+	String get statusEnded => 'ended';
+}
+
+// Path: cockpit.agentSetupChecklist
+class Translations$cockpit$agentSetupChecklist$en {
+	Translations$cockpit$agentSetupChecklist$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Set up the agent environment'
+	String get title => 'Set up the agent environment';
+
+	/// en: 'Running an agent needs Pi installed. Complete the steps below — terminals and files work without any of this.'
+	String get intro => 'Running an agent needs Pi installed. Complete the steps below — terminals and files work without any of this.';
+
+	/// en: 'Pi Code installed'
+	String get step1Title => 'Pi Code installed';
+
+	/// en: 'The `pi` binary must be accessible.'
+	String get step1Description => 'The `pi` binary must be accessible.';
+
+	/// en: 'remote-pi extension on Pi'
+	String get step2Title => 'remote-pi extension on Pi';
+
+	/// en: 'Registered in ~/.pi/agent/settings.json.'
+	String get step2Description => 'Registered in ~/.pi/agent/settings.json.';
+
+	/// en: 'Supervisor installed'
+	String get step3Title => 'Supervisor installed';
+
+	/// en: 'pi-supervisord service (remote-pi install).'
+	String get step3Description => 'pi-supervisord service (remote-pi install).';
+
+	/// en: 'Install'
+	String get install => 'Install';
+
+	/// en: 'Install remote-pi extension'
+	String get installExtensionTitle => 'Install remote-pi extension';
+
+	/// en: 'Install supervisor'
+	String get installSupervisorTitle => 'Install supervisor';
+
+	/// en: 'Create agent'
+	String get createAgent => 'Create agent';
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Check again'
+	String get checkAgain => 'Check again';
+
+	/// en: 'Not required in this setup'
+	String get notRequired => 'Not required in this setup';
+
+	/// en: 'Installing…'
+	String get installing => 'Installing…';
+
+	/// en: 'Installed successfully.'
+	String get installedSuccessfully => 'Installed successfully.';
+}
+
+// Path: cockpit.agentComposer
+class Translations$cockpit$agentComposer$en {
+	Translations$cockpit$agentComposer$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'New session — clears the conversation'
+	String get cmdNewDescription => 'New session — clears the conversation';
+
+	/// en: 'Compacts the agent context'
+	String get cmdCompactDescription => 'Compacts the agent context';
+
+	/// en: 'Attach file'
+	String get attachFile => 'Attach file';
+
+	/// en: 'Maximum of ${max} images.'
+	String maxImages({required Object max}) => 'Maximum of ${max} images.';
+
+	/// en: 'Message to the agent, use @files or /commands'
+	String get placeholder => 'Message to the agent, use @files or /commands';
+
+	/// en: 'Stop'
+	String get stop => 'Stop';
+
+	/// en: 'Send'
+	String get send => 'Send';
+
+	/// en: 'Relay online'
+	String get relayOnline => 'Relay online';
+
+	/// en: 'Relay reconnecting...'
+	String get relayReconnecting => 'Relay reconnecting...';
+
+	/// en: 'Relay offline'
+	String get relayOffline => 'Relay offline';
+
+	/// en: 'Context: ${pct}% of the window'
+	String contextTooltip({required Object pct}) => 'Context: ${pct}% of the window';
+
+	/// en: 'The current model cannot see images — switch to one with vision.'
+	String get visionWarning => 'The current model cannot see images — switch to one with vision.';
+
+	/// en: 'model'
+	String get modelFallback => 'model';
+}
+
+// Path: cockpit.welcomeView
+class Translations$cockpit$welcomeView$en {
+	Translations$cockpit$welcomeView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Welcome to Cockpit'
+	String get title => 'Welcome to Cockpit';
+
+	/// en: 'Open a folder to start a workspace.'
+	String get subtitle => 'Open a folder to start a workspace.';
+
+	/// en: 'Create workspace'
+	String get createWorkspace => 'Create workspace';
+}
+
+// Path: cockpit.modelPicker
+class Translations$cockpit$modelPicker$en {
+	Translations$cockpit$modelPicker$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Search model (${count})'
+	String search({required Object count}) => 'Search model (${count})';
+}
+
 // Path: settings.language
 class Translations$settings$language$en {
 	Translations$settings$language$en.internal(this._root);
@@ -358,6 +558,8 @@ extension on Translations {
 			'common.confirm' => 'Confirm',
 			'common.create' => 'Create',
 			'common.gotIt' => 'Got it',
+			'common.save' => 'Save',
+			'common.close' => 'Close',
 			'cockpit.confirmDialog.unsavedChangesTitle' => 'Unsaved changes',
 			'cockpit.confirmDialog.unsavedChangesMessage' => ({required Object fileName}) => '“${fileName}” has unsaved changes. Save them before closing?',
 			'cockpit.confirmDialog.dontSave' => 'Don\'t save',
@@ -397,6 +599,54 @@ extension on Translations {
 			'cockpit.commitMessageDialog.errorTrailingPeriod' => 'Subject should not end with a period.',
 			'cockpit.commitMessageDialog.errorControlChars' => 'Subject contains control characters.',
 			'cockpit.commitMessageDialog.errorBlankSecondLine' => 'Leave the second line blank (git subject/body separator).',
+			'cockpit.agentEditDialog.title' => 'Edit agent',
+			'cockpit.agentEditDialog.agentName' => 'Agent name',
+			'cockpit.agentEditDialog.relaySection' => 'Relay (remote-pi)',
+			'cockpit.agentEditDialog.autoConnect' => 'Auto-connect on start',
+			'cockpit.agentEditDialog.informationSection' => 'Information',
+			'cockpit.agentEditDialog.folder' => 'Folder',
+			'cockpit.agentEditDialog.model' => 'Model',
+			'cockpit.agentEditDialog.state' => 'State',
+			'cockpit.agentEditDialog.context' => 'Context',
+			'cockpit.agentEditDialog.statusEmpty' => 'empty',
+			'cockpit.agentEditDialog.statusStarting' => 'starting',
+			'cockpit.agentEditDialog.statusReady' => 'ready',
+			'cockpit.agentEditDialog.statusStreaming' => 'streaming',
+			'cockpit.agentEditDialog.statusEnded' => 'ended',
+			'cockpit.agentSetupChecklist.title' => 'Set up the agent environment',
+			'cockpit.agentSetupChecklist.intro' => 'Running an agent needs Pi installed. Complete the steps below — terminals and files work without any of this.',
+			'cockpit.agentSetupChecklist.step1Title' => 'Pi Code installed',
+			'cockpit.agentSetupChecklist.step1Description' => 'The `pi` binary must be accessible.',
+			'cockpit.agentSetupChecklist.step2Title' => 'remote-pi extension on Pi',
+			'cockpit.agentSetupChecklist.step2Description' => 'Registered in ~/.pi/agent/settings.json.',
+			'cockpit.agentSetupChecklist.step3Title' => 'Supervisor installed',
+			'cockpit.agentSetupChecklist.step3Description' => 'pi-supervisord service (remote-pi install).',
+			'cockpit.agentSetupChecklist.install' => 'Install',
+			'cockpit.agentSetupChecklist.installExtensionTitle' => 'Install remote-pi extension',
+			'cockpit.agentSetupChecklist.installSupervisorTitle' => 'Install supervisor',
+			'cockpit.agentSetupChecklist.createAgent' => 'Create agent',
+			'cockpit.agentSetupChecklist.back' => 'Back',
+			'cockpit.agentSetupChecklist.checkAgain' => 'Check again',
+			'cockpit.agentSetupChecklist.notRequired' => 'Not required in this setup',
+			'cockpit.agentSetupChecklist.installing' => 'Installing…',
+			'cockpit.agentSetupChecklist.installedSuccessfully' => 'Installed successfully.',
+			'cockpit.agentComposer.cmdNewDescription' => 'New session — clears the conversation',
+			'cockpit.agentComposer.cmdCompactDescription' => 'Compacts the agent context',
+			'cockpit.agentComposer.attachFile' => 'Attach file',
+			'cockpit.agentComposer.maxImages' => ({required Object max}) => 'Maximum of ${max} images.',
+			'cockpit.agentComposer.placeholder' => 'Message to the agent, use @files or /commands',
+			'cockpit.agentComposer.stop' => 'Stop',
+			'cockpit.agentComposer.send' => 'Send',
+			'cockpit.agentComposer.relayOnline' => 'Relay online',
+			'cockpit.agentComposer.relayReconnecting' => 'Relay reconnecting...',
+			'cockpit.agentComposer.relayOffline' => 'Relay offline',
+			'cockpit.agentComposer.contextTooltip' => ({required Object pct}) => 'Context: ${pct}% of the window',
+			'cockpit.agentComposer.visionWarning' => 'The current model cannot see images — switch to one with vision.',
+			'cockpit.agentComposer.modelFallback' => 'model',
+			'cockpit.welcomeView.title' => 'Welcome to Cockpit',
+			'cockpit.welcomeView.subtitle' => 'Open a folder to start a workspace.',
+			'cockpit.welcomeView.createWorkspace' => 'Create workspace',
+			'cockpit.modelPicker.search' => ({required Object count}) => 'Search model (${count})',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
