@@ -25,7 +25,8 @@
     "delete": "Delete",
     "done": "Done",
     "add": "Add",
-    "test": "Test"
+    "test": "Test",
+    "ok": "OK"
   },
   "cockpit": {
     "confirmDialog": {
@@ -209,6 +210,30 @@
       "ttlFieldHint": "ttl (s, optional)",
       "valueFieldHint": "value",
       "searchHint": "Search — pattern, e.g. user:*"
+    },
+    "dbQueryView": {
+      "saveQueryAs": "Save query as",
+      "couldNotSave": "Could not save",
+      "selectDatabase": "Select database",
+      "noSqlConnections": "No SQL connections — add one in the Database panel",
+      "running": "Running…",
+      "runSelection": "Run selection",
+      "run": "Run",
+      "pickDatabaseHint": "Pick a database above, then Run (⌘↵).",
+      "runQueryHint": "Run the query (⌘↵) to see results here.",
+      "noRows": "No rows.",
+      "rowsAffected": {
+        "one": "1 row affected",
+        "other": "${n} rows affected"
+      },
+      "rowsFooter": "${n} rows",
+      "truncatedSuffix": " · truncated (raise -- limit)",
+      "table": "Table",
+      "json": "JSON",
+      "unsaved": "unsaved",
+      "saved": "saved",
+      "copied": "Copied",
+      "copy": "Copy"
     },
     "dbConnectionDialog": {
       "chooseFileTitle": "Choose SQLite database",

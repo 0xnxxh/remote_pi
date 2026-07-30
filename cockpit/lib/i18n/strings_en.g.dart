@@ -94,6 +94,9 @@ class Translations$common$en {
 
 	/// en: 'Test'
 	String get test => 'Test';
+
+	/// en: 'OK'
+	String get ok => 'OK';
 }
 
 // Path: cockpit
@@ -118,6 +121,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$workspaceSettingsDialog$en workspaceSettingsDialog = Translations$cockpit$workspaceSettingsDialog$en.internal(_root);
 	late final Translations$cockpit$realmDialogs$en realmDialogs = Translations$cockpit$realmDialogs$en.internal(_root);
 	late final Translations$cockpit$dbRedisTable$en dbRedisTable = Translations$cockpit$dbRedisTable$en.internal(_root);
+	late final Translations$cockpit$dbQueryView$en dbQueryView = Translations$cockpit$dbQueryView$en.internal(_root);
 	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
 }
 
@@ -758,6 +762,75 @@ class Translations$cockpit$dbRedisTable$en {
 	String get searchHint => 'Search — pattern, e.g. user:*';
 }
 
+// Path: cockpit.dbQueryView
+class Translations$cockpit$dbQueryView$en {
+	Translations$cockpit$dbQueryView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Save query as'
+	String get saveQueryAs => 'Save query as';
+
+	/// en: 'Could not save'
+	String get couldNotSave => 'Could not save';
+
+	/// en: 'Select database'
+	String get selectDatabase => 'Select database';
+
+	/// en: 'No SQL connections — add one in the Database panel'
+	String get noSqlConnections => 'No SQL connections — add one in the Database panel';
+
+	/// en: 'Running…'
+	String get running => 'Running…';
+
+	/// en: 'Run selection'
+	String get runSelection => 'Run selection';
+
+	/// en: 'Run'
+	String get run => 'Run';
+
+	/// en: 'Pick a database above, then Run (⌘↵).'
+	String get pickDatabaseHint => 'Pick a database above, then Run (⌘↵).';
+
+	/// en: 'Run the query (⌘↵) to see results here.'
+	String get runQueryHint => 'Run the query (⌘↵) to see results here.';
+
+	/// en: 'No rows.'
+	String get noRows => 'No rows.';
+
+	/// en: '(one) {1 row affected} (other) {${n} rows affected}'
+	String rowsAffected({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 row affected',
+		other: '${n} rows affected',
+	);
+
+	/// en: '${n} rows'
+	String rowsFooter({required Object n}) => '${n} rows';
+
+	/// en: ' · truncated (raise -- limit)'
+	String get truncatedSuffix => ' · truncated (raise -- limit)';
+
+	/// en: 'Table'
+	String get table => 'Table';
+
+	/// en: 'JSON'
+	String get json => 'JSON';
+
+	/// en: 'unsaved'
+	String get unsaved => 'unsaved';
+
+	/// en: 'saved'
+	String get saved => 'saved';
+
+	/// en: 'Copied'
+	String get copied => 'Copied';
+
+	/// en: 'Copy'
+	String get copy => 'Copy';
+}
+
 // Path: cockpit.dbConnectionDialog
 class Translations$cockpit$dbConnectionDialog$en {
 	Translations$cockpit$dbConnectionDialog$en.internal(this._root);
@@ -885,6 +958,7 @@ extension on Translations {
 			'common.done' => 'Done',
 			'common.add' => 'Add',
 			'common.test' => 'Test',
+			'common.ok' => 'OK',
 			'cockpit.confirmDialog.unsavedChangesTitle' => 'Unsaved changes',
 			'cockpit.confirmDialog.unsavedChangesMessage' => ({required Object fileName}) => '“${fileName}” has unsaved changes. Save them before closing?',
 			'cockpit.confirmDialog.dontSave' => 'Don\'t save',
@@ -1031,6 +1105,25 @@ extension on Translations {
 			'cockpit.dbRedisTable.ttlFieldHint' => 'ttl (s, optional)',
 			'cockpit.dbRedisTable.valueFieldHint' => 'value',
 			'cockpit.dbRedisTable.searchHint' => 'Search — pattern, e.g. user:*',
+			'cockpit.dbQueryView.saveQueryAs' => 'Save query as',
+			'cockpit.dbQueryView.couldNotSave' => 'Could not save',
+			'cockpit.dbQueryView.selectDatabase' => 'Select database',
+			'cockpit.dbQueryView.noSqlConnections' => 'No SQL connections — add one in the Database panel',
+			'cockpit.dbQueryView.running' => 'Running…',
+			'cockpit.dbQueryView.runSelection' => 'Run selection',
+			'cockpit.dbQueryView.run' => 'Run',
+			'cockpit.dbQueryView.pickDatabaseHint' => 'Pick a database above, then Run (⌘↵).',
+			'cockpit.dbQueryView.runQueryHint' => 'Run the query (⌘↵) to see results here.',
+			'cockpit.dbQueryView.noRows' => 'No rows.',
+			'cockpit.dbQueryView.rowsAffected' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 row affected', other: '${n} rows affected', ), 
+			'cockpit.dbQueryView.rowsFooter' => ({required Object n}) => '${n} rows',
+			'cockpit.dbQueryView.truncatedSuffix' => ' · truncated (raise -- limit)',
+			'cockpit.dbQueryView.table' => 'Table',
+			'cockpit.dbQueryView.json' => 'JSON',
+			'cockpit.dbQueryView.unsaved' => 'unsaved',
+			'cockpit.dbQueryView.saved' => 'saved',
+			'cockpit.dbQueryView.copied' => 'Copied',
+			'cockpit.dbQueryView.copy' => 'Copy',
 			'cockpit.dbConnectionDialog.chooseFileTitle' => 'Choose SQLite database',
 			'cockpit.dbConnectionDialog.file' => 'File',
 			'cockpit.dbConnectionDialog.chooseFilePlaceholder' => 'Choose a SQLite file…',
