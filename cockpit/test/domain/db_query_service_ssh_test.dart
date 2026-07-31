@@ -8,6 +8,7 @@ import 'package:cockpit/app/cockpit/domain/entities/ssh_tunnel_config.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fakes/mongo_database_store_fake.dart';
 import 'fakes/ssh_fakes.dart';
 
 /// Prova o **chokepoint** do plano 54: todo caminho público do serviço recebe
@@ -67,6 +68,7 @@ void main() {
       runner,
       tunnel,
       FakeSshKeyInspector(encrypted: encryptedKey),
+      FakeMongoDatabaseStore(),
     );
     return (service: service, driver: driver, runner: runner, tunnel: tunnel);
   }
@@ -433,6 +435,7 @@ class _SpyRunner implements NoSqlRunner {
     DbConnection conn,
     Map<String, dynamic> command, {
     String? password,
+    String? database,
   }) async {
     seen.add(conn);
     return null;

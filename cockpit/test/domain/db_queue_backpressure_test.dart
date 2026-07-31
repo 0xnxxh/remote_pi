@@ -8,6 +8,7 @@ import 'package:cockpit/app/cockpit/domain/entities/db_result.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fakes/mongo_database_store_fake.dart';
 import 'fakes/ssh_fakes.dart';
 
 /// A fila do serviço é serializada de propósito (o slot de conexão do anaki é
@@ -39,6 +40,7 @@ void main() {
             _NoRunner(),
             FakeSshTunnel(),
             FakeSshKeyInspector(),
+            FakeMongoDatabaseStore(),
           )
           ..queueWait = const Duration(milliseconds: 80)
           ..operationCap = const Duration(milliseconds: 300);
@@ -247,5 +249,6 @@ class _NoRunner implements NoSqlRunner {
     DbConnection conn,
     Map<String, dynamic> command, {
     String? password,
+    String? database,
   }) async => null;
 }

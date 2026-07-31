@@ -7,6 +7,7 @@ import 'package:cockpit/app/cockpit/domain/entities/redis_key.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/domain/services/redis_browse_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'fakes/mongo_database_store_fake.dart';
 import 'fakes/ssh_fakes.dart';
 
 /// Runner fake: grava os lotes enviados e devolve replies roteirizados por
@@ -47,6 +48,7 @@ class _FakeRunner implements NoSqlRunner {
     DbConnection conn,
     Map<String, dynamic> command, {
     String? password,
+    String? database,
   }) async => null;
 }
 
@@ -93,6 +95,7 @@ void main() {
       runner,
       FakeSshTunnel(),
       FakeSshKeyInspector(),
+      FakeMongoDatabaseStore(),
     );
     service = RedisBrowseService(db)
       ..target(workspaceRoot: '/ws', workspaceId: 'ws1', connName: 'cache');

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cockpit/app/cockpit/data/db/local_socks_server.dart';
 import 'package:cockpit/app/cockpit/data/db/ssh_key_pem.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
 import 'package:cockpit/app/cockpit/domain/entities/ssh_tunnel_config.dart';
@@ -59,11 +60,25 @@ class SshTunnelImpl implements SshTunnel {
     if (live != null && live.isAlive) return Future.value(live.touch());
     if (live != null) unawaited(_drop(key));
 
-    return _opening[key] ??= _guardOpen(
-      () => _open(key, config, targetHost, targetPort, passphrase,
-          onUnknownHostKey),
-      config,
-    ).whenComplete(() => _opening.remove(key));
+    return _opening[key] ??=
+        _guardOpen(
+          () => _open(
+            key,
+            config,
+            targetHost,
+            targetPort,
+            passphrase,
+            onUnknownHostKey,
+          ),
+          config,
+          // Corpo em bloco, não arrow: `Map.remove` devolve o valor removido — que
+          // aqui é ESTE future. Com arrow, o `whenComplete` passava a esperar o
+          // future que ele mesmo completa e travava pra sempre; só o primeiro
+          // chamador sofria (os seguintes achavam o túnel já no cache), o que fazia
+          // parecer "a UI trava mas a CLI funciona".
+        ).whenComplete(() {
+          _opening.remove(key);
+        });
   }
 
   /// Proxies SOCKS ativos, por endpoint SSH (um serve todos os nós).
@@ -81,10 +96,14 @@ class SshTunnelImpl implements SshTunnel {
     if (live != null && live.isAlive) return Future.value(live.touch());
     if (live != null) unawaited(_dropSocks(key));
 
-    return _openingSocks[key] ??= _guardOpen(
-      () => _openSocks(key, config, passphrase, onUnknownHostKey),
-      config,
-    ).whenComplete(() => _openingSocks.remove(key));
+    return _openingSocks[key] ??=
+        _guardOpen(
+          () => _openSocks(key, config, passphrase, onUnknownHostKey),
+          config,
+          // Mesma armadilha do `_opening` acima: bloco, nunca arrow.
+        ).whenComplete(() {
+          _openingSocks.remove(key);
+        });
   }
 
   Future<TunnelEndpoint> _openSocks(
@@ -94,13 +113,17 @@ class SshTunnelImpl implements SshTunnel {
     HostKeyPrompt? onUnknownHostKey,
   ) async {
     final client = await _connect(config, passphrase, onUnknownHostKey);
-    // SOCKS5 é do próprio dartssh2 (`forwardDynamic`, equivalente a `ssh -D`):
-    // NO AUTH + CONNECT, ligado só ao loopback. Sem autenticação de propósito —
-    // o único cliente é o driver rodando no nosso processo, e quem alcança o
-    // loopback já está dentro.
-    final SSHDynamicForward server;
+    // SOCKS5 **nosso** (`LocalSocksServer`) em vez do `forwardDynamic` do
+    // dartssh2: o de lá escuta o ServerSocket sem `onError`, então um reset no
+    // accept — que o driver Mongo provoca a cada teardown de pool — derrubava o
+    // proxy silenciosamente e pendurava todo comando seguinte. Ver o doc da
+    // classe.
+    final LocalSocksServer server;
     try {
-      server = await client.forwardDynamic();
+      server = await LocalSocksServer.start(
+        (host, port) async =>
+            _ForwardedChannel(await client.forwardLocal(host, port)),
+      );
     } on Object catch (e) {
       client.close();
       throw SshTunnelException(
@@ -356,6 +379,29 @@ class _ActiveTunnel {
   }
 }
 
+/// Adapta o canal do `dartssh2` ao contrato mínimo do [LocalSocksServer] — é o
+/// que mantém o servidor SOCKS ignorante sobre qual biblioteca SSH está embaixo.
+class _ForwardedChannel implements SocksChannel {
+  _ForwardedChannel(this._channel);
+
+  final SSHForwardChannel _channel;
+
+  @override
+  Stream<List<int>> get stream => _channel.stream.cast<List<int>>();
+
+  @override
+  StreamSink<List<int>> get sink => _channel.sink;
+
+  @override
+  void destroy() {
+    try {
+      _channel.destroy();
+    } on Object {
+      /* já morto */
+    }
+  }
+}
+
 /// Proxy SOCKS5 vivo sobre uma conexão SSH. Diferente do [_ActiveTunnel], não
 /// tem alvo fixo: o destino vem em cada requisição SOCKS, que é justamente o
 /// que faz replica set e SRV funcionarem.
@@ -367,13 +413,15 @@ class _ActiveSocks {
   });
 
   final SSHClient client;
-  final SSHDynamicForward server;
+  final LocalSocksServer server;
   final Future<void> Function() onExpired;
 
   Timer? _idle;
   bool _closed = false;
 
-  bool get isAlive => !_closed && !client.isClosed && !server.isClosed;
+  /// `server.isAlive` é o que faltava no `forwardDynamic`: se o listener do
+  /// proxy morreu, este túnel é lixo e o `ensureSocks` reabre.
+  bool get isAlive => !_closed && !client.isClosed && server.isAlive;
 
   TunnelEndpoint touch() {
     _idle?.cancel();

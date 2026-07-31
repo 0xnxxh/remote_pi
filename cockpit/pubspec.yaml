@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.15.3+45
+version: 1.16.1+48
 
 environment:
   sdk: ^3.12.0
@@ -72,9 +72,15 @@ dependencies:
   # Manager / Secret Service). Nunca em .cockpit/databases.json.
   flutter_secure_storage: ^9.0.0
 
-  # Wave 2 — persistência local dos projetos (pasta salva = projeto).
+  # Persistência local virou JSON puro (JsonStateStore, write-temp+rename
+  # atômico) — o Hive fica SÓ pra migração one-shot dos dados legados
+  # (core/data/setup/hive_migration.dart é o único import). Remover numa
+  # release futura, quando a base instalada tiver migrado.
   hive: ^2.2.3
-  hive_flutter: ^1.1.0
+
+  # Montagem de paths ciente de plataforma (Windows usa `\`; interpolar `/`
+  # na mão corrompia a resolução de diretórios de storage).
+  path: ^1.9.0
 
   # Wave 2 — fontes da identidade visual (Space Grotesk / Hanken Grotesk /
   # JetBrains Mono), servidas em runtime + cacheadas pelo google_fonts.
@@ -84,7 +90,7 @@ dependencies:
   gpt_markdown: ^1.1.8
 
   # Wave 2 — notificações nativas do SO (agente terminou um turno).
-  flutter_local_notifications: ^18.0.1
+  flutter_local_notifications: ^22.2.0
 
   # Wave 2 — esconde a barra nativa da janela (temos a customizada) e permite
   # arrastar/min/max pela nossa barra. macOS/Windows/Linux.
@@ -187,7 +193,7 @@ dependencies:
   # Mongo atrás de bastion (replica set / Atlas SRV) não tem caminho: o driver
   # descobre os membros pelo `hello` e disca os hostnames anunciados, furando
   # qualquer port-forward.
-  anaki_mongodb: ^0.1.5
+  anaki_mongodb: ^0.1.7
 
   # Plano 54 — túnel SSH opcional por conexão de banco. Dart puro de propósito
   # (decisão C): o binário `ssh` só *provavelmente* existe no Windows (Feature
@@ -295,7 +301,9 @@ dependency_overrides:
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: cockpit-pin-flterm-2822cc2
+      # Tag combinada: scroll de TUI + fix do IME (dead key/acentos parando de
+      # funcionar quando outro cliente rouba a TextInputConnection singleton).
+      ref: cockpit-pin-flterm-scroll-ime
       path: packages/flterm
   libghostty:
     git:

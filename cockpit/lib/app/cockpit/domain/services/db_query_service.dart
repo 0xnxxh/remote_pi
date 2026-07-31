@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cockpit/app/cockpit/domain/contracts/db_connection_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/db_driver.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/mongo_database_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/nosql_runner.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
@@ -20,6 +21,7 @@ class DbQueryService {
     this._nosql,
     this._tunnel,
     this._sshKeys,
+    this._mongoDatabases,
   );
 
   final DbConnectionStore _store;
@@ -28,6 +30,7 @@ class DbQueryService {
   final NoSqlRunner _nosql;
   final SshTunnel _tunnel;
   final SshKeyInspector _sshKeys;
+  final MongoDatabaseStore _mongoDatabases;
 
   /// Prompt de passphrase SSH. Setado pela UI no boot; **nulo no caminho CLI**
   /// (agente não tem como responder) — nesse caso a conexão sem passphrase no
@@ -186,21 +189,45 @@ class DbQueryService {
     );
   }
 
-  /// Mongo (CLI-only): roda `command` (runCommand) e devolve o doc JSON.
+  /// Mongo: roda `command` (runCommand) e devolve o doc JSON. Serve o browser
+  /// (plano 53) e o `cockpit mongo` do agente — mesmo caminho, mesmo database.
+  ///
+  /// [database] força o alvo (só o `listDatabases` do seletor precisa disso);
+  /// omitido, vale a escolha salva do usuário e, na falta dela, a URL.
   Future<Object?> mongoCommand({
     required String workspaceRoot,
     required String workspaceId,
     required String connName,
     required Map<String, dynamic> command,
+    String? database,
   }) async {
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     _requireEngine(conn, DbEngine.mongo, connName);
     final password = await _passwordFor(conn, workspaceId);
+    final target = database ?? mongoDatabase(workspaceId, conn);
     return _serialized(
       conn.engine,
-      () => _nosql.mongo(conn, command, password: password),
+      () => _nosql.mongo(conn, command, password: password, database: target),
     );
   }
+
+  /// Database efetivo de uma conexão Mongo: o da URL (quando ela traz path)
+  /// vence — é explícito — e, faltando esse, a escolha salva do seletor.
+  /// `null` deixa o runner cair no fallback dele.
+  String? mongoDatabase(String workspaceId, DbConnection conn) =>
+      conn.database.isNotEmpty
+      ? conn.database
+      : _mongoDatabases.selected(workspaceId, conn.name);
+
+  /// `true` quando a conexão depende do seletor (URL sem database).
+  bool mongoNeedsDatabase(DbConnection conn) => conn.database.isEmpty;
+
+  /// Fixa o database da conexão (seletor do painel).
+  Future<void> selectMongoDatabase(
+    String workspaceId,
+    String connName,
+    String database,
+  ) => _mongoDatabases.select(workspaceId, connName, database);
 
   /// Recusa cedo quando a conexão nomeada é de outro engine.
   void _requireEngine(DbConnection conn, DbEngine expected, String connName) {

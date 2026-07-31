@@ -1,22 +1,22 @@
 import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
-import 'package:hive/hive.dart';
+import 'package:cockpit/app/core/data/setup/json_state_store.dart';
 
-/// Host keys confiadas (TOFU) numa chave própria da Box de settings — reusa a
-/// box, sem TypeAdapter (é só um mapa endpoint→fingerprint), no mesmo padrão
-/// do `HiveDismissedUpdateStore`.
+/// Host keys confiadas (TOFU) numa chave própria do store de settings — reusa
+/// o store (é só um mapa endpoint→fingerprint), no mesmo padrão do
+/// `JsonDismissedUpdateStore`.
 ///
 /// Deliberadamente **não** é o `known_hosts` do sistema: o `dartssh2` não lê
 /// aquele arquivo (decisão C do plano 54), então manter o nosso é o que
 /// permite detectar troca de host key.
-class HiveSshHostKeyStore implements SshHostKeyStore {
-  HiveSshHostKeyStore(this._box);
+class JsonSshHostKeyStore implements SshHostKeyStore {
+  JsonSshHostKeyStore(this._store);
 
-  final Box<dynamic> _box;
+  final JsonStateStore _store;
 
   static const String _key = 'ssh_known_host_keys';
 
   Map<String, String> _all() {
-    final raw = _box.get(_key);
+    final raw = _store.get(_key);
     if (raw is! Map) return {};
     return {
       for (final entry in raw.entries)
@@ -30,9 +30,9 @@ class HiveSshHostKeyStore implements SshHostKeyStore {
 
   @override
   Future<void> trust(String endpoint, String fingerprint) =>
-      _box.put(_key, _all()..[endpoint] = fingerprint);
+      _store.put(_key, _all()..[endpoint] = fingerprint);
 
   @override
   Future<void> forget(String endpoint) =>
-      _box.put(_key, _all()..remove(endpoint));
+      _store.put(_key, _all()..remove(endpoint));
 }

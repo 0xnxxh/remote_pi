@@ -2,8 +2,9 @@
 #
 # Trigger: tag `cockpit-v<versão>` (a versão DEVE bater com o pubspec.yaml).
 # Produz: GitHub Release com 6 artefatos + SHA256SUMS + latest.json.
-# Publicação no site é MANUAL (gate): baixar o latest.json da release e colocar
-# no rp-s3 (volume /Users/flutterando/cockpit/data) — ver rp-s3/README.md.
+# Publicação: o job final envia latest.json + appcasts direto pro rp-s3 via
+# PUT /upload (Bearer RP_S3_UPLOAD_TOKEN) — ver rp-s3/README.md. Sem gate
+# manual: a release vai ao ar assim que o workflow termina.
 #
 # Runbook por plataforma: cockpit/packaging/README.md.
 
@@ -451,12 +452,11 @@ jobs:
           {
             echo ""
             echo "---"
-            echo "**Publicação (gate manual):** baixe \`latest.json\`, \`appcast-macos.xml\`"
-            echo "e \`appcast-windows.xml\` desta release e coloque em"
-            echo "\`/Users/flutterando/cockpit/data/\` no host do rp-s3 (ver \`rp-s3/README.md\`)."
-            echo "O \`latest.json\` liga o card/site (e o notify do Linux); os appcasts ligam"
-            echo "o self-update (Sparkle/WinSparkle) dos cockpits já instalados. Até subir,"
-            echo "ninguém atualiza."
+            echo "**Publicação:** \`latest.json\` + appcasts são enviados automaticamente"
+            echo "pro rp-s3 no fim do workflow (liga site/card e o self-update"
+            echo "Sparkle/WinSparkle). Se o passo de publish falhar, o fallback manual"
+            echo "é baixar os 3 arquivos desta release e colocar em"
+            echo "\`/Users/flutterando/cockpit/data/\` (ver \`rp-s3/README.md\`)."
           } >> "$NOTES_FILE"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release/* --clobber
@@ -467,6 +467,27 @@ jobs:
               --latest=false
           fi
 
+      # Publica os manifests no rp-s3 (substitui o gate manual). Roda DEPOIS da
+      # release existir no GitHub: as URLs dentro do latest.json/appcasts apontam
+      # pros assets da release, então só faz sentido publicar com eles no ar.
+      # Appcasts primeiro, latest.json por último: o site/card só anuncia a
+      # versão quando o self-update já tem o que servir.
+      - name: Publica manifests no rp-s3
+        env:
+          RP_S3_UPLOAD_TOKEN: ${{ secrets.RP_S3_UPLOAD_TOKEN }}
+        run: |
+          upload() {
+            curl -fsS --retry 3 --retry-delay 5 -X PUT \
+              -H "Authorization: Bearer ${RP_S3_UPLOAD_TOKEN}" \
+              --data-binary "@release/$1" \
+              "https://rp-s3.jacobmoura.work/upload/cockpit/$1"
+          }
+          upload appcast-macos.xml
+          upload appcast-windows.xml
+          upload SHA256SUMS
+          upload latest.json
+          echo "publicado: https://rp-s3.jacobmoura.work/downloads/cockpit/latest.json"
+
       - name: Resumo
         run: |
           {
@@ -474,7 +495,8 @@ jobs:
             echo ""
             echo "Release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
             echo ""
-            echo "**Próximo passo (manual):** baixar \`latest.json\` + \`appcast-macos.xml\`"
-            echo "+ \`appcast-windows.xml\` da release e colocar no rp-s3"
-            echo "(\`/Users/flutterando/cockpit/data/\`) — liga site/card e o self-update."
+            echo "Manifests publicados automaticamente no rp-s3:"
+            echo "- https://rp-s3.jacobmoura.work/downloads/cockpit/latest.json"
+            echo "- https://rp-s3.jacobmoura.work/downloads/cockpit/appcast-macos.xml"
+            echo "- https://rp-s3.jacobmoura.work/downloads/cockpit/appcast-windows.xml"
           } >> "$GITHUB_STEP_SUMMARY"
