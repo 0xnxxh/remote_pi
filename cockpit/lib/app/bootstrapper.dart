@@ -13,7 +13,7 @@ import 'package:cockpit/app/core/data/repositories/hive_settings_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/env.dart';
-import 'package:cockpit/app/core/ui/copilot_controller.dart';
+import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -335,8 +335,8 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
           ..addChangeNotifier<SettingsController>(() => _settings!)
           // A mesma instância root-owned é observada por Settings e Source
           // Control e também injetada no CockpitViewModel.
-          ..addChangeNotifier<CopilotController>(
-            () => inject<CopilotController>(),
+          ..addChangeNotifier<AutomationController>(
+            () => inject<AutomationController>(),
           )
           ..addChangeNotifier<EditorMenuBridge>(EditorMenuBridge.new)
           ..addChangeNotifier<WorkspaceMenuBridge>(WorkspaceMenuBridge.new),

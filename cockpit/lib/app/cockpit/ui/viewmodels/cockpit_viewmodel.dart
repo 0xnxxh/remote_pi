@@ -29,6 +29,8 @@ import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway_factory.da
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/services/commit_message_prompt.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/workspace_layout_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
@@ -49,7 +51,7 @@ import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
 import 'package:cockpit/app/core/domain/result.dart';
-import 'package:cockpit/app/core/ui/copilot_controller.dart';
+import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/utils/path_utils.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
@@ -105,7 +107,7 @@ class CockpitViewModel extends ChangeNotifier {
     this._scrollback,
     this._gitRunner,
     this._gitDiff,
-    this._copilot,
+    this._automation,
     this.realmCtrl,
     this._taskDiscovery,
     this._taskRunner,
@@ -173,7 +175,12 @@ class CockpitViewModel extends ChangeNotifier {
   final TerminalScrollbackStore _scrollback;
   final GitCommandRunner _gitRunner;
   final GitDiffReader _gitDiff;
-  final CopilotController _copilot;
+  final AutomationController _automation;
+  AutomationSelection? _automationSelection;
+
+  void setAutomationSelection(AutomationSelection? selection) {
+    _automationSelection = selection;
+  }
 
   List<LaunchableApp> _availableApps = const [];
 
@@ -2153,7 +2160,7 @@ class CockpitViewModel extends ChangeNotifier {
   }
 
   /// Gera uma mensagem para o commit isolado de [absPath]. O contexto enviado
-  /// ao Copilot contém só o diff desse arquivo (mais os últimos subjects), não
+  /// ao harness contém só o diff desse arquivo (mais os últimos subjects), não
   /// o restante do working tree.
   Future<Result<String, String>> generateCommitMessageForFile(
     String absPath,
@@ -2179,7 +2186,7 @@ class CockpitViewModel extends ChangeNotifier {
         return Failure('Could not read the file: ${error.message}');
       } on FormatException {
         return const Failure(
-          'Copilot cannot generate a message for a binary file.',
+          'A commit message cannot be generated for a binary file.',
         );
       }
     } else {
@@ -2228,20 +2235,27 @@ class CockpitViewModel extends ChangeNotifier {
     String root,
     String diff,
   ) async {
+    final selection = _automationSelection;
+    if (selection == null) {
+      return const Failure('Configure a commit message harness in Settings.');
+    }
     final history = await git.output(root, const [
       'log',
       '-8',
       '--pretty=format:%s',
     ]);
-    final generated = await _copilot.generateCommitMessage(
-      repositoryPath: root,
-      diff: diff,
-      recentCommitSubjects: history.$1 == 0
-          ? history.$2
-                .split('\n')
-                .where((line) => line.trim().isNotEmpty)
-                .toList()
-          : const <String>[],
+    final subjects = history.$1 == 0
+        ? history.$2
+              .split('\n')
+              .where((line) => line.trim().isNotEmpty)
+              .toList()
+        : const <String>[];
+    final generated = await _automation.generate(
+      selection: selection,
+      request: AutomationRequest(
+        repositoryPath: root,
+        prompt: CommitMessagePrompt.build(diff, subjects),
+      ),
     );
     return generated.fold<Result<String, String>>(
       Success.new,
@@ -2249,7 +2263,8 @@ class CockpitViewModel extends ChangeNotifier {
     );
   }
 
-  Future<void> cancelCommitMessageGeneration() => _copilot.cancelGeneration();
+  Future<void> cancelCommitMessageGeneration() =>
+      _automation.cancelGeneration();
 
   /// Commit (Source Control): comita **só** [absPath] com [message], na root
   /// dona do caminho. Untracked precisa de `git add` antes (pathspec de commit

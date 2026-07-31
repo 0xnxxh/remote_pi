@@ -1,3 +1,5 @@
+import 'package:cockpit/app/core/domain/entities/automation.dart';
+
 /// Modo de tema escolhido pelo usuário (mapeado pro `ThemeMode` do Flutter na
 /// camada de UI; o domínio não importa Flutter).
 enum AppThemeMode { system, light, dark }
@@ -39,6 +41,8 @@ class AppSettings {
     this.defaultTerminalProfileId,
     this.terminalEngine = TerminalEngine.ghostty,
     this.sourceControlViewMode = SourceControlViewMode.list,
+    this.automationHarnessId,
+    this.automationModelId,
   });
 
   final AppThemeMode themeMode;
@@ -131,6 +135,27 @@ class AppSettings {
   /// (Changes/Staged) do Source Control.
   final SourceControlViewMode sourceControlViewMode;
 
+  /// Harness global usado pelas automações. Ausente = automações desabilitadas.
+  final AutomationHarnessId? automationHarnessId;
+
+  /// Modelo opcional do harness. Ausente = usar o default do próprio CLI.
+  final String? automationModelId;
+
+  /// Modelo efetivo. String vazia é o sentinel persistido para uma escolha
+  /// explícita de “CLI default”; `null` legado recebe a recomendação do harness.
+  String? get selectedAutomationModelId {
+    final stored = automationModelId;
+    if (stored != null) return stored.isEmpty ? null : stored;
+    return automationHarnessId?.recommendedModelId;
+  }
+
+  AutomationSelection? get automationSelection => automationHarnessId == null
+      ? null
+      : AutomationSelection(
+          harnessId: automationHarnessId!,
+          modelId: selectedAutomationModelId,
+        );
+
   AppSettings copyWith({
     AppThemeMode? themeMode,
     String? interfaceFont,
@@ -159,6 +184,11 @@ class AppSettings {
     bool clearDefaultTerminalProfileId = false,
     TerminalEngine? terminalEngine,
     SourceControlViewMode? sourceControlViewMode,
+    AutomationHarnessId? automationHarnessId,
+    bool clearAutomationHarnessId = false,
+    String? automationModelId,
+    bool clearAutomationModelId = false,
+    bool useDefaultAutomationModel = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -191,6 +221,14 @@ class AppSettings {
       terminalEngine: terminalEngine ?? this.terminalEngine,
       sourceControlViewMode:
           sourceControlViewMode ?? this.sourceControlViewMode,
+      automationHarnessId: clearAutomationHarnessId
+          ? null
+          : (automationHarnessId ?? this.automationHarnessId),
+      automationModelId: clearAutomationModelId
+          ? null
+          : useDefaultAutomationModel
+          ? ''
+          : (automationModelId ?? this.automationModelId),
     );
   }
 
@@ -225,6 +263,11 @@ class AppSettings {
       'terminal.default_profile_id': defaultTerminalProfileId,
     'terminal.engine': terminalEngine.name,
     'sourceControl.viewMode': sourceControlViewMode.name,
+    if (automationHarnessId != null)
+      'automation.harnessId': automationHarnessId!.name,
+    if (automationHarnessId != null)
+      'automation.modelId':
+          automationModelId ?? automationHarnessId!.recommendedModelId ?? '',
   };
 
   factory AppSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -232,6 +275,17 @@ class AppSettings {
       final s = (v as String?)?.trim();
       return (s == null || s.isEmpty) ? null : s;
     }
+
+    final automationHarnessId = _nullableEnumByName(
+      AutomationHarnessId.values,
+      json['automation.harnessId'],
+    );
+    final rawAutomationModel = json['automation.modelId'];
+    final automationModelId = json.containsKey('automation.modelId')
+        ? rawAutomationModel is String
+              ? rawAutomationModel.trim()
+              : automationHarnessId?.recommendedModelId
+        : automationHarnessId?.recommendedModelId;
 
     return AppSettings(
       themeMode: _enumByName(
@@ -273,6 +327,8 @@ class AppSettings {
         json['sourceControl.viewMode'],
         SourceControlViewMode.list,
       ),
+      automationHarnessId: automationHarnessId,
+      automationModelId: automationModelId,
     );
   }
 }
@@ -292,4 +348,12 @@ T _enumByName<T extends Enum>(List<T> values, Object? raw, T fallback) {
     if (v.name == raw) return v;
   }
   return fallback;
+}
+
+T? _nullableEnumByName<T extends Enum>(List<T> values, Object? raw) {
+  if (raw is! String) return null;
+  for (final value in values) {
+    if (value.name == raw) return value;
+  }
+  return null;
 }

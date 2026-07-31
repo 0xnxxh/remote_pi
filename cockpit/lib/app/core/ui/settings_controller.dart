@@ -1,5 +1,6 @@
 import 'package:cockpit/app/core/domain/contracts/settings_store.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:flutter/foundation.dart';
 
 /// Estado global das preferências do app. Vive **acima do `ShadcnApp`** pra
@@ -47,6 +48,28 @@ class SettingsController extends ChangeNotifier {
 
   void setSourceControlViewMode(SourceControlViewMode mode) =>
       _apply(_settings.copyWith(sourceControlViewMode: mode));
+
+  void setAutomationHarness(AutomationHarnessId? id) {
+    _apply(
+      _settings.copyWith(
+        automationHarnessId: id,
+        clearAutomationHarnessId: id == null,
+        automationModelId: id?.recommendedModelId,
+        clearAutomationModelId: id == null,
+        useDefaultAutomationModel: id != null && id.recommendedModelId == null,
+      ),
+    );
+  }
+
+  void setAutomationModel(String? id) {
+    final value = id?.trim();
+    _apply(
+      _settings.copyWith(
+        automationModelId: value,
+        useDefaultAutomationModel: value == null || value.isEmpty,
+      ),
+    );
+  }
 
   /// Define (ou limpa, se `null`/vazio) o perfil de terminal padrão do `+`
   /// (plano 50). Limpar = voltar ao fallback de plataforma.

@@ -97,6 +97,7 @@ class FileTreePanel extends StatefulWidget {
     this.onGenerateCommitMessage,
     this.onGenerateStagedCommitMessage,
     this.onCancelCommitMessageGeneration,
+    this.commitMessageGeneratorLabel,
     this.revealPath,
     this.revealGen = 0,
   });
@@ -122,10 +123,11 @@ class FileTreePanel extends StatefulWidget {
   final Future<String?> Function(String hash)? onLoadCommitMessage;
 
   /// Source Control: gera uma mensagem a partir do diff isolado do arquivo.
-  /// `null` quando o Copilot não está conectado.
+  /// `null` quando nenhum harness configurado está disponível.
   final GenerateCommitMessage? onGenerateCommitMessage;
   final GenerateStagedCommitMessage? onGenerateStagedCommitMessage;
   final Future<void> Function()? onCancelCommitMessageGeneration;
+  final String? commitMessageGeneratorLabel;
 
   /// Source Control: tira o arquivo do index (`git restore --staged`).
   /// `null` no retorno = sucesso; senão a mensagem de erro do git.
@@ -503,6 +505,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
               ? null
               : () => widget.onGenerateCommitMessage!(absPath),
           onCancelGenerate: widget.onCancelCommitMessageGeneration,
+          generatorLabel: widget.commitMessageGeneratorLabel,
         );
       case 'stage':
         final err = await widget.onStageFile!(absPath);
@@ -1099,6 +1102,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   ? null
                   : _generateStagedCommitMessage,
               onCancelGenerate: _cancelStagedCommitGeneration,
+              generatorLabel: widget.commitMessageGeneratorLabel,
               onCommit: _commitStaged,
             ),
           if (!scMode) ?widget.tasksPanel,
@@ -1127,6 +1131,7 @@ class _CommitComposer extends StatelessWidget {
     this.loadCommits,
     this.loadMessage,
     this.onGenerate,
+    this.generatorLabel,
     this.error,
   });
   final TextEditingController controller;
@@ -1139,6 +1144,7 @@ class _CommitComposer extends StatelessWidget {
   final void Function(bool, String?, String?, String?) onAmendChanged;
   final VoidCallback onChanged, onCancelGenerate, onCommit;
   final VoidCallback? onGenerate;
+  final String? generatorLabel;
 
   static String _truncate(String value, int max) =>
       value.length > max ? '${value.substring(0, max)}...' : value;
@@ -1300,7 +1306,9 @@ class _CommitComposer extends StatelessWidget {
                           AppTooltip(
                             message: generating
                                 ? 'Cancel generation'
-                                : 'Generate with Copilot',
+                                : generatorLabel == null
+                                ? 'Generate commit message'
+                                : 'Generate with $generatorLabel',
                             child: IconButton.outline(
                               key: const ValueKey(
                                 'generate-staged-commit-message',

@@ -1,5 +1,6 @@
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Dialog de mensagem de commit (Source Control → "Commit"/"Stage and Commit").
@@ -19,6 +20,7 @@ Future<void> showCommitMessageDialog(
   required Future<String?> Function(String message) onCommit,
   Future<Result<String, String>> Function()? onGenerate,
   Future<void> Function()? onCancelGenerate,
+  String? generatorLabel,
 }) {
   return showDialog<void>(
     context: context,
@@ -30,6 +32,7 @@ Future<void> showCommitMessageDialog(
       onCommit: onCommit,
       onGenerate: onGenerate,
       onCancelGenerate: onCancelGenerate,
+      generatorLabel: generatorLabel,
     ),
   );
 }
@@ -41,6 +44,7 @@ class _CommitMessageDialog extends StatefulWidget {
     required this.onCommit,
     required this.onGenerate,
     required this.onCancelGenerate,
+    required this.generatorLabel,
   });
 
   final String fileName;
@@ -48,6 +52,7 @@ class _CommitMessageDialog extends StatefulWidget {
   final Future<String?> Function(String message) onCommit;
   final Future<Result<String, String>> Function()? onGenerate;
   final Future<void> Function()? onCancelGenerate;
+  final String? generatorLabel;
 
   @override
   State<_CommitMessageDialog> createState() => _CommitMessageDialogState();
@@ -233,25 +238,30 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
         ),
       ),
       actions: [
-        OutlineButton(
-          onPressed: widget.onGenerate == null ? null : _generate,
-          child: _generating
-              ? const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(size: 14),
-                    SizedBox(width: 8),
-                    Text('Generating…'),
-                  ],
-                )
-              : const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.auto_awesome, size: 15),
-                    SizedBox(width: 7),
-                    Text('Generate with Copilot'),
-                  ],
-                ),
+        AppTooltip(
+          message: widget.generatorLabel == null
+              ? 'Generate commit message'
+              : 'Generate with ${widget.generatorLabel}',
+          child: OutlineButton(
+            onPressed: widget.onGenerate == null ? null : _generate,
+            child: _generating
+                ? const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(size: 14),
+                      SizedBox(width: 8),
+                      Text('Generating…'),
+                    ],
+                  )
+                : const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome, size: 15),
+                      SizedBox(width: 7),
+                      Text('Generate commit message'),
+                    ],
+                  ),
+          ),
         ),
         OutlineButton(
           onPressed: _submitting ? null : _cancel,

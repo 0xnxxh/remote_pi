@@ -17,17 +17,11 @@ class _FakeClient implements LspClient {
   final String rootPath;
 
   final _diag = StreamController<LspDiagnosticsBatch>.broadcast();
-  final _notifications = StreamController<LspNotification>.broadcast();
-  final _exits = StreamController<int>.broadcast();
   bool _running = false;
   final List<String> opened = [];
 
   @override
   Stream<LspDiagnosticsBatch> get diagnostics => _diag.stream;
-  @override
-  Stream<LspNotification> get notifications => _notifications.stream;
-  @override
-  Stream<int> get exitCodes => _exits.stream;
   @override
   bool get isRunning => _running;
 
@@ -43,12 +37,6 @@ class _FakeClient implements LspClient {
   Future<void> didOpen({required String path, required String text}) async =>
       opened.add(path);
   @override
-  Future<void> didOpenWithLanguage({
-    required String path,
-    required String text,
-    required String languageId,
-  }) => didOpen(path: path, text: text);
-  @override
   Future<void> didChange({
     required String path,
     required String text,
@@ -62,22 +50,10 @@ class _FakeClient implements LspClient {
     Map<String, dynamic> params,
   ) async => const Success(null);
   @override
-  Future<Result<Object?, LspError>> requestWithTimeout(
-    String method,
-    Map<String, dynamic> params,
-    Duration timeout,
-  ) => request(method, params);
-  @override
-  void notify(String method, Map<String, dynamic> params) {}
-  @override
-  void cancelPendingRequests() {}
-  @override
   Future<void> kill() async => _running = false;
   @override
   void dispose() {
     _diag.close();
-    _notifications.close();
-    _exits.close();
   }
 }
 

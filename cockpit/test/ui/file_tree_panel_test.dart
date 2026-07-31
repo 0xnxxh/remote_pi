@@ -268,7 +268,7 @@ void main() {
     });
 
     testWidgets(
-      'staged Copilot action follows amend picker and shows loading',
+      'staged automation action follows amend picker and shows loading',
       (tester) async {
         const changedPath = '/workspace/lib/app/main.dart';
         final generation = Completer<Result<String, String>>();
@@ -318,7 +318,7 @@ void main() {
           tester.getTopRight(picker).dx,
           lessThan(tester.getTopLeft(generate).dx),
         );
-        expect(find.text('Generate with Copilot'), findsNothing);
+        expect(find.text('Generate commit message'), findsNothing);
         expect(
           find.descendant(
             of: generate,

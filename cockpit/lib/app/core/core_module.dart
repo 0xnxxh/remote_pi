@@ -1,5 +1,4 @@
-import 'package:cockpit/app/core/data/copilot/copilot_gateway_impl.dart';
-import 'package:cockpit/app/core/data/copilot/copilot_server_resolver.dart';
+import 'package:cockpit/app/core/data/automation/cli_automation_gateway.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_client_impl.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/relay/pairing_gateway_impl.dart';
@@ -13,7 +12,7 @@ import 'package:cockpit/app/core/domain/contracts/revoke_gateway.dart';
 import 'package:cockpit/app/core/domain/contracts/system_permissions.dart';
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/env.dart';
-import 'package:cockpit/app/core/ui/copilot_controller.dart';
+import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 /// Kernel transversal — módulo **sem `path`** → binds root-owned (vivem o app
@@ -38,8 +37,8 @@ import 'package:flutter_modular/flutter_modular.dart';
 ///   por todos os workspaces. Root-owned aqui; o `CockpitViewModel` (page-scoped)
 ///   o injeta para abrir documentos e rotear diagnostics ao editor.
 ///
-/// - [CopilotController]: estado app-scoped compartilhado por Settings e Source
-///   Control, sobre um processo oficial do Copilot Language Server sob demanda.
+/// - [AutomationController]: descoberta e execução app-scoped dos harnesses CLI
+///   usados por Settings e Source Control.
 ///
 /// - [EnvironmentProbe] / [SystemPermissions]: compartilhados pelas duas
 ///   features — o cockpit usa no checklist do agente (`SetupViewModel`) e o
@@ -55,15 +54,13 @@ Module buildCoreModule({
   required TerminalProfileResolver terminalProfiles,
 }) {
   const lspFactory = LspClientFactoryImpl();
-  final copilot = CopilotController(
-    CopilotGatewayImpl(lspFactory, const NpxCopilotServerResolver()),
-  );
+  final automation = AutomationController(CliAutomationGateway());
   return createModule(
     register: (c) => c
       ..addInstance<PiSpawnConfig>(config)
       ..addInstance<TerminalProfileResolver>(terminalProfiles)
       ..addInstance<LspClientFactory>(lspFactory)
-      ..addInstance<CopilotController>(copilot)
+      ..addInstance<AutomationController>(automation)
       ..addLazySingleton<LspServerPool>(LspServerPool.new)
       ..add<PairingGatewayFactory>(PairingGatewayFactoryImpl.new)
       ..add<RevokeGatewayFactory>(RevokeGatewayFactoryImpl.new)

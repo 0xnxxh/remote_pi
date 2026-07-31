@@ -1,7 +1,7 @@
 import 'package:cockpit/app/core/core_module.dart';
 import 'package:cockpit/app/core/data/terminal/terminal_profile_resolver_impl.dart';
 import 'package:cockpit/app/core/env.dart';
-import 'package:cockpit/app/core/ui/copilot_controller.dart';
+import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +15,7 @@ class _Root extends StatelessWidget {
 }
 
 void main() {
-  testWidgets('CopilotController root instance is observable from routes', (
+  testWidgets('AutomationController root instance is observable from routes', (
     tester,
   ) async {
     final core = buildCoreModule(
@@ -27,7 +27,7 @@ void main() {
       register: (c) => c.route(
         '/',
         child: (context, state) =>
-            Text(context.watch<CopilotController>().status.message),
+            Text('${context.watch<AutomationController>().harnesses.length}'),
       ),
     );
     final app = createModule(
@@ -36,22 +36,17 @@ void main() {
         ..module(feature),
     );
 
-    final navigatorKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       ModularApp(
         module: app,
-        navigatorKey: navigatorKey,
-        provide: (services) => services.addChangeNotifier<CopilotController>(
-          () => inject<CopilotController>(),
+        provide: (services) => services.addChangeNotifier<AutomationController>(
+          () => inject<AutomationController>(),
         ),
         child: const _Root(),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('GitHub Copilot is not connected.'), findsOneWidget);
-    // O contexto da key é o que o bootstrap usa para dialogs pós-inicialização;
-    // diferente do contexto acima do ModularApp, ele inclui um Navigator.
-    expect(() => Navigator.of(navigatorKey.currentContext!), returnsNormally);
+    expect(find.text('0'), findsOneWidget);
   });
 }
