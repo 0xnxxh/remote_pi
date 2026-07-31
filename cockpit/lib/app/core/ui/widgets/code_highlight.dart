@@ -27,6 +27,8 @@ const Map<String, String> _extToLanguage = {
   // `.dbq` (DB tab, plano 51) é SQL com frontmatter em comentário — a
   // gramática sql pinta os dois.
   'dbq': 'sql',
+  // `.ckp` (layout de orquestração de panes) é YAML puro.
+  'ckp': 'yaml',
   'html': 'xml',
   'htm': 'xml',
   'xhtml': 'xml',
@@ -313,7 +315,6 @@ class _Overlays {
     }
     return null;
   }
-
 }
 
 /// Folha achatada da árvore do highlight.js: um trecho de texto + seu estilo
@@ -465,11 +466,7 @@ TextSpan? buildApproximateCodeSpan(
 
 /// Remenda [leaves] (de [oldText]) para cobrir [newText]. Ver
 /// [buildApproximateCodeSpan]. `null` se a edição é grande demais.
-List<_Leaf>? _patchLeaves(
-  List<_Leaf> leaves,
-  String oldText,
-  String newText,
-) {
+List<_Leaf>? _patchLeaves(List<_Leaf> leaves, String oldText, String newText) {
   final oldLen = oldText.length;
   final newLen = newText.length;
 
@@ -644,7 +641,8 @@ List<InlineSpan> _applyOverlays(List<_Leaf> leaves, _Overlays overlays) {
     if (leaf.text.isEmpty) continue;
 
     // Avança o ponteiro além dos tokens que já ficaram pra trás desta leaf.
-    while (semIdx < semanticTokens.length && semanticTokens[semIdx].end <= start) {
+    while (semIdx < semanticTokens.length &&
+        semanticTokens[semIdx].end <= start) {
       semIdx++;
     }
 
@@ -666,7 +664,8 @@ List<InlineSpan> _applyOverlays(List<_Leaf> leaves, _Overlays overlays) {
     // real leaf↔tokens, não pelo total de tokens do arquivo.
     for (var i = semIdx; i < semanticTokens.length; i++) {
       final t = semanticTokens[i];
-      if (t.start >= end) break; // ordenados → nenhum token daqui em diante toca esta leaf
+      if (t.start >= end)
+        break; // ordenados → nenhum token daqui em diante toca esta leaf
       if (t.start > start && t.start < end) cuts.add(t.start);
       if (t.end > start && t.end < end) cuts.add(t.end);
     }

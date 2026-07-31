@@ -28,6 +28,7 @@ import 'package:flutter/services.dart'
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
@@ -891,6 +892,17 @@ class _CockpitPageState extends State<CockpitPage> {
                               stagedPaths: vm.stagedAbsolutePaths(),
                               unstagedPaths: vm.unstagedAbsolutePaths(),
                               onOpenWith: vm.openWithDefaultApp,
+                              onOpenLayout: (path) async {
+                                final res = await vm.applyLayoutFile(path);
+                                if (!context.mounted) return;
+                                if (res case Failure(:final error)) {
+                                  await showInfoDialog(
+                                    context,
+                                    title: 'Open layout',
+                                    message: error,
+                                  );
+                                }
+                              },
                               onCreateInFolder: (sub, terminal) =>
                                   vm.newTabIn(sub, terminal: terminal),
                               onCreate: (parentDir, name, isFolder) => isFolder

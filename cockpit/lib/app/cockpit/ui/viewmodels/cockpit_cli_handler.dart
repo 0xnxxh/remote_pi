@@ -187,6 +187,27 @@ class CockpitCliHandler {
           Failure(:final error) => CockpitCommandResult.fail(error),
         };
 
+      // `cockpit orchestrate <file.ckp>` — aplica um layout de panes no
+      // workspace ativo. A CLI já resolveu o path pro absoluto. Merge
+      // idempotente (tab de mesmo nome = pulada); devolve {created, skipped}.
+      case 'orchestrate':
+        final path = (c.args['path'] ?? '').toString();
+        if (path.isEmpty) {
+          return const CockpitCommandResult.fail('missing path');
+        }
+        final sender = c.tabId == null ? null : _vm.session(c.tabId!);
+        if (sender != null && sender.projectId != _vm.selectedProjectId) {
+          _vm.selectProject(sender.projectId);
+        }
+        final applied = await _vm.applyLayoutFile(path);
+        return switch (applied) {
+          Success(:final value) => CockpitCommandResult.ok({
+            'created': value.created,
+            'skipped': value.skipped,
+          }),
+          Failure(:final error) => CockpitCommandResult.fail(error),
+        };
+
       case 'list-workspaces':
         final ws = _vm.projects
             .map(
@@ -562,7 +583,7 @@ class CockpitCliHandler {
     return 'query_failed: connection "${conn.name}" has no database — its URL '
         'has none in the path and none was picked in the app. Pass '
         '--database <name>${available.isEmpty ? '' : ' (available: '
-              '${available.join(', ')})'}.';
+                  '${available.join(', ')})'}.';
   }
 
   /// Databases do deployment, pro texto do erro acima. Falha vira lista vazia:

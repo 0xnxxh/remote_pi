@@ -23,6 +23,7 @@
 //   cockpit list-tabs       [--json]              tabs ativas (alias: list-panes)
 //   cockpit list-workspaces [--json]              workspaces (projetos) abertos
 //   cockpit list-tasks      [--json]              tasks do workspace da tab
+//   cockpit orchestrate <file.ckp>                aplica um layout de panes
 //   cockpit install-skill   [--force]             instala a skill do Claude Code
 //   cockpit --help | --version
 //
@@ -35,7 +36,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-const String _version = '0.5.0';
+const String _version = '0.6.0';
 
 /// Id da própria tab: `COCKPIT_TAB_ID` (novo) com fallback pro legado
 /// `COCKPIT_PANE_ID`. O app injeta os dois; o fallback cobre binário novo com
@@ -91,6 +92,8 @@ Future<void> main(List<String> argv) async {
       await _cmdMongo(args);
     case 'new-tab':
       await _cmdNewTab(args);
+    case 'orchestrate':
+      await _cmdOrchestrate(args);
     case 'install-skill':
       await _cmdInstallSkill(args);
     default:
@@ -224,6 +227,61 @@ Future<void> _cmdNewTab(List<String> args) async {
   }
   final data = (resp['data'] as Map?) ?? const {};
   stdout.writeln(json ? jsonEncode(data) : (data['tabId'] ?? '').toString());
+  exit(0);
+}
+
+/// `cockpit orchestrate <file.ckp>` — aplica um layout de panes (arquivo YAML
+/// `.ckp`) no workspace da tab emissora: abre terminais/splits e digita o
+/// `command` de cada pane. Merge idempotente: tab com o mesmo nome já aberta
+/// é pulada. Imprime os panes criados/pulados.
+Future<void> _cmdOrchestrate(List<String> args) async {
+  String? file;
+  String? tabId;
+  var json = false;
+  for (var i = 0; i < args.length; i++) {
+    final a = args[i];
+    if (a == '--help' || a == '-h') {
+      stdout.writeln(
+        'cockpit orchestrate <file.ckp> [--json]\n'
+        '  Applies a .ckp pane layout to the current workspace.\n'
+        '  Panes whose name already exists as a tab label are skipped.',
+      );
+      exit(0);
+    }
+    if (a == '--json') {
+      json = true;
+    } else if (a == '--tab-id') {
+      tabId = ++i < args.length ? args[i] : null;
+    } else if (a.startsWith('--tab-id=')) {
+      tabId = a.substring(9);
+    } else if (!a.startsWith('-')) {
+      file = a;
+    }
+  }
+  if (file == null || file.isEmpty) {
+    stderr.writeln('cockpit orchestrate: missing <file.ckp>');
+    exit(2);
+  }
+  final req = <String, dynamic>{
+    'cmd': 'orchestrate',
+    'args': <String, dynamic>{'path': _resolvePath(file)},
+  };
+  final tid = tabId ?? _selfTabId();
+  if (tid != null && tid.isNotEmpty) req['tabId'] = tid;
+  final resp = await _request(req);
+  if (resp['ok'] != true) {
+    stderr.writeln('cockpit: ${resp['error'] ?? 'failed'}');
+    exit(1);
+  }
+  final data = (resp['data'] as Map?) ?? const {};
+  if (json) {
+    stdout.writeln(jsonEncode(data));
+  } else {
+    final created = (data['created'] as List?)?.join(', ') ?? '';
+    final skipped = (data['skipped'] as List?)?.join(', ') ?? '';
+    stdout.writeln('created: ${created.isEmpty ? '(none)' : created}');
+    if (skipped.isNotEmpty) stdout.writeln('skipped: $skipped');
+  }
   exit(0);
 }
 
@@ -996,6 +1054,8 @@ USAGE:
   cockpit redis [browse] --db <conn> ...       Redis command / open key table
   cockpit mongo [browse] --db <conn> [--database <name>] ...
                                                MongoDB runCommand / open browser
+  cockpit orchestrate <file.ckp> [--json]      apply a .ckp pane layout (open
+                                               terminals/splits + run commands)
   cockpit install-skill   [--force]            install the Claude Code skill
   cockpit --help | --version
 
@@ -1076,7 +1136,7 @@ String _basename(String path) {
 
 const String _skillMarkdown = r'''---
 name: cockpit-cli
-description: Drive Cockpit's multiplexed terminals from inside a tab. Use when you (an agent running in a Cockpit terminal) need to open a new terminal tab or split pane, type text or press keys into your own or another tab, read another tab's or a task's output, list the open tabs/workspaces/tasks, or query the workspace's databases (SQL over registered connections / .dbq files). Triggers on tmux-like control needs — split-window/new-window, send-keys, run a command in another tab, read a tab's scrollback, inspect a task run's output, discover tab or task ids — and on database needs: run a SQL query, inspect a schema, list connections, execute a .dbq file.
+description: Drive Cockpit's multiplexed terminals from inside a tab. Use when you (an agent running in a Cockpit terminal) need to open a new terminal tab or split pane, type text or press keys into your own or another tab, read another tab's or a task's output, list the open tabs/workspaces/tasks, or query the workspace's databases (SQL over registered connections / .dbq files). Triggers on tmux-like control needs — split-window/new-window, send-keys, run a command in another tab, read a tab's scrollback, inspect a task run's output, discover tab or task ids — and on database needs: run a SQL query, inspect a schema, list connections, execute a .dbq file. Also covers pane-layout orchestration: applying a `.ckp` layout file (open several terminals/splits and run their commands) via `cockpit orchestrate`.
 ---
 
 # cockpit — Cockpit's internal CLI
@@ -1260,6 +1320,41 @@ Cockpit tabs (it is not on the global PATH).
   accepts). Resolve a tab by its stable `label`, not the dynamic `title`.
 - `cockpit list-workspaces [--json]` — open projects: `id` (opaque UUID),
   `name`, `path` (root on disk), `tabs`.
+- `cockpit orchestrate <file.ckp> [--json]` — apply a **pane layout** to the
+  current workspace: opens the terminals/splits declared in the file and types
+  each pane's `command`. Idempotent merge: a pane whose `name` already exists
+  as a tab label is skipped (running it twice is a no-op). Prints
+  `created:`/`skipped:` (or `{"created":[],"skipped":[]}` with `--json`).
+
+## Layout files (`*.ckp`)
+
+A `.ckp` file is a versionable YAML describing terminals to open in a
+workspace — the Cockpit equivalent of a tmuxinator layout. One file = one
+layout; the layout takes the file's name.
+
+```yaml
+# dev.ckp — lives anywhere in the project (usually the root)
+autorun: worktree        # optional: auto-apply when a worktree of this
+                         # workspace is created (the only autorun trigger)
+panes:
+  - name: Frontend       # required, unique; becomes the tab's stable label
+    cwd: frontend        # relative to this file, forward slashes ONLY
+    command: claude      # optional; typed into the shell after it boots
+  - name: Backend
+    cwd: backend
+    split: right         # tab (default) | right (side by side) | down (stack)
+    command: npm run dev
+    platforms: [macos, linux]   # optional; omit = all OSes
+```
+
+Rules:
+- `cwd` must be **relative** with `/` separators — absolute paths and `\`
+  are rejected so the same committed file works on macOS, Linux and Windows.
+- `split` is relative to the **previous pane created in this run**; if that
+  one was skipped (merge), the next opens as a plain tab.
+- `platforms` accepts a string or list of `macos`/`windows`/`linux`.
+- In the app, right-click a `.ckp` file → **Open layout** does the same as
+  `cockpit orchestrate`.
 
 ## Target (--tab-id)
 
