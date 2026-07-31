@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.18.0+50
+version: 1.18.1+51
 
 environment:
   sdk: ^3.12.0
@@ -301,15 +301,21 @@ dependency_overrides:
   #
   # Voltar pro pub.dev quando elias8/libghostty#119 e #120 forem merjados e
   # sair release.
+  # Tag unificada (mesma ref para os dois pacotes) com quatro fixes:
+  #  - scroll de TUI (wheel/trackpad) no flterm
+  #  - IME dead-key/acentos parando quando outro cliente rouba a
+  #    TextInputConnection singleton
+  #  - isolamento do git no build hook (GIT_CEILING_DIRECTORIES) p/ tag de
+  #    release fora do padrao vX.Y.Z nao dar panic no ghostty
+  #  - compile no CPU baseline (-Dtarget sempre) p/ a .dll do Windows nao sair
+  #    com AVX2/AVX-512 e crashar (0xC000001D) em CPUs sem essas extensoes
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      # Tag combinada: scroll de TUI + fix do IME (dead key/acentos parando de
-      # funcionar quando outro cliente rouba a TextInputConnection singleton).
-      ref: cockpit-pin-flterm-scroll-ime
+      ref: cockpit-pin-flterm-cpu-baseline
       path: packages/flterm
   libghostty:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
-      ref: cockpit-pin-libghostty-785a21c
+      ref: cockpit-pin-flterm-cpu-baseline
       path: packages/libghostty
