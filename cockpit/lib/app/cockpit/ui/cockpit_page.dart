@@ -85,7 +85,7 @@ class _CockpitPageState extends State<CockpitPage> {
     // Os módulos provêm via `.new`, então não encadeiam mais `..init()`/`..check()`.
     context.read<CockpitViewModel>().init();
     final updateVm = context.read<UpdateViewModel>();
-    updateVm.attachSettings(_settings!);
+    updateVm.attachSettings(context.read<SettingsController>());
     updateVm.check();
     // Publica o estado do workspace no menu File (New Agent / New Terminal): só
     // habilitam quando há workspace ativo. Re-sincroniza a cada mudança da VM.
