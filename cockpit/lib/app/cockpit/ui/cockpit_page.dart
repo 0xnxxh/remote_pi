@@ -84,7 +84,9 @@ class _CockpitPageState extends State<CockpitPage> {
     // Dispara o carregamento inicial dos ViewModels page-scoped ao montar a rota.
     // Os módulos provêm via `.new`, então não encadeiam mais `..init()`/`..check()`.
     context.read<CockpitViewModel>().init();
-    context.read<UpdateViewModel>().check();
+    final updateVm = context.read<UpdateViewModel>();
+    updateVm.attachSettings(_settings!);
+    updateVm.check();
     // Publica o estado do workspace no menu File (New Agent / New Terminal): só
     // habilitam quando há workspace ativo. Re-sincroniza a cada mudança da VM.
     _workspaceMenu = context.read<WorkspaceMenuBridge>();

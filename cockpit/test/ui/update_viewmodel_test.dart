@@ -115,8 +115,8 @@ void main() {
         _FakeOpener(),
         _kWindowsTarget,
         updater,
-        SettingsController(_FakeSettingsStore()),
       );
+      vm.attachSettings(SettingsController(_FakeSettingsStore()));
     });
     tearDown(() {
       vm.dispose();
@@ -226,8 +226,8 @@ void main() {
         _FakeOpener(),
         _kWindowsTarget,
         updater,
-        SettingsController(_FakeSettingsStore()),
       );
+      vm.attachSettings(SettingsController(_FakeSettingsStore()));
     });
     tearDown(() {
       vm.dispose();

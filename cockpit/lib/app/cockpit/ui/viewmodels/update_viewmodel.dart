@@ -31,8 +31,7 @@ class UpdateViewModel extends ChangeNotifier {
     this._dismissed,
     this._opener,
     this._target,
-    this._selfUpdater,
-    this._settingsController, {
+    this._selfUpdater, {
     this.fallbackUrl = _kFallbackUrl,
   });
 
@@ -41,7 +40,11 @@ class UpdateViewModel extends ChangeNotifier {
   final UrlOpener _opener;
   final UpdateTarget _target;
   final SelfUpdater _selfUpdater;
-  final SettingsController _settingsController;
+  SettingsController? _settingsController;
+
+  void attachSettings(SettingsController controller) {
+    _settingsController = controller;
+  }
 
   /// Versão do app rodando (de package_info, resolvida no boot).
   String get currentVersion => _target.version;
@@ -154,11 +157,11 @@ class UpdateViewModel extends ChangeNotifier {
   Future<void> _runCheck({bool force = false}) async {
     if (_disposed) return;
 
-    final freq = _settingsController.settings.updateCheckFrequency;
+    final freq = _settingsController?.settings.updateCheckFrequency ?? UpdateCheckFrequency.never;
     if (!force) {
       if (freq == UpdateCheckFrequency.never) return;
       
-      final lastCheck = _settingsController.settings.lastUpdateCheckTime;
+      final lastCheck = _settingsController?.settings.lastUpdateCheckTime;
       if (lastCheck != null) {
         final now = DateTime.now();
         final diff = now.difference(lastCheck);
@@ -168,7 +171,7 @@ class UpdateViewModel extends ChangeNotifier {
       }
     }
 
-    _settingsController.setLastUpdateCheckTime(DateTime.now());
+    _settingsController?.setLastUpdateCheckTime(DateTime.now());
 
     if (isSelfUpdate) {
       _selfSub ??= _selfUpdater.changes.listen(_onSelfUpdateChange);
