@@ -27,6 +27,8 @@ import 'package:cockpit/app/cockpit/data/filesystem/git_diff_reader_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/git_status_reader_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/session_history_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/worktree_manager_impl.dart';
+import 'package:cockpit/app/cockpit/data/layout/ckp_layout_loader.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/layout_loader.dart';
 import 'package:cockpit/app/cockpit/data/notifications/local_notifier.dart';
 import 'package:cockpit/app/cockpit/data/repositories/json_dismissed_update_store.dart';
 import 'package:cockpit/app/cockpit/data/repositories/json_project_repository.dart';
@@ -192,6 +194,7 @@ Future<Module> buildCockpitModule() async {
         ..addLazySingleton<TaskRunnerGateway>(PtyTaskRunner.new)
         ..addLazySingleton(TaskTerminalStore.new)
         ..addInstance<TaskDiscovery>(TaskDiscoveryImpl(const []))
+        ..addInstance<LayoutLoader>(const CkpLayoutLoader())
         ..addInstance<AppLauncherGateway>(const AppLauncherImpl())
         ..addInstance<Notifier>(notifier)
         ..addInstance<UpdateChecker>(const UpdateCheckerImpl())

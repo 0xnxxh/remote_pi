@@ -14,6 +14,8 @@ enum TerminalEngine { ghostty, xterm }
 /// Layout inicial das mudanças no painel Source Control.
 enum SourceControlViewMode { list, tree }
 
+enum UpdateCheckFrequency { daily, weekly, monthly, never }
+
 /// Preferências do app, persistidas localmente (Hive). Imutável; mudanças via
 /// [copyWith]. Fontes vazias (`null`) = usar os defaults do design.
 class AppSettings {
@@ -43,6 +45,8 @@ class AppSettings {
     this.sourceControlViewMode = SourceControlViewMode.list,
     this.automationHarnessId,
     this.automationModelId,
+    this.updateCheckFrequency = UpdateCheckFrequency.daily,
+    this.lastUpdateCheckTime,
   });
 
   final AppThemeMode themeMode;
@@ -156,6 +160,12 @@ class AppSettings {
           modelId: selectedAutomationModelId,
         );
 
+  /// Frequência de verificação de atualizações.
+  final UpdateCheckFrequency updateCheckFrequency;
+
+  /// Data da última verificação de atualização.
+  final DateTime? lastUpdateCheckTime;
+
   AppSettings copyWith({
     AppThemeMode? themeMode,
     String? interfaceFont,
@@ -189,6 +199,8 @@ class AppSettings {
     String? automationModelId,
     bool clearAutomationModelId = false,
     bool useDefaultAutomationModel = false,
+    UpdateCheckFrequency? updateCheckFrequency,
+    DateTime? lastUpdateCheckTime,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -229,6 +241,8 @@ class AppSettings {
           : useDefaultAutomationModel
           ? ''
           : (automationModelId ?? this.automationModelId),
+      updateCheckFrequency: updateCheckFrequency ?? this.updateCheckFrequency,
+      lastUpdateCheckTime: lastUpdateCheckTime ?? this.lastUpdateCheckTime,
     );
   }
 
@@ -268,6 +282,9 @@ class AppSettings {
     if (automationHarnessId != null)
       'automation.modelId':
           automationModelId ?? automationHarnessId!.recommendedModelId ?? '',
+    'updateCheckFrequency': updateCheckFrequency.name,
+    if (lastUpdateCheckTime != null)
+      'lastUpdateCheckTime': lastUpdateCheckTime!.toIso8601String(),
   };
 
   factory AppSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -329,6 +346,14 @@ class AppSettings {
       ),
       automationHarnessId: automationHarnessId,
       automationModelId: automationModelId,
+      updateCheckFrequency: _enumByName(
+        UpdateCheckFrequency.values,
+        json['updateCheckFrequency'],
+        UpdateCheckFrequency.daily,
+      ),
+      lastUpdateCheckTime: json['lastUpdateCheckTime'] != null
+          ? DateTime.tryParse(json['lastUpdateCheckTime'] as String)
+          : null,
     );
   }
 }
