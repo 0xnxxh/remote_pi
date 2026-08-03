@@ -165,7 +165,24 @@ class CliAutomationGateway implements AutomationGateway {
       );
     }
 
-    final command = buildCommand(selection, request.prompt);
+    Directory? systemPromptDirectory;
+    String? codexSystemPromptPath;
+    if (selection.harnessId == AutomationHarnessId.codex) {
+      systemPromptDirectory = await Directory.systemTemp.createTemp(
+        'cockpit_commit_message_',
+      );
+      final systemPromptFile = File(
+        '${systemPromptDirectory.path}${Platform.pathSeparator}SYSTEM.md',
+      );
+      await systemPromptFile.writeAsString(CommitMessagePrompt.systemPrompt);
+      codexSystemPromptPath = systemPromptFile.path;
+    }
+
+    final command = buildCommand(
+      selection,
+      request.prompt,
+      codexSystemPromptPath: codexSystemPromptPath,
+    );
     _cancelRequested = false;
     Process process;
     try {
@@ -177,6 +194,7 @@ class CliAutomationGateway implements AutomationGateway {
         runInShell: Platform.isWindows,
       );
     } on ProcessException catch (error) {
+      await _deleteTemporaryDirectory(systemPromptDirectory);
       throw AutomationError(
         AutomationErrorKind.unavailable,
         'Could not start ${selection.harnessId.label}.',
@@ -184,12 +202,13 @@ class CliAutomationGateway implements AutomationGateway {
       );
     }
     _activeProcess = process;
-    final stdoutFuture = process.stdout.transform(utf8.decoder).join();
-    final stderrFuture = process.stderr.transform(utf8.decoder).join();
-    if (command.stdin != null) process.stdin.write(command.stdin);
-    await process.stdin.close();
 
     try {
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+      if (command.stdin != null) process.stdin.write(command.stdin);
+      await process.stdin.close();
+
       final exitCode = await process.exitCode.timeout(timeout);
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
@@ -215,17 +234,20 @@ class CliAutomationGateway implements AutomationGateway {
       );
     } finally {
       if (identical(_activeProcess, process)) _activeProcess = null;
+      await _deleteTemporaryDirectory(systemPromptDirectory);
     }
   }
 
   static ({List<String> args, String? stdin}) buildCommand(
     AutomationSelection selection,
-    String prompt,
-  ) {
+    String prompt, {
+    String? codexSystemPromptPath,
+  }) {
     final model = selection.modelId?.trim();
     final modelArgs = model == null || model.isEmpty
         ? const <String>[]
         : <String>['--model', model];
+    final promptWithInstructions = CommitMessagePrompt.withSystemPrompt(prompt);
     return switch (selection.harnessId) {
       AutomationHarnessId.pi => (
         args: <String>[
@@ -238,6 +260,8 @@ class CliAutomationGateway implements AutomationGateway {
           '--no-skills',
           '--no-context-files',
           '--no-approve',
+          '--system-prompt',
+          CommitMessagePrompt.systemPrompt,
           ...modelArgs,
           prompt,
         ],
@@ -252,6 +276,8 @@ class CliAutomationGateway implements AutomationGateway {
           '',
           '--no-session-persistence',
           '--disable-slash-commands',
+          '--system-prompt',
+          CommitMessagePrompt.systemPrompt,
           ...modelArgs,
         ],
         stdin: prompt,
@@ -264,24 +290,62 @@ class CliAutomationGateway implements AutomationGateway {
           'read-only',
           '--skip-git-repo-check',
           '--json',
+          '-c',
+          'model_instructions_file=${jsonEncode(_requiredCodexSystemPromptPath(codexSystemPromptPath))}',
           ...modelArgs,
           '-',
         ],
         stdin: prompt,
       ),
       AutomationHarnessId.gemini => (
-        args: <String>['-p', prompt, '--output-format', 'json', ...modelArgs],
+        args: <String>[
+          '-p',
+          promptWithInstructions,
+          '--output-format',
+          'json',
+          ...modelArgs,
+        ],
         stdin: null,
       ),
       AutomationHarnessId.opencode => (
-        args: <String>['run', '--format', 'json', ...modelArgs, prompt],
+        args: <String>[
+          'run',
+          '--format',
+          'json',
+          ...modelArgs,
+          promptWithInstructions,
+        ],
         stdin: null,
       ),
       AutomationHarnessId.copilot => (
-        args: <String>['-p', prompt, '-s', '--no-remote-export', ...modelArgs],
+        args: <String>[
+          '-p',
+          promptWithInstructions,
+          '-s',
+          '--no-remote-export',
+          ...modelArgs,
+        ],
         stdin: null,
       ),
     };
+  }
+
+  static String _requiredCodexSystemPromptPath(String? path) {
+    if (path == null || path.isEmpty) {
+      throw ArgumentError(
+        'codexSystemPromptPath is required for the Codex harness.',
+      );
+    }
+    return path;
+  }
+
+  static Future<void> _deleteTemporaryDirectory(Directory? directory) async {
+    if (directory == null) return;
+    try {
+      await directory.delete(recursive: true);
+    } on FileSystemException {
+      // Best-effort cleanup must not hide the automation result.
+    }
   }
 
   static String parseOutput(AutomationHarnessId id, String stdout) {

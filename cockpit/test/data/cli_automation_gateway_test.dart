@@ -12,16 +12,55 @@ void main() {
         modelId: 'gpt-5.4-mini',
       );
 
-      final command = CliAutomationGateway.buildCommand(selection, 'prompt');
+      final command = CliAutomationGateway.buildCommand(
+        selection,
+        'prompt',
+        codexSystemPromptPath: '/tmp/cockpit-system.md',
+      );
 
       expect(
         command.args,
         containsAll(['--ephemeral', '--sandbox', 'read-only']),
       );
       expect(command.args, containsAll(['--model', 'gpt-5.4-mini']));
+      expect(
+        command.args,
+        contains('model_instructions_file="/tmp/cockpit-system.md"'),
+      );
       expect(command.stdin, 'prompt');
     },
   );
+
+  test('replaces supported harness system prompts', () {
+    final pi = CliAutomationGateway.buildCommand(
+      const AutomationSelection(harnessId: AutomationHarnessId.pi),
+      'repository context',
+    );
+    final claude = CliAutomationGateway.buildCommand(
+      const AutomationSelection(harnessId: AutomationHarnessId.claude),
+      'repository context',
+    );
+
+    for (final command in [pi, claude]) {
+      final flag = command.args.indexOf('--system-prompt');
+      expect(flag, isNonNegative);
+      expect(command.args[flag + 1], CommitMessagePrompt.systemPrompt);
+    }
+    expect(pi.args.last, 'repository context');
+    expect(claude.stdin, 'repository context');
+  });
+
+  test('keeps instructions in prompts for harnesses without an override', () {
+    final gemini = CliAutomationGateway.buildCommand(
+      const AutomationSelection(harnessId: AutomationHarnessId.gemini),
+      'repository context',
+    );
+
+    expect(
+      gemini.args,
+      contains(CommitMessagePrompt.withSystemPrompt('repository context')),
+    );
+  });
 
   test('parses provider-specific structured outputs', () {
     expect(
@@ -87,8 +126,12 @@ void main() {
 
     expect(prompt, isNot(contains('secret-value')));
     expect(prompt, contains('[sensitive line redacted by Cockpit]'));
-    expect(prompt, contains('intent and meaningful outcome'));
-    expect(prompt, contains('1–3 lines'));
+    expect(prompt, isNot(contains('intent and meaningful outcome')));
+    expect(
+      CommitMessagePrompt.systemPrompt,
+      contains('intent and meaningful outcome'),
+    );
+    expect(CommitMessagePrompt.systemPrompt, contains('1–3 lines'));
     expect(CommitMessagePrompt.validate('fix: safe subject'), isNull);
     expect(CommitMessagePrompt.validate('fix: invalid.'), isNotNull);
   });
