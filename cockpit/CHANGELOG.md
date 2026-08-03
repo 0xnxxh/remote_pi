@@ -8,6 +8,10 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
   ATENÇÃO: a PRIMEIRA seção `## ` deste arquivo é o texto que o usuário vê no
   diálogo de update (Sparkle/WinSparkle) e na página de download. Regras:
 
+  - **Seções novas em INGLÊS** (a partir da 1.20.0). É texto user-facing, então
+    vale a mesma regra da UI do app. As seções antigas ficam em português —
+    são o que já foi publicado, não reescreva.
+
   - A seção da versão que está saindo fica no TOPO. O job `meta` do
     .github/workflows/cockpit-release.yml **falha a release** se a versão do
     primeiro `## ` não bater com a tag — foi assim que 1.16/1.17/1.18 saíram
