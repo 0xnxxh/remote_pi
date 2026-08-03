@@ -17,13 +17,15 @@ import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/code_editing_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/code_highlight.dart';
+import 'package:cockpit/app/core/ui/widgets/selectable_scroll.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/media_view.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-// SelectionArea (Material) envolve o scroll do markdown/código → seleção +
-// auto-scroll com âncora estável (content-space). SelectionContainer.disabled
-// (via shadcn/widgets) tira o gutter de números da seleção.
+// SelectionArea (Material) fica SEMPRE dentro do scroll (markdown via
+// SelectableScroll, código em volta do Text) — em volta do scroll a seleção
+// escorrega ao rolar com Interface size != 14; ver [SelectableScroll].
+// SelectionContainer.disabled (via shadcn/widgets) tira o gutter da seleção.
 import 'package:flutter/material.dart' show SelectionArea;
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -204,17 +206,19 @@ class _FileViewerState extends State<FileViewer> {
     // pintaria as letras erradas. Compara por valor (não identidade): mesmo
     // conteúdo = offsets válidos, mesmo que a instância da String tenha trocado.
     final requestedFor = _ctrl?.text;
-    unawaited(vm.lspSemanticTokensFull(path).then((tokens) {
-      if (!mounted) return;
-      if (_ctrl?.text != requestedFor) return; // resposta obsoleta → descarta
-      // Converte `SemanticToken` pra `SemanticRange` (offsets já estão lineares).
-      final ranges = <SemanticRange>[
-        for (final t in tokens.tokens)
-          SemanticRange(t.start, t.end, t.tokenType),
-      ];
-      setState(() => _semanticTokens = ranges);
-      _ctrl?.semanticTokens = ranges;
-    }));
+    unawaited(
+      vm.lspSemanticTokensFull(path).then((tokens) {
+        if (!mounted) return;
+        if (_ctrl?.text != requestedFor) return; // resposta obsoleta → descarta
+        // Converte `SemanticToken` pra `SemanticRange` (offsets já estão lineares).
+        final ranges = <SemanticRange>[
+          for (final t in tokens.tokens)
+            SemanticRange(t.start, t.end, t.tokenType),
+        ];
+        setState(() => _semanticTokens = ranges);
+        _ctrl?.semanticTokens = ranges;
+      }),
+    );
   }
 
   @override
@@ -722,7 +726,12 @@ class _FileViewerState extends State<FileViewer> {
       FileViewMarkdown(:final text) =>
         editingNow
             ? _editor()
-            : SelectionArea(child: _Scroll(child: AgentMarkdown(text))),
+            // SelectionArea vive DENTRO do scroll (SelectableScroll) — em volta
+            // dela a seleção escorrega ao rolar com Interface size != 14.
+            : SelectableScroll(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: AgentMarkdown(text),
+              ),
       FileViewSvg(:final text) =>
         editingNow ? _editor() : _SvgPreview(source: text),
       FileViewText(:final text, :final language) =>
@@ -997,19 +1006,6 @@ class _Segmented extends StatelessWidget {
   }
 }
 
-class _Scroll extends StatelessWidget {
-  const _Scroll({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      child: child,
-    );
-  }
-}
-
 /// Visualizador read-only de texto/código com **gutter de número de linha** à
 /// esquerda (fixo na horizontal) e **scroll horizontal** pro conteúdo quando a
 /// linha é longa. O texto segue selecionável; os números, não.
@@ -1077,58 +1073,53 @@ class _TextViewState extends State<_TextView> {
     // **pinada no rodapé do viewport** (não some ao fim do conteúdo). O scroll
     // horizontal é aninhado dentro do vertical (`depth == 1`), por isso o
     // `notificationPredicate` filtra por profundidade. A vertical fica na borda.
-    // SelectionArea (não SelectableText): a seleção fica ancorada na posição de
-    // conteúdo do parágrafo. Durante o autoscroll do drag, o SingleChildScrollView
-    // vertical fica DENTRO da SelectionArea, então o offset muda mas a âncora
-    // inicial não escorrega junto (bug do SelectableText, que guarda a âncora em
-    // coordenadas globais e não re-projeta ao rolar).
+    // SelectionArea (não SelectableText) fica no ponto MAIS INTERNO — dentro dos
+    // dois scrolls, em volta só do código. Envolvendo os scrolls, a seleção
+    // escorrega ao rolar com Interface size != 14; ver [SelectableScroll].
     return ColoredBox(
       color: syntax.background,
-      child: SelectionArea(
+      child: Scrollbar(
+        controller: _horizontal,
+        thumbVisibility: true,
+        scrollbarOrientation: ScrollbarOrientation.bottom,
+        notificationPredicate: (notification) => notification.depth == 1,
         child: Scrollbar(
-          controller: _horizontal,
-          thumbVisibility: true,
-          scrollbarOrientation: ScrollbarOrientation.bottom,
-          notificationPredicate: (notification) => notification.depth == 1,
-          child: Scrollbar(
+          controller: _vertical,
+          child: SingleChildScrollView(
             controller: _vertical,
-            child: SingleChildScrollView(
-              controller: _vertical,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Gutter — números à direita, fixo (não rola na horizontal).
-                  // Fora da seleção pra não sujar o texto copiado com os números.
-                  SelectionContainer.disabled(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 14, right: 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          for (var i = 1; i <= lineCount; i++)
-                            Text('$i', style: numStyle),
-                        ],
-                      ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Gutter — números à direita, fixo (não rola na horizontal).
+                // Fora da seleção pra não sujar o texto copiado com os números.
+                SelectionContainer.disabled(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 14, right: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = 1; i <= lineCount; i++)
+                          Text('$i', style: numStyle),
+                      ],
                     ),
                   ),
-                  Container(
-                    width: 1,
-                    color: syntax.base.withValues(alpha: 0.15),
-                  ),
-                  // Código — rola na horizontal quando a linha estoura; selecionável.
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: _horizontal,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.only(left: 14, right: 16),
+                ),
+                Container(width: 1, color: syntax.base.withValues(alpha: 0.15)),
+                // Código — rola na horizontal quando a linha estoura; selecionável.
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: _horizontal,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(left: 14, right: 16),
+                    child: SelectionArea(
                       child: codeSpan == null
                           ? Text(widget.text, style: codeStyle)
                           : Text.rich(codeSpan),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
