@@ -5,13 +5,19 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
 `latest.json` (VPS) deriva deste arquivo.
 
 <!--
-  ATENÇÃO: o CI publica as notas da release a partir da PRIMEIRA seção `## `
-  deste arquivo, e só as 20 primeiras linhas não-vazias dela
-  (`awk '/^## /{n++} n==1' | tail -n +2 | sed '/^$/d' | head -20` em
-  .github/workflows/cockpit-release.yml). Então: a seção da versão que está
-  saindo fica no TOPO, e cabe em 20 linhas — não deixe um `## [Unreleased]`
-  vazio na frente (as notas sairiam vazias) nem escreva demais (sai cortado no
-  meio da frase).
+  ATENÇÃO: a PRIMEIRA seção `## ` deste arquivo é o texto que o usuário vê no
+  diálogo de update (Sparkle/WinSparkle) e na página de download. Regras:
+
+  - A seção da versão que está saindo fica no TOPO. O job `meta` do
+    .github/workflows/cockpit-release.yml **falha a release** se a versão do
+    primeiro `## ` não bater com a tag — foi assim que 1.16/1.17/1.18 saíram
+    repetindo a nota da 1.15.4.
+  - Nada de `## [Unreleased]` na frente: o guard reprova.
+  - Markdown normal (parágrafo, `### Fixed`, lista, `**negrito**`, `código`) —
+    o CI converte pra HTML (cockpit/packaging/release_notes_html.py) antes de
+    pôr no appcast, então quebra de linha e formatação aparecem certinho.
+  - O `notes` do latest.json (página de download) ainda usa só as 20 primeiras
+    linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
 ## [1.15.4] — 2026-07-28
