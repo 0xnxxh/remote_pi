@@ -20,6 +20,28 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.19.0] — 2026-08-02
+
+Precisão do mouse: menus, foco de pane e seleção de texto voltam a cair onde
+você clica. E a nota que aparece no update finalmente é legível.
+
+### Added
+- **Frequência da verificação de update** em Configurações → Updates: diária,
+  semanal, mensal ou nunca (obrigado, @OrlandoEduardo101).
+
+### Fixed
+- **Menus e dropdowns abriam fora do lugar** com "Interface size" diferente de
+  14 — menu de contexto da aba, opções do workspace e as listas das
+  Configurações. O erro crescia conforme a distância do canto da janela.
+- **Clicar dentro do terminal não ativava o pane:** com vários agentes lado a
+  lado, o clique era engolido e o que você digitava saía na aba anterior — às
+  vezes só clicando na aba resolvia.
+- **Seleção de texto escorregava depois de rolar** no markdown, no viewer de
+  código e no diff: quanto mais rolado, mais a seleção saía abaixo do cursor.
+- **Notas de update repetidas e ilegíveis:** o diálogo de atualização mostrava
+  o texto de uma versão antiga, com o markdown cru e tudo numa linha só.
+- Erro ao abrir as Configurações e falha de injeção na tela de update.
+
 ## [1.15.4] — 2026-07-28
 
 Conexão de banco por túnel SSH: o Mongo em Atlas finalmente funciona.
