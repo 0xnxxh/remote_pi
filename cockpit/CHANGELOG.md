@@ -24,6 +24,30 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.20.0] - 2026-08-04
+
+The internal CLI was rewritten in Rust. It now works on Intel Macs, can be
+called from outside the app, and can submit what it types.
+
+### Added
+- **`cockpit send --enter`**: types the text and presses Enter in one call,
+  instead of always pairing `send` with `send-key Enter`.
+- **`cockpit send --focused`**: targets the tab you are looking at, so external
+  tools (a dictation app, a script) no longer need a tab id to type into.
+- **The CLI works from outside a Cockpit terminal.** With no environment
+  inherited it finds the running app by itself, and `list-tabs` now marks which
+  tab is focused.
+
+### Fixed
+- **Intel Macs had no internal CLI and no Claude turn status.** The app itself
+  was universal, but its two helper binaries were Apple Silicon only, so the
+  `cockpit` command and the spinner/chime silently did nothing there.
+
+### Changed
+- The `cockpit-hook` helper is now `cockpit hook`, a subcommand of the CLI. One
+  binary instead of two: the app is about 11 MB lighter, and the hook that runs
+  on every Claude event starts in milliseconds.
+
 ## [1.19.0] — 2026-08-02
 
 Precisão do mouse: menus, foco de pane e seleção de texto voltam a cair onde
