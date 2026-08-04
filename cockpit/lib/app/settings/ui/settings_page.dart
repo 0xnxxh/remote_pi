@@ -624,7 +624,10 @@ class _StorageSectionState extends State<_StorageSection> {
             description: tr.resetDesc,
             trailing: DestructiveButton(
               onPressed: _loading ? null : _reset,
-              child: Text(tr.resetButton, style: TextStyle(color: colors.error)),
+              child: Text(
+                tr.resetButton,
+                style: TextStyle(color: colors.error),
+              ),
             ),
           ),
         ],
@@ -665,7 +668,10 @@ class _StorageSectionState extends State<_StorageSection> {
             ),
             DestructiveButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text(tr.resetConfirm, style: TextStyle(color: colors.error)),
+              child: Text(
+                tr.resetConfirm,
+                style: TextStyle(color: colors.error),
+              ),
             ),
           ],
         );
@@ -1427,7 +1433,10 @@ class _ThemeDropdown extends StatelessWidget {
         label: tr.themeSystem,
         icon: Icons.desktop_windows_outlined,
       ),
-      AppThemeMode.light: (label: tr.themeLight, icon: Icons.light_mode_outlined),
+      AppThemeMode.light: (
+        label: tr.themeLight,
+        icon: Icons.light_mode_outlined,
+      ),
       AppThemeMode.dark: (label: tr.themeDark, icon: Icons.dark_mode_outlined),
     };
     final current = meta[value]!;
@@ -1708,19 +1717,19 @@ class _LanguagesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = context.watch<SettingsController>();
     final settings = ctrl.settings;
+    final tr = context.t.settings.page.languages;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Section(
-            label: 'FORMATTING',
+            label: tr.sectionFormatting,
             child: _Card(
               children: [
                 _Row(
-                  title: 'Format on save',
-                  description:
-                      'Format the file automatically when you save (⌘S).',
+                  title: tr.formatOnSaveTitle,
+                  description: tr.formatOnSaveDesc,
                   trailing: Switch(
                     value: settings.formatOnSave,
                     onChanged: ctrl.setFormatOnSave,
@@ -1730,7 +1739,7 @@ class _LanguagesPanel extends StatelessWidget {
             ),
           ),
           _Section(
-            label: 'LANGUAGE SERVERS',
+            label: tr.sectionLanguageServers,
             child: _Card(
               children: [
                 for (final def in kLanguageDefs)
@@ -1746,10 +1755,7 @@ class _LanguagesPanel extends StatelessWidget {
             ),
           ),
           Text(
-            'Errors and formatting use each language\'s language server. '
-            'Cockpit does not install servers — it uses what is already on your '
-            'machine. ● responds · ○ not found or invalid command (install the '
-            'server or adjust the command).',
+            tr.footerNote,
             style: context.typo.label.copyWith(color: context.colors.text3),
           ),
         ],
@@ -1896,11 +1902,17 @@ class _LanguageRowState extends State<_LanguageRow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _fieldLabel(context, 'Language server command'),
+                _fieldLabel(
+                  context,
+                  context.t.settings.page.languages.serverCommandLabel,
+                ),
                 const SizedBox(height: 6),
                 _commandField(context, _serverCtrl, _default),
                 const SizedBox(height: 14),
-                _fieldLabel(context, 'Formatter command (optional)'),
+                _fieldLabel(
+                  context,
+                  context.t.settings.page.languages.formatterCommandLabel,
+                ),
                 const SizedBox(height: 6),
                 _commandField(
                   context,
@@ -1909,8 +1921,7 @@ class _LanguageRowState extends State<_LanguageRow> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'External formatter with %FILE% placeholder. Takes precedence '
-                  'over the LSP formatter when set.',
+                  context.t.settings.page.languages.formatterHint,
                   style: context.typo.label.copyWith(color: colors.text4),
                 ),
                 const SizedBox(height: 12),
@@ -1924,7 +1935,7 @@ class _LanguageRowState extends State<_LanguageRow> {
                         vertical: 7,
                       ),
                       child: Text(
-                        'Reset to default',
+                        context.t.settings.page.languages.resetToDefault,
                         style: context.typo.body.copyWith(
                           fontSize: 12.5,
                           color: colors.text2,
@@ -1941,7 +1952,7 @@ class _LanguageRowState extends State<_LanguageRow> {
                         vertical: 7,
                       ),
                       child: Text(
-                        'Save & restart',
+                        context.t.settings.page.languages.saveAndRestart,
                         style: context.typo.body.copyWith(
                           fontSize: 12.5,
                           color: _dirty ? colors.accentText : colors.text4,
@@ -1987,10 +1998,11 @@ class _StatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.languages;
     final (Color color, String tip) = switch (available) {
-      true => (const Color(0xFF22C55E), 'Server responds'),
-      false => (colors.text4, 'Server not found or command invalid'),
-      null => (colors.border, 'Checking…'),
+      true => (const Color(0xFF22C55E), tr.statusResponds),
+      false => (colors.text4, tr.statusNotFound),
+      null => (colors.border, context.t.common.checking),
     };
     return AppTooltip(
       message: tip,
