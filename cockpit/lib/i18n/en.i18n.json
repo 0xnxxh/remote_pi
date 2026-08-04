@@ -260,6 +260,15 @@
       "copied": "Copied",
       "copy": "Copy"
     },
+    "dbPanel": {
+      "sectionDatabase": "DATABASE",
+      "edit": "Edit…",
+      "copyName": "Copy name",
+      "newQuery": "New query",
+      "browseKeys": "Browse keys",
+      "deleteConnectionTitle": "Delete connection",
+      "deleteConnectionMessage": "Remove \"${name}\" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched."
+    },
     "dbMongoView": {
       "deleteDocumentTitle": "Delete document",
       "deleteDocumentMessage": "Delete the document with _id ${id} from \"${collection}\"?",

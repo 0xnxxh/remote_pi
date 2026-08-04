@@ -137,6 +137,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$realmDialogs$en realmDialogs = Translations$cockpit$realmDialogs$en.internal(_root);
 	late final Translations$cockpit$dbRedisTable$en dbRedisTable = Translations$cockpit$dbRedisTable$en.internal(_root);
 	late final Translations$cockpit$dbQueryView$en dbQueryView = Translations$cockpit$dbQueryView$en.internal(_root);
+	late final Translations$cockpit$dbPanel$en dbPanel = Translations$cockpit$dbPanel$en.internal(_root);
 	late final Translations$cockpit$dbMongoView$en dbMongoView = Translations$cockpit$dbMongoView$en.internal(_root);
 	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
 	late final Translations$cockpit$sshPrompts$en sshPrompts = Translations$cockpit$sshPrompts$en.internal(_root);
@@ -921,6 +922,36 @@ class Translations$cockpit$dbQueryView$en {
 
 	/// en: 'Copy'
 	String get copy => 'Copy';
+}
+
+// Path: cockpit.dbPanel
+class Translations$cockpit$dbPanel$en {
+	Translations$cockpit$dbPanel$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'DATABASE'
+	String get sectionDatabase => 'DATABASE';
+
+	/// en: 'Edit…'
+	String get edit => 'Edit…';
+
+	/// en: 'Copy name'
+	String get copyName => 'Copy name';
+
+	/// en: 'New query'
+	String get newQuery => 'New query';
+
+	/// en: 'Browse keys'
+	String get browseKeys => 'Browse keys';
+
+	/// en: 'Delete connection'
+	String get deleteConnectionTitle => 'Delete connection';
+
+	/// en: 'Remove "${name}" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.'
+	String deleteConnectionMessage({required Object name}) => 'Remove "${name}" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.';
 }
 
 // Path: cockpit.dbMongoView
@@ -2126,6 +2157,13 @@ extension on Translations {
 			'cockpit.dbQueryView.saved' => 'saved',
 			'cockpit.dbQueryView.copied' => 'Copied',
 			'cockpit.dbQueryView.copy' => 'Copy',
+			'cockpit.dbPanel.sectionDatabase' => 'DATABASE',
+			'cockpit.dbPanel.edit' => 'Edit…',
+			'cockpit.dbPanel.copyName' => 'Copy name',
+			'cockpit.dbPanel.newQuery' => 'New query',
+			'cockpit.dbPanel.browseKeys' => 'Browse keys',
+			'cockpit.dbPanel.deleteConnectionTitle' => 'Delete connection',
+			'cockpit.dbPanel.deleteConnectionMessage' => ({required Object name}) => 'Remove "${name}" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.',
 			'cockpit.dbMongoView.deleteDocumentTitle' => 'Delete document',
 			'cockpit.dbMongoView.deleteDocumentMessage' => ({required Object id, required Object collection}) => 'Delete the document with _id ${id} from "${collection}"?',
 			'cockpit.dbMongoView.filterHint' => 'Filter — JSON, e.g. {"status": "active"}',
