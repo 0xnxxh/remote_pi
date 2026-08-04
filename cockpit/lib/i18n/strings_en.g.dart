@@ -97,6 +97,18 @@ class Translations$common$en {
 
 	/// en: 'OK'
 	String get ok => 'OK';
+
+	/// en: 'Loading…'
+	String get loading => 'Loading…';
+
+	/// en: 'Checking…'
+	String get checking => 'Checking…';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Restart'
+	String get restart => 'Restart';
 }
 
 // Path: cockpit
@@ -136,6 +148,7 @@ class Translations$settings$en {
 	late final Translations$settings$language$en language = Translations$settings$language$en.internal(_root);
 	late final Translations$settings$revokeDialog$en revokeDialog = Translations$settings$revokeDialog$en.internal(_root);
 	late final Translations$settings$pairingDialog$en pairingDialog = Translations$settings$pairingDialog$en.internal(_root);
+	late final Translations$settings$page$en page = Translations$settings$page$en.internal(_root);
 }
 
 // Path: core.bootstrapError
@@ -1047,6 +1060,726 @@ class Translations$settings$pairingDialog$en {
 	String get copyData => 'Copy data';
 }
 
+// Path: settings.page
+class Translations$settings$page$en {
+	Translations$settings$page$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$settings$page$header$en header = Translations$settings$page$header$en.internal(_root);
+	late final Translations$settings$page$nav$en nav = Translations$settings$page$nav$en.internal(_root);
+	late final Translations$settings$page$general$en general = Translations$settings$page$general$en.internal(_root);
+	late final Translations$settings$page$diagnostics$en diagnostics = Translations$settings$page$diagnostics$en.internal(_root);
+	late final Translations$settings$page$storage$en storage = Translations$settings$page$storage$en.internal(_root);
+	late final Translations$settings$page$terminal$en terminal = Translations$settings$page$terminal$en.internal(_root);
+	late final Translations$settings$page$appearance$en appearance = Translations$settings$page$appearance$en.internal(_root);
+	late final Translations$settings$page$notifications$en notifications = Translations$settings$page$notifications$en.internal(_root);
+	late final Translations$settings$page$shortcuts$en shortcuts = Translations$settings$page$shortcuts$en.internal(_root);
+	late final Translations$settings$page$languages$en languages = Translations$settings$page$languages$en.internal(_root);
+	late final Translations$settings$page$connectivity$en connectivity = Translations$settings$page$connectivity$en.internal(_root);
+	late final Translations$settings$page$schedules$en schedules = Translations$settings$page$schedules$en.internal(_root);
+	late final Translations$settings$page$daemons$en daemons = Translations$settings$page$daemons$en.internal(_root);
+}
+
+// Path: settings.page.header
+class Translations$settings$page$header$en {
+	Translations$settings$page$header$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Settings'
+	String get title => 'Settings';
+}
+
+// Path: settings.page.nav
+class Translations$settings$page$nav$en {
+	Translations$settings$page$nav$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'General'
+	String get general => 'General';
+
+	/// en: 'Appearance'
+	String get appearance => 'Appearance';
+
+	/// en: 'Terminal'
+	String get terminal => 'Terminal';
+
+	/// en: 'Language'
+	String get language => 'Language';
+
+	/// en: 'Shortcuts'
+	String get shortcuts => 'Shortcuts';
+
+	/// en: 'Notifications'
+	String get notifications => 'Notifications';
+
+	/// en: 'Connectivity'
+	String get connectivity => 'Connectivity';
+
+	/// en: 'Daemon Agents'
+	String get daemonAgents => 'Daemon Agents';
+
+	/// en: 'Schedules'
+	String get schedules => 'Schedules';
+}
+
+// Path: settings.page.general
+class Translations$settings$page$general$en {
+	Translations$settings$page$general$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Agent'
+	String get sectionAgent => 'Agent';
+
+	/// en: 'Enable agents'
+	String get enableAgentsTitle => 'Enable agents';
+
+	/// en: 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.'
+	String get enableAgentsDesc => 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.';
+
+	/// en: 'Show Cockpit terminal'
+	String get showCockpitTitle => 'Show Cockpit terminal';
+
+	/// en: 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.'
+	String get showCockpitDesc => 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.';
+
+	/// en: 'Updates'
+	String get sectionUpdates => 'Updates';
+
+	/// en: 'Check for updates'
+	String get checkUpdatesTitle => 'Check for updates';
+
+	/// en: 'How often Cockpit should look for new versions.'
+	String get checkUpdatesDesc => 'How often Cockpit should look for new versions.';
+
+	/// en: 'Can't turn agents off while an agent tab is open. Close all agent tabs first, then disable it.'
+	String get agentsInUseError => 'Can\'t turn agents off while an agent tab is open. Close all agent tabs first, then disable it.';
+
+	late final Translations$settings$page$general$updateFrequency$en updateFrequency = Translations$settings$page$general$updateFrequency$en.internal(_root);
+}
+
+// Path: settings.page.diagnostics
+class Translations$settings$page$diagnostics$en {
+	Translations$settings$page$diagnostics$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Diagnostics'
+	String get sectionTitle => 'Diagnostics';
+
+	/// en: 'Log file'
+	String get logFileTitle => 'Log file';
+
+	/// en: 'Errors and startup events are recorded here, kept for ${days} days. ${path}'
+	String logFileDesc({required Object days, required Object path}) => 'Errors and startup events are recorded here, kept for ${days} days.\n${path}';
+
+	/// en: 'unavailable'
+	String get unavailable => 'unavailable';
+
+	/// en: 'Reveal'
+	String get reveal => 'Reveal';
+
+	/// en: 'Report a problem'
+	String get reportTitle => 'Report a problem';
+
+	/// en: 'Opens a pre-filled issue with your version, OS and recent log. Nothing is sent automatically — you review it first.'
+	String get reportDesc => 'Opens a pre-filled issue with your version, OS and recent log. Nothing is sent automatically — you review it first.';
+
+	/// en: 'Report…'
+	String get reportButton => 'Report…';
+
+	/// en: 'Problem report'
+	String get reportDialogTitle => 'Problem report';
+
+	/// en: 'Reported manually from Settings.'
+	String get reportDialogError => 'Reported manually from Settings.';
+
+	/// en: 'Describe what went wrong in the issue. The recent log is included below and in "Copy details".'
+	String get reportDialogDescription => 'Describe what went wrong in the issue. The recent log is included below and in "Copy details".';
+}
+
+// Path: settings.page.storage
+class Translations$settings$page$storage$en {
+	Translations$settings$page$storage$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Storage'
+	String get sectionTitle => 'Storage';
+
+	/// en: 'Storage location'
+	String get locationTitle => 'Storage location';
+
+	/// en: 'Cockpit keeps its projects, layouts and settings here. Point it at a synced folder to back it up. ${root}'
+	String locationDesc({required Object root}) => 'Cockpit keeps its projects, layouts and settings here. Point it at a synced folder to back it up.\n${root}';
+
+	/// en: 'Use default'
+	String get useDefault => 'Use default';
+
+	/// en: 'Working…'
+	String get working => 'Working…';
+
+	/// en: 'Change…'
+	String get change => 'Change…';
+
+	/// en: 'Reset Cockpit'
+	String get resetTitle => 'Reset Cockpit';
+
+	/// en: 'Delete all local data — projects, layouts, settings and terminal history — and return to the default location.'
+	String get resetDesc => 'Delete all local data — projects, layouts, settings and terminal history — and return to the default location.';
+
+	/// en: 'Reset…'
+	String get resetButton => 'Reset…';
+
+	/// en: 'Reset'
+	String get resetConfirm => 'Reset';
+
+	/// en: 'Reset Cockpit?'
+	String get resetDialogTitle => 'Reset Cockpit?';
+
+	/// en: 'This permanently deletes all local Cockpit data — projects, layouts, settings and terminal history. This cannot be undone. Cockpit will close so you can start fresh.'
+	String get resetDialogContent => 'This permanently deletes all local Cockpit data — projects, layouts, settings and terminal history. This cannot be undone. Cockpit will close so you can start fresh.';
+
+	/// en: 'Restart required'
+	String get restartRequiredTitle => 'Restart required';
+
+	/// en: 'Cockpit will use this folder from the next launch: ${path}'
+	String restartChangeFolderMessage({required Object path}) => 'Cockpit will use this folder from the next launch:\n${path}';
+
+	/// en: 'Cockpit will use the default system location from the next launch. Your data in the custom folder is left untouched.'
+	String get restartUseDefaultMessage => 'Cockpit will use the default system location from the next launch. Your data in the custom folder is left untouched.';
+
+	/// en: 'All Cockpit data was cleared. Restart to start fresh.'
+	String get restartResetMessage => 'All Cockpit data was cleared. Restart to start fresh.';
+
+	/// en: 'Later'
+	String get later => 'Later';
+
+	/// en: 'Quit Cockpit'
+	String get quitCockpit => 'Quit Cockpit';
+
+	/// en: 'Choose a folder for Cockpit data'
+	String get chooseFolderDialogTitle => 'Choose a folder for Cockpit data';
+}
+
+// Path: settings.page.terminal
+class Translations$settings$page$terminal$en {
+	Translations$settings$page$terminal$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Default terminal'
+	String get sectionDefaultTerminal => 'Default terminal';
+
+	/// en: 'Engine'
+	String get engineTitle => 'Engine';
+
+	/// en: 'Used by new terminal tabs and task output buffers. Open tabs keep their current engine.'
+	String get engineDesc => 'Used by new terminal tabs and task output buffers. Open tabs keep their current engine.';
+
+	/// en: 'Shell'
+	String get shellTitle => 'Shell';
+
+	/// en: 'Which shell new terminal tabs open. The arrow next to + still opens any other one, just for that tab.'
+	String get shellDesc => 'Which shell new terminal tabs open. The arrow next to + still opens any other one, just for that tab.';
+
+	/// en: 'No WSL distros found. Install one (wsl.exe --install) and restart Cockpit to see it listed here.'
+	String get noWslMessage => 'No WSL distros found. Install one (wsl.exe --install) and restart Cockpit to see it listed here.';
+}
+
+// Path: settings.page.appearance
+class Translations$settings$page$appearance$en {
+	Translations$settings$page$appearance$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Theme'
+	String get sectionTheme => 'Theme';
+
+	/// en: 'System'
+	String get themeSystem => 'System';
+
+	/// en: 'Light'
+	String get themeLight => 'Light';
+
+	/// en: 'Dark'
+	String get themeDark => 'Dark';
+
+	/// en: 'Fonts'
+	String get sectionFonts => 'Fonts';
+
+	/// en: 'Interface font'
+	String get interfaceFontTitle => 'Interface font';
+
+	/// en: 'Used across the whole app. Empty = system default.'
+	String get interfaceFontDesc => 'Used across the whole app. Empty = system default.';
+
+	/// en: 'Interface size'
+	String get interfaceSizeTitle => 'Interface size';
+
+	/// en: 'Code font'
+	String get codeFontTitle => 'Code font';
+
+	/// en: 'Code and diffs. Empty = system default.'
+	String get codeFontDesc => 'Code and diffs. Empty = system default.';
+
+	/// en: 'Code size'
+	String get codeSizeTitle => 'Code size';
+
+	/// en: 'Terminal font'
+	String get terminalFontTitle => 'Terminal font';
+
+	/// en: 'Uses the code size. Empty = system default.'
+	String get terminalFontDesc => 'Uses the code size. Empty = system default.';
+
+	/// en: 'Syntax'
+	String get sectionSyntax => 'Syntax';
+
+	/// en: 'Highlight theme'
+	String get highlightThemeTitle => 'Highlight theme';
+
+	/// en: 'Code colors, independent of the app theme.'
+	String get highlightThemeDesc => 'Code colors, independent of the app theme.';
+
+	/// en: 'Conversation'
+	String get sectionConversation => 'Conversation';
+
+	/// en: 'Pin user message'
+	String get pinUserMessageTitle => 'Pin user message';
+
+	/// en: 'The question stays fixed at the top while the answer scrolls.'
+	String get pinUserMessageDesc => 'The question stays fixed at the top while the answer scrolls.';
+}
+
+// Path: settings.page.notifications
+class Translations$settings$page$notifications$en {
+	Translations$settings$page$notifications$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Notifications'
+	String get sectionTitle => 'Notifications';
+
+	/// en: 'Enable notifications'
+	String get enableTitle => 'Enable notifications';
+
+	/// en: 'Alert me when an agent finishes a turn and the window is not focused.'
+	String get enableDesc => 'Alert me when an agent finishes a turn and the window is not focused.';
+
+	/// en: 'System permission'
+	String get systemPermissionTitle => 'System permission';
+
+	/// en: 'Cockpit is allowed to send notifications.'
+	String get grantedDesc => 'Cockpit is allowed to send notifications.';
+
+	/// en: 'macOS has not granted notification access yet.'
+	String get notGrantedDesc => 'macOS has not granted notification access yet.';
+
+	/// en: 'Granted'
+	String get granted => 'Granted';
+
+	/// en: 'Request permission'
+	String get requestPermission => 'Request permission';
+
+	/// en: 'Play sound on finish'
+	String get playSoundTitle => 'Play sound on finish';
+
+	/// en: 'Play a short chime when a turn finishes and the window is focused (on any tab or workspace).'
+	String get playSoundDesc => 'Play a short chime when a turn finishes and the window is focused (on any tab or workspace).';
+}
+
+// Path: settings.page.shortcuts
+class Translations$settings$page$shortcuts$en {
+	Translations$settings$page$shortcuts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Keyboard shortcuts are not customizable yet.'
+	String get notCustomizable => 'Keyboard shortcuts are not customizable yet.';
+}
+
+// Path: settings.page.languages
+class Translations$settings$page$languages$en {
+	Translations$settings$page$languages$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'FORMATTING'
+	String get sectionFormatting => 'FORMATTING';
+
+	/// en: 'Format on save'
+	String get formatOnSaveTitle => 'Format on save';
+
+	/// en: 'Format the file automatically when you save (⌘S).'
+	String get formatOnSaveDesc => 'Format the file automatically when you save (⌘S).';
+
+	/// en: 'LANGUAGE SERVERS'
+	String get sectionLanguageServers => 'LANGUAGE SERVERS';
+
+	/// en: 'Errors and formatting use each language's language server. Cockpit does not install servers — it uses what is already on your machine. ● responds · ○ not found or invalid command (install the server or adjust the command).'
+	String get footerNote => 'Errors and formatting use each language\'s language server. Cockpit does not install servers — it uses what is already on your machine. ● responds · ○ not found or invalid command (install the server or adjust the command).';
+
+	/// en: 'Language server command'
+	String get serverCommandLabel => 'Language server command';
+
+	/// en: 'Formatter command (optional)'
+	String get formatterCommandLabel => 'Formatter command (optional)';
+
+	/// en: 'External formatter with %FILE% placeholder. Takes precedence over the LSP formatter when set.'
+	String get formatterHint => 'External formatter with %FILE% placeholder. Takes precedence over the LSP formatter when set.';
+
+	/// en: 'Reset to default'
+	String get resetToDefault => 'Reset to default';
+
+	/// en: 'Save & restart'
+	String get saveAndRestart => 'Save & restart';
+
+	/// en: 'Server responds'
+	String get statusResponds => 'Server responds';
+
+	/// en: 'Server not found or command invalid'
+	String get statusNotFound => 'Server not found or command invalid';
+}
+
+// Path: settings.page.connectivity
+class Translations$settings$page$connectivity$en {
+	Translations$settings$page$connectivity$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Relay'
+	String get sectionRelay => 'Relay';
+
+	/// en: 'Paired devices'
+	String get sectionPairedDevices => 'Paired devices';
+
+	/// en: 'Reload'
+	String get reloadTooltip => 'Reload';
+
+	/// en: 'Failed to list devices.'
+	String get failedToListDevices => 'Failed to list devices.';
+
+	/// en: 'No paired devices.'
+	String get noPairedDevices => 'No paired devices.';
+
+	/// en: 'Relay address'
+	String get relayAddressTitle => 'Relay address';
+
+	/// en: 'Server that connects your agents to the phone. Applies to every agent with the relay enabled.'
+	String get relayAddressDesc => 'Server that connects your agents to the phone. Applies to every agent with the relay enabled.';
+
+	/// en: 'Saving…'
+	String get saving => 'Saving…';
+
+	/// en: 'Check'
+	String get check => 'Check';
+
+	/// en: 'Online'
+	String get healthOnline => 'Online';
+
+	/// en: 'No response'
+	String get healthNoResponse => 'No response';
+
+	/// en: 'Not checked'
+	String get healthNotChecked => 'Not checked';
+
+	/// en: 'Device'
+	String get deviceDefaultLabel => 'Device';
+
+	/// en: 'Revoke'
+	String get revoke => 'Revoke';
+
+	/// en: 'Pair new device'
+	String get pairNewDevice => 'Pair new device';
+
+	/// en: 'Revoke device?'
+	String get revokeDialogTitle => 'Revoke device?';
+
+	/// en: '"${name}" will lose access to your agents and will need to pair again. You must be connected to the relay — the app will connect automatically to revoke.'
+	String revokeDialogContent({required Object name}) => '"${name}" will lose access to your agents and will need to pair again.\n\nYou must be connected to the relay — the app will connect automatically to revoke.';
+}
+
+// Path: settings.page.schedules
+class Translations$settings$page$schedules$en {
+	Translations$settings$page$schedules$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Scheduled prompts'
+	String get sectionScheduledPrompts => 'Scheduled prompts';
+
+	/// en: 'Create schedule'
+	String get createSchedule => 'Create schedule';
+
+	/// en: 'Create a Daemon Agent first.'
+	String get createDaemonFirst => 'Create a Daemon Agent first.';
+
+	/// en: 'Supervisor offline. Schedules need pi-supervisord running (`remote-pi install`).'
+	String get supervisorOffline => 'Supervisor offline. Schedules need pi-supervisord running (`remote-pi install`).';
+
+	/// en: 'Failed to list schedules.'
+	String get failedToListSchedules => 'Failed to list schedules.';
+
+	/// en: 'No schedules. Create a recurring prompt for a daemon.'
+	String get noSchedules => 'No schedules. Create a recurring prompt for a daemon.';
+
+	/// en: 'Run now'
+	String get runNow => 'Run now';
+
+	/// en: 'View log'
+	String get viewLog => 'View log';
+
+	/// en: 'disabled'
+	String get disabled => 'disabled';
+
+	/// en: 'next ${when}'
+	String nextRun({required Object when}) => 'next ${when}';
+
+	/// en: 'last: ${label}'
+	String lastRun({required Object label}) => 'last: ${label}';
+
+	/// en: 'Remove schedule?'
+	String get removeScheduleDialogTitle => 'Remove schedule?';
+
+	/// en: 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.'
+	String removeScheduleDialogContent({required Object schedule, required Object daemon}) => 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.';
+
+	/// en: 'New schedule'
+	String get newScheduleTitle => 'New schedule';
+
+	/// en: 'Daemon'
+	String get daemonLabel => 'Daemon';
+
+	/// en: 'When (cron expression)'
+	String get whenLabel => 'When (cron expression)';
+
+	/// en: 'Next run shows up here'
+	String get previewPlaceholder => 'Next run shows up here';
+
+	/// en: 'Next: computed on save'
+	String get previewComputed => 'Next: computed on save';
+
+	/// en: 'Next: ${when}'
+	String previewNext({required Object when}) => 'Next: ${when}';
+
+	/// en: 'every day 9am'
+	String get exampleEveryDay9am => 'every day 9am';
+
+	/// en: 'hourly'
+	String get exampleHourly => 'hourly';
+
+	/// en: 'every 15 min'
+	String get exampleEvery15Min => 'every 15 min';
+
+	/// en: 'weekdays 6pm'
+	String get exampleWeekdays6pm => 'weekdays 6pm';
+
+	/// en: 'Prompt'
+	String get promptLabel => 'Prompt';
+
+	/// en: 'Timezone (optional)'
+	String get timezoneLabel => 'Timezone (optional)';
+
+	/// en: 'Skip if the agent is busy'
+	String get skipIfBusy => 'Skip if the agent is busy';
+
+	/// en: 'Wake the daemon if stopped'
+	String get wakeIfStopped => 'Wake the daemon if stopped';
+
+	/// en: 'Recover 1 missed run (catchup)'
+	String get catchup => 'Recover 1 missed run (catchup)';
+
+	/// en: 'Fill in the expression and the prompt.'
+	String get fillRequiredError => 'Fill in the expression and the prompt.';
+
+	/// en: 'Creating…'
+	String get creating => 'Creating…';
+
+	/// en: 'Failed to create the schedule.'
+	String get failedToCreateSchedule => 'Failed to create the schedule.';
+
+	/// en: 'History — ${schedule}'
+	String historyTitle({required Object schedule}) => 'History — ${schedule}';
+
+	/// en: 'Failed to read the log.'
+	String get failedToReadLog => 'Failed to read the log.';
+
+	/// en: 'No records yet.'
+	String get noRecordsYet => 'No records yet.';
+
+	/// en: 'delivered'
+	String get cronDelivered => 'delivered';
+
+	/// en: 'woke + delivered'
+	String get cronWokeDelivered => 'woke + delivered';
+
+	/// en: 'failed'
+	String get cronFailed => 'failed';
+
+	/// en: 'skipped (busy)'
+	String get cronSkippedBusy => 'skipped (busy)';
+
+	/// en: 'skipped (stopped)'
+	String get cronSkippedStopped => 'skipped (stopped)';
+
+	/// en: 'skipped (disabled)'
+	String get cronSkippedDisabled => 'skipped (disabled)';
+}
+
+// Path: settings.page.daemons
+class Translations$settings$page$daemons$en {
+	Translations$settings$page$daemons$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Always-on agents'
+	String get sectionAlwaysOnAgents => 'Always-on agents';
+
+	/// en: 'Create daemon'
+	String get createDaemon => 'Create daemon';
+
+	/// en: 'Start all'
+	String get startAll => 'Start all';
+
+	/// en: 'Stop all'
+	String get stopAll => 'Stop all';
+
+	/// en: 'Restart all'
+	String get restartAll => 'Restart all';
+
+	/// en: 'Restart supervisor'
+	String get restartSupervisor => 'Restart supervisor';
+
+	/// en: 'Restart the supervisor?'
+	String get restartSupervisorDialogTitle => 'Restart the supervisor?';
+
+	/// en: 'Restarts the supervisor process (reloads the code). All daemons restart with it and go offline for a few seconds.'
+	String get restartSupervisorDialogContent => 'Restarts the supervisor process (reloads the code). All daemons restart with it and go offline for a few seconds.';
+
+	/// en: 'Remove daemon?'
+	String get removeDaemonDialogTitle => 'Remove daemon?';
+
+	/// en: '"${name}" stops running and leaves the registry. The folder and its local config are kept — you can recreate it later.'
+	String removeDaemonDialogContent({required Object name}) => '"${name}" stops running and leaves the registry. The folder and its local config are kept — you can recreate it later.';
+
+	/// en: 'Supervisor offline'
+	String get supervisorOfflineTitle => 'Supervisor offline';
+
+	/// en: 'pi-supervisord is not running. Install it with `remote-pi install` to manage 24/7 agents.'
+	String get supervisorOfflineDesc => 'pi-supervisord is not running. Install it with `remote-pi install` to manage 24/7 agents.';
+
+	/// en: 'Failed to list daemons.'
+	String get failedToListDaemons => 'Failed to list daemons.';
+
+	/// en: 'No registered agents. Create one from a folder.'
+	String get noRegisteredAgents => 'No registered agents. Create one from a folder.';
+
+	/// en: 'Start'
+	String get start => 'Start';
+
+	/// en: 'Stop'
+	String get stop => 'Stop';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'New daemon'
+	String get newDaemonTitle => 'New daemon';
+
+	/// en: 'Edit daemon'
+	String get editDaemonTitle => 'Edit daemon';
+
+	/// en: 'Name'
+	String get nameLabel => 'Name';
+
+	/// en: 'e.g. PC, Server, Home'
+	String get namePlaceholder => 'e.g. PC, Server, Home';
+
+	/// en: 'Enter a name.'
+	String get nameRequiredError => 'Enter a name.';
+
+	/// en: 'An agent with this name already exists.'
+	String get nameDuplicateError => 'An agent with this name already exists.';
+
+	/// en: 'Folder'
+	String get folderLabel => 'Folder';
+
+	/// en: 'No folder chosen'
+	String get noFolderChosen => 'No folder chosen';
+
+	/// en: 'Choose'
+	String get choose => 'Choose';
+
+	/// en: 'Change'
+	String get changeFolder => 'Change';
+
+	/// en: 'The folder cannot be changed.'
+	String get folderCannotBeChanged => 'The folder cannot be changed.';
+
+	/// en: 'Choose a folder.'
+	String get folderRequiredError => 'Choose a folder.';
+
+	/// en: 'An agent already exists in this folder.'
+	String get folderDuplicateError => 'An agent already exists in this folder.';
+
+	/// en: 'Choose the Daemon Agent folder'
+	String get pickFolderDialogTitle => 'Choose the Daemon Agent folder';
+}
+
+// Path: settings.page.general.updateFrequency
+class Translations$settings$page$general$updateFrequency$en {
+	Translations$settings$page$general$updateFrequency$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Daily'
+	String get daily => 'Daily';
+
+	/// en: 'Weekly'
+	String get weekly => 'Weekly';
+
+	/// en: 'Monthly'
+	String get monthly => 'Monthly';
+
+	/// en: 'Never'
+	String get never => 'Never';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -1076,6 +1809,10 @@ extension on Translations {
 			'common.add' => 'Add',
 			'common.test' => 'Test',
 			'common.ok' => 'OK',
+			'common.loading' => 'Loading…',
+			'common.checking' => 'Checking…',
+			'common.remove' => 'Remove',
+			'common.restart' => 'Restart',
 			'cockpit.confirmDialog.unsavedChangesTitle' => 'Unsaved changes',
 			'cockpit.confirmDialog.unsavedChangesMessage' => ({required Object fileName}) => '“${fileName}” has unsaved changes. Save them before closing?',
 			'cockpit.confirmDialog.dontSave' => 'Don\'t save',
@@ -1296,6 +2033,196 @@ extension on Translations {
 			'settings.pairingDialog.tryAgain' => 'Try again',
 			'settings.pairingDialog.copied' => 'Copied!',
 			'settings.pairingDialog.copyData' => 'Copy data',
+			'settings.page.header.back' => 'Back',
+			'settings.page.header.title' => 'Settings',
+			'settings.page.nav.general' => 'General',
+			'settings.page.nav.appearance' => 'Appearance',
+			'settings.page.nav.terminal' => 'Terminal',
+			'settings.page.nav.language' => 'Language',
+			'settings.page.nav.shortcuts' => 'Shortcuts',
+			'settings.page.nav.notifications' => 'Notifications',
+			'settings.page.nav.connectivity' => 'Connectivity',
+			'settings.page.nav.daemonAgents' => 'Daemon Agents',
+			'settings.page.nav.schedules' => 'Schedules',
+			'settings.page.general.sectionAgent' => 'Agent',
+			'settings.page.general.enableAgentsTitle' => 'Enable agents',
+			'settings.page.general.enableAgentsDesc' => 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.',
+			'settings.page.general.showCockpitTitle' => 'Show Cockpit terminal',
+			'settings.page.general.showCockpitDesc' => 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.',
+			'settings.page.general.sectionUpdates' => 'Updates',
+			'settings.page.general.checkUpdatesTitle' => 'Check for updates',
+			'settings.page.general.checkUpdatesDesc' => 'How often Cockpit should look for new versions.',
+			'settings.page.general.agentsInUseError' => 'Can\'t turn agents off while an agent tab is open. Close all agent tabs first, then disable it.',
+			'settings.page.general.updateFrequency.daily' => 'Daily',
+			'settings.page.general.updateFrequency.weekly' => 'Weekly',
+			'settings.page.general.updateFrequency.monthly' => 'Monthly',
+			'settings.page.general.updateFrequency.never' => 'Never',
+			'settings.page.diagnostics.sectionTitle' => 'Diagnostics',
+			'settings.page.diagnostics.logFileTitle' => 'Log file',
+			'settings.page.diagnostics.logFileDesc' => ({required Object days, required Object path}) => 'Errors and startup events are recorded here, kept for ${days} days.\n${path}',
+			'settings.page.diagnostics.unavailable' => 'unavailable',
+			'settings.page.diagnostics.reveal' => 'Reveal',
+			'settings.page.diagnostics.reportTitle' => 'Report a problem',
+			'settings.page.diagnostics.reportDesc' => 'Opens a pre-filled issue with your version, OS and recent log. Nothing is sent automatically — you review it first.',
+			'settings.page.diagnostics.reportButton' => 'Report…',
+			'settings.page.diagnostics.reportDialogTitle' => 'Problem report',
+			'settings.page.diagnostics.reportDialogError' => 'Reported manually from Settings.',
+			'settings.page.diagnostics.reportDialogDescription' => 'Describe what went wrong in the issue. The recent log is included below and in "Copy details".',
+			'settings.page.storage.sectionTitle' => 'Storage',
+			'settings.page.storage.locationTitle' => 'Storage location',
+			'settings.page.storage.locationDesc' => ({required Object root}) => 'Cockpit keeps its projects, layouts and settings here. Point it at a synced folder to back it up.\n${root}',
+			'settings.page.storage.useDefault' => 'Use default',
+			'settings.page.storage.working' => 'Working…',
+			'settings.page.storage.change' => 'Change…',
+			'settings.page.storage.resetTitle' => 'Reset Cockpit',
+			'settings.page.storage.resetDesc' => 'Delete all local data — projects, layouts, settings and terminal history — and return to the default location.',
+			'settings.page.storage.resetButton' => 'Reset…',
+			'settings.page.storage.resetConfirm' => 'Reset',
+			'settings.page.storage.resetDialogTitle' => 'Reset Cockpit?',
+			'settings.page.storage.resetDialogContent' => 'This permanently deletes all local Cockpit data — projects, layouts, settings and terminal history. This cannot be undone. Cockpit will close so you can start fresh.',
+			'settings.page.storage.restartRequiredTitle' => 'Restart required',
+			'settings.page.storage.restartChangeFolderMessage' => ({required Object path}) => 'Cockpit will use this folder from the next launch:\n${path}',
+			'settings.page.storage.restartUseDefaultMessage' => 'Cockpit will use the default system location from the next launch. Your data in the custom folder is left untouched.',
+			'settings.page.storage.restartResetMessage' => 'All Cockpit data was cleared. Restart to start fresh.',
+			'settings.page.storage.later' => 'Later',
+			'settings.page.storage.quitCockpit' => 'Quit Cockpit',
+			'settings.page.storage.chooseFolderDialogTitle' => 'Choose a folder for Cockpit data',
+			'settings.page.terminal.sectionDefaultTerminal' => 'Default terminal',
+			'settings.page.terminal.engineTitle' => 'Engine',
+			'settings.page.terminal.engineDesc' => 'Used by new terminal tabs and task output buffers. Open tabs keep their current engine.',
+			'settings.page.terminal.shellTitle' => 'Shell',
+			'settings.page.terminal.shellDesc' => 'Which shell new terminal tabs open. The arrow next to + still opens any other one, just for that tab.',
+			'settings.page.terminal.noWslMessage' => 'No WSL distros found. Install one (wsl.exe --install) and restart Cockpit to see it listed here.',
+			'settings.page.appearance.sectionTheme' => 'Theme',
+			'settings.page.appearance.themeSystem' => 'System',
+			'settings.page.appearance.themeLight' => 'Light',
+			'settings.page.appearance.themeDark' => 'Dark',
+			'settings.page.appearance.sectionFonts' => 'Fonts',
+			'settings.page.appearance.interfaceFontTitle' => 'Interface font',
+			'settings.page.appearance.interfaceFontDesc' => 'Used across the whole app. Empty = system default.',
+			'settings.page.appearance.interfaceSizeTitle' => 'Interface size',
+			'settings.page.appearance.codeFontTitle' => 'Code font',
+			'settings.page.appearance.codeFontDesc' => 'Code and diffs. Empty = system default.',
+			'settings.page.appearance.codeSizeTitle' => 'Code size',
+			'settings.page.appearance.terminalFontTitle' => 'Terminal font',
+			'settings.page.appearance.terminalFontDesc' => 'Uses the code size. Empty = system default.',
+			'settings.page.appearance.sectionSyntax' => 'Syntax',
+			'settings.page.appearance.highlightThemeTitle' => 'Highlight theme',
+			'settings.page.appearance.highlightThemeDesc' => 'Code colors, independent of the app theme.',
+			'settings.page.appearance.sectionConversation' => 'Conversation',
+			'settings.page.appearance.pinUserMessageTitle' => 'Pin user message',
+			'settings.page.appearance.pinUserMessageDesc' => 'The question stays fixed at the top while the answer scrolls.',
+			'settings.page.notifications.sectionTitle' => 'Notifications',
+			'settings.page.notifications.enableTitle' => 'Enable notifications',
+			'settings.page.notifications.enableDesc' => 'Alert me when an agent finishes a turn and the window is not focused.',
+			'settings.page.notifications.systemPermissionTitle' => 'System permission',
+			'settings.page.notifications.grantedDesc' => 'Cockpit is allowed to send notifications.',
+			'settings.page.notifications.notGrantedDesc' => 'macOS has not granted notification access yet.',
+			'settings.page.notifications.granted' => 'Granted',
+			'settings.page.notifications.requestPermission' => 'Request permission',
+			'settings.page.notifications.playSoundTitle' => 'Play sound on finish',
+			'settings.page.notifications.playSoundDesc' => 'Play a short chime when a turn finishes and the window is focused (on any tab or workspace).',
+			'settings.page.shortcuts.notCustomizable' => 'Keyboard shortcuts are not customizable yet.',
+			'settings.page.languages.sectionFormatting' => 'FORMATTING',
+			'settings.page.languages.formatOnSaveTitle' => 'Format on save',
+			'settings.page.languages.formatOnSaveDesc' => 'Format the file automatically when you save (⌘S).',
+			'settings.page.languages.sectionLanguageServers' => 'LANGUAGE SERVERS',
+			'settings.page.languages.footerNote' => 'Errors and formatting use each language\'s language server. Cockpit does not install servers — it uses what is already on your machine. ● responds · ○ not found or invalid command (install the server or adjust the command).',
+			'settings.page.languages.serverCommandLabel' => 'Language server command',
+			'settings.page.languages.formatterCommandLabel' => 'Formatter command (optional)',
+			'settings.page.languages.formatterHint' => 'External formatter with %FILE% placeholder. Takes precedence over the LSP formatter when set.',
+			'settings.page.languages.resetToDefault' => 'Reset to default',
+			'settings.page.languages.saveAndRestart' => 'Save & restart',
+			'settings.page.languages.statusResponds' => 'Server responds',
+			'settings.page.languages.statusNotFound' => 'Server not found or command invalid',
+			'settings.page.connectivity.sectionRelay' => 'Relay',
+			'settings.page.connectivity.sectionPairedDevices' => 'Paired devices',
+			'settings.page.connectivity.reloadTooltip' => 'Reload',
+			'settings.page.connectivity.failedToListDevices' => 'Failed to list devices.',
+			'settings.page.connectivity.noPairedDevices' => 'No paired devices.',
+			'settings.page.connectivity.relayAddressTitle' => 'Relay address',
+			'settings.page.connectivity.relayAddressDesc' => 'Server that connects your agents to the phone. Applies to every agent with the relay enabled.',
+			'settings.page.connectivity.saving' => 'Saving…',
+			'settings.page.connectivity.check' => 'Check',
+			'settings.page.connectivity.healthOnline' => 'Online',
+			'settings.page.connectivity.healthNoResponse' => 'No response',
+			'settings.page.connectivity.healthNotChecked' => 'Not checked',
+			'settings.page.connectivity.deviceDefaultLabel' => 'Device',
+			'settings.page.connectivity.revoke' => 'Revoke',
+			'settings.page.connectivity.pairNewDevice' => 'Pair new device',
+			'settings.page.connectivity.revokeDialogTitle' => 'Revoke device?',
+			'settings.page.connectivity.revokeDialogContent' => ({required Object name}) => '"${name}" will lose access to your agents and will need to pair again.\n\nYou must be connected to the relay — the app will connect automatically to revoke.',
+			'settings.page.schedules.sectionScheduledPrompts' => 'Scheduled prompts',
+			'settings.page.schedules.createSchedule' => 'Create schedule',
+			'settings.page.schedules.createDaemonFirst' => 'Create a Daemon Agent first.',
+			'settings.page.schedules.supervisorOffline' => 'Supervisor offline. Schedules need pi-supervisord running (`remote-pi install`).',
+			'settings.page.schedules.failedToListSchedules' => 'Failed to list schedules.',
+			'settings.page.schedules.noSchedules' => 'No schedules. Create a recurring prompt for a daemon.',
+			'settings.page.schedules.runNow' => 'Run now',
+			'settings.page.schedules.viewLog' => 'View log',
+			'settings.page.schedules.disabled' => 'disabled',
+			'settings.page.schedules.nextRun' => ({required Object when}) => 'next ${when}',
+			'settings.page.schedules.lastRun' => ({required Object label}) => 'last: ${label}',
+			'settings.page.schedules.removeScheduleDialogTitle' => 'Remove schedule?',
+			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.',
+			'settings.page.schedules.newScheduleTitle' => 'New schedule',
+			'settings.page.schedules.daemonLabel' => 'Daemon',
+			'settings.page.schedules.whenLabel' => 'When (cron expression)',
+			'settings.page.schedules.previewPlaceholder' => 'Next run shows up here',
+			'settings.page.schedules.previewComputed' => 'Next: computed on save',
+			'settings.page.schedules.previewNext' => ({required Object when}) => 'Next: ${when}',
+			'settings.page.schedules.exampleEveryDay9am' => 'every day 9am',
+			'settings.page.schedules.exampleHourly' => 'hourly',
+			'settings.page.schedules.exampleEvery15Min' => 'every 15 min',
+			'settings.page.schedules.exampleWeekdays6pm' => 'weekdays 6pm',
+			'settings.page.schedules.promptLabel' => 'Prompt',
+			'settings.page.schedules.timezoneLabel' => 'Timezone (optional)',
+			'settings.page.schedules.skipIfBusy' => 'Skip if the agent is busy',
+			'settings.page.schedules.wakeIfStopped' => 'Wake the daemon if stopped',
+			'settings.page.schedules.catchup' => 'Recover 1 missed run (catchup)',
+			'settings.page.schedules.fillRequiredError' => 'Fill in the expression and the prompt.',
+			'settings.page.schedules.creating' => 'Creating…',
+			'settings.page.schedules.failedToCreateSchedule' => 'Failed to create the schedule.',
+			'settings.page.schedules.historyTitle' => ({required Object schedule}) => 'History — ${schedule}',
+			'settings.page.schedules.failedToReadLog' => 'Failed to read the log.',
+			'settings.page.schedules.noRecordsYet' => 'No records yet.',
+			'settings.page.schedules.cronDelivered' => 'delivered',
+			'settings.page.schedules.cronWokeDelivered' => 'woke + delivered',
+			'settings.page.schedules.cronFailed' => 'failed',
+			'settings.page.schedules.cronSkippedBusy' => 'skipped (busy)',
+			'settings.page.schedules.cronSkippedStopped' => 'skipped (stopped)',
+			'settings.page.schedules.cronSkippedDisabled' => 'skipped (disabled)',
+			'settings.page.daemons.sectionAlwaysOnAgents' => 'Always-on agents',
+			'settings.page.daemons.createDaemon' => 'Create daemon',
+			'settings.page.daemons.startAll' => 'Start all',
+			'settings.page.daemons.stopAll' => 'Stop all',
+			'settings.page.daemons.restartAll' => 'Restart all',
+			'settings.page.daemons.restartSupervisor' => 'Restart supervisor',
+			'settings.page.daemons.restartSupervisorDialogTitle' => 'Restart the supervisor?',
+			'settings.page.daemons.restartSupervisorDialogContent' => 'Restarts the supervisor process (reloads the code). All daemons restart with it and go offline for a few seconds.',
+			'settings.page.daemons.removeDaemonDialogTitle' => 'Remove daemon?',
+			'settings.page.daemons.removeDaemonDialogContent' => ({required Object name}) => '"${name}" stops running and leaves the registry. The folder and its local config are kept — you can recreate it later.',
+			'settings.page.daemons.supervisorOfflineTitle' => 'Supervisor offline',
+			'settings.page.daemons.supervisorOfflineDesc' => 'pi-supervisord is not running. Install it with `remote-pi install` to manage 24/7 agents.',
+			'settings.page.daemons.failedToListDaemons' => 'Failed to list daemons.',
+			'settings.page.daemons.noRegisteredAgents' => 'No registered agents. Create one from a folder.',
+			'settings.page.daemons.start' => 'Start',
+			'settings.page.daemons.stop' => 'Stop',
+			'settings.page.daemons.edit' => 'Edit',
+			'settings.page.daemons.newDaemonTitle' => 'New daemon',
+			'settings.page.daemons.editDaemonTitle' => 'Edit daemon',
+			'settings.page.daemons.nameLabel' => 'Name',
+			'settings.page.daemons.namePlaceholder' => 'e.g. PC, Server, Home',
+			'settings.page.daemons.nameRequiredError' => 'Enter a name.',
+			'settings.page.daemons.nameDuplicateError' => 'An agent with this name already exists.',
+			'settings.page.daemons.folderLabel' => 'Folder',
+			'settings.page.daemons.noFolderChosen' => 'No folder chosen',
+			'settings.page.daemons.choose' => 'Choose',
+			'settings.page.daemons.changeFolder' => 'Change',
+			'settings.page.daemons.folderCannotBeChanged' => 'The folder cannot be changed.',
+			'settings.page.daemons.folderRequiredError' => 'Choose a folder.',
+			'settings.page.daemons.folderDuplicateError' => 'An agent already exists in this folder.',
+			'settings.page.daemons.pickFolderDialogTitle' => 'Choose the Daemon Agent folder',
 			_ => null,
 		};
 	}

@@ -137,7 +137,7 @@ class _SettingsHeader extends StatelessWidget {
         const WindowControls(),
         const SizedBox(width: 14),
         AppTooltip(
-          message: 'Back',
+          message: context.t.settings.page.header.back,
           child: HoverTap(
             borderRadius: BorderRadius.circular(6),
             onTap: () => context.pop(),
@@ -150,7 +150,7 @@ class _SettingsHeader extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          'Settings',
+          context.t.settings.page.header.title,
           style: context.typo.title.copyWith(fontSize: 14, color: colors.text),
         ),
         const Spacer(),
@@ -185,37 +185,37 @@ class _CategoryNav extends StatelessWidget {
         children: [
           _NavItem(
             icon: Icons.tune,
-            label: 'General',
+            label: context.t.settings.page.nav.general,
             selected: selected == _Category.general,
             onTap: () => onSelect(_Category.general),
           ),
           _NavItem(
             icon: Icons.palette_outlined,
-            label: 'Appearance',
+            label: context.t.settings.page.nav.appearance,
             selected: selected == _Category.appearance,
             onTap: () => onSelect(_Category.appearance),
           ),
           _NavItem(
             icon: Icons.terminal_outlined,
-            label: 'Terminal',
+            label: context.t.settings.page.nav.terminal,
             selected: selected == _Category.terminal,
             onTap: () => onSelect(_Category.terminal),
           ),
           _NavItem(
             icon: Icons.code,
-            label: 'Language',
+            label: context.t.settings.page.nav.language,
             selected: selected == _Category.languages,
             onTap: () => onSelect(_Category.languages),
           ),
           _NavItem(
             icon: Icons.keyboard_outlined,
-            label: 'Shortcuts',
+            label: context.t.settings.page.nav.shortcuts,
             selected: selected == _Category.shortcuts,
             onTap: () => onSelect(_Category.shortcuts),
           ),
           _NavItem(
             icon: Icons.notifications_outlined,
-            label: 'Notifications',
+            label: context.t.settings.page.nav.notifications,
             selected: selected == _Category.notifications,
             onTap: () => onSelect(_Category.notifications),
           ),
@@ -228,19 +228,19 @@ class _CategoryNav extends StatelessWidget {
             ),
             _NavItem(
               icon: Icons.wifi_tethering,
-              label: 'Connectivity',
+              label: context.t.settings.page.nav.connectivity,
               selected: selected == _Category.connectivity,
               onTap: () => onSelect(_Category.connectivity),
             ),
             _NavItem(
               icon: Icons.dns_outlined,
-              label: 'Daemon Agents',
+              label: context.t.settings.page.nav.daemonAgents,
               selected: selected == _Category.daemons,
               onTap: () => onSelect(_Category.daemons),
             ),
             _NavItem(
               icon: Icons.schedule_outlined,
-              label: 'Schedules',
+              label: context.t.settings.page.nav.schedules,
               selected: selected == _Category.scheduling,
               onTap: () => onSelect(_Category.scheduling),
             ),
@@ -348,6 +348,7 @@ class _GeneralPanel extends StatelessWidget {
     final s = controller.settings;
     // `agentTabsInUse` é publicado pelo shell (cross-route) via bridge app-scoped.
     final agentsInUse = context.watch<WorkspaceMenuBridge>().agentTabsInUse;
+    final tr = context.t.settings.page.general;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -358,14 +359,12 @@ class _GeneralPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Agent',
+                label: tr.sectionAgent,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Enable agents',
-                      description:
-                          'Show the option to open agent tabs (pi). When off, '
-                          'Cockpit works as a terminal-only workspace.',
+                      title: tr.enableAgentsTitle,
+                      description: tr.enableAgentsDesc,
                       // Mantém o switch clicável: tentar DESLIGAR com um agente em
                       // uso mostra um erro explicando o porquê (em vez de um switch
                       // inerte, sem feedback). Ligar é sempre permitido.
@@ -388,11 +387,8 @@ class _GeneralPanel extends StatelessWidget {
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Show Cockpit terminal',
-                      description:
-                          'Keep a pathless, terminal-only workspace pinned at '
-                          'the top of the rail. Turning it off closes its '
-                          'terminals.',
+                      title: tr.showCockpitTitle,
+                      description: tr.showCockpitDesc,
                       trailing: Switch(
                         value: s.showCockpit,
                         onChanged: controller.setShowCockpit,
@@ -402,12 +398,12 @@ class _GeneralPanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Updates',
+                label: tr.sectionUpdates,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Check for updates',
-                      description: 'How often Cockpit should look for new versions.',
+                      title: tr.checkUpdatesTitle,
+                      description: tr.checkUpdatesDesc,
                       trailing: _UpdateCheckDropdown(
                         value: s.updateCheckFrequency,
                         onChanged: controller.setUpdateCheckFrequency,
@@ -442,8 +438,7 @@ class _GeneralPanel extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 320),
                 child: Text(
-                  "Can't turn agents off while an agent tab is open. "
-                  'Close all agent tabs first, then disable it.',
+                  context.t.settings.page.general.agentsInUseError,
                   style: context.typo.label.copyWith(color: colors.text),
                 ),
               ),
@@ -471,36 +466,33 @@ class _DiagnosticsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dir = DiagnosticsLog.instance.directory;
+    final tr = context.t.settings.page.diagnostics;
     return _Section(
-      label: 'Diagnostics',
+      label: tr.sectionTitle,
       child: _Card(
         children: [
           _Row(
-            title: 'Log file',
-            description:
-                'Errors and startup events are recorded here, kept for '
-                '${DiagnosticsLog.retentionDays} days.'
-                '\n${dir?.path ?? 'unavailable'}',
+            title: tr.logFileTitle,
+            description: tr.logFileDesc(
+              days: DiagnosticsLog.retentionDays,
+              path: dir?.path ?? tr.unavailable,
+            ),
             trailing: OutlineButton(
               onPressed: dir == null ? null : () => _revealFolder(dir.path),
-              child: const Text('Reveal'),
+              child: Text(tr.reveal),
             ),
           ),
           _Row(
-            title: 'Report a problem',
-            description:
-                'Opens a pre-filled issue with your version, OS and recent '
-                'log. Nothing is sent automatically — you review it first.',
+            title: tr.reportTitle,
+            description: tr.reportDesc,
             trailing: OutlineButton(
               onPressed: () => showErrorReportDialog(
                 context,
-                title: 'Problem report',
-                error: 'Reported manually from Settings.',
-                description:
-                    'Describe what went wrong in the issue. The recent log is '
-                    'included below and in "Copy details".',
+                title: tr.reportDialogTitle,
+                error: tr.reportDialogError,
+                description: tr.reportDialogDescription,
               ),
-              child: const Text('Report…'),
+              child: Text(tr.reportButton),
             ),
           ),
         ],
@@ -561,8 +553,9 @@ class _StorageSectionState extends State<_StorageSection> {
 
   Future<void> _changeFolder() async {
     if (_busy) return;
+    final tr = context.t.settings.page.storage;
     final picked = await NativeFolderPicker.pick(
-      dialogTitle: 'Choose a folder for Cockpit data',
+      dialogTitle: tr.chooseFolderDialogTitle,
       initialDirectory: _root, // abre na pasta atual do Cockpit
     );
     if (picked == null || !mounted) return;
@@ -573,9 +566,7 @@ class _StorageSectionState extends State<_StorageSection> {
     await StorageLocation.setOverrideRoot(picked);
     if (!mounted) return;
     setState(() => _busy = false);
-    await _promptRestart(
-      'Cockpit will use this folder from the next launch:\n$picked',
-    );
+    await _promptRestart(tr.restartChangeFolderMessage(path: picked));
   }
 
   Future<void> _useDefault() async {
@@ -583,8 +574,7 @@ class _StorageSectionState extends State<_StorageSection> {
     await StorageLocation.setOverrideRoot(null);
     if (!mounted) return;
     await _promptRestart(
-      'Cockpit will use the default system location from the next launch. '
-      'Your data in the custom folder is left untouched.',
+      context.t.settings.page.storage.restartUseDefaultMessage,
     );
   }
 
@@ -594,7 +584,7 @@ class _StorageSectionState extends State<_StorageSection> {
     await StorageLocation.resetAll();
     if (!mounted) return;
     await _promptRestart(
-      'All Cockpit data was cleared. Restart to start fresh.',
+      context.t.settings.page.storage.restartResetMessage,
       quitOnly: true,
     );
   }
@@ -602,41 +592,39 @@ class _StorageSectionState extends State<_StorageSection> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.storage;
     return _Section(
-      label: 'Storage',
+      label: tr.sectionTitle,
       child: _Card(
         children: [
           _Row(
-            title: 'Storage location',
+            title: tr.locationTitle,
             description: _loading
-                ? 'Loading…'
-                : 'Cockpit keeps its projects, layouts and settings here. '
-                      'Point it at a synced folder to back it up.\n${_root ?? '—'}',
+                ? context.t.common.loading
+                : tr.locationDesc(root: _root ?? '—'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_custom) ...[
                   GhostButton(
                     onPressed: _loading || _busy ? null : _useDefault,
-                    child: const Text('Use default'),
+                    child: Text(tr.useDefault),
                   ),
                   const SizedBox(width: 8),
                 ],
                 OutlineButton(
                   onPressed: _loading || _busy ? null : _changeFolder,
-                  child: Text(_busy ? 'Working…' : 'Change…'),
+                  child: Text(_busy ? tr.working : tr.change),
                 ),
               ],
             ),
           ),
           _Row(
-            title: 'Reset Cockpit',
-            description:
-                'Delete all local data — projects, layouts, settings and '
-                'terminal history — and return to the default location.',
+            title: tr.resetTitle,
+            description: tr.resetDesc,
             trailing: DestructiveButton(
               onPressed: _loading ? null : _reset,
-              child: Text('Reset…', style: TextStyle(color: colors.error)),
+              child: Text(tr.resetButton, style: TextStyle(color: colors.error)),
             ),
           ),
         ],
@@ -651,9 +639,10 @@ class _StorageSectionState extends State<_StorageSection> {
       barrierColor: const Color(0x99000000),
       builder: (context) {
         final colors = context.colors;
+        final tr = context.t.settings.page.storage;
         return AlertDialog(
           title: Text(
-            'Reset Cockpit?',
+            tr.resetDialogTitle,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -662,9 +651,7 @@ class _StorageSectionState extends State<_StorageSection> {
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 380),
             child: Text(
-              'This permanently deletes all local Cockpit data — projects, '
-              'layouts, settings and terminal history. This cannot be undone. '
-              'Cockpit will close so you can start fresh.',
+              tr.resetDialogContent,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text2,
@@ -674,11 +661,11 @@ class _StorageSectionState extends State<_StorageSection> {
           actions: [
             GhostButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.t.common.cancel),
             ),
             DestructiveButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Reset', style: TextStyle(color: colors.error)),
+              child: Text(tr.resetConfirm, style: TextStyle(color: colors.error)),
             ),
           ],
         );
@@ -695,9 +682,10 @@ class _StorageSectionState extends State<_StorageSection> {
       barrierColor: const Color(0x99000000),
       builder: (context) {
         final colors = context.colors;
+        final tr = context.t.settings.page.storage;
         return AlertDialog(
           title: Text(
-            'Restart required',
+            tr.restartRequiredTitle,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -717,7 +705,7 @@ class _StorageSectionState extends State<_StorageSection> {
             if (!quitOnly)
               GhostButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Later'),
+                child: Text(tr.later),
               ),
             PrimaryButton(
               // Encerra abrupto de propósito: descarta escritas pendentes nas
@@ -729,7 +717,7 @@ class _StorageSectionState extends State<_StorageSection> {
                 DiagnosticsLog.instance.markCleanExit();
                 exit(0);
               },
-              child: const Text('Quit Cockpit'),
+              child: Text(tr.quitCockpit),
             ),
           ],
         );
