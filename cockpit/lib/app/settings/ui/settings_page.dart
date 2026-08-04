@@ -2606,31 +2606,34 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
   Future<void> _confirmRemove(CronJob job) async {
     final vm = context.read<CronViewModel>();
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Remove schedule?',
+          tr.removeScheduleDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          'The job "${job.schedule}" for ${vm.daemonName(job.daemonId)} is deleted. '
-          'Its runs stop.',
+          tr.removeScheduleDialogContent(
+            schedule: job.schedule,
+            daemon: vm.daemonName(job.daemonId),
+          ),
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Remove',
+              context.t.common.remove,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.error,
@@ -2666,7 +2669,8 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
                 const SizedBox(height: 16),
               ],
               _Section(
-                label: 'Scheduled prompts',
+                label:
+                    context.t.settings.page.schedules.sectionScheduledPrompts,
                 trailing: _ReloadButton(
                   busy: vm.load == CronLoad.loading,
                   onTap: vm.reload,
@@ -2682,18 +2686,19 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
 
   Widget _cronActions(BuildContext context, CronViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
     return Row(
       children: [
         PrimaryButton(
           onPressed: vm.hasDaemons ? () => _openEditor() : null,
           leading: const Icon(Icons.add, size: 16),
-          child: const Text('Create schedule'),
+          child: Text(tr.createSchedule),
         ),
         if (!vm.hasDaemons) ...[
           const SizedBox(width: 12),
           Flexible(
             child: Text(
-              'Create a Daemon Agent first.',
+              tr.createDaemonFirst,
               style: context.typo.label.copyWith(color: colors.text3),
             ),
           ),
@@ -2704,12 +2709,12 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
 
   Widget _body(BuildContext context, CronViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
 
     if (!vm.online && vm.load != CronLoad.loading) {
       return _MessageCard(
         child: Text(
-          'Supervisor offline. Schedules need pi-supervisord running '
-          '(`remote-pi install`).',
+          tr.supervisorOffline,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -2729,7 +2734,7 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Loading…',
+              context.t.common.loading,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text3,
@@ -2742,7 +2747,7 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
     if (vm.load == CronLoad.error && vm.jobs.isEmpty) {
       return _MessageCard(
         child: Text(
-          vm.error ?? 'Failed to list schedules.',
+          vm.error ?? tr.failedToListSchedules,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.error,
@@ -2753,7 +2758,7 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
     if (vm.jobs.isEmpty) {
       return _MessageCard(
         child: Text(
-          'No schedules. Create a recurring prompt for a daemon.',
+          tr.noSchedules,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -2858,9 +2863,24 @@ class _CronTile extends StatelessWidget {
             )
           else ...[
             Switch(value: job.enabled, onChanged: onToggle),
-            _cronAct(context, Icons.play_arrow, 'Run now', onRun),
-            _cronAct(context, Icons.history, 'View log', onLog),
-            _cronAct(context, Icons.delete_outline, 'Remove', onRemove),
+            _cronAct(
+              context,
+              Icons.play_arrow,
+              context.t.settings.page.schedules.runNow,
+              onRun,
+            ),
+            _cronAct(
+              context,
+              Icons.history,
+              context.t.settings.page.schedules.viewLog,
+              onLog,
+            ),
+            _cronAct(
+              context,
+              Icons.delete_outline,
+              context.t.common.remove,
+              onRemove,
+            ),
           ],
         ],
       ),
@@ -2896,19 +2916,20 @@ class _CronMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
     final children = <Widget>[];
 
     if (!job.enabled) {
       children.add(
         Text(
-          'disabled',
+          tr.disabled,
           style: context.typo.label.copyWith(color: colors.text4),
         ),
       );
     } else if (job.nextRun != null) {
       children.add(
         Text(
-          'next ${_fmtIso(job.nextRun)}',
+          tr.nextRun(when: _fmtIso(job.nextRun)),
           style: context.typo.label.copyWith(color: colors.text3),
         ),
       );
@@ -2928,7 +2949,10 @@ class _CronMeta extends StatelessWidget {
         );
       }
       children.add(
-        Text('last: $label', style: context.typo.label.copyWith(color: color)),
+        Text(
+          tr.lastRun(label: label),
+          style: context.typo.label.copyWith(color: color),
+        ),
       );
     }
 
@@ -2959,13 +2983,6 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
   bool _saving = false;
   String? _localError;
 
-  static const _examples = <(String, String)>[
-    ('0 9 * * *', 'every day 9am'),
-    ('0 * * * *', 'hourly'),
-    ('*/15 * * * *', 'every 15 min'),
-    ('0 18 * * 1-5', 'weekdays 6pm'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -2982,18 +2999,21 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
   }
 
   String get _previewText {
+    final tr = context.t.settings.page.schedules;
     final expr = _expr.text.trim();
-    if (expr.isEmpty) return 'Next run shows up here';
+    if (expr.isEmpty) return tr.previewPlaceholder;
     final next = nextCronRun(expr, DateTime.now());
-    if (next == null) return 'Next: computed on save';
-    return 'Next: ${_fmtDateTime(next)}';
+    if (next == null) return tr.previewComputed;
+    return tr.previewNext(when: _fmtDateTime(next));
   }
 
   Future<void> _submit() async {
     final expr = _expr.text.trim();
     final prompt = _prompt.text.trim();
     if (expr.isEmpty || prompt.isEmpty) {
-      setState(() => _localError = 'Fill in the expression and the prompt.');
+      setState(
+        () => _localError = context.t.settings.page.schedules.fillRequiredError,
+      );
       return;
     }
     setState(() {
@@ -3016,7 +3036,9 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
     } else {
       setState(() {
         _saving = false;
-        _localError = widget.vm.actionError ?? 'Failed to create the schedule.';
+        _localError =
+            widget.vm.actionError ??
+            context.t.settings.page.schedules.failedToCreateSchedule;
       });
     }
   }
@@ -3025,10 +3047,17 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final vm = widget.vm;
+    final tr = context.t.settings.page.schedules;
+    final examples = <(String, String)>[
+      ('0 9 * * *', tr.exampleEveryDay9am),
+      ('0 * * * *', tr.exampleHourly),
+      ('*/15 * * * *', tr.exampleEvery15Min),
+      ('0 18 * * 1-5', tr.exampleWeekdays6pm),
+    ];
 
     return AlertDialog(
       title: Text(
-        'New schedule',
+        tr.newScheduleTitle,
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: SizedBox(
@@ -3038,7 +3067,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _fieldLabel(context, 'Daemon'),
+              _fieldLabel(context, tr.daemonLabel),
               const SizedBox(height: 6),
               // Builder garante um BuildContext cujo RenderBox é o próprio chip,
               // não o do AlertDialog — senão o menu ancora fora do dialog.
@@ -3064,7 +3093,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              _fieldLabel(context, 'When (cron expression)'),
+              _fieldLabel(context, tr.whenLabel),
               const SizedBox(height: 6),
               _dialogField(context, _expr, 'e.g. 0 9 * * *', mono: true),
               const SizedBox(height: 6),
@@ -3077,7 +3106,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final (expr, label) in _examples)
+                  for (final (expr, label) in examples)
                     _ExampleChip(
                       expr: expr,
                       label: label,
@@ -3091,7 +3120,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 ],
               ),
               const SizedBox(height: 16),
-              _fieldLabel(context, 'Prompt'),
+              _fieldLabel(context, tr.promptLabel),
               const SizedBox(height: 6),
               _dialogField(
                 context,
@@ -3100,7 +3129,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              _fieldLabel(context, 'Timezone (optional)'),
+              _fieldLabel(context, tr.timezoneLabel),
               const SizedBox(height: 6),
               _dialogField(
                 context,
@@ -3110,17 +3139,17 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
               ),
               const SizedBox(height: 12),
               _CronOptionSwitch(
-                label: 'Skip if the agent is busy',
+                label: tr.skipIfBusy,
                 value: _skipIfBusy,
                 onChanged: (v) => setState(() => _skipIfBusy = v),
               ),
               _CronOptionSwitch(
-                label: 'Wake the daemon if stopped',
+                label: tr.wakeIfStopped,
                 value: _wake,
                 onChanged: (v) => setState(() => _wake = v),
               ),
               _CronOptionSwitch(
-                label: 'Recover 1 missed run (catchup)',
+                label: tr.catchup,
                 value: _catchup,
                 onChanged: (v) => setState(() => _catchup = v),
               ),
@@ -3139,7 +3168,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
         GhostButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
           child: Text(
-            'Cancel',
+            context.t.common.cancel,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.text2,
@@ -3149,7 +3178,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
         GhostButton(
           onPressed: _saving ? null : _submit,
           child: Text(
-            _saving ? 'Creating…' : 'Create',
+            _saving ? tr.creating : context.t.common.create,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.accentText,
@@ -3273,7 +3302,8 @@ class _CronLogDialogState extends State<_CronLogDialog> {
     setState(() {
       _entries = entries;
       _error = entries == null
-          ? (widget.vm.actionError ?? 'Failed to read the log.')
+          ? (widget.vm.actionError ??
+                context.t.settings.page.schedules.failedToReadLog)
           : null;
       _loading = false;
     });
@@ -3284,7 +3314,9 @@ class _CronLogDialogState extends State<_CronLogDialog> {
     final colors = context.colors;
     return AlertDialog(
       title: Text(
-        'History — ${widget.job.schedule}',
+        context.t.settings.page.schedules.historyTitle(
+          schedule: widget.job.schedule,
+        ),
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: SizedBox(width: 460, child: _content(context)),
@@ -3292,7 +3324,7 @@ class _CronLogDialogState extends State<_CronLogDialog> {
         GhostButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
-            'Close',
+            context.t.common.close,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.text2,
@@ -3326,7 +3358,7 @@ class _CronLogDialogState extends State<_CronLogDialog> {
     final entries = _entries ?? const <CronLogEntry>[];
     if (entries.isEmpty) {
       return Text(
-        'No records yet.',
+        context.t.settings.page.schedules.noRecordsYet,
         style: context.typo.body.copyWith(fontSize: 13.5, color: colors.text3),
       );
     }
@@ -3404,13 +3436,14 @@ class _CronLogDialogState extends State<_CronLogDialog> {
 
 (Color, String) _cronResultView(BuildContext context, CronResult r) {
   final colors = context.colors;
+  final tr = context.t.settings.page.schedules;
   return switch (r) {
-    CronResult.delivered => (colors.online, 'delivered'),
-    CronResult.wokeAndDelivered => (colors.online, 'woke + delivered'),
-    CronResult.deliverFailed => (colors.error, 'failed'),
-    CronResult.skippedBusy => (colors.warn, 'skipped (busy)'),
-    CronResult.skippedDown => (colors.text4, 'skipped (stopped)'),
-    CronResult.skippedDisabled => (colors.text4, 'skipped (disabled)'),
+    CronResult.delivered => (colors.online, tr.cronDelivered),
+    CronResult.wokeAndDelivered => (colors.online, tr.cronWokeDelivered),
+    CronResult.deliverFailed => (colors.error, tr.cronFailed),
+    CronResult.skippedBusy => (colors.warn, tr.cronSkippedBusy),
+    CronResult.skippedDown => (colors.text4, tr.cronSkippedStopped),
+    CronResult.skippedDisabled => (colors.text4, tr.cronSkippedDisabled),
     CronResult.unknown => (colors.text4, '—'),
   };
 }
