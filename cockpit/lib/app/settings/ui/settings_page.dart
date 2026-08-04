@@ -750,6 +750,7 @@ class _TerminalPanel extends StatelessWidget {
     final effective = resolver.effectiveDefault(
       controller.settings.defaultTerminalProfileId,
     );
+    final tr = context.t.settings.page.terminal;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -760,7 +761,7 @@ class _TerminalPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Default terminal',
+                label: tr.sectionDefaultTerminal,
                 child: _Card(
                   children: [
                     // O seletor de engine some no Windows: Ghostty ainda engole
@@ -768,10 +769,8 @@ class _TerminalPanel extends StatelessWidget {
                     // no xterm (ver `terminalEngineIsSelectable`).
                     if (terminalEngineIsSelectable)
                       _Row(
-                        title: 'Engine',
-                        description:
-                            'Used by new terminal tabs and task output buffers. '
-                            'Open tabs keep their current engine.',
+                        title: tr.engineTitle,
+                        description: tr.engineDesc,
                         trailing: _TerminalEngineDropdown(
                           value: controller.settings.terminalEngine,
                           onChanged: controller.setTerminalEngine,
@@ -779,10 +778,8 @@ class _TerminalPanel extends StatelessWidget {
                       ),
                     if (Platform.isWindows)
                       _Row(
-                        title: 'Shell',
-                        description:
-                            'Which shell new terminal tabs open. The arrow next '
-                            'to + still opens any other one, just for that tab.',
+                        title: tr.shellTitle,
+                        description: tr.shellDesc,
                         trailing: _TerminalProfileDropdown(
                           profiles: profiles,
                           value: effective,
@@ -801,8 +798,7 @@ class _TerminalPanel extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 4, right: 4),
                   child: Text(
-                    'No WSL distros found. Install one (wsl.exe --install) and '
-                    'restart Cockpit to see it listed here.',
+                    tr.noWslMessage,
                     style: context.typo.label.copyWith(
                       color: context.colors.text3,
                     ),
@@ -900,6 +896,7 @@ class _AppearancePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<SettingsController>();
     final s = controller.settings;
+    final tr = context.t.settings.page.appearance;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -910,11 +907,11 @@ class _AppearancePanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Theme',
+                label: tr.sectionTheme,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Theme',
+                      title: tr.sectionTheme,
                       trailing: _ThemeDropdown(
                         value: s.themeMode,
                         onChanged: controller.setThemeMode,
@@ -938,13 +935,12 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Fonts',
+                label: tr.sectionFonts,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Interface font',
-                      description:
-                          'Used across the whole app. Empty = system default.',
+                      title: tr.interfaceFontTitle,
+                      description: tr.interfaceFontDesc,
                       trailing: _FontField(
                         value: s.interfaceFont,
                         hint: 'Space Grotesk · Hanken',
@@ -952,7 +948,7 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Interface size',
+                      title: tr.interfaceSizeTitle,
                       trailing: _SizeStepper(
                         value: s.interfaceSize,
                         min: 11,
@@ -961,8 +957,8 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Code font',
-                      description: 'Code and diffs. Empty = system default.',
+                      title: tr.codeFontTitle,
+                      description: tr.codeFontDesc,
                       trailing: _FontField(
                         value: s.codeFont,
                         hint: 'JetBrains Mono',
@@ -970,7 +966,7 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Code size',
+                      title: tr.codeSizeTitle,
                       trailing: _SizeStepper(
                         value: s.codeSize,
                         min: 9,
@@ -979,9 +975,8 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Terminal font',
-                      description:
-                          'Uses the code size. Empty = system default.',
+                      title: tr.terminalFontTitle,
+                      description: tr.terminalFontDesc,
                       trailing: _FontField(
                         value: s.terminalFont,
                         hint: 'Menlo · monospace',
@@ -992,16 +987,15 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Syntax',
+                label: tr.sectionSyntax,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _Card(
                       children: [
                         _Row(
-                          title: 'Highlight theme',
-                          description:
-                              'Code colors, independent of the app theme.',
+                          title: tr.highlightThemeTitle,
+                          description: tr.highlightThemeDesc,
                           trailing: _SyntaxDropdown(
                             value: s.syntaxTheme,
                             onChanged: controller.setSyntaxTheme,
@@ -1015,14 +1009,12 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Conversation',
+                label: tr.sectionConversation,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Pin user message',
-                      description:
-                          'The question stays fixed at the top while the answer '
-                          'scrolls.',
+                      title: tr.pinUserMessageTitle,
+                      description: tr.pinUserMessageDesc,
                       trailing: Switch(
                         value: s.pinUserMessage,
                         onChanged: controller.setPinUserMessage,
@@ -1053,6 +1045,7 @@ class _NotificationsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<SettingsController>();
     final s = controller.settings;
+    final tr = context.t.settings.page.notifications;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -1063,14 +1056,12 @@ class _NotificationsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Notifications',
+                label: tr.sectionTitle,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Enable notifications',
-                      description:
-                          'Alert me when an agent finishes a turn and the window '
-                          'is not focused.',
+                      title: tr.enableTitle,
+                      description: tr.enableDesc,
                       trailing: Switch(
                         value: s.notificationsEnabled,
                         onChanged: controller.setNotificationsEnabled,
@@ -1079,10 +1070,8 @@ class _NotificationsPanel extends StatelessWidget {
                     if (Platform.isMacOS && s.notificationsEnabled)
                       const _NotificationPermissionRow(),
                     _Row(
-                      title: 'Play sound on finish',
-                      description:
-                          'Play a short chime when a turn finishes and the '
-                          'window is focused (on any tab or workspace).',
+                      title: tr.playSoundTitle,
+                      description: tr.playSoundDesc,
                       trailing: Switch(
                         value: s.soundEnabled,
                         onChanged: controller.setSoundEnabled,
@@ -1133,11 +1122,10 @@ class _NotificationPermissionRowState
     final colors = context.colors;
     final granted =
         context.watch<NotificationsViewModel>().status == CheckStatus.ok;
+    final tr = context.t.settings.page.notifications;
     return _Row(
-      title: 'System permission',
-      description: granted
-          ? 'Cockpit is allowed to send notifications.'
-          : 'macOS has not granted notification access yet.',
+      title: tr.systemPermissionTitle,
+      description: granted ? tr.grantedDesc : tr.notGrantedDesc,
       trailing: granted
           ? Row(
               mainAxisSize: MainAxisSize.min,
@@ -1145,14 +1133,14 @@ class _NotificationPermissionRowState
                 Icon(Icons.check_circle, size: 18, color: colors.online),
                 const SizedBox(width: 6),
                 Text(
-                  'Granted',
+                  tr.granted,
                   style: context.typo.label.copyWith(color: colors.text2),
                 ),
               ],
             )
           : SecondaryButton(
               onPressed: _request,
-              child: const Text('Request permission'),
+              child: Text(tr.requestPermission),
             ),
     );
   }
@@ -1227,7 +1215,7 @@ class _ShortcutsPanel extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 20),
                 child: Text(
-                  'Keyboard shortcuts are not customizable yet.',
+                  context.t.settings.page.shortcuts.notCustomizable,
                   style: context.typo.label.copyWith(color: colors.text3),
                 ),
               ),
@@ -1431,18 +1419,18 @@ class _ThemeDropdown extends StatelessWidget {
   final AppThemeMode value;
   final ValueChanged<AppThemeMode> onChanged;
 
-  static const _meta = <AppThemeMode, ({String label, IconData icon})>{
-    AppThemeMode.system: (
-      label: 'System',
-      icon: Icons.desktop_windows_outlined,
-    ),
-    AppThemeMode.light: (label: 'Light', icon: Icons.light_mode_outlined),
-    AppThemeMode.dark: (label: 'Dark', icon: Icons.dark_mode_outlined),
-  };
-
   @override
   Widget build(BuildContext context) {
-    final current = _meta[value]!;
+    final tr = context.t.settings.page.appearance;
+    final meta = <AppThemeMode, ({String label, IconData icon})>{
+      AppThemeMode.system: (
+        label: tr.themeSystem,
+        icon: Icons.desktop_windows_outlined,
+      ),
+      AppThemeMode.light: (label: tr.themeLight, icon: Icons.light_mode_outlined),
+      AppThemeMode.dark: (label: tr.themeDark, icon: Icons.dark_mode_outlined),
+    };
+    final current = meta[value]!;
     return _DropdownChip(
       icon: current.icon,
       label: current.label,
@@ -1451,7 +1439,7 @@ class _ThemeDropdown extends StatelessWidget {
           context,
           minWidth: 180,
           items: [
-            for (final e in _meta.entries)
+            for (final e in meta.entries)
               AppMenuItem(
                 value: e.key,
                 label: e.value.label,
@@ -1568,23 +1556,23 @@ class _UpdateCheckDropdown extends StatelessWidget {
   final UpdateCheckFrequency value;
   final ValueChanged<UpdateCheckFrequency> onChanged;
 
-  static const _labels = <UpdateCheckFrequency, String>{
-    UpdateCheckFrequency.daily: 'Daily',
-    UpdateCheckFrequency.weekly: 'Weekly',
-    UpdateCheckFrequency.monthly: 'Monthly',
-    UpdateCheckFrequency.never: 'Never',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final tr = context.t.settings.page.general.updateFrequency;
+    final labels = <UpdateCheckFrequency, String>{
+      UpdateCheckFrequency.daily: tr.daily,
+      UpdateCheckFrequency.weekly: tr.weekly,
+      UpdateCheckFrequency.monthly: tr.monthly,
+      UpdateCheckFrequency.never: tr.never,
+    };
     return _DropdownChip(
-      label: _labels[value]!,
+      label: labels[value]!,
       onTap: () async {
         final picked = await showAppMenu<UpdateCheckFrequency>(
           context,
           minWidth: 180,
           items: [
-            for (final e in _labels.entries)
+            for (final e in labels.entries)
               AppMenuItem(
                 value: e.key,
                 label: e.value,
