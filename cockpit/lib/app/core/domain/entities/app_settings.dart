@@ -9,6 +9,8 @@ enum SyntaxThemeId { one, dracula, github }
 /// Motor VT usado por terminais criados daqui pra frente.
 enum TerminalEngine { ghostty, xterm }
 
+enum UpdateCheckFrequency { daily, weekly, monthly, never }
+
 /// Preferências do app, persistidas localmente (Hive). Imutável; mudanças via
 /// [copyWith]. Fontes vazias (`null`) = usar os defaults do design.
 class AppSettings {
@@ -36,6 +38,8 @@ class AppSettings {
     this.defaultTerminalProfileId,
     this.terminalEngine = TerminalEngine.ghostty,
     this.locale,
+    this.updateCheckFrequency = UpdateCheckFrequency.daily,
+    this.lastUpdateCheckTime,
   });
 
   final AppThemeMode themeMode;
@@ -130,6 +134,12 @@ class AppSettings {
   /// Configurações.
   final String? locale;
 
+  /// Frequência de verificação de atualizações.
+  final UpdateCheckFrequency updateCheckFrequency;
+
+  /// Data da última verificação de atualização.
+  final DateTime? lastUpdateCheckTime;
+
   AppSettings copyWith({
     AppThemeMode? themeMode,
     String? interfaceFont,
@@ -159,6 +169,8 @@ class AppSettings {
     TerminalEngine? terminalEngine,
     String? locale,
     bool clearLocale = false,
+    UpdateCheckFrequency? updateCheckFrequency,
+    DateTime? lastUpdateCheckTime,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -190,6 +202,8 @@ class AppSettings {
           : (defaultTerminalProfileId ?? this.defaultTerminalProfileId),
       terminalEngine: terminalEngine ?? this.terminalEngine,
       locale: clearLocale ? null : (locale ?? this.locale),
+      updateCheckFrequency: updateCheckFrequency ?? this.updateCheckFrequency,
+      lastUpdateCheckTime: lastUpdateCheckTime ?? this.lastUpdateCheckTime,
     );
   }
 
@@ -225,6 +239,9 @@ class AppSettings {
     'terminal.engine': terminalEngine.name,
     // Só quando escolhido: ausência = seguir o locale do SO.
     if (locale != null) 'locale': locale,
+    'updateCheckFrequency': updateCheckFrequency.name,
+    if (lastUpdateCheckTime != null)
+      'lastUpdateCheckTime': lastUpdateCheckTime!.toIso8601String(),
   };
 
   factory AppSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -269,6 +286,14 @@ class AppSettings {
         TerminalEngine.ghostty,
       ),
       locale: str(json['locale']),
+      updateCheckFrequency: _enumByName(
+        UpdateCheckFrequency.values,
+        json['updateCheckFrequency'],
+        UpdateCheckFrequency.daily,
+      ),
+      lastUpdateCheckTime: json['lastUpdateCheckTime'] != null
+          ? DateTime.tryParse(json['lastUpdateCheckTime'] as String)
+          : null,
     );
   }
 }

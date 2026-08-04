@@ -9,6 +9,7 @@ class AppMenuItem<T> {
     required this.label,
     this.icon,
     this.leading,
+    this.labelWidget,
     this.selected = false,
     this.danger = false,
     this.enabled = true,
@@ -22,6 +23,7 @@ class AppMenuItem<T> {
       label = '',
       icon = null,
       leading = null,
+      labelWidget = null,
       selected = false,
       danger = false,
       enabled = false,
@@ -35,6 +37,9 @@ class AppMenuItem<T> {
 
   /// Widget de ícone à esquerda (ex.: logo SVG). Vence [icon] quando presente.
   final Widget? leading;
+
+  /// Rótulo rico opcional. Quando presente, substitui [label].
+  final Widget? labelWidget;
   final bool selected;
   final bool danger;
 
@@ -85,33 +90,20 @@ Future<T?> showAppMenu<T>(
   // do submenu processar o clique).
   final groupId = Object();
 
-  // Submenu aberto (no máximo um). O `subMenu` nativo do shadcn não serve
-  // aqui: ele ancora via `localToGlobal` no espaço da JANELA, mas o overlay
-  // vive dentro do `_AppZoom` — com "Interface size" ≠ 14 o submenu abria
-  // deslocado, proporcional à distância do canto superior esquerdo (mesmo bug
-  // do AppTooltip). Abrimos nós mesmos com `position` no espaço do overlay.
+  // Submenu aberto (no máximo um) — abrimos nós mesmos pra controlar o
+  // TapRegion group e o fechamento junto com o menu raiz.
   OverlayCompleter<void>? subMenu;
   void closeSubMenu() {
     if (subMenu?.isCompleted == false) subMenu!.remove();
     subMenu = null;
   }
 
-  // O `globalPosition` do gesto vem em coordenadas da JANELA (físicas), mas o
-  // overlay dos popovers vive dentro do `_AppZoom` (FittedBox do "Interface
-  // size") — com zoom ≠ 1.0 o ponto cru desloca. `globalToLocal` do RenderBox
-  // do overlay aplica a cadeia de transforms inteira (inclusive o scale) e
-  // devolve o ponto no espaço que o popover realmente usa.
-  Offset? position = globalPosition;
-  if (position != null) {
-    final overlayBox = Overlay.of(context).context.findRenderObject();
-    if (overlayBox is RenderBox) {
-      position = overlayBox.globalToLocal(position);
-    }
-  }
+  // Ponto do clique em coordenadas de janela — o handler do app converte pro
+  // espaço do overlay (ver [AppPopoverOverlayHandler]).
+  final Offset? position = globalPosition;
 
-  /// Abre os filhos de [item] ao lado do próprio item ([itemContext]), ancorado
-  /// no espaço do overlay (`localToGlobal(..., ancestor: overlay)`) — imune ao
-  /// zoom. A escolha de um filho resolve o future do MENU raiz ([menuContext]).
+  /// Abre os filhos de [item] ao lado do próprio item ([itemContext]).
+  /// A escolha de um filho resolve o future do MENU raiz ([menuContext]).
   void openSubMenu(
     BuildContext menuContext,
     BuildContext itemContext,
@@ -119,13 +111,9 @@ Future<T?> showAppMenu<T>(
   ) {
     closeSubMenu();
     final box = itemContext.findRenderObject();
-    final overlayBox = Overlay.of(itemContext).context.findRenderObject();
-    if (box is! RenderBox || overlayBox is! RenderBox) return;
-    // Top-right do item + respiro, no espaço do overlay.
-    final anchor = box.localToGlobal(
-      Offset(box.size.width, 0),
-      ancestor: overlayBox,
-    );
+    if (box is! RenderBox) return;
+    // Top-right do item + respiro.
+    final anchor = box.localToGlobal(Offset(box.size.width, 0));
     subMenu = showPopover<void>(
       context: itemContext,
       position: anchor + const Offset(4, -6),
@@ -228,16 +216,18 @@ Future<T?> showAppMenu<T>(
                       : (ctx) {
                           closeOverlay<T>(ctx, item.value);
                         },
-                  child: Text(
-                    item.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: menuContext.typo.body.copyWith(
-                      fontSize: 13,
-                      color: !item.enabled
-                          ? colors.text4
-                          : (item.danger ? colors.error : colors.text),
-                    ),
-                  ),
+                  child:
+                      item.labelWidget ??
+                      Text(
+                        item.label,
+                        overflow: TextOverflow.ellipsis,
+                        style: menuContext.typo.body.copyWith(
+                          fontSize: 13,
+                          color: !item.enabled
+                              ? colors.text4
+                              : (item.danger ? colors.error : colors.text),
+                        ),
+                      ),
                 ),
               ),
         ],

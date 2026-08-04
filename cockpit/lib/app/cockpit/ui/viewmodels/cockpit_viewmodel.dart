@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show File, FileSystemEntity, FileSystemEntityType, Platform;
+import 'dart:io'
+    show Directory, File, FileSystemEntity, FileSystemEntityType, Platform;
 import 'dart:math' show max;
 
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
@@ -15,6 +16,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/file_system_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/folder_lister.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_diff_reader.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/layout_loader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/notifier.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/project_repository.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/rpc_gateway_factory.dart';
@@ -29,6 +31,8 @@ import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
 import 'package:cockpit/app/cockpit/domain/entities/content_search.dart';
 import 'package:cockpit/app/cockpit/domain/entities/file_node.dart';
 import 'package:cockpit/app/cockpit/domain/entities/file_view.dart';
+import 'package:cockpit/app/cockpit/domain/entities/git_commit.dart';
+import 'package:cockpit/app/cockpit/domain/entities/layout_spec.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_file_status.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_info.dart';
 import 'package:cockpit/app/cockpit/domain/entities/launchable_app.dart';
@@ -41,7 +45,9 @@ import 'package:cockpit/app/cockpit/domain/entities/worktree.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
+import 'package:cockpit/app/core/domain/entities/lsp_semantic_tokens.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+import 'package:cockpit/app/core/utils/path_utils.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
@@ -100,6 +106,7 @@ class CockpitViewModel extends ChangeNotifier {
     this._taskDiscovery,
     this._taskRunner,
     this._dbService,
+    this._layoutLoader,
   ) {
     // Contexto do shell que o GitController precisa (page-scoped, mesma vida).
     git
@@ -139,6 +146,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// Motor de queries da DB tab — compartilhado com a CLI `cockpit db`
   /// (plano 51): mesma resolução de conexão/senha, mesma serialização.
   final DbQueryService _dbService;
+  final LayoutLoader _layoutLoader;
   final RpcGatewayFactory _factory;
   final FolderLister _folders;
   final SessionHistory _history;
@@ -191,6 +199,46 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Pane focada por projeto.
   final Map<String, String> _focused = <String, String>{};
+
+  /// Histórico de abas ativadas por pane (LIFO), pro botão "voltar" do mouse
+  /// (`kBackMouseButton`). Cada entrada é a aba que estava ativa ANTES da
+  /// troca — `goBackInPane` reativa a última. Suprimido durante o próprio
+  /// `goBackInPane` pra não empurrar de volta o que acabou de sair.
+  final Map<String, List<String>> _backHistory = <String, List<String>>{};
+  bool _suppressHistory = false;
+
+  void _recordHistoryBeforeSwitch(String paneId) {
+    if (_suppressHistory) return;
+    final tree = _activeTree;
+    if (tree == null) return;
+    final leaf = findLeaf(tree, paneId);
+    if (leaf == null || leaf.active.isEmpty) return;
+    final stack = _backHistory.putIfAbsent(paneId, () => <String>[]);
+    if (stack.isNotEmpty && stack.last == leaf.active) return;
+    stack.add(leaf.active);
+    if (stack.length > 100) stack.removeAt(0);
+  }
+
+  /// "Voltar" (botão lateral do mouse / `kBackMouseButton`): reativa a aba que
+  /// estava ativa antes da navegação mais recente na pane [paneId] (default:
+  /// pane focada). No-op silencioso sem histórico — mesma UX de degradação
+  /// graciosa do resto do LSP/navegação.
+  void goBackInPane([String? paneId]) {
+    final pid = paneId ?? _focusedLeaf()?.$1;
+    final tree = _activeTree;
+    if (pid == null || tree == null) return;
+    final stack = _backHistory[pid];
+    if (stack == null || stack.isEmpty) return;
+    final tabId = stack.removeLast();
+    final leaf = findLeaf(tree, pid);
+    if (leaf == null || !leaf.tabs.contains(tabId)) {
+      goBackInPane(pid); // aba foi fechada nesse meio tempo → pula
+      return;
+    }
+    _suppressHistory = true;
+    selectTab(pid, tabId);
+    _suppressHistory = false;
+  }
 
   /// Documentos de layout carregados do Hive no boot (lazy: o projeto só é
   /// reconstruído quando selecionado). `null` = projeto sem layout salvo.
@@ -440,7 +488,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// ou `null` se o caminho está fora de todas (ex.: solto na pasta-mãe).
   String? rootContaining(String projectId, String absolutePath) {
     for (final r in rootsOf(projectId)) {
-      if (absolutePath == r || absolutePath.startsWith('$r/')) return r;
+      if (isUnderPath(absolutePath, r)) return r;
     }
     return null;
   }
@@ -552,6 +600,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (projectId == null || tree == null || paneId == null) return;
     final leaf = findLeaf(tree, paneId);
     if (leaf == null) return;
+    _recordHistoryBeforeSwitch(paneId);
     // Soltar um arquivo numa pane específica também a foca.
     if (inPane != null) _focused[projectId] = inPane;
 
@@ -846,19 +895,37 @@ class CockpitViewModel extends ChangeNotifier {
   Map<String, GitFileStatus> changedFilesOfRoot(String rootPath) =>
       git.changedFilesOfRoot(rootPath);
 
+  Map<String, GitFileStatus> stagedFilesOfRoot(String rootPath) =>
+      git.stagedFilesOfRoot(rootPath);
+
+  Map<String, GitFileStatus> unstagedFilesOfRoot(String rootPath) =>
+      git.unstagedFilesOfRoot(rootPath);
+
   /// Caminhos **absolutos** com mudança git do projeto selecionado (exclui
   /// ignorados), varrendo **todas as roots** — alimenta a árvore podada do
   /// modo Source Control (que agrupa por root quando multi-root).
-  List<String> changedAbsolutePaths() {
+  List<String> changedAbsolutePaths() =>
+      _absoluteGitPaths((root) => changedFilesOfRoot(root));
+
+  /// Entradas do index para a seção **Staged Changes**.
+  List<String> stagedAbsolutePaths() =>
+      _absoluteGitPaths((root) => stagedFilesOfRoot(root));
+
+  /// Mudanças pendentes no working tree para a seção **Changes**.
+  List<String> unstagedAbsolutePaths() =>
+      _absoluteGitPaths((root) => unstagedFilesOfRoot(root));
+
+  List<String> _absoluteGitPaths(
+    Map<String, GitFileStatus> Function(String root) filesForRoot,
+  ) {
     final project = selectedProject;
     if (project == null) return const [];
     final out = <String>[];
     for (var root in rootsOf(project.id)) {
       if (root.endsWith('/')) root = root.substring(0, root.length - 1);
-      changedFilesOfRoot(root).forEach((rel, status) {
-        if (status == GitFileStatus.ignored) return;
+      for (final rel in filesForRoot(root).keys) {
         out.add('$root/$rel');
-      });
+      }
     }
     return out;
   }
@@ -1136,6 +1203,10 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Abre [path] no LSP (didOpen). O fallback de raiz é o caminho do projeto —
   /// usado quando o walk-up de marcadores não acha raiz (ex.: arquivo solto).
+  /// A raiz do workspace vai **sempre** como `fallbackRoot`, inclusive pra
+  /// arquivos fora dele (classe do SDK aberta por go-to-definition): o pool usa
+  /// isso pra rotear o arquivo externo ao servidor que já existe, em vez de
+  /// subir um novo com raiz no SDK. Ver `LspServerPool._rootFor`.
   Future<void> lspOpenDocument(String path, String text, String projectId) =>
       _lsp.openDocument(
         path: path,
@@ -1196,6 +1267,29 @@ class CockpitViewModel extends ChangeNotifier {
   Future<List<LspTextEdit>> lspFormat(String path, String text) async {
     await _lsp.changeDocument(path: path, text: text);
     return _lsp.formatDocument(path);
+  }
+
+  /// Tokens semânticos do documento via LSP. Lista vazia se sem servidor /
+  /// sem suporte / erro.
+  Future<SemanticTokens> lspSemanticTokensFull(String path) =>
+      _lsp.semanticTokensFull(path);
+
+  /// Go to definition: resolve location no servidor, abre arquivo + revela linha.
+  /// No-op silencioso se sem servidor / sem definição / erro.
+  Future<void> goToDefinition(String path, int line, int character) async {
+    final location = await _lsp.definition(path, line, character);
+    if (location == null) return;
+    // Resolve uri → path absoluto (file:// → /path/to/file).
+    final targetPath = Uri.parse(location.uri).toFilePath();
+    if (targetPath.isEmpty) return;
+    await openFile(targetPath, isPreview: false);
+    // Revela a linha (base 1, do range.start).
+    final targetLine = location.range.start.line + 1;
+    for (final s in _sessions.values) {
+      if (s is FileViewerSession && s.path == targetPath) {
+        s.reveal(targetLine);
+      }
+    }
   }
 
   // ---- mutação de arquivos (criar / renomear / deletar) ---------------------
@@ -1330,7 +1424,7 @@ class CockpitViewModel extends ChangeNotifier {
     final hasExt = dot > 0;
     final stem = hasExt ? name.substring(0, dot) : name;
     final ext = hasExt ? name.substring(dot) : '';
-    for (var i = 1;; i++) {
+    for (var i = 1; ; i++) {
       final suffix = i == 1 ? ' copy' : ' copy $i';
       candidate = _join(dir, '$stem$suffix$ext');
       if (!await _pathExists(candidate)) return candidate;
@@ -1355,19 +1449,12 @@ class CockpitViewModel extends ChangeNotifier {
     return null;
   }
 
-  String _join(String dir, String name) {
-    final base = dir.endsWith('/') ? dir.substring(0, dir.length - 1) : dir;
-    return '$base/$name';
-  }
+  String _join(String dir, String name) => joinPath(dir, name);
 
-  String _parentOf(String path) {
-    final i = path.lastIndexOf('/');
-    return i <= 0 ? path : path.substring(0, i);
-  }
+  String _parentOf(String path) => dirnameOf(path);
 
   /// Um caminho é "sob" [root] se for ele mesmo ou um descendente (`root/...`).
-  bool _isUnder(String path, String root) =>
-      path == root || path.startsWith('$root/');
+  bool _isUnder(String path, String root) => isUnderPath(path, root);
 
   /// Reaponta as abas de viewer afetadas por um rename de [from] → [to]: o
   /// próprio arquivo e, se [from] for pasta, todos os descendentes (troca de
@@ -1860,6 +1947,9 @@ class CockpitViewModel extends ChangeNotifier {
         selectProject(
           fork.id,
         ); // auto-select → activate → reconstrói a estrutura
+        // Orquestração: `*.ckp` com `autorun: worktree` na raiz do fork
+        // aplica o layout sozinho (worktree nasce vazia → determinístico).
+        unawaited(_autorunWorktreeLayout(fork.path));
         return Success<Project, WorktreeOpError>(fork);
     }
   }
@@ -1958,20 +2048,176 @@ class CockpitViewModel extends ChangeNotifier {
     return _worktreeMgr.isBranchMerged(origin, fork.name);
   }
 
+  /// Comita todas as entradas staged da única root do workspace selecionado.
+  /// Multi-root exige que o usuário comite por arquivo/seção para não criar
+  /// commits implícitos em repositórios diferentes.
+  Future<List<GitCommit>> recentCommits() async {
+    final pid = _selectedProjectId;
+    if (pid == null) return const [];
+    final roots = rootsOf(pid);
+    if (roots.length != 1) return const [];
+    final result = await git.output(roots.single, [
+      'log',
+      '-n',
+      '20',
+      '--format=%H%x1f%s%x1e',
+    ]);
+    if (result.$1 != 0) return const [];
+    return result.$2
+        .split('\u001e')
+        .where((entry) => entry.trim().isNotEmpty)
+        .map((entry) {
+          final parts = entry.trim().split('\u001f');
+          final hash = parts.first;
+          return GitCommit(
+            hash: hash,
+            subject: parts.length > 1 ? parts[1] : hash.substring(0, 7),
+            message: '',
+          );
+        })
+        .toList();
+  }
+
+  Future<String?> commitMessage(String hash) async {
+    final pid = _selectedProjectId;
+    if (pid == null) return null;
+    final roots = rootsOf(pid);
+    if (roots.length != 1) return null;
+    final result = await git.output(roots.single, [
+      'log',
+      '-1',
+      '--format=%B',
+      hash,
+    ]);
+    return result.$1 == 0 ? result.$2.trim() : null;
+  }
+
+  Future<String?> commitStaged(String message, {String? amendHash}) async {
+    final pid = _selectedProjectId;
+    if (pid == null) return 'No workspace selected.';
+    final roots = rootsOf(
+      pid,
+    ).where((root) => stagedFilesOfRoot(root).isNotEmpty).toList();
+    if (roots.isEmpty) return 'There are no staged changes to commit.';
+    if (roots.length > 1) {
+      return 'Stage changes belong to multiple repositories. Commit them separately.';
+    }
+    if (amendHash != null) {
+      final head = (await git.output(roots.single, [
+        'rev-parse',
+        'HEAD',
+      ])).$2.trim();
+      if (head != amendHash) {
+        return 'Only the last commit can be amended directly.';
+      }
+    }
+    final err = await git.collect(roots.single, [
+      'commit',
+      if (amendHash != null) '--amend',
+      '-m',
+      message,
+    ]);
+    unawaited(git.refresh(pid));
+    return err;
+  }
+
+  /// Stage em lote: agrupa os paths por root e executa um único `git add` por
+  /// repositório, evitando um processo + refresh para cada arquivo.
+  Future<String?> stageFiles(List<String> absPaths) =>
+      _setFilesStaged(absPaths, staged: true);
+
+  /// Unstage em lote: um único `git restore --staged` por root.
+  Future<String?> unstageFiles(List<String> absPaths) =>
+      _setFilesStaged(absPaths, staged: false);
+
+  Future<String?> _setFilesStaged(
+    List<String> absPaths, {
+    required bool staged,
+  }) async {
+    final pid = _selectedProjectId;
+    if (pid == null) return 'No workspace selected.';
+    final byRoot = <String, List<String>>{};
+    for (final path in absPaths) {
+      final root = rootContaining(pid, path);
+      if (root == null) return 'File is outside the workspace roots: $path';
+      byRoot.putIfAbsent(root, () => []).add(_subOf(path, root));
+    }
+    for (final entry in byRoot.entries) {
+      final err = await git.collect(entry.key, [
+        if (staged) 'add' else ...['restore', '--staged'],
+        '--',
+        ...entry.value,
+      ]);
+      if (err != null) return err;
+    }
+    await git.refresh(pid);
+    return null;
+  }
+
+  /// Stage (Source Control): adiciona [absPath] ao index da root dona.
+  Future<String?> stageFile(String absPath) async {
+    final pid = _selectedProjectId;
+    if (pid == null) return 'No workspace selected.';
+    final root = rootContaining(pid, absPath);
+    if (root == null) return 'File is outside the workspace roots.';
+    final err = await git.collect(root, ['add', '--', _subOf(absPath, root)]);
+    unawaited(git.refresh(pid));
+    return err;
+  }
+
   /// Unstage (Source Control): `git restore --staged -- <arquivo>` na root
   /// dona do caminho. `null` = sucesso; senão a saída de erro do git.
   Future<String?> unstageFile(String absPath) =>
       _restoreFile(absPath, staged: true);
 
-  /// Discard (Source Control): joga fora a mudança do working tree —
-  /// `git restore -- <arquivo>`; untracked não tem "restore", então vai pra
-  /// lixeira via [deletePath] (reversível no macOS). `null` = sucesso.
+  /// `true` quando [absPath] não existe no HEAD — cobre untracked e arquivos
+  /// novos que já foram adicionados ao index.
+  Future<bool> isNewGitFile(String absPath) async {
+    final pid = _selectedProjectId;
+    if (pid == null) return false;
+    final root = rootContaining(pid, absPath);
+    if (root == null) return false;
+    final rel = _subOf(absPath, root);
+    final result = await git.output(root, ['cat-file', '-e', 'HEAD:$rel']);
+    return result.$1 != 0;
+  }
+
+  /// Discard completo de um arquivo. Arquivo novo é removido do index e vai
+  /// para a lixeira; arquivo rastreado é restaurado do HEAD tanto no index
+  /// quanto no working tree. Assim uma deleção volta a existir no disco.
   Future<String?> discardFile(String absPath) async {
-    if (gitStatusForPath(absPath) == GitFileStatus.untracked) {
+    final pid = _selectedProjectId;
+    if (pid == null) return 'No workspace selected.';
+    final root = rootContaining(pid, absPath);
+    if (root == null) return 'File is outside the workspace roots.';
+    final rel = _subOf(absPath, root);
+    if (await isNewGitFile(absPath)) {
+      if (stagedFilesOfRoot(root).containsKey(rel)) {
+        final err = await git.collect(root, [
+          'rm',
+          '--cached',
+          '-f',
+          '--',
+          rel,
+        ]);
+        if (err != null) return err;
+      }
       final res = await deletePath(absPath);
+      unawaited(git.refresh(pid));
       return res.fold((_) => null, (e) => e);
     }
-    return _restoreFile(absPath, staged: false);
+    final err = await git.collect(root, [
+      'restore',
+      '--source=HEAD',
+      '--staged',
+      '--worktree',
+      '--',
+      rel,
+    ]);
+    unawaited(git.refresh(pid));
+    _fileTreeRevision++;
+    notifyListeners();
+    return err;
   }
 
   /// Commit (Source Control): comita **só** [absPath] com [message], na root
@@ -2182,6 +2428,7 @@ class CockpitViewModel extends ChangeNotifier {
   void selectTab(String paneId, String agentId) {
     final tree = _activeTree;
     if (tree == null) return;
+    _recordHistoryBeforeSwitch(paneId);
     _setActiveTree(
       updateLeaf(tree, paneId, (p) => p.copyWith(active: agentId)),
     );
@@ -2363,6 +2610,142 @@ class CockpitViewModel extends ChangeNotifier {
     }
     notifyListeners();
     return Success(s.id);
+  }
+
+  /// Aplica um layout `.ckp` no workspace selecionado (orquestração de panes).
+  ///
+  /// Merge **idempotente**: pane cujo `name` já existe como rótulo de tab no
+  /// workspace é pulado — rodar duas vezes é no-op. O split é relativo ao
+  /// pane **anterior criado nesta execução**; se o anterior foi pulado, o
+  /// próximo nasce como aba normal (geometria perfeita só em workspace vazio,
+  /// o caso do worktree/autorun). Nunca fecha nada — reset é ação separada
+  /// do chamador.
+  Future<Result<LayoutApplyReport, String>> applyLayoutFile(
+    String ckpPath,
+  ) async {
+    final spec = await _layoutLoader.load(ckpPath);
+    switch (spec) {
+      case Failure(:final error):
+        return Failure(error);
+      case Success(:final value):
+        return _applyLayout(value, _dirname(ckpPath));
+    }
+  }
+
+  Future<Result<LayoutApplyReport, String>> _applyLayout(
+    LayoutSpec spec,
+    String baseDir,
+  ) async {
+    final projectId = _selectedProjectId;
+    if (projectId == null || _activeTree == null) {
+      return const Failure('no active workspace to apply the layout in');
+    }
+    // Rótulos já usados no workspace (manuais e automáticos) — chave do merge.
+    final taken = allSessions
+        .where((s) => s.projectId == projectId)
+        .expand((s) => [s.manualLabel, s.displayTitle])
+        .nonNulls
+        .map((l) => l.toLowerCase())
+        .toSet();
+
+    final created = <String>[];
+    final skipped = <String>[];
+    String? prevTabId;
+    for (final pane in spec.panes) {
+      if (taken.contains(pane.name.toLowerCase())) {
+        skipped.add(pane.name);
+        prevTabId = null; // âncora quebrada: o próximo vira aba normal
+        continue;
+      }
+      final cwd = _resolveLayoutCwd(baseDir, pane.cwd);
+      if (!await Directory(cwd).exists()) {
+        return Failure(
+          'pane "${pane.name}": directory not found: "${pane.cwd}"',
+        );
+      }
+      final inPane = prevTabId == null ? null : leafOfTab(projectId, prevTabId);
+      final SplitDir? splitDir = switch (pane.split) {
+        LayoutSplit.tab => null,
+        // Wire usa geometria (right|down) — SplitDir tem nomes invertidos.
+        LayoutSplit.right => inPane == null ? null : SplitDir.vertical,
+        LayoutSplit.down => inPane == null ? null : SplitDir.horizontal,
+      };
+      final res = newTerminalTab(
+        cwd: cwd,
+        title: pane.name,
+        inPane: inPane,
+        splitDir: splitDir,
+      );
+      switch (res) {
+        case Failure(:final error):
+          return Failure('pane "${pane.name}": $error');
+        case Success(:final value):
+          created.add(pane.name);
+          taken.add(pane.name.toLowerCase());
+          prevTabId = value;
+          final command = pane.command;
+          if (command != null && command.isNotEmpty) {
+            _typeWhenReady(value, command);
+          }
+      }
+    }
+    return Success(LayoutApplyReport(created: created, skipped: skipped));
+  }
+
+  /// Digita [command] + Enter no terminal [tabId] após uma folga pro shell
+  /// terminar o boot (.zshrc etc). O PTY bufferiza, mas shells com zle podem
+  /// descartar input chegado no meio do init — a folga evita isso.
+  void _typeWhenReady(String tabId, String command) {
+    unawaited(
+      Future<void>.delayed(const Duration(milliseconds: 700)).then((_) {
+        final s = _sessions[tabId];
+        if (s is TerminalSession) s.insertText('$command\n');
+      }),
+    );
+  }
+
+  /// Autorun de layout em worktree recém-criada: procura `*.ckp` com
+  /// `autorun: worktree` na raiz do fork e aplica. Mais de um candidato =
+  /// nenhum aplicado (nunca chutar — mesma regra do label ambíguo da CLI).
+  Future<void> _autorunWorktreeLayout(String forkPath) async {
+    final List<FileSystemEntity> entries;
+    try {
+      entries = await Directory(forkPath).list(followLinks: false).toList();
+    } catch (_) {
+      return;
+    }
+    final specs = <(String, LayoutSpec)>[];
+    for (final e in entries) {
+      if (e is! File || !e.path.toLowerCase().endsWith('.ckp')) continue;
+      final loaded = await _layoutLoader.load(e.path);
+      if (loaded case Success(:final value) when value.autorunWorktree) {
+        specs.add((e.path, value));
+      }
+    }
+    // Mais de um candidato → nenhum aplicado (nunca chutar).
+    if (specs.length != 1) return;
+    // Folga pra ativação do fork terminar de montar a árvore de panes.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final (path, spec) = specs.single;
+    await _applyLayout(spec, _dirname(path));
+  }
+
+  String _dirname(String path) {
+    final i = path.lastIndexOf(RegExp(r'[/\\]'));
+    return i <= 0 ? path : path.substring(0, i);
+  }
+
+  /// `cwd` do `.ckp` (relativo, com `/` — o loader valida) → absoluto na
+  /// plataforma. `.`/vazio = a própria pasta do arquivo.
+  String _resolveLayoutCwd(String baseDir, String cwd) {
+    var rel = cwd;
+    while (rel.startsWith('./')) {
+      rel = rel.substring(2);
+    }
+    if (rel.isEmpty || rel == '.') return baseDir;
+    final sep = Platform.pathSeparator;
+    final joined = rel.split('/').where((s) => s.isNotEmpty).join(sep);
+    return baseDir.endsWith(sep) ? '$baseDir$joined' : '$baseDir$sep$joined';
   }
 
   /// `true` se a aba ativa da pane [paneId] é um terminal. O split espelha esse
@@ -2921,13 +3304,15 @@ class CockpitViewModel extends ChangeNotifier {
     }
   }
 
-  /// Env de PATH escopado: prepend `~/.cockpit/bin` (onde o binário `cockpit` é
-  /// materializado no boot) ao PATH **só dos terminais do Cockpit** — a CLI fica
-  /// visível dentro das abas e invisível fora, sem poluir o PATH global.
+  /// Env de PATH escopado: prepend o diretório da CLI (onde o binário `cockpit`
+  /// é materializado no boot) ao PATH **só dos terminais do Cockpit** — a CLI
+  /// fica visível dentro das abas e invisível fora, sem poluir o PATH global.
+  ///
+  /// O diretório é por flavor (`bin` / `bin-debug`), então uma aba da build de
+  /// dev enxerga a CLI da build de dev — nunca a da instalada.
   Map<String, String> _cliPathEnv() {
-    final home = remotePiHome();
-    if (home == null) return const <String, String>{};
-    final binDir = '$home/.cockpit/bin';
+    final binDir = cockpitCliDir();
+    if (binDir == null) return const <String, String>{};
     final sep = Platform.isWindows ? ';' : ':';
     final existing = Platform.environment['PATH'] ?? '';
     return <String, String>{

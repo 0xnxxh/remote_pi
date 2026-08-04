@@ -1,17 +1,18 @@
 import 'package:cockpit/app/cockpit/domain/contracts/project_repository.dart';
 import 'package:cockpit/app/cockpit/domain/entities/project.dart';
 import 'package:cockpit/app/cockpit/domain/entities/realm.dart';
-import 'package:hive/hive.dart';
+import 'package:cockpit/app/core/data/setup/json_state_store.dart';
+import 'package:cockpit/app/core/utils/path_utils.dart';
 
-/// Persiste projetos numa Box do Hive, um `Map` por id (sem TypeAdapters —
-/// só tipos primitivos, então não precisa de code-gen).
-class HiveProjectRepository implements ProjectRepository {
-  HiveProjectRepository(this._box);
+/// Persiste projetos num [JsonStateStore], um `Map` por id — mesma semântica
+/// schemaless do antigo `HiveProjectRepository`.
+class JsonProjectRepository implements ProjectRepository {
+  JsonProjectRepository(this._store);
 
-  /// Box aberta no bootstrap (`config/`). Guarda `Map` por `project.id`.
-  final Box<dynamic> _box;
+  /// Store aberto no bootstrap do módulo. Guarda `Map` por `project.id`.
+  final JsonStateStore _store;
 
-  static const String boxName = 'projects';
+  static const String storeName = 'projects';
 
   /// Prefixo das chaves reservadas (não-Map) do último workspace selecionado,
   /// **uma por realm** (`__last_selected__::<realmId>`). Não colide com ids de
@@ -24,7 +25,7 @@ class HiveProjectRepository implements ProjectRepository {
 
   @override
   Future<List<Project>> all() async {
-    final projects = _box.values
+    final projects = _store.values
         .whereType<Map<dynamic, dynamic>>()
         .map(_fromMap)
         .whereType<Project>()
@@ -39,23 +40,23 @@ class HiveProjectRepository implements ProjectRepository {
   }
 
   @override
-  Future<void> save(Project project) => _box.put(project.id, _toMap(project));
+  Future<void> save(Project project) => _store.put(project.id, _toMap(project));
 
   @override
-  Future<void> remove(String id) => _box.delete(id);
+  Future<void> remove(String id) => _store.delete(id);
 
   @override
   Future<String?> loadLastSelected(String realmId) async {
-    final v = _box.get(_lastSelectedKey(realmId));
+    final v = _store.get(_lastSelectedKey(realmId));
     return v is String ? v : null;
   }
 
   @override
   Future<void> saveLastSelected(String realmId, String? id) async {
     if (id == null) {
-      await _box.delete(_lastSelectedKey(realmId));
+      await _store.delete(_lastSelectedKey(realmId));
     } else {
-      await _box.put(_lastSelectedKey(realmId), id);
+      await _store.put(_lastSelectedKey(realmId), id);
     }
   }
 
@@ -72,8 +73,14 @@ class HiveProjectRepository implements ProjectRepository {
 
   Project? _fromMap(Map<dynamic, dynamic> map) {
     final id = map['id'];
-    final path = map['path'];
-    if (id is! String || path is! String) return null;
+    final raw = map['path'];
+    if (id is! String || raw is! String) return null;
+    // Migração de dados antigos do Windows: instalações anteriores gravaram a
+    // raiz com `\` (vinha crua do diálogo nativo). Normalizar na leitura basta —
+    // é idempotente, e o próximo `save` já persiste a forma canônica. Sem isso,
+    // a raiz salva não casaria com os filhos da árvore (já normalizados) e
+    // `rootContaining` devolveria null para o workspace inteiro.
+    final path = normalizePath(raw);
     return Project(
       id: id,
       name: map['name'] as String? ?? path,

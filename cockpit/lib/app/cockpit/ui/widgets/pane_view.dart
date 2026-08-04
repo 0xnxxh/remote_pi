@@ -40,6 +40,7 @@ import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:cockpit/app/core/terminal/xterm/xterm.dart';
+import 'package:cockpit/app/core/utils/path_utils.dart';
 
 /// Folha do multiplexador: tab strip + corpo (agente: transcript+composer / empty;
 /// terminal: TerminalView). O foco aparece **só na aba ativa**.
@@ -86,9 +87,22 @@ class PaneView extends StatelessWidget {
     final rawIndex = tabs.indexOf(pane.active);
     final activeIndex = rawIndex < 0 ? 0 : rawIndex;
 
-    return GestureDetector(
+    // `Listener` (ponteiro cru), NÃO `GestureDetector`: um clique **dentro do
+    // terminal** nunca chegava aqui. O flterm registra Tap/Pan/LongPress no
+    // corpo do terminal e, na arena de gestos, o reconhecedor mais interno vence
+    // (tap: sweep no pointer-up escolhe o primeiro membro, que é o mais
+    // profundo; arraste de mouse: o Pan aceita na hora). O perdedor nunca
+    // dispara `onTapDown` — ou seja, `vm.focus(pane.id)` só rodava ao clicar
+    // FORA do terminal (tab strip, padding, espaço vazio).
+    //
+    // Consequência com vários panes: o flterm focava o `FocusNode` do pane
+    // clicado, mas a VM continuava achando que o pane anterior era o focado —
+    // e o próximo bump de `tabFocusGen` fazia o pane antigo re-pedir o teclado
+    // no pós-frame (ver `_requestTerminalFocusSoon`), então o que era digitado
+    // saía na aba anterior. Listener não participa da arena: sempre recebe.
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onTapDown: (_) => vm.focus(pane.id),
+      onPointerDown: (_) => vm.focus(pane.id),
       child: Container(
         color: colors.panel,
         child: Column(
@@ -1520,7 +1534,13 @@ class _OpenTabDropTargetState extends State<_OpenTabDropTarget> {
         if (_overExcluded(d.globalPosition)) return;
         for (final f in d.files) {
           if (Directory(f.path).existsSync()) continue; // ignora pastas
-          widget.vm.openFile(f.path, inPane: widget.paneId, isPreview: false);
+          // Fronteira: `desktop_drop` entrega o caminho nativo do SO (`\` no
+          // Windows) — canoniza antes de entrar no app.
+          widget.vm.openFile(
+            normalizePath(f.path),
+            inPane: widget.paneId,
+            isPreview: false,
+          );
         }
       },
       child: Stack(

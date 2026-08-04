@@ -8,9 +8,8 @@ container na VPS atrás do proxy que termina TLS em
 É o lado "leitura" do passo 4 do [plano 43](../plan/43-cockpit-packaging.md).
 A VPS não tem acesso SSH, então o fluxo é: o CI (`cockpit-release.yml`)
 publica os binários como assets da **GitHub Release** `cockpit-v<versão>` e
-anexa o `latest.json` (com as URLs desses assets); o usuário coloca o
-`latest.json` manualmente no volume deste host — é o gate de publicação. O
-rp-s3 serve o manifest na URL estável que o site consome.
+publica o `latest.json`/appcast direto neste host via `PUT /upload` (token
+Bearer). O rp-s3 serve o manifest na URL estável que o site consome.
 
 ## Rotas
 
@@ -18,6 +17,31 @@ rp-s3 serve o manifest na URL estável que o site consome.
 |---|---|
 | `GET /healthz` | `200 ok` |
 | `GET /downloads/<produto>/...` | arquivos de `DATA_DIR/<produto>/...` |
+| `PUT /upload/<produto>/<arquivo>` | grava manifest no volume (auth Bearer) |
+
+### Upload de manifests
+
+Só existe se `UPLOAD_TOKEN` estiver setado (sem env → 404, fluxo manual).
+Aceita **apenas** `latest.json`, `SHA256SUMS` e `*.xml` (appcast do Sparkle)
+— binários continuam nos assets da GitHub Release. Escrita é atômica
+(tmp + rename), então quem baixa nunca vê manifest pela metade.
+
+Chamada a partir do GitHub Actions (token guardado como secret do repo —
+secrets não vazam pra fork/PR, então na prática só o nosso repo publica):
+
+```yaml
+- name: Publish manifest
+  run: |
+    curl -fsS -X PUT \
+      -H "Authorization: Bearer ${{ secrets.RP_S3_UPLOAD_TOKEN }}" \
+      --data-binary @latest.json \
+      https://rp-s3.jacobmoura.work/upload/cockpit/latest.json
+```
+
+> Por que token e não "verificar o repositório"? Um header com o nome do
+> repo é forjável. A alternativa criptográfica seria OIDC do GitHub Actions
+> (JWT assinado, claim `repository`) — upgrade possível no mesmo endpoint,
+> mas desproporcional pro tamanho deste servidor hoje.
 
 Regras de resposta em `/downloads`:
 
@@ -36,6 +60,7 @@ Regras de resposta em `/downloads`:
 |---|---|---|
 | `DATA_DIR` | `/data` | raiz servida em `/downloads` |
 | `PORT` | `8080` | porta HTTP (TLS fica no proxy) |
+| `UPLOAD_TOKEN` | — | habilita `PUT /upload`; ausente = endpoint desligado |
 | `RUST_LOG` | `rp_s3=info,tower_http=info` | nível de log |
 
 ## Layout do volume
@@ -44,11 +69,11 @@ O `docker-compose.yml` monta o deploy path do CI **como o subdiretório do
 produto** — assim o host fica plano e a URL ganha o prefixo certo:
 
 ```
-host:  /Users/flutterando/cockpit/data/          (colocado manualmente)
+host:  /Users/flutterando/cockpit/data/          (gravado via PUT /upload)
          latest.json
          SHA256SUMS                              (opcional)
 
-mount: /Users/flutterando/cockpit/data → /data/cockpit (read-only)
+mount: /Users/flutterando/cockpit/data → /data/cockpit (rw, pro upload)
 
 URL:   https://rp-s3.jacobmoura.work/downloads/cockpit/latest.json
 ```
