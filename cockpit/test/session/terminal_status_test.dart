@@ -25,6 +25,8 @@ class _NoopGateway implements TerminalGateway {
   @override
   void resize(int rows, int columns) {}
   @override
+  void acknowledgeOutput() {}
+  @override
   Future<void> kill() async {
     await _out.close();
   }

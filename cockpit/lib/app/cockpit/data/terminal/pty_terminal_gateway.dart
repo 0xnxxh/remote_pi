@@ -26,6 +26,10 @@ class PtyTerminalGateway implements TerminalGateway {
       environment: _terminalEnv(extraEnv),
       rows: rows,
       columns: columns,
+      // Backpressure: a thread nativa só lê o próximo chunk depois de
+      // [acknowledgeOutput]. Evita saturar o isolate principal sob TUI busy
+      // (claude/htop/lazygit) — ver plan/57.
+      ackRead: true,
     );
   }
 
@@ -39,6 +43,9 @@ class PtyTerminalGateway implements TerminalGateway {
 
   @override
   void resize(int rows, int columns) => _pty?.resize(rows, columns);
+
+  @override
+  void acknowledgeOutput() => _pty?.ackRead();
 
   @override
   Future<void> kill() async {

@@ -30,4 +30,8 @@ abstract class TerminalGateway {
 
   /// Mata o shell limpo (sem órfão).
   Future<void> kill();
+
+  /// Libera o próximo chunk do PTY quando o spawn usa backpressure (`ackRead`).
+  /// Fakes / gateways sem flow control devem implementar como no-op.
+  void acknowledgeOutput();
 }
