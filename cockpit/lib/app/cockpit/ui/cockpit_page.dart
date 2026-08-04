@@ -16,6 +16,7 @@ import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/app/core/utils/native_folder_picker.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/gestures.dart' show PointerDownEvent, kBackMouseButton;
 import 'package:flutter/services.dart'
     show
@@ -335,7 +336,7 @@ class _CockpitPageState extends State<CockpitPage> {
   Future<bool> _addProject() async {
     final vm = _vm;
     final path = await NativeFolderPicker.pick(
-      dialogTitle: 'Choose the project folder',
+      dialogTitle: context.t.cockpit.cockpitPage.chooseProjectFolderDialogTitle,
       initialDirectory: vm.selectedProject?.path,
     );
     if (path == null) return false;
@@ -360,7 +361,8 @@ class _CockpitPageState extends State<CockpitPage> {
     final vm = _vm;
     _mark('picker:start');
     final path = await NativeFolderPicker.pick(
-      dialogTitle: 'Choose the workspace folder',
+      dialogTitle:
+          context.t.cockpit.cockpitPage.chooseWorkspaceFolderDialogTitle,
       initialDirectory: vm.selectedProject?.path,
     );
     _mark('picker:done path=$path mounted=$mounted');
@@ -409,10 +411,10 @@ class _CockpitPageState extends State<CockpitPage> {
     if (result.name != project.name) {
       await showInfoDialog(
         context,
-        title: 'Workspace renamed',
-        message:
-            'The new name "${result.name}" will only be sent to agents '
-            'after restarting the workspace or the application.',
+        title: context.t.cockpit.cockpitPage.workspaceRenamedTitle,
+        message: context.t.cockpit.cockpitPage.workspaceRenamedMessage(
+          name: result.name,
+        ),
       );
     }
   }
@@ -430,7 +432,9 @@ class _CockpitPageState extends State<CockpitPage> {
     final run = _vm.gitSync(rootPath);
     await showGitProcessDialog(
       context,
-      title: 'Sync — ${_gitOpLabel(project, rootPath)}',
+      title: context.t.cockpit.cockpitPage.syncTitle(
+        label: _gitOpLabel(project, rootPath),
+      ),
       output: run.output,
       success: run.exitCode.then((c) => c == 0),
     );
@@ -440,7 +444,9 @@ class _CockpitPageState extends State<CockpitPage> {
     final run = _vm.gitPull(rootPath);
     await showGitProcessDialog(
       context,
-      title: 'Pull — ${_gitOpLabel(project, rootPath)}',
+      title: context.t.cockpit.cockpitPage.pullTitle(
+        label: _gitOpLabel(project, rootPath),
+      ),
       output: run.output,
       success: run.exitCode.then((c) => c == 0),
     );
@@ -450,7 +456,9 @@ class _CockpitPageState extends State<CockpitPage> {
     final run = _vm.gitPush(rootPath);
     await showGitProcessDialog(
       context,
-      title: 'Push — ${_gitOpLabel(project, rootPath)}',
+      title: context.t.cockpit.cockpitPage.pushTitle(
+        label: _gitOpLabel(project, rootPath),
+      ),
       output: run.output,
       success: run.exitCode.then((c) => c == 0),
     );
@@ -481,7 +489,9 @@ class _CockpitPageState extends State<CockpitPage> {
     final run = _vm.updateWorktreeFromParent(fork);
     await showGitProcessDialog(
       context,
-      title: 'Update from Parent — ${fork.name}',
+      title: context.t.cockpit.cockpitPage.updateFromParentTitle(
+        name: fork.name,
+      ),
       output: run.output,
       success: run.exitCode.then((c) => c == 0),
     );
@@ -494,11 +504,12 @@ class _CockpitPageState extends State<CockpitPage> {
     final outcome = _vm.mergeWorktreeToParent(fork);
     await showGitProcessDialog(
       context,
-      title: 'Merge to Parent — ${fork.name}',
+      title: context.t.cockpit.cockpitPage.mergeToParentTitle(name: fork.name),
       output: outcome.output,
       success: outcome.status.then((s) => s == GitMergeStatus.merged),
-      finalMessage: (ok) =>
-          ok ? 'Worktree merged and removed.' : 'Nothing was changed.',
+      finalMessage: (ok) => ok
+          ? context.t.cockpit.cockpitPage.worktreeMergedAndRemoved
+          : context.t.cockpit.cockpitPage.nothingWasChanged,
     );
   }
 
@@ -544,8 +555,8 @@ class _CockpitPageState extends State<CockpitPage> {
     final vm = _vm;
     final name = await showRealmNameDialog(
       context,
-      title: 'New realm',
-      confirmLabel: 'Create',
+      title: context.t.cockpit.cockpitPage.newRealmTitle,
+      confirmLabel: context.t.common.create,
       takenNames: vm.realms.map((r) => r.name).toSet(),
     );
     if (name == null) return;
@@ -561,11 +572,11 @@ class _CockpitPageState extends State<CockpitPage> {
     final vm = _vm;
     final ok = await showConfirmDialog(
       context,
-      title: 'Close workspace',
-      message:
-          'Close "${project.name}"? The agents in this workspace will be '
-          'terminated. The folder on disk is kept.',
-      confirmLabel: 'Close',
+      title: context.t.cockpit.cockpitPage.closeWorkspaceTitle,
+      message: context.t.cockpit.cockpitPage.closeWorkspaceMessage(
+        name: project.name,
+      ),
+      confirmLabel: context.t.cockpit.cockpitPage.closeAction,
       danger: true,
     );
     if (!ok) return;
@@ -582,15 +593,15 @@ class _CockpitPageState extends State<CockpitPage> {
     if (!mounted) return;
     final warn = merged
         ? ''
-        : '\n\nWarning: the branch "${fork.name}" has not been merged yet — '
-              'removing it (git branch -D) discards the unmerged work.';
+        : context.t.cockpit.cockpitPage.removeWorktreeWarning(name: fork.name);
     final ok = await showConfirmDialog(
       context,
-      title: 'Remove worktree',
-      message:
-          'Remove "${fork.name}"? The worktree folder and the branch will be '
-          'deleted and the agents in this fork will be terminated.$warn',
-      confirmLabel: 'Remove',
+      title: context.t.cockpit.cockpitPage.removeWorktreeTitle,
+      message: context.t.cockpit.cockpitPage.removeWorktreeMessage(
+        name: fork.name,
+        warn: warn,
+      ),
+      confirmLabel: context.t.common.remove,
       danger: true,
     );
     if (!ok) return;
@@ -600,7 +611,7 @@ class _CockpitPageState extends State<CockpitPage> {
     if (err != null) {
       await showInfoDialog(
         context,
-        title: 'Failed to remove worktree',
+        title: context.t.cockpit.cockpitPage.failedToRemoveWorktreeTitle,
         message: err,
       );
     }
@@ -900,7 +911,11 @@ class _CockpitPageState extends State<CockpitPage> {
                                 if (res case Failure(:final error)) {
                                   await showInfoDialog(
                                     context,
-                                    title: 'Open layout',
+                                    title: context
+                                        .t
+                                        .cockpit
+                                        .cockpitPage
+                                        .openLayoutTitle,
                                     message: error,
                                   );
                                 }
@@ -1157,7 +1172,7 @@ class _LspStatusBarState extends State<_LspStatusBar> {
           ? Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'No LSP available',
+                context.t.cockpit.cockpitPage.noLspAvailable,
                 style: context.typo.label.copyWith(color: colors.text4),
               ),
             )
@@ -1176,13 +1191,13 @@ class _LspStatusBarState extends State<_LspStatusBar> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${status.label} LSP · ${status.running ? "running" : "stopped"}',
+                    '${status.label} LSP · ${status.running ? context.t.cockpit.cockpitPage.lspRunning : context.t.cockpit.cockpitPage.lspStopped}',
                     overflow: TextOverflow.ellipsis,
                     style: context.typo.label.copyWith(color: colors.text2),
                   ),
                 ),
                 AppTooltip(
-                  message: 'Restart server',
+                  message: context.t.cockpit.cockpitPage.restartServerTooltip,
                   child: HoverTap(
                     borderRadius: BorderRadius.circular(6),
                     onTap: _restarting ? () {} : () => _restart(vm),

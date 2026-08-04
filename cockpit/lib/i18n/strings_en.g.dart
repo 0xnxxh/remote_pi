@@ -129,6 +129,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$agentSetupChecklist$en agentSetupChecklist = Translations$cockpit$agentSetupChecklist$en.internal(_root);
 	late final Translations$cockpit$agentComposer$en agentComposer = Translations$cockpit$agentComposer$en.internal(_root);
 	late final Translations$cockpit$tasksPanel$en tasksPanel = Translations$cockpit$tasksPanel$en.internal(_root);
+	late final Translations$cockpit$cockpitPage$en cockpitPage = Translations$cockpit$cockpitPage$en.internal(_root);
 	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
@@ -595,6 +596,87 @@ class Translations$cockpit$tasksPanel$en {
 
 	/// en: 'More keys'
 	String get moreKeysTooltip => 'More keys';
+}
+
+// Path: cockpit.cockpitPage
+class Translations$cockpit$cockpitPage$en {
+	Translations$cockpit$cockpitPage$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Choose the project folder'
+	String get chooseProjectFolderDialogTitle => 'Choose the project folder';
+
+	/// en: 'Choose the workspace folder'
+	String get chooseWorkspaceFolderDialogTitle => 'Choose the workspace folder';
+
+	/// en: 'Workspace renamed'
+	String get workspaceRenamedTitle => 'Workspace renamed';
+
+	/// en: 'The new name "${name}" will only be sent to agents after restarting the workspace or the application.'
+	String workspaceRenamedMessage({required Object name}) => 'The new name "${name}" will only be sent to agents after restarting the workspace or the application.';
+
+	/// en: 'Sync — ${label}'
+	String syncTitle({required Object label}) => 'Sync — ${label}';
+
+	/// en: 'Pull — ${label}'
+	String pullTitle({required Object label}) => 'Pull — ${label}';
+
+	/// en: 'Push — ${label}'
+	String pushTitle({required Object label}) => 'Push — ${label}';
+
+	/// en: 'Update from Parent — ${name}'
+	String updateFromParentTitle({required Object name}) => 'Update from Parent — ${name}';
+
+	/// en: 'Merge to Parent — ${name}'
+	String mergeToParentTitle({required Object name}) => 'Merge to Parent — ${name}';
+
+	/// en: 'Worktree merged and removed.'
+	String get worktreeMergedAndRemoved => 'Worktree merged and removed.';
+
+	/// en: 'Nothing was changed.'
+	String get nothingWasChanged => 'Nothing was changed.';
+
+	/// en: 'New realm'
+	String get newRealmTitle => 'New realm';
+
+	/// en: 'Close workspace'
+	String get closeWorkspaceTitle => 'Close workspace';
+
+	/// en: 'Close "${name}"? The agents in this workspace will be terminated. The folder on disk is kept.'
+	String closeWorkspaceMessage({required Object name}) => 'Close "${name}"? The agents in this workspace will be terminated. The folder on disk is kept.';
+
+	/// en: 'Close'
+	String get closeAction => 'Close';
+
+	/// en: 'Remove worktree'
+	String get removeWorktreeTitle => 'Remove worktree';
+
+	/// en: 'Remove "${name}"? The worktree folder and the branch will be deleted and the agents in this fork will be terminated.${warn}'
+	String removeWorktreeMessage({required Object name, required Object warn}) => 'Remove "${name}"? The worktree folder and the branch will be deleted and the agents in this fork will be terminated.${warn}';
+
+	/// en: ' Warning: the branch "${name}" has not been merged yet — removing it (git branch -D) discards the unmerged work.'
+	String removeWorktreeWarning({required Object name}) => '\n\nWarning: the branch "${name}" has not been merged yet — removing it (git branch -D) discards the unmerged work.';
+
+	/// en: 'Failed to remove worktree'
+	String get failedToRemoveWorktreeTitle => 'Failed to remove worktree';
+
+	/// en: 'Open layout'
+	String get openLayoutTitle => 'Open layout';
+
+	/// en: 'Restart server'
+	String get restartServerTooltip => 'Restart server';
+
+	/// en: 'No LSP available'
+	String get noLspAvailable => 'No LSP available';
+
+	/// en: 'running'
+	String get lspRunning => 'running';
+
+	/// en: 'stopped'
+	String get lspStopped => 'stopped';
 }
 
 // Path: cockpit.welcomeView
@@ -2075,6 +2157,30 @@ extension on Translations {
 			'cockpit.tasksPanel.stoppingTooltip' => 'Stopping…',
 			'cockpit.tasksPanel.switchProfileTooltip' => 'Switch profile',
 			'cockpit.tasksPanel.moreKeysTooltip' => 'More keys',
+			'cockpit.cockpitPage.chooseProjectFolderDialogTitle' => 'Choose the project folder',
+			'cockpit.cockpitPage.chooseWorkspaceFolderDialogTitle' => 'Choose the workspace folder',
+			'cockpit.cockpitPage.workspaceRenamedTitle' => 'Workspace renamed',
+			'cockpit.cockpitPage.workspaceRenamedMessage' => ({required Object name}) => 'The new name "${name}" will only be sent to agents after restarting the workspace or the application.',
+			'cockpit.cockpitPage.syncTitle' => ({required Object label}) => 'Sync — ${label}',
+			'cockpit.cockpitPage.pullTitle' => ({required Object label}) => 'Pull — ${label}',
+			'cockpit.cockpitPage.pushTitle' => ({required Object label}) => 'Push — ${label}',
+			'cockpit.cockpitPage.updateFromParentTitle' => ({required Object name}) => 'Update from Parent — ${name}',
+			'cockpit.cockpitPage.mergeToParentTitle' => ({required Object name}) => 'Merge to Parent — ${name}',
+			'cockpit.cockpitPage.worktreeMergedAndRemoved' => 'Worktree merged and removed.',
+			'cockpit.cockpitPage.nothingWasChanged' => 'Nothing was changed.',
+			'cockpit.cockpitPage.newRealmTitle' => 'New realm',
+			'cockpit.cockpitPage.closeWorkspaceTitle' => 'Close workspace',
+			'cockpit.cockpitPage.closeWorkspaceMessage' => ({required Object name}) => 'Close "${name}"? The agents in this workspace will be terminated. The folder on disk is kept.',
+			'cockpit.cockpitPage.closeAction' => 'Close',
+			'cockpit.cockpitPage.removeWorktreeTitle' => 'Remove worktree',
+			'cockpit.cockpitPage.removeWorktreeMessage' => ({required Object name, required Object warn}) => 'Remove "${name}"? The worktree folder and the branch will be deleted and the agents in this fork will be terminated.${warn}',
+			'cockpit.cockpitPage.removeWorktreeWarning' => ({required Object name}) => '\n\nWarning: the branch "${name}" has not been merged yet — removing it (git branch -D) discards the unmerged work.',
+			'cockpit.cockpitPage.failedToRemoveWorktreeTitle' => 'Failed to remove worktree',
+			'cockpit.cockpitPage.openLayoutTitle' => 'Open layout',
+			'cockpit.cockpitPage.restartServerTooltip' => 'Restart server',
+			'cockpit.cockpitPage.noLspAvailable' => 'No LSP available',
+			'cockpit.cockpitPage.lspRunning' => 'running',
+			'cockpit.cockpitPage.lspStopped' => 'stopped',
 			'cockpit.welcomeView.title' => 'Welcome to Cockpit',
 			'cockpit.welcomeView.subtitle' => 'Open a folder to start a workspace.',
 			'cockpit.welcomeView.createWorkspace' => 'Create workspace',
