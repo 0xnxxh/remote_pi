@@ -412,6 +412,20 @@ class _GeneralPanel extends StatelessWidget {
                   ],
                 ),
               ),
+              _Section(
+                label: context.t.settings.language.title,
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: context.t.settings.language.title,
+                      trailing: _LocaleDropdown(
+                        value: s.locale,
+                        onChanged: controller.setLocale,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const _StorageSection(),
               const _DiagnosticsSection(),
             ],
@@ -921,20 +935,6 @@ class _AppearancePanel extends StatelessWidget {
                       trailing: _ThemeDropdown(
                         value: s.themeMode,
                         onChanged: controller.setThemeMode,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                label: context.t.settings.language.title,
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: context.t.settings.language.title,
-                      trailing: _LocaleDropdown(
-                        value: s.locale,
-                        onChanged: controller.setLocale,
                       ),
                     ),
                   ],
