@@ -133,6 +133,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
+	late final Translations$cockpit$fileTreePanel$en fileTreePanel = Translations$cockpit$fileTreePanel$en.internal(_root);
 	late final Translations$cockpit$fileViewer$en fileViewer = Translations$cockpit$fileViewer$en.internal(_root);
 	late final Translations$cockpit$workspaceSettingsDialog$en workspaceSettingsDialog = Translations$cockpit$workspaceSettingsDialog$en.internal(_root);
 	late final Translations$cockpit$realmDialogs$en realmDialogs = Translations$cockpit$realmDialogs$en.internal(_root);
@@ -767,6 +768,222 @@ class Translations$cockpit$paneView$en {
 
 	/// en: 'Dock as tab'
 	String get dockAsTab => 'Dock as tab';
+}
+
+// Path: cockpit.fileTreePanel
+class Translations$cockpit$fileTreePanel$en {
+	Translations$cockpit$fileTreePanel$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'View Diff'
+	String get viewDiff => 'View Diff';
+
+	/// en: 'Commit'
+	String get commit => 'Commit';
+
+	/// en: 'Stage and Commit'
+	String get stageAndCommit => 'Stage and Commit';
+
+	/// en: 'Unstage'
+	String get unstage => 'Unstage';
+
+	/// en: 'Stage Changes'
+	String get stageChanges => 'Stage Changes';
+
+	/// en: 'Discard Changes'
+	String get discardChanges => 'Discard Changes';
+
+	/// en: 'Enter a commit message.'
+	String get enterCommitMessage => 'Enter a commit message.';
+
+	/// en: 'Commit is unavailable for this workspace.'
+	String get commitUnavailable => 'Commit is unavailable for this workspace.';
+
+	/// en: 'Git error'
+	String get gitErrorTitle => 'Git error';
+
+	/// en: 'Delete new file?'
+	String get deleteNewFileTitle => 'Delete new file?';
+
+	/// en: 'Discard changes?'
+	String get discardChangesTitle => 'Discard changes?';
+
+	/// en: '"${name}" is a new file and cannot be restored. Delete it?'
+	String deleteNewFileMessage({required Object name}) => '"${name}" is a new file and cannot be restored. Delete it?';
+
+	/// en: 'Discard all changes in "${name}"? Deleted files will be restored.'
+	String discardOneMessage({required Object name}) => 'Discard all changes in "${name}"? Deleted files will be restored.';
+
+	/// en: 'Discard'
+	String get discard => 'Discard';
+
+	/// en: 'Delete all new files?'
+	String get deleteAllNewFilesTitle => 'Delete all new files?';
+
+	/// en: 'All ${count} files are new and will be deleted. This cannot be undone.'
+	String allNewFilesMessage({required Object count}) => 'All ${count} files are new and will be deleted. This cannot be undone.';
+
+	/// en: 'Discard changes in ${count} tracked file(s)?${extra}'
+	String discardTrackedMessage({required Object count, required Object extra}) => 'Discard changes in ${count} tracked file(s)?${extra}';
+
+	/// en: ' ${count} new file(s) will be kept.'
+	String discardTrackedExtra({required Object count}) => ' ${count} new file(s) will be kept.';
+
+	/// en: 'Delete All'
+	String get deleteAll => 'Delete All';
+
+	/// en: 'Delete?'
+	String get deleteQuestionTitle => 'Delete?';
+
+	/// en: 'Move “${name}” to the Trash?'
+	String moveToTrash({required Object name}) => 'Move “${name}” to the Trash?';
+
+	/// en: 'Permanently delete “${name}”? This can’t be undone.'
+	String permanentlyDelete({required Object name}) => 'Permanently delete “${name}”? This can’t be undone.';
+
+	/// en: 'Could not delete'
+	String get couldNotDeleteTitle => 'Could not delete';
+
+	/// en: 'Move?'
+	String get moveQuestionTitle => 'Move?';
+
+	/// en: 'Move “${name}” to “${dest}”?'
+	String moveMessage({required Object name, required Object dest}) => 'Move “${name}” to “${dest}”?';
+
+	/// en: 'Move'
+	String get moveAction => 'Move';
+
+	/// en: 'Could not move'
+	String get couldNotMoveTitle => 'Could not move';
+
+	/// en: 'Could not paste'
+	String get couldNotPasteTitle => 'Could not paste';
+
+	/// en: 'Files'
+	String get filesTooltip => 'Files';
+
+	/// en: 'Search'
+	String get searchTooltip => 'Search';
+
+	/// en: 'Source Control'
+	String get sourceControlTooltip => 'Source Control';
+
+	/// en: 'Database'
+	String get databaseTooltip => 'Database';
+
+	/// en: 'FILES'
+	String get sectionFiles => 'FILES';
+
+	/// en: 'New file'
+	String get newFile => 'New file';
+
+	/// en: 'New folder'
+	String get newFolder => 'New folder';
+
+	/// en: 'Refresh'
+	String get refreshTooltip => 'Refresh';
+
+	/// en: 'SOURCE CONTROL'
+	String get sectionSourceControl => 'SOURCE CONTROL';
+
+	/// en: 'View as List'
+	String get viewAsList => 'View as List';
+
+	/// en: 'View as Tree'
+	String get viewAsTree => 'View as Tree';
+
+	/// en: 'No folder — open a workspace.'
+	String get noFolderMessage => 'No folder — open a workspace.';
+
+	/// en: 'Amend'
+	String get amend => 'Amend';
+
+	/// en: 'Commit Message'
+	String get commitMessagePlaceholder => 'Commit Message';
+
+	/// en: 'Amend Commit'
+	String get amendCommit => 'Amend Commit';
+
+	/// en: 'last commit'
+	String get lastCommit => 'last commit';
+
+	/// en: 'Open in Finder'
+	String get openInFinder => 'Open in Finder';
+
+	/// en: 'Open in Explorer'
+	String get openInExplorer => 'Open in Explorer';
+
+	/// en: 'Open in file manager'
+	String get openInFileManager => 'Open in file manager';
+
+	/// en: 'Open'
+	String get open => 'Open';
+
+	/// en: 'Open with'
+	String get openWith => 'Open with';
+
+	/// en: 'Open layout'
+	String get openLayout => 'Open layout';
+
+	/// en: 'Show git diff'
+	String get showGitDiff => 'Show git diff';
+
+	/// en: 'Create agent'
+	String get createAgent => 'Create agent';
+
+	/// en: 'Create terminal'
+	String get createTerminal => 'Create terminal';
+
+	/// en: 'Rename'
+	String get rename => 'Rename';
+
+	/// en: 'Copy'
+	String get copy => 'Copy';
+
+	/// en: 'Cut'
+	String get cut => 'Cut';
+
+	/// en: 'Paste'
+	String get paste => 'Paste';
+
+	/// en: 'Copy relative path'
+	String get copyRelativePath => 'Copy relative path';
+
+	/// en: 'Copy absolute path'
+	String get copyAbsolutePath => 'Copy absolute path';
+
+	/// en: 'Rename failed.'
+	String get renameFailed => 'Rename failed.';
+
+	/// en: 'No changes.'
+	String get noChanges => 'No changes.';
+
+	/// en: 'STAGED CHANGES (${count})'
+	String stagedChangesHeader({required Object count}) => 'STAGED CHANGES (${count})';
+
+	/// en: 'CHANGES (${count})'
+	String changesHeader({required Object count}) => 'CHANGES (${count})';
+
+	/// en: 'Discard All Changes'
+	String get discardAllChanges => 'Discard All Changes';
+
+	/// en: 'Unstage All Changes'
+	String get unstageAllChanges => 'Unstage All Changes';
+
+	/// en: 'Stage All Changes'
+	String get stageAllChanges => 'Stage All Changes';
+
+	/// en: 'Discard Folder Changes'
+	String get discardFolderChanges => 'Discard Folder Changes';
+
+	/// en: 'Unstage Folder Changes'
+	String get unstageFolderChanges => 'Unstage Folder Changes';
+
+	/// en: 'Stage Folder Changes'
+	String get stageFolderChanges => 'Stage Folder Changes';
 }
 
 // Path: cockpit.fileViewer
@@ -2202,6 +2419,75 @@ extension on Translations {
 			'cockpit.paneView.closePane' => 'Close pane',
 			'cockpit.paneView.dropHereToMove' => 'Drop here to move the tab',
 			'cockpit.paneView.dockAsTab' => 'Dock as tab',
+			'cockpit.fileTreePanel.viewDiff' => 'View Diff',
+			'cockpit.fileTreePanel.commit' => 'Commit',
+			'cockpit.fileTreePanel.stageAndCommit' => 'Stage and Commit',
+			'cockpit.fileTreePanel.unstage' => 'Unstage',
+			'cockpit.fileTreePanel.stageChanges' => 'Stage Changes',
+			'cockpit.fileTreePanel.discardChanges' => 'Discard Changes',
+			'cockpit.fileTreePanel.enterCommitMessage' => 'Enter a commit message.',
+			'cockpit.fileTreePanel.commitUnavailable' => 'Commit is unavailable for this workspace.',
+			'cockpit.fileTreePanel.gitErrorTitle' => 'Git error',
+			'cockpit.fileTreePanel.deleteNewFileTitle' => 'Delete new file?',
+			'cockpit.fileTreePanel.discardChangesTitle' => 'Discard changes?',
+			'cockpit.fileTreePanel.deleteNewFileMessage' => ({required Object name}) => '"${name}" is a new file and cannot be restored. Delete it?',
+			'cockpit.fileTreePanel.discardOneMessage' => ({required Object name}) => 'Discard all changes in "${name}"? Deleted files will be restored.',
+			'cockpit.fileTreePanel.discard' => 'Discard',
+			'cockpit.fileTreePanel.deleteAllNewFilesTitle' => 'Delete all new files?',
+			'cockpit.fileTreePanel.allNewFilesMessage' => ({required Object count}) => 'All ${count} files are new and will be deleted. This cannot be undone.',
+			'cockpit.fileTreePanel.discardTrackedMessage' => ({required Object count, required Object extra}) => 'Discard changes in ${count} tracked file(s)?${extra}',
+			'cockpit.fileTreePanel.discardTrackedExtra' => ({required Object count}) => ' ${count} new file(s) will be kept.',
+			'cockpit.fileTreePanel.deleteAll' => 'Delete All',
+			'cockpit.fileTreePanel.deleteQuestionTitle' => 'Delete?',
+			'cockpit.fileTreePanel.moveToTrash' => ({required Object name}) => 'Move “${name}” to the Trash?',
+			'cockpit.fileTreePanel.permanentlyDelete' => ({required Object name}) => 'Permanently delete “${name}”? This can’t be undone.',
+			'cockpit.fileTreePanel.couldNotDeleteTitle' => 'Could not delete',
+			'cockpit.fileTreePanel.moveQuestionTitle' => 'Move?',
+			'cockpit.fileTreePanel.moveMessage' => ({required Object name, required Object dest}) => 'Move “${name}” to “${dest}”?',
+			'cockpit.fileTreePanel.moveAction' => 'Move',
+			'cockpit.fileTreePanel.couldNotMoveTitle' => 'Could not move',
+			'cockpit.fileTreePanel.couldNotPasteTitle' => 'Could not paste',
+			'cockpit.fileTreePanel.filesTooltip' => 'Files',
+			'cockpit.fileTreePanel.searchTooltip' => 'Search',
+			'cockpit.fileTreePanel.sourceControlTooltip' => 'Source Control',
+			'cockpit.fileTreePanel.databaseTooltip' => 'Database',
+			'cockpit.fileTreePanel.sectionFiles' => 'FILES',
+			'cockpit.fileTreePanel.newFile' => 'New file',
+			'cockpit.fileTreePanel.newFolder' => 'New folder',
+			'cockpit.fileTreePanel.refreshTooltip' => 'Refresh',
+			'cockpit.fileTreePanel.sectionSourceControl' => 'SOURCE CONTROL',
+			'cockpit.fileTreePanel.viewAsList' => 'View as List',
+			'cockpit.fileTreePanel.viewAsTree' => 'View as Tree',
+			'cockpit.fileTreePanel.noFolderMessage' => 'No folder — open a workspace.',
+			'cockpit.fileTreePanel.amend' => 'Amend',
+			'cockpit.fileTreePanel.commitMessagePlaceholder' => 'Commit Message',
+			'cockpit.fileTreePanel.amendCommit' => 'Amend Commit',
+			'cockpit.fileTreePanel.lastCommit' => 'last commit',
+			'cockpit.fileTreePanel.openInFinder' => 'Open in Finder',
+			'cockpit.fileTreePanel.openInExplorer' => 'Open in Explorer',
+			'cockpit.fileTreePanel.openInFileManager' => 'Open in file manager',
+			'cockpit.fileTreePanel.open' => 'Open',
+			'cockpit.fileTreePanel.openWith' => 'Open with',
+			'cockpit.fileTreePanel.openLayout' => 'Open layout',
+			'cockpit.fileTreePanel.showGitDiff' => 'Show git diff',
+			'cockpit.fileTreePanel.createAgent' => 'Create agent',
+			'cockpit.fileTreePanel.createTerminal' => 'Create terminal',
+			'cockpit.fileTreePanel.rename' => 'Rename',
+			'cockpit.fileTreePanel.copy' => 'Copy',
+			'cockpit.fileTreePanel.cut' => 'Cut',
+			'cockpit.fileTreePanel.paste' => 'Paste',
+			'cockpit.fileTreePanel.copyRelativePath' => 'Copy relative path',
+			'cockpit.fileTreePanel.copyAbsolutePath' => 'Copy absolute path',
+			'cockpit.fileTreePanel.renameFailed' => 'Rename failed.',
+			'cockpit.fileTreePanel.noChanges' => 'No changes.',
+			'cockpit.fileTreePanel.stagedChangesHeader' => ({required Object count}) => 'STAGED CHANGES (${count})',
+			'cockpit.fileTreePanel.changesHeader' => ({required Object count}) => 'CHANGES (${count})',
+			'cockpit.fileTreePanel.discardAllChanges' => 'Discard All Changes',
+			'cockpit.fileTreePanel.unstageAllChanges' => 'Unstage All Changes',
+			'cockpit.fileTreePanel.stageAllChanges' => 'Stage All Changes',
+			'cockpit.fileTreePanel.discardFolderChanges' => 'Discard Folder Changes',
+			'cockpit.fileTreePanel.unstageFolderChanges' => 'Unstage Folder Changes',
+			'cockpit.fileTreePanel.stageFolderChanges' => 'Stage Folder Changes',
 			'cockpit.fileViewer.cantOpen' => 'Can\'t open this file.',
 			'cockpit.fileViewer.couldNotLoadImage' => 'Could not load the image.',
 			'cockpit.fileViewer.preview' => 'Preview',
@@ -2477,6 +2763,8 @@ extension on Translations {
 			'settings.page.schedules.previewNext' => ({required Object when}) => 'Next: ${when}',
 			'settings.page.schedules.exampleEveryDay9am' => 'every day 9am',
 			'settings.page.schedules.exampleHourly' => 'hourly',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.schedules.exampleEvery15Min' => 'every 15 min',
 			'settings.page.schedules.exampleWeekdays6pm' => 'weekdays 6pm',
 			'settings.page.schedules.promptLabel' => 'Prompt',
