@@ -3522,31 +3522,31 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
   Future<void> _confirmRestartSupervisor() async {
     final vm = context.read<DaemonsViewModel>();
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Restart the supervisor?',
+          tr.restartSupervisorDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          'Restarts the supervisor process (reloads the code). All daemons '
-          'restart with it and go offline for a few seconds.',
+          tr.restartSupervisorDialogContent,
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Restart',
+              context.t.common.restart,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.warn,
@@ -3564,31 +3564,31 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
   Future<void> _confirmRemove(DaemonInfo daemon) async {
     final vm = context.read<DaemonsViewModel>();
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Remove daemon?',
+          tr.removeDaemonDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          '"${daemon.name}" stops running and leaves the registry. The folder and '
-          'its local config are kept — you can recreate it later.',
+          tr.removeDaemonDialogContent(name: daemon.name),
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Remove',
+              context.t.common.remove,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.error,
@@ -3628,7 +3628,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
                 const SizedBox(height: 16),
               ],
               _Section(
-                label: 'Always-on agents',
+                label: context.t.settings.page.daemons.sectionAlwaysOnAgents,
                 trailing: _ReloadButton(
                   busy: vm.load == DaemonsLoad.loading,
                   onTap: vm.reload,
@@ -3644,6 +3644,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
 
   Widget _body(BuildContext context, DaemonsViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
 
     if (!vm.online && vm.load != DaemonsLoad.loading) {
       return _MessageCard(
@@ -3655,7 +3656,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
                 Icon(Icons.power_off_outlined, size: 16, color: colors.text3),
                 const SizedBox(width: 8),
                 Text(
-                  'Supervisor offline',
+                  tr.supervisorOfflineTitle,
                   style: context.typo.body.copyWith(
                     fontSize: 13.5,
                     color: colors.text2,
@@ -3665,8 +3666,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
             ),
             const SizedBox(height: 6),
             Text(
-              'pi-supervisord is not running. Install it with '
-              '`remote-pi install` to manage 24/7 agents.',
+              tr.supervisorOfflineDesc,
               style: context.typo.label.copyWith(color: colors.text3),
             ),
           ],
@@ -3686,7 +3686,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Loading…',
+              context.t.common.loading,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text3,
@@ -3700,7 +3700,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
     if (vm.load == DaemonsLoad.error && vm.daemons.isEmpty) {
       return _MessageCard(
         child: Text(
-          vm.error ?? 'Failed to list daemons.',
+          vm.error ?? tr.failedToListDaemons,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.error,
@@ -3712,7 +3712,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
     if (vm.daemons.isEmpty) {
       return _MessageCard(
         child: Text(
-          'No registered agents. Create one from a folder.',
+          tr.noRegisteredAgents,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -3752,6 +3752,7 @@ class _DaemonActionsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     final hasDaemons = vm.daemons.isNotEmpty;
     final fleetEnabled = hasDaemons && !vm.busyAll;
 
@@ -3763,7 +3764,7 @@ class _DaemonActionsBar extends StatelessWidget {
         PrimaryButton(
           onPressed: () => onCreate(),
           leading: const Icon(Icons.add, size: 16),
-          child: const Text('Create daemon'),
+          child: Text(tr.createDaemon),
         ),
         if (vm.busyAll)
           CircularProgressIndicator(
@@ -3772,22 +3773,22 @@ class _DaemonActionsBar extends StatelessWidget {
             color: colors.text3,
           ),
         _FleetButton(
-          label: 'Start all',
+          label: tr.startAll,
           icon: Icons.play_arrow,
           onTap: fleetEnabled ? vm.startAll : null,
         ),
         _FleetButton(
-          label: 'Stop all',
+          label: tr.stopAll,
           icon: Icons.stop,
           onTap: fleetEnabled ? vm.stopAll : null,
         ),
         _FleetButton(
-          label: 'Restart all',
+          label: tr.restartAll,
           icon: Icons.restart_alt,
           onTap: fleetEnabled ? vm.restartAll : null,
         ),
         _FleetButton(
-          label: 'Restart supervisor',
+          label: tr.restartSupervisor,
           icon: Icons.sync,
           tint: colors.warn,
           onTap: vm.busyAll ? null : onRestartSupervisor,
@@ -3903,13 +3904,30 @@ class _DaemonTile extends StatelessWidget {
                 _act(
                   context,
                   running ? Icons.stop : Icons.play_arrow,
-                  running ? 'Stop' : 'Start',
+                  running
+                      ? context.t.settings.page.daemons.stop
+                      : context.t.settings.page.daemons.start,
                   running ? onStop : onStart,
                 ),
                 if (running)
-                  _act(context, Icons.restart_alt, 'Restart', onRestart),
-                _act(context, Icons.edit_outlined, 'Edit', onEdit),
-                _act(context, Icons.delete_outline, 'Remove', onRemove),
+                  _act(
+                    context,
+                    Icons.restart_alt,
+                    context.t.common.restart,
+                    onRestart,
+                  ),
+                _act(
+                  context,
+                  Icons.edit_outlined,
+                  context.t.settings.page.daemons.edit,
+                  onEdit,
+                ),
+                _act(
+                  context,
+                  Icons.delete_outline,
+                  context.t.common.remove,
+                  onRemove,
+                ),
               ],
             ),
         ],
@@ -3930,11 +3948,12 @@ class _DaemonTile extends StatelessWidget {
 
   (Color, String) _stateView(BuildContext context, DaemonState state) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     return switch (state) {
-      DaemonState.running => (colors.online, 'running'),
-      DaemonState.starting => (colors.warn, 'starting'),
-      DaemonState.stopped => (colors.text4, 'stopped'),
-      DaemonState.crashed => (colors.error, 'failed'),
+      DaemonState.running => (colors.online, tr.stateRunning),
+      DaemonState.starting => (colors.warn, tr.stateStarting),
+      DaemonState.stopped => (colors.text4, tr.stateStopped),
+      DaemonState.crashed => (colors.error, tr.stateFailed),
       DaemonState.unknown => (colors.text4, '—'),
     };
   }
@@ -4049,7 +4068,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
 
   Future<void> _pickFolder() async {
     final picked = await NativeFolderPicker.pick(
-      dialogTitle: 'Choose the Daemon Agent folder',
+      dialogTitle: context.t.settings.page.daemons.pickFolderDialogTitle,
       initialDirectory: _cwd, // reabre onde já estava, se já escolhido
     );
     if (picked == null || !mounted) return;
@@ -4064,19 +4083,20 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
 
   void _submit() {
     final name = _nameCtrl.text.trim();
+    final tr = context.t.settings.page.daemons;
     String? nameError;
     String? pathError;
 
     if (name.isEmpty) {
-      nameError = 'Enter a name.';
+      nameError = tr.nameRequiredError;
     } else if (widget.existingNames.contains(name.toLowerCase())) {
-      nameError = 'An agent with this name already exists.';
+      nameError = tr.nameDuplicateError;
     }
     if (!_isEdit) {
       if (_cwd == null) {
-        pathError = 'Choose a folder.';
+        pathError = tr.folderRequiredError;
       } else if (widget.existingCwds.contains(_cwd)) {
-        pathError = 'An agent already exists in this folder.';
+        pathError = tr.folderDuplicateError;
       }
     }
 
@@ -4098,10 +4118,11 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
 
     return AlertDialog(
       title: Text(
-        _isEdit ? 'Edit daemon' : 'New daemon',
+        _isEdit ? tr.editDaemonTitle : tr.newDaemonTitle,
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: SizedBox(
@@ -4110,7 +4131,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label(context, 'Name'),
+            _label(context, tr.nameLabel),
             const SizedBox(height: 6),
             TextField(
               controller: _nameCtrl,
@@ -4123,7 +4144,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
                 fontSize: 13.5,
                 color: colors.text,
               ),
-              placeholder: const Text('e.g. PC, Server, Home'),
+              placeholder: Text(tr.namePlaceholder),
               borderRadius: BorderRadius.circular(7),
             ),
             if (_nameError != null) ...[
@@ -4134,7 +4155,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
               ),
             ],
             const SizedBox(height: 16),
-            _label(context, 'Folder'),
+            _label(context, tr.folderLabel),
             const SizedBox(height: 6),
             if (_isEdit)
               SizedBox(
@@ -4147,21 +4168,21 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
                   Expanded(
                     child: _pathBox(
                       context,
-                      _cwd ?? 'No folder chosen',
+                      _cwd ?? tr.noFolderChosen,
                       enabled: _cwd != null,
                     ),
                   ),
                   const SizedBox(width: 8),
                   OutlineButton(
                     onPressed: () => _pickFolder(),
-                    child: Text(_cwd == null ? 'Choose' : 'Change'),
+                    child: Text(_cwd == null ? tr.choose : tr.changeFolder),
                   ),
                 ],
               ),
             if (_isEdit) ...[
               const SizedBox(height: 6),
               Text(
-                'The folder cannot be changed.',
+                tr.folderCannotBeChanged,
                 style: context.typo.label.copyWith(color: colors.text3),
               ),
             ],
@@ -4179,7 +4200,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
         GhostButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
-            'Cancel',
+            context.t.common.cancel,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.text2,
@@ -4189,7 +4210,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
         GhostButton(
           onPressed: _submit,
           child: Text(
-            _isEdit ? 'Save' : 'Create',
+            _isEdit ? context.t.common.save : context.t.common.create,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.accentText,

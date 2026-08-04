@@ -1716,6 +1716,18 @@ class Translations$settings$page$daemons$en {
 	/// en: 'Edit'
 	String get edit => 'Edit';
 
+	/// en: 'running'
+	String get stateRunning => 'running';
+
+	/// en: 'starting'
+	String get stateStarting => 'starting';
+
+	/// en: 'stopped'
+	String get stateStopped => 'stopped';
+
+	/// en: 'failed'
+	String get stateFailed => 'failed';
+
 	/// en: 'New daemon'
 	String get newDaemonTitle => 'New daemon';
 
@@ -2209,6 +2221,10 @@ extension on Translations {
 			'settings.page.daemons.start' => 'Start',
 			'settings.page.daemons.stop' => 'Stop',
 			'settings.page.daemons.edit' => 'Edit',
+			'settings.page.daemons.stateRunning' => 'running',
+			'settings.page.daemons.stateStarting' => 'starting',
+			'settings.page.daemons.stateStopped' => 'stopped',
+			'settings.page.daemons.stateFailed' => 'failed',
 			'settings.page.daemons.newDaemonTitle' => 'New daemon',
 			'settings.page.daemons.editDaemonTitle' => 'Edit daemon',
 			'settings.page.daemons.nameLabel' => 'Name',
