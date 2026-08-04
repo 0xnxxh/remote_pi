@@ -2063,33 +2063,32 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
     final vm = context.read<ConnectivityViewModel>();
     final colors = context.colors;
     final name = device.label.isEmpty ? device.shortId : device.label;
+    final tr = context.t.settings.page.connectivity;
 
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Revoke device?',
+          tr.revokeDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          '"$name" will lose access to your agents and will need to pair again.'
-          '\n\nYou must be connected to the relay — the app will connect '
-          'automatically to revoke.',
+          tr.revokeDialogContent(name: name),
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Revoke',
+              tr.revoke,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.error,
@@ -2118,6 +2117,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<ConnectivityViewModel>();
+    final tr = context.t.settings.page.connectivity;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -2127,12 +2127,12 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _Section(
-                label: 'Relay',
-                child: _Card(children: [_RelayEditor()]),
+              _Section(
+                label: tr.sectionRelay,
+                child: const _Card(children: [_RelayEditor()]),
               ),
               _Section(
-                label: 'Paired devices',
+                label: tr.sectionPairedDevices,
                 trailing: _ReloadButton(
                   busy: vm.devicesLoad == ConnLoad.loading,
                   onTap: vm.loadDevices,
@@ -2155,6 +2155,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
 
   Widget _devicesCard(BuildContext context, ConnectivityViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.connectivity;
 
     // Primeira carga (ainda sem dados).
     if (vm.devicesLoad == ConnLoad.loading && vm.devices.isEmpty) {
@@ -2169,7 +2170,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Loading…',
+              context.t.common.loading,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text3,
@@ -2183,7 +2184,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
     if (vm.devicesLoad == ConnLoad.error && vm.devices.isEmpty) {
       return _MessageCard(
         child: Text(
-          vm.devicesError ?? 'Failed to list devices.',
+          vm.devicesError ?? tr.failedToListDevices,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.error,
@@ -2195,7 +2196,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
     if (vm.devices.isEmpty) {
       return _MessageCard(
         child: Text(
-          'No paired devices.',
+          tr.noPairedDevices,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -2264,6 +2265,7 @@ class _RelayEditorState extends State<_RelayEditor> {
     final value = _ctrl.text.trim();
     final canSave =
         !vm.savingRelay && value.isNotEmpty && value != (vm.relayUrl ?? '');
+    final tr = context.t.settings.page.connectivity;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -2271,7 +2273,7 @@ class _RelayEditorState extends State<_RelayEditor> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Relay address',
+            tr.relayAddressTitle,
             style: context.typo.body.copyWith(
               fontSize: 13.5,
               color: colors.text,
@@ -2279,8 +2281,7 @@ class _RelayEditorState extends State<_RelayEditor> {
           ),
           const SizedBox(height: 3),
           Text(
-            'Server that connects your agents to the phone. Applies to every '
-            'agent with the relay enabled.',
+            tr.relayAddressDesc,
             style: context.typo.label.copyWith(color: colors.text3),
           ),
           const SizedBox(height: 12),
@@ -2307,7 +2308,7 @@ class _RelayEditorState extends State<_RelayEditor> {
               const SizedBox(width: 8),
               PrimaryButton(
                 onPressed: canSave ? () => _save() : null,
-                child: Text(vm.savingRelay ? 'Saving…' : 'Save'),
+                child: Text(vm.savingRelay ? tr.saving : context.t.common.save),
               ),
             ],
           ),
@@ -2326,7 +2327,7 @@ class _RelayEditorState extends State<_RelayEditor> {
                     ? null
                     : () => vm.checkRelay(_ctrl.text),
                 leading: const Icon(Icons.wifi_tethering, size: 15),
-                child: const Text('Check'),
+                child: Text(tr.check),
               ),
               const SizedBox(width: 12),
               Expanded(child: _HealthIndicator(vm: vm)),
@@ -2346,6 +2347,7 @@ class _HealthIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.connectivity;
 
     if (vm.healthState == HealthState.checking) {
       return Row(
@@ -2357,7 +2359,7 @@ class _HealthIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Checking…',
+            context.t.common.checking,
             style: context.typo.label.copyWith(color: colors.text3),
           ),
         ],
@@ -2365,13 +2367,13 @@ class _HealthIndicator extends StatelessWidget {
     }
 
     final (Color dot, String label, Color text) = switch (vm.healthState) {
-      HealthState.healthy => (colors.online, 'Online', colors.text2),
+      HealthState.healthy => (colors.online, tr.healthOnline, colors.text2),
       HealthState.unhealthy => (
         colors.error,
-        vm.healthMessage ?? 'No response',
+        vm.healthMessage ?? tr.healthNoResponse,
         colors.error,
       ),
-      _ => (colors.text4, 'Not checked', colors.text3),
+      _ => (colors.text4, tr.healthNotChecked, colors.text3),
     };
 
     return Row(
@@ -2416,7 +2418,9 @@ class _DeviceTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  device.label.isEmpty ? 'Device' : device.label,
+                  device.label.isEmpty
+                      ? context.t.settings.page.connectivity.deviceDefaultLabel
+                      : device.label,
                   style: context.typo.body.copyWith(
                     fontSize: 13.5,
                     color: colors.text,
@@ -2435,7 +2439,7 @@ class _DeviceTile extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           AppTooltip(
-            message: 'Revoke',
+            message: context.t.settings.page.connectivity.revoke,
             child: HoverTap(
               borderRadius: BorderRadius.circular(6),
               onTap: onRevoke,
@@ -2462,7 +2466,7 @@ class _ReloadButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return AppTooltip(
-      message: 'Reload',
+      message: context.t.settings.page.connectivity.reloadTooltip,
       child: HoverTap(
         borderRadius: BorderRadius.circular(6),
         onTap: busy ? null : () => onTap(),
@@ -2527,7 +2531,7 @@ class _PairButton extends StatelessWidget {
           Icon(Icons.qr_code_2, size: 17, color: colors.accentText),
           const SizedBox(width: 8),
           Text(
-            'Pair new device',
+            context.t.settings.page.connectivity.pairNewDevice,
             style: context.typo.body.copyWith(
               fontSize: 13.5,
               color: colors.accentText,
