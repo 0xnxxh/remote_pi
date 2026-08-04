@@ -99,6 +99,18 @@ jobs:
         with:
           version: 0.16.0
 
+      # A CLI interna (`cockpit-cli`, crate em cockpit/cli) é compilada pelo
+      # Run Script phase do Xcode como binário UNIVERSAL: o build_cli.sh gera
+      # arm64 + x86_64 e junta com `lipo`. O runner é Apple Silicon, então o
+      # target Intel precisa estar instalado — sem ele o app sai sem a fatia
+      # x86_64 e a CLI/hook não funcionam em Mac Intel.
+      - name: Rust + target Intel (CLI interna universal)
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          cargo --version
+
       - name: Importa certificado Developer ID em keychain temporário
         env:
           MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
@@ -151,6 +163,16 @@ jobs:
             --entitlements macos/Runner/Release.entitlements \
             --sign "$SIGN_ID" "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
+          # Gate do Intel: a CLI (que também atende os hooks do Claude via
+          # `cockpit hook`) precisa das DUAS fatias. Checar a arquitetura não
+          # basta — `lipo -verify_arch` passa até em binário quebrado —, então
+          # também executamos a fatia nativa.
+          lipo -archs "$APP/Contents/Resources/cockpit-cli"
+          lipo -archs "$APP/Contents/Resources/cockpit-cli" | grep -q x86_64 || {
+            echo "::error::cockpit-cli saiu sem a fatia x86_64 (Mac Intel ficaria sem CLI/hook)"
+            exit 1
+          }
+          "$APP/Contents/Resources/cockpit-cli" --version
           mkdir -p dist
           echo "$APPLE_API_KEY" | base64 -d > "$RUNNER_TEMP/apikey.p8"
           notarize() {

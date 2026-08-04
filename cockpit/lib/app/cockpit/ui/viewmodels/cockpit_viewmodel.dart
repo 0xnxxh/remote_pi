@@ -1500,6 +1500,24 @@ class CockpitViewModel extends ChangeNotifier {
   /// Pane focada do projeto.
   String? focusedPaneId(String projectId) => _focused[projectId];
 
+  /// Id da **aba em foco**: a aba ativa da pane focada, no projeto selecionado.
+  /// É o que a CLI resolve quando recebe `--focused`, pra uma ferramenta externa
+  /// (ex.: ditado por voz) poder digitar onde o usuário está olhando sem
+  /// precisar descobrir o id. `null` quando não há projeto/pane/aba.
+  String? get focusedTabId {
+    final pid = _selectedProjectId;
+    final tree = pid == null ? null : _trees[pid];
+    if (pid == null || tree == null) return null;
+    // Sem foco explícito (ex.: logo após o boot), a primeira folha é o que o
+    // usuário vê — mesmo fallback que o resto da VM usa.
+    final paneId = _focused[pid] ?? leaves(tree).firstOrNull?.id;
+    if (paneId == null) return null;
+    for (final leaf in leaves(tree)) {
+      if (leaf.id == paneId) return leaf.active;
+    }
+    return null;
+  }
+
   /// Nº de agentes do workspace que terminaram um turno e ainda não foram
   /// vistos (badge de notificações).
   int notificationCount(String projectId) => _sessions.values
