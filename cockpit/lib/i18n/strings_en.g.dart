@@ -55,6 +55,8 @@ class Translations$core$en {
 	// Translations
 	late final Translations$core$bootstrapError$en bootstrapError = Translations$core$bootstrapError$en.internal(_root);
 	late final Translations$core$macosNotifications$en macosNotifications = Translations$core$macosNotifications$en.internal(_root);
+	late final Translations$core$appErrorView$en appErrorView = Translations$core$appErrorView$en.internal(_root);
+	late final Translations$core$errorReportDialog$en errorReportDialog = Translations$core$errorReportDialog$en.internal(_root);
 }
 
 // Path: common
@@ -136,6 +138,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$dbQueryView$en dbQueryView = Translations$cockpit$dbQueryView$en.internal(_root);
 	late final Translations$cockpit$dbMongoView$en dbMongoView = Translations$cockpit$dbMongoView$en.internal(_root);
 	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
+	late final Translations$cockpit$sshPrompts$en sshPrompts = Translations$cockpit$sshPrompts$en.internal(_root);
 }
 
 // Path: settings
@@ -197,6 +200,42 @@ class Translations$core$macosNotifications$en {
 
 	/// en: 'Got it'
 	String get gotIt => 'Got it';
+}
+
+// Path: core.appErrorView
+class Translations$core$appErrorView$en {
+	Translations$core$appErrorView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'This part of the app failed to render'
+	String get renderFailed => 'This part of the app failed to render';
+
+	/// en: 'Details'
+	String get details => 'Details';
+
+	/// en: 'Render error'
+	String get renderErrorTitle => 'Render error';
+}
+
+// Path: core.errorReportDialog
+class Translations$core$errorReportDialog$en {
+	Translations$core$errorReportDialog$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Something went wrong. The details below were saved to the log — you can report them so it gets fixed.'
+	String get defaultDescription => 'Something went wrong. The details below were saved to the log — you can report them so it gets fixed.';
+
+	/// en: 'Copy details'
+	String get copyDetails => 'Copy details';
+
+	/// en: 'Report issue'
+	String get reportIssue => 'Report issue';
 }
 
 // Path: cockpit.confirmDialog
@@ -944,6 +983,72 @@ class Translations$cockpit$dbConnectionDialog$en {
 
 	/// en: 'New connection'
 	String get newTitle => 'New connection';
+
+	/// en: 'Connection string'
+	String get connectionString => 'Connection string';
+
+	/// en: 'Not a valid connection URL.'
+	String get invalidUrl => 'Not a valid connection URL.';
+
+	/// en: 'SSH Tunnel'
+	String get sshTunnel => 'SSH Tunnel';
+
+	/// en: 'SSH Host'
+	String get sshHost => 'SSH Host';
+
+	/// en: 'SSH Port'
+	String get sshPort => 'SSH Port';
+
+	/// en: 'SSH User'
+	String get sshUser => 'SSH User';
+
+	/// en: 'Private key'
+	String get privateKey => 'Private key';
+
+	/// en: 'Choose a private key…'
+	String get choosePrivateKeyPlaceholder => 'Choose a private key…';
+
+	/// en: 'Choose SSH private key'
+	String get choosePrivateKeyDialogTitle => 'Choose SSH private key';
+
+	/// en: 'Key passphrase'
+	String get keyPassphrase => 'Key passphrase';
+
+	/// en: 'Save passphrase'
+	String get savePassphrase => 'Save passphrase';
+}
+
+// Path: cockpit.sshPrompts
+class Translations$cockpit$sshPrompts$en {
+	Translations$cockpit$sshPrompts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Unknown SSH host'
+	String get unknownSshHostTitle => 'Unknown SSH host';
+
+	/// en: 'Cockpit has never connected to ${endpoint} before.'
+	String neverConnected({required Object endpoint}) => 'Cockpit has never connected to ${endpoint} before.';
+
+	/// en: 'Trust it only if this fingerprint matches the server. You can check it on the server with:'
+	String get trustHint => 'Trust it only if this fingerprint matches the server. You can check it on the server with:';
+
+	/// en: 'Trust'
+	String get trust => 'Trust';
+
+	/// en: 'SSH key passphrase'
+	String get sshKeyPassphraseTitle => 'SSH key passphrase';
+
+	/// en: 'Unlock ${keyPath} to connect "${connectionName}".'
+	String unlockMessage({required Object keyPath, required Object connectionName}) => 'Unlock ${keyPath} to connect "${connectionName}".';
+
+	/// en: 'Kept in memory until Cockpit quits. To let agents use this connection, enable "Save passphrase" in the connection.'
+	String get keptInMemoryHint => 'Kept in memory until Cockpit quits. To let agents use this connection, enable "Save passphrase" in the connection.';
+
+	/// en: 'Unlock'
+	String get unlock => 'Unlock';
 }
 
 // Path: settings.language
@@ -1789,6 +1894,12 @@ extension on Translations {
 			'core.macosNotifications.step4' => 'Toggle the Allow Notifications switch on.',
 			'core.macosNotifications.tip' => 'Tip: If the app does not appear in the list, close and reopen it to trigger its registration in the system.',
 			'core.macosNotifications.gotIt' => 'Got it',
+			'core.appErrorView.renderFailed' => 'This part of the app failed to render',
+			'core.appErrorView.details' => 'Details',
+			'core.appErrorView.renderErrorTitle' => 'Render error',
+			'core.errorReportDialog.defaultDescription' => 'Something went wrong. The details below were saved to the log — you can report them so it gets fixed.',
+			'core.errorReportDialog.copyDetails' => 'Copy details',
+			'core.errorReportDialog.reportIssue' => 'Report issue',
 			'common.cancel' => 'Cancel',
 			'common.confirm' => 'Confirm',
 			'common.create' => 'Create',
@@ -1995,6 +2106,25 @@ extension on Translations {
 			'cockpit.dbConnectionDialog.connectionFailed' => 'Connection failed',
 			'cockpit.dbConnectionDialog.editTitle' => 'Edit connection',
 			'cockpit.dbConnectionDialog.newTitle' => 'New connection',
+			'cockpit.dbConnectionDialog.connectionString' => 'Connection string',
+			'cockpit.dbConnectionDialog.invalidUrl' => 'Not a valid connection URL.',
+			'cockpit.dbConnectionDialog.sshTunnel' => 'SSH Tunnel',
+			'cockpit.dbConnectionDialog.sshHost' => 'SSH Host',
+			'cockpit.dbConnectionDialog.sshPort' => 'SSH Port',
+			'cockpit.dbConnectionDialog.sshUser' => 'SSH User',
+			'cockpit.dbConnectionDialog.privateKey' => 'Private key',
+			'cockpit.dbConnectionDialog.choosePrivateKeyPlaceholder' => 'Choose a private key…',
+			'cockpit.dbConnectionDialog.choosePrivateKeyDialogTitle' => 'Choose SSH private key',
+			'cockpit.dbConnectionDialog.keyPassphrase' => 'Key passphrase',
+			'cockpit.dbConnectionDialog.savePassphrase' => 'Save passphrase',
+			'cockpit.sshPrompts.unknownSshHostTitle' => 'Unknown SSH host',
+			'cockpit.sshPrompts.neverConnected' => ({required Object endpoint}) => 'Cockpit has never connected to ${endpoint} before.',
+			'cockpit.sshPrompts.trustHint' => 'Trust it only if this fingerprint matches the server. You can check it on the server with:',
+			'cockpit.sshPrompts.trust' => 'Trust',
+			'cockpit.sshPrompts.sshKeyPassphraseTitle' => 'SSH key passphrase',
+			'cockpit.sshPrompts.unlockMessage' => ({required Object keyPath, required Object connectionName}) => 'Unlock ${keyPath} to connect "${connectionName}".',
+			'cockpit.sshPrompts.keptInMemoryHint' => 'Kept in memory until Cockpit quits. To let agents use this connection, enable "Save passphrase" in the connection.',
+			'cockpit.sshPrompts.unlock' => 'Unlock',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',

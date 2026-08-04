@@ -13,6 +13,16 @@
       "step4": "Toggle the Allow Notifications switch on.",
       "tip": "Tip: If the app does not appear in the list, close and reopen it to trigger its registration in the system.",
       "gotIt": "Got it"
+    },
+    "appErrorView": {
+      "renderFailed": "This part of the app failed to render",
+      "details": "Details",
+      "renderErrorTitle": "Render error"
+    },
+    "errorReportDialog": {
+      "defaultDescription": "Something went wrong. The details below were saved to the log — you can report them so it gets fixed.",
+      "copyDetails": "Copy details",
+      "reportIssue": "Report issue"
     }
   },
   "common": {
@@ -270,7 +280,28 @@
       "connectionOk": "Connection OK",
       "connectionFailed": "Connection failed",
       "editTitle": "Edit connection",
-      "newTitle": "New connection"
+      "newTitle": "New connection",
+      "connectionString": "Connection string",
+      "invalidUrl": "Not a valid connection URL.",
+      "sshTunnel": "SSH Tunnel",
+      "sshHost": "SSH Host",
+      "sshPort": "SSH Port",
+      "sshUser": "SSH User",
+      "privateKey": "Private key",
+      "choosePrivateKeyPlaceholder": "Choose a private key…",
+      "choosePrivateKeyDialogTitle": "Choose SSH private key",
+      "keyPassphrase": "Key passphrase",
+      "savePassphrase": "Save passphrase"
+    },
+    "sshPrompts": {
+      "unknownSshHostTitle": "Unknown SSH host",
+      "neverConnected": "Cockpit has never connected to ${endpoint} before.",
+      "trustHint": "Trust it only if this fingerprint matches the server. You can check it on the server with:",
+      "trust": "Trust",
+      "sshKeyPassphraseTitle": "SSH key passphrase",
+      "unlockMessage": "Unlock ${keyPath} to connect \"${connectionName}\".",
+      "keptInMemoryHint": "Kept in memory until Cockpit quits. To let agents use this connection, enable \"Save passphrase\" in the connection.",
+      "unlock": "Unlock"
     }
   },
   "settings": {

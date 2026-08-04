@@ -187,7 +187,8 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
     final sshDir = home == null ? null : '$home/.ssh';
     final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Choose SSH private key',
+      dialogTitle:
+          context.t.cockpit.dbConnectionDialog.choosePrivateKeyDialogTitle,
       // Nativo, não canônico: o diálogo do Windows rejeita `/` (ver
       // NativeFolderPicker) e não abre.
       initialDirectory: sshDir != null && Directory(sshDir).existsSync()
@@ -349,7 +350,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
       setState(() {
         _testing = false;
         _testOk = false;
-        _testMessage = 'Not a valid connection URL.';
+        _testMessage = context.t.cockpit.dbConnectionDialog.invalidUrl;
       });
       return;
     }
@@ -401,7 +402,11 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
                   child: Text(
                     hasFile
                         ? _file.text
-                        : context.t.cockpit.dbConnectionDialog.chooseFilePlaceholder,
+                        : context
+                              .t
+                              .cockpit
+                              .dbConnectionDialog
+                              .chooseFilePlaceholder,
                     overflow: TextOverflow.ellipsis,
                     style: typo.mono.copyWith(
                       fontSize: 12.5,
@@ -475,7 +480,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Connection string',
+            context.t.cockpit.dbConnectionDialog.connectionString,
             style: typo.label.copyWith(fontSize: 11, color: colors.text3),
           ),
           const SizedBox(height: 4),
@@ -525,7 +530,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
           if (invalid) ...[
             const SizedBox(height: 4),
             Text(
-              'Not a valid connection URL.',
+              context.t.cockpit.dbConnectionDialog.invalidUrl,
               style: typo.label.copyWith(fontSize: 10.5, color: colors.error),
             ),
           ],
@@ -576,7 +581,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               Icon(Icons.lock_outline, size: 13, color: colors.text3),
               const SizedBox(width: 8),
               Text(
-                'SSH Tunnel',
+                context.t.cockpit.dbConnectionDialog.sshTunnel,
                 style: typo.label.copyWith(fontSize: 12, color: colors.text2),
               ),
               const Spacer(),
@@ -603,7 +608,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'SSH Tunnel',
+                  context.t.cockpit.dbConnectionDialog.sshTunnel,
                   style: typo.label.copyWith(fontSize: 12, color: colors.text2),
                 ),
               ),
@@ -623,18 +628,23 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
             ],
           ),
           const SizedBox(height: 8),
-          _field('SSH Host', _sshHost),
+          _field(context.t.cockpit.dbConnectionDialog.sshHost, _sshHost),
           Row(
             children: [
               Expanded(
                 child: _field(
-                  'SSH Port',
+                  context.t.cockpit.dbConnectionDialog.sshPort,
                   _sshPort,
                   hint: '${SshTunnelConfig.defaultPort}',
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(child: _field('SSH User', _sshUser)),
+              Expanded(
+                child: _field(
+                  context.t.cockpit.dbConnectionDialog.sshUser,
+                  _sshUser,
+                ),
+              ),
             ],
           ),
           Padding(
@@ -643,7 +653,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Private key',
+                  context.t.cockpit.dbConnectionDialog.privateKey,
                   style: typo.label.copyWith(fontSize: 11, color: colors.text3),
                 ),
                 const SizedBox(height: 4),
@@ -660,7 +670,11 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
                       Expanded(
                         child: Text(
                           _sshKey.text.isEmpty
-                              ? 'Choose a private key…'
+                              ? context
+                                    .t
+                                    .cockpit
+                                    .dbConnectionDialog
+                                    .choosePrivateKeyPlaceholder
                               : _sshKey.text,
                           overflow: TextOverflow.ellipsis,
                           style: typo.mono.copyWith(
@@ -683,7 +697,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
           // caminho feliz e não deve nem sugerir que há segredo envolvido.
           if (_sshKeyEncrypted) ...[
             _field(
-              'Key passphrase',
+              context.t.cockpit.dbConnectionDialog.keyPassphrase,
               _sshPassphrase,
               obscure: true,
               hint: _editing && (widget.initial?.ssh?.savePassphrase ?? false)
@@ -691,7 +705,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
                   : null,
             ),
             _switchRow(
-              'Save passphrase',
+              context.t.cockpit.dbConnectionDialog.savePassphrase,
               _saveSshPassphrase,
               (v) => setState(() => _saveSshPassphrase = v),
             ),
@@ -752,7 +766,7 @@ class _DbConnectionDialogState extends State<DbConnectionDialog> {
               // tem precedência sobre a que estiver na URL.
               if (_savePassword)
                 _field(
-                  'Password',
+                  context.t.cockpit.dbConnectionDialog.password,
                   _pass,
                   obscure: true,
                   hint: _editing && widget.initial!.savePassword
