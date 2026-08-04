@@ -128,6 +128,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$agentEditDialog$en agentEditDialog = Translations$cockpit$agentEditDialog$en.internal(_root);
 	late final Translations$cockpit$agentSetupChecklist$en agentSetupChecklist = Translations$cockpit$agentSetupChecklist$en.internal(_root);
 	late final Translations$cockpit$agentComposer$en agentComposer = Translations$cockpit$agentComposer$en.internal(_root);
+	late final Translations$cockpit$tasksPanel$en tasksPanel = Translations$cockpit$tasksPanel$en.internal(_root);
 	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
@@ -557,6 +558,42 @@ class Translations$cockpit$agentComposer$en {
 
 	/// en: 'model'
 	String get modelFallback => 'model';
+}
+
+// Path: cockpit.tasksPanel
+class Translations$cockpit$tasksPanel$en {
+	Translations$cockpit$tasksPanel$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Reload tasks'
+	String get reloadTasksTooltip => 'Reload tasks';
+
+	/// en: 'Restart'
+	String get restartTooltip => 'Restart';
+
+	/// en: 'Stop'
+	String get stopTooltip => 'Stop';
+
+	/// en: 'Run'
+	String get runTooltip => 'Run';
+
+	/// en: '${label} (sends '${key}')'
+	String sendsKeyTooltip({required Object label, required Object key}) => '${label} (sends \'${key}\')';
+
+	/// en: 'Starting…'
+	String get startingTooltip => 'Starting…';
+
+	/// en: 'Stopping…'
+	String get stoppingTooltip => 'Stopping…';
+
+	/// en: 'Switch profile'
+	String get switchProfileTooltip => 'Switch profile';
+
+	/// en: 'More keys'
+	String get moreKeysTooltip => 'More keys';
 }
 
 // Path: cockpit.welcomeView
@@ -1998,6 +2035,15 @@ extension on Translations {
 			'cockpit.agentComposer.contextTooltip' => ({required Object pct}) => 'Context: ${pct}% of the window',
 			'cockpit.agentComposer.visionWarning' => 'The current model cannot see images — switch to one with vision.',
 			'cockpit.agentComposer.modelFallback' => 'model',
+			'cockpit.tasksPanel.reloadTasksTooltip' => 'Reload tasks',
+			'cockpit.tasksPanel.restartTooltip' => 'Restart',
+			'cockpit.tasksPanel.stopTooltip' => 'Stop',
+			'cockpit.tasksPanel.runTooltip' => 'Run',
+			'cockpit.tasksPanel.sendsKeyTooltip' => ({required Object label, required Object key}) => '${label} (sends \'${key}\')',
+			'cockpit.tasksPanel.startingTooltip' => 'Starting…',
+			'cockpit.tasksPanel.stoppingTooltip' => 'Stopping…',
+			'cockpit.tasksPanel.switchProfileTooltip' => 'Switch profile',
+			'cockpit.tasksPanel.moreKeysTooltip' => 'More keys',
 			'cockpit.welcomeView.title' => 'Welcome to Cockpit',
 			'cockpit.welcomeView.subtitle' => 'Open a folder to start a workspace.',
 			'cockpit.welcomeView.createWorkspace' => 'Create workspace',

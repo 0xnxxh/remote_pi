@@ -142,6 +142,17 @@
       "visionWarning": "The current model cannot see images — switch to one with vision.",
       "modelFallback": "model"
     },
+    "tasksPanel": {
+      "reloadTasksTooltip": "Reload tasks",
+      "restartTooltip": "Restart",
+      "stopTooltip": "Stop",
+      "runTooltip": "Run",
+      "sendsKeyTooltip": "${label} (sends '${key}')",
+      "startingTooltip": "Starting…",
+      "stoppingTooltip": "Stopping…",
+      "switchProfileTooltip": "Switch profile",
+      "moreKeysTooltip": "More keys"
+    },
     "welcomeView": {
       "title": "Welcome to Cockpit",
       "subtitle": "Open a folder to start a workspace.",
