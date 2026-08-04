@@ -912,32 +912,11 @@ class Translations$cockpit$dbConnectionDialog$en {
 	/// en: 'Name'
 	String get name => 'Name';
 
-	/// en: 'Host'
-	String get host => 'Host';
-
-	/// en: 'Port'
-	String get port => 'Port';
-
-	/// en: 'Database'
-	String get database => 'Database';
-
-	/// en: 'User'
-	String get user => 'User';
-
 	/// en: 'Password'
 	String get password => 'Password';
 
 	/// en: 'Save Password'
 	String get savePassword => 'Save Password';
-
-	/// en: 'Use SSL/TLS'
-	String get useTls => 'Use SSL/TLS';
-
-	/// en: 'implied by mongodb+srv'
-	String get tlsHintSrv => 'implied by mongodb+srv';
-
-	/// en: 'managed DBs (RDS, Atlas…) usually require it'
-	String get tlsHintManaged => 'managed DBs (RDS, Atlas…) usually require it';
 
 	/// en: 'Allow writes (agents)'
 	String get allowWrites => 'Allow writes (agents)';
@@ -2005,15 +1984,8 @@ extension on Translations {
 			'cockpit.dbConnectionDialog.file' => 'File',
 			'cockpit.dbConnectionDialog.chooseFilePlaceholder' => 'Choose a SQLite file…',
 			'cockpit.dbConnectionDialog.name' => 'Name',
-			'cockpit.dbConnectionDialog.host' => 'Host',
-			'cockpit.dbConnectionDialog.port' => 'Port',
-			'cockpit.dbConnectionDialog.database' => 'Database',
-			'cockpit.dbConnectionDialog.user' => 'User',
 			'cockpit.dbConnectionDialog.password' => 'Password',
 			'cockpit.dbConnectionDialog.savePassword' => 'Save Password',
-			'cockpit.dbConnectionDialog.useTls' => 'Use SSL/TLS',
-			'cockpit.dbConnectionDialog.tlsHintSrv' => 'implied by mongodb+srv',
-			'cockpit.dbConnectionDialog.tlsHintManaged' => 'managed DBs (RDS, Atlas…) usually require it',
 			'cockpit.dbConnectionDialog.allowWrites' => 'Allow writes (agents)',
 			'cockpit.dbConnectionDialog.allowWritesHint' => 'off = agents can only read via CLI',
 			'cockpit.dbConnectionDialog.visibleToAgents' => 'Visible to agents',
