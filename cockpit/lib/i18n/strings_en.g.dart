@@ -402,6 +402,18 @@ class Translations$cockpit$commitMessageDialog$en {
 
 	/// en: 'Leave the second line blank (git subject/body separator).'
 	String get errorBlankSecondLine => 'Leave the second line blank (git subject/body separator).';
+
+	/// en: 'Generate commit message'
+	String get generate => 'Generate commit message';
+
+	/// en: 'Generate with ${harness}'
+	String generateWith({required Object harness}) => 'Generate with ${harness}';
+
+	/// en: 'Generating…'
+	String get generating => 'Generating…';
+
+	/// en: 'Cancel generation'
+	String get cancelGeneration => 'Cancel generation';
 }
 
 // Path: cockpit.agentEditDialog
@@ -984,6 +996,18 @@ class Translations$cockpit$fileTreePanel$en {
 
 	/// en: 'Stage Folder Changes'
 	String get stageFolderChanges => 'Stage Folder Changes';
+
+	/// en: 'Generate commit message'
+	String get generateCommitMessage => 'Generate commit message';
+
+	/// en: 'Generate with ${harness}'
+	String generateWith({required Object harness}) => 'Generate with ${harness}';
+
+	/// en: 'Unavailable while amending a commit'
+	String get generateUnavailableWhileAmending => 'Unavailable while amending a commit';
+
+	/// en: 'Cancel generation'
+	String get cancelGeneration => 'Cancel generation';
 }
 
 // Path: cockpit.fileViewer
@@ -2321,6 +2345,10 @@ extension on Translations {
 			'cockpit.commitMessageDialog.errorTrailingPeriod' => 'Subject should not end with a period.',
 			'cockpit.commitMessageDialog.errorControlChars' => 'Subject contains control characters.',
 			'cockpit.commitMessageDialog.errorBlankSecondLine' => 'Leave the second line blank (git subject/body separator).',
+			'cockpit.commitMessageDialog.generate' => 'Generate commit message',
+			'cockpit.commitMessageDialog.generateWith' => ({required Object harness}) => 'Generate with ${harness}',
+			'cockpit.commitMessageDialog.generating' => 'Generating…',
+			'cockpit.commitMessageDialog.cancelGeneration' => 'Cancel generation',
 			'cockpit.agentEditDialog.title' => 'Edit agent',
 			'cockpit.agentEditDialog.agentName' => 'Agent name',
 			'cockpit.agentEditDialog.relaySection' => 'Relay (remote-pi)',
@@ -2488,6 +2516,10 @@ extension on Translations {
 			'cockpit.fileTreePanel.discardFolderChanges' => 'Discard Folder Changes',
 			'cockpit.fileTreePanel.unstageFolderChanges' => 'Unstage Folder Changes',
 			'cockpit.fileTreePanel.stageFolderChanges' => 'Stage Folder Changes',
+			'cockpit.fileTreePanel.generateCommitMessage' => 'Generate commit message',
+			'cockpit.fileTreePanel.generateWith' => ({required Object harness}) => 'Generate with ${harness}',
+			'cockpit.fileTreePanel.generateUnavailableWhileAmending' => 'Unavailable while amending a commit',
+			'cockpit.fileTreePanel.cancelGeneration' => 'Cancel generation',
 			'cockpit.fileViewer.cantOpen' => 'Can\'t open this file.',
 			'cockpit.fileViewer.couldNotLoadImage' => 'Could not load the image.',
 			'cockpit.fileViewer.preview' => 'Preview',
@@ -2755,6 +2787,8 @@ extension on Translations {
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'last: ${label}',
 			'settings.page.schedules.removeScheduleDialogTitle' => 'Remove schedule?',
 			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.schedules.newScheduleTitle' => 'New schedule',
 			'settings.page.schedules.daemonLabel' => 'Daemon',
 			'settings.page.schedules.whenLabel' => 'When (cron expression)',
@@ -2763,8 +2797,6 @@ extension on Translations {
 			'settings.page.schedules.previewNext' => ({required Object when}) => 'Next: ${when}',
 			'settings.page.schedules.exampleEveryDay9am' => 'every day 9am',
 			'settings.page.schedules.exampleHourly' => 'hourly',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.schedules.exampleEvery15Min' => 'every 15 min',
 			'settings.page.schedules.exampleWeekdays6pm' => 'weekdays 6pm',
 			'settings.page.schedules.promptLabel' => 'Prompt',

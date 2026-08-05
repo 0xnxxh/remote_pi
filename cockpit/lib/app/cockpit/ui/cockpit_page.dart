@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:cockpit/app/core/app_intents.dart';
 import 'package:cockpit/app/cockpit/domain/entities/project.dart';
+import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/routes.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
@@ -68,6 +70,8 @@ class _CockpitPageState extends State<CockpitPage> {
   @override
   void initState() {
     super.initState();
+    // Discovery de harnesses é lazy (Settings ou primeira geração) — evita
+    // spawnar 6 CLIs a cada montagem de workspace.
     // Registra a ponte do ⌘L global (handler em main.dart) → foca o input do
     // agente focado, mesmo quando o foco caiu num espaço vazio do shell.
     requestFocusActiveComposer = _focusActiveComposer;
@@ -85,6 +89,7 @@ class _CockpitPageState extends State<CockpitPage> {
     // O motor/perfil precisam chegar antes do init: ele já pode restaurar ou
     // criar terminais, e a preferência do usuário deve valer desde o 1º buffer.
     final initialSettings = context.read<SettingsController>().settings;
+    _sourceControlViewMode = initialSettings.sourceControlViewMode;
     context.read<CockpitViewModel>()
       ..setDefaultTerminalProfileId(initialSettings.defaultTerminalProfileId)
       ..setDefaultTerminalEngine(initialSettings.terminalEngine);
@@ -111,10 +116,13 @@ class _CockpitPageState extends State<CockpitPage> {
     _settings = context.read<SettingsController>()
       ..addListener(_syncLspCommands)
       ..addListener(_syncNotifications)
-      ..addListener(_syncCockpit);
+      ..addListener(_syncCockpit)
+      ..addListener(_syncSourceControlViewMode)
+      ..addListener(_syncAutomationSelection);
     _syncLspCommands();
     _syncNotifications();
     _syncCockpit();
+    _syncAutomationSelection();
     // Restaura a visibilidade dos painéis (rail/árvore) salva na sessão anterior
     // e persiste de volta a cada toggle. A VM é a fonte de verdade em runtime.
     final vm = context.read<CockpitViewModel>();
@@ -159,6 +167,7 @@ class _CockpitPageState extends State<CockpitPage> {
   DbQueryService? _dbService;
 
   SettingsController? _settings;
+  SourceControlViewMode _sourceControlViewMode = SourceControlViewMode.list;
   Map<String, String> _lastLspCommands = const <String, String>{};
 
   /// Bridge do menu File (New Agent/Terminal) + a VM que observamos pra saber se
@@ -232,6 +241,16 @@ class _CockpitPageState extends State<CockpitPage> {
     _vm.setCockpitEnabled(_settings!.settings.showCockpit);
   }
 
+  void _syncSourceControlViewMode() {
+    final next = _settings!.settings.sourceControlViewMode;
+    if (next == _sourceControlViewMode || !mounted) return;
+    setState(() => _sourceControlViewMode = next);
+  }
+
+  void _syncAutomationSelection() {
+    _vm.setAutomationSelection(_settings!.settings.automationSelection);
+  }
+
   void _syncLspCommands() {
     final next = _settings!.settings.lspCommands;
     _vm.applyLspCommands(next);
@@ -281,6 +300,8 @@ class _CockpitPageState extends State<CockpitPage> {
     _settings?.removeListener(_syncLspCommands);
     _settings?.removeListener(_syncNotifications);
     _settings?.removeListener(_syncCockpit);
+    _settings?.removeListener(_syncSourceControlViewMode);
+    _settings?.removeListener(_syncAutomationSelection);
     _menuVm?.removeListener(_syncWorkspaceMenu);
     _workspaceMenu?.setWorkspace(hasWorkspace: false);
     // Túneis SSH abertos morrem com o shell — e os prompts vão junto, senão
@@ -726,6 +747,8 @@ class _CockpitPageState extends State<CockpitPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<CockpitViewModel>();
+    final settings = context.watch<SettingsController>().settings;
+    final configuredHarnessId = settings.automationHarnessId;
     final colors = context.colors;
 
     if (!vm.ready) {
@@ -861,6 +884,7 @@ class _CockpitPageState extends State<CockpitPage> {
                               key: ValueKey(vm.selectedProject?.path ?? ''),
                               width: _treeWidth,
                               rootPath: vm.selectedProject?.path ?? '',
+                              sourceControlViewMode: _sourceControlViewMode,
                               // Roots derivadas (multi-root = seções por repo).
                               roots: [
                                 for (final r
@@ -883,6 +907,18 @@ class _CockpitPageState extends State<CockpitPage> {
                               onCommitStaged: vm.commitStaged,
                               onLoadCommits: vm.recentCommits,
                               onLoadCommitMessage: vm.commitMessage,
+                              commitMessageGeneratorLabel:
+                                  configuredHarnessId?.label,
+                              onGenerateCommitMessage:
+                                  configuredHarnessId != null
+                                  ? vm.generateCommitMessageForFile
+                                  : null,
+                              onGenerateStagedCommitMessage:
+                                  configuredHarnessId != null
+                                  ? vm.generateStagedCommitMessage
+                                  : null,
+                              onCancelCommitMessageGeneration:
+                                  vm.cancelCommitMessageGeneration,
                               revision: vm.fileTreeRevision,
                               selectedPath: vm.selectedFileInTree,
                               listChildren: vm.listChildren,

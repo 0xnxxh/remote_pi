@@ -8,14 +8,19 @@ import 'package:flutter/foundation.dart';
 
 /// Implementação do [ClaudeHookInstaller].
 ///
-/// 1. Copia o helper `cockpit-hook` empacotado no app (compilado pelo
-///    `macos/build_hook.sh` / passo de build do Windows) para um caminho estável
-///    (`~/.cockpit/bin/cockpit-hook[.exe]`) — o `settings.json` aponta pra cópia,
-///    não pro bundle (sobrevive a update/move). Recopia quando o **conteúdo**
-///    difere (tamanho igual não significa binário igual — ver [_sameContent]).
-/// 2. Faz **append idempotente** de um entry marcado (`_cockpit`) em cada evento
+/// 1. Materializa a CLI `cockpit` empacotada no app em `~/.cockpit/bin/cockpit`
+///    — o `settings.json` aponta pra cópia, não pro bundle (sobrevive a
+///    update/move). Recopia quando o **conteúdo** difere (tamanho igual não
+///    significa binário igual — ver [_sameContent]).
+/// 2. Registra `<cli> hook` como comando de hook. A CLI em Rust absorveu o
+///    antigo binário `cockpit-hook` como subcomando: um binário só, um
+///    protocolo só. Enquanto alguma plataforma ainda empacotar a CLI Dart (que
+///    não tem o subcomando), caímos no binário legado — ver [_resolveHookCommand].
+/// 3. Faz **append idempotente** de um entry marcado (`_cockpit`) em cada evento
 ///    de hook, sem nunca reescrever a lista (preserva hooks do usuário/iTerm2/
 ///    plugins). Re-rodar remove o entry antigo nosso e re-adiciona — não duplica.
+///    É por aqui que a migração acontece: o entry velho apontando pro
+///    `cockpit-hook` é removido e substituído no boot seguinte ao update.
 class ClaudeHookInstallerImpl implements ClaudeHookInstaller {
   ClaudeHookInstallerImpl();
 
@@ -45,53 +50,83 @@ class ClaudeHookInstallerImpl implements ClaudeHookInstaller {
       return const Failure<void, String>('HOME não resolvido');
     }
     try {
-      final helperPath = await _ensureHelper();
-      if (helperPath == null) {
-        return const Failure<void, String>(
-          'helper cockpit-hook não encontrado',
-        );
+      // A CLI vem primeiro: é dela que sai o comando do hook.
+      final cliPath = await _ensureCli();
+      final hookCommand = await _resolveHookCommand(cliPath);
+      if (hookCommand == null) {
+        return const Failure<void, String>('helper de hook não encontrado');
       }
-      await _installHooks(home: home, helperPath: helperPath);
-      // CLI interna `cockpit`: materializa o binário e, se veio, instala a skill
-      // que ensina o agente a usá-lo. Best-effort — não é fatal pro boot.
-      await _ensureCli();
+      await _installHooks(home: home, command: hookCommand);
       return const Success<void, String>(null);
     } catch (e) {
       return Failure<void, String>('$e');
     }
   }
 
-  /// Copia o helper empacotado para `~/.cockpit/bin/cockpit-hook[.exe]` —
-  /// diretório compartilhado entre builds de propósito (ver [cockpitHookDir]).
-  /// Devolve o caminho, ou `null` se o binário não está no bundle (ex.: dev sem
-  /// o passo de build) e não há cópia prévia.
-  Future<String?> _ensureHelper() async {
+  /// Comando a registrar no `settings.json`.
+  ///
+  /// Preferimos `<cli> hook` (CLI em Rust, que absorveu o helper). Se a CLI
+  /// empacotada ainda for a Dart — que não conhece o subcomando — caímos no
+  /// binário `cockpit-hook` legado, senão o status de turno morreria em silêncio
+  /// nessa plataforma. `null` = nenhum dos dois disponível.
+  Future<String?> _resolveHookCommand(String? cliPath) async {
+    if (cliPath != null && await _cliHandlesHook(cliPath)) {
+      return '${_shellQuote(cliPath)} hook';
+    }
     final name = Platform.isWindows ? 'cockpit-hook.exe' : 'cockpit-hook';
     final dir = cockpitHookDir();
     if (dir == null) return null;
-    return _materialize(dir, bundledName: name, destName: name);
+    final legacy = await _materialize(dir, bundledName: name, destName: name);
+    return legacy == null ? null : _shellQuote(legacy);
   }
+
+  /// `true` quando a CLI materializada tem o subcomando `hook`.
+  ///
+  /// O sinal é o sufixo `r` da versão (`cockpit 0.6.0r`), que só a CLI em Rust
+  /// emite — é exatamente pra isso que ele existe. Perguntar à CLI é mais
+  /// confiável que inferir pela plataforma ou pela presença de arquivo no
+  /// bundle, e custa um spawn de poucos ms no boot.
+  Future<bool> _cliHandlesHook(String cliPath) async {
+    try {
+      final out = await Process.run(cliPath, <String>['--version']);
+      if (out.exitCode != 0) return false;
+      return '${out.stdout}'.trim().endsWith('r');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Envolve em aspas duplas quando o caminho tem espaço.
+  ///
+  /// O Claude Code executa o `command` por um shell, então um caminho com espaço
+  /// (`/Users/John Smith/...`) seria fatiado em dois argumentos. Isso já era
+  /// latente com o comando de um token só; com `<cli> hook` passa a importar
+  /// sempre. Só cita quando precisa, pra não churnar o `settings.json` de quem
+  /// tem caminho simples.
+  String _shellQuote(String path) => path.contains(' ') ? '"$path"' : path;
 
   /// Materializa a CLI interna `cockpit` em `~/.cockpit/bin[-debug]/cockpit[.exe]`
   /// (o fonte é empacotado como `cockpit-cli` pra não colidir com `cockpit.app`) e,
   /// se materializou, roda `cockpit install-skill` (idempotente) pra a skill
   /// nascer instalada. Silencioso: falha aqui não pode derrubar o boot.
-  Future<void> _ensureCli() async {
+  /// Devolve o caminho materializado, ou `null`.
+  Future<String?> _ensureCli() async {
     final bundledName = Platform.isWindows ? 'cockpit-cli.exe' : 'cockpit-cli';
     final destName = Platform.isWindows ? 'cockpit.exe' : 'cockpit';
     final dir = cockpitCliDir();
-    if (dir == null) return;
+    if (dir == null) return null;
     final path = await _materialize(
       dir,
       bundledName: bundledName,
       destName: destName,
     );
-    if (path == null) return;
+    if (path == null) return null;
     try {
       await Process.run(path, <String>['install-skill']);
     } catch (_) {
       /* best-effort */
     }
+    return path;
   }
 
   /// Copia um binário empacotado ([bundledName]) para `[destDirPath]/[destName]`.
@@ -184,7 +219,7 @@ class ClaudeHookInstallerImpl implements ClaudeHookInstaller {
 
   Future<void> _installHooks({
     required String home,
-    required String helperPath,
+    required String command,
   }) async {
     final file = File('$home/.claude/settings.json');
     Map<String, dynamic> root = <String, dynamic>{};
@@ -200,15 +235,16 @@ class ClaudeHookInstallerImpl implements ClaudeHookInstaller {
         ? Map<String, dynamic>.from(hooksRaw)
         : <String, dynamic>{};
 
-    // `helperPath` já vem normalizado com forward slashes por `_hookPath`
-    // (crítico no Windows: o Claude Code roda hooks via Git Bash, que trata
-    // `\` como escape e quebraria o caminho).
+    // `command` já vem com o caminho normalizado em forward slashes por
+    // `_hookPath` (crítico no Windows: o Claude Code roda hooks via Git Bash,
+    // que trata `\` como escape e quebraria o caminho) e citado quando tem
+    // espaço.
     final ourGroup = <String, dynamic>{
       'matcher': '',
       'hooks': <Map<String, dynamic>>[
         <String, dynamic>{
           'type': 'command',
-          'command': helperPath,
+          'command': command,
           _marker: _markerValue,
         },
       ],
@@ -239,9 +275,12 @@ class ClaudeHookInstallerImpl implements ClaudeHookInstaller {
   }
 
   /// Um matcher-group é nosso se algum hook interno carrega o marcador **ou**
-  /// aponta pro helper `cockpit-hook`. O segundo critério limpa entries legados
-  /// (escritos por versões antigas do instalador, sem marcador, e/ou com caminho
-  /// em barra invertida que o Git Bash não resolvia) — senão acumulam a cada boot.
+  /// aponta pro helper (`cockpit-hook` legado ou `<cli> hook`). O segundo
+  /// critério limpa entries legados (escritos por versões antigas do
+  /// instalador, sem marcador, e/ou com caminho em barra invertida que o Git
+  /// Bash não resolvia) — senão acumulam a cada boot. É também o que **migra**
+  /// quem estava no binário separado: o entry velho sai aqui e o novo entra no
+  /// lugar, no primeiro boot depois do update.
   bool _isOurs(dynamic group) {
     if (group is! Map) return false;
     final inner = group['hooks'];
@@ -250,7 +289,10 @@ class ClaudeHookInstallerImpl implements ClaudeHookInstaller {
       if (h is! Map) return false;
       if (h[_marker] == _markerValue) return true;
       final cmd = h['command'];
-      return cmd is String && cmd.contains('cockpit-hook');
+      if (cmd is! String) return false;
+      return cmd.contains('cockpit-hook') ||
+          cmd.contains('cockpit" hook') ||
+          cmd.endsWith('cockpit hook');
     });
   }
 }

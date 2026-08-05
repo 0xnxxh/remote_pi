@@ -401,9 +401,9 @@
 			files = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/../tool/cockpit_cli.dart",
 			);
 			name = "Build cockpit CLI";
+			alwaysOutOfDate = 1;
 			outputPaths = (
 				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/cockpit-cli",
 			);

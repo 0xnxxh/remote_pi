@@ -161,13 +161,29 @@ add_custom_target(cockpit_hook ALL DEPENDS "${COCKPIT_HOOK_EXE}")
 install(PROGRAMS "${COCKPIT_HOOK_EXE}" DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
-set(COCKPIT_CLI_SRC "${CMAKE_SOURCE_DIR}/../tool/cockpit_cli.dart")
+# === cli/ → cockpit-cli (CLI interna em Rust, com o hook como subcomando) ===
+# A CLI absorveu o antigo helper `cockpit-hook`: `cockpit hook` faz o mesmo
+# papel. Rust porque o `dart compile exe` sai de UMA arquitetura, não
+# cross-compila e não sobrevive ao `lipo` — ver macos/build_cli.sh.
+set(COCKPIT_CLI_CRATE "${CMAKE_SOURCE_DIR}/../cli")
+file(GLOB_RECURSE COCKPIT_CLI_SOURCES CONFIGURE_DEPENDS
+  "${COCKPIT_CLI_CRATE}/src/*.rs" "${COCKPIT_CLI_CRATE}/text/*")
+set(COCKPIT_CLI_BUILT "${COCKPIT_CLI_CRATE}/target/release/cockpit")
 set(COCKPIT_CLI_EXE "${CMAKE_BINARY_DIR}/cockpit-cli")
+# Flavor assado no binário (ver cli/build.rs): decide qual socket a CLI procura
+# primeiro quando roda fora de um terminal do Cockpit.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(COCKPIT_CLI_FLAVOR "debug")
+else()
+  set(COCKPIT_CLI_FLAVOR "release")
+endif()
 add_custom_command(
   OUTPUT "${COCKPIT_CLI_EXE}"
-  COMMAND "${DART_EXE}" compile exe "${COCKPIT_CLI_SRC}" -o "${COCKPIT_CLI_EXE}"
-  DEPENDS "${COCKPIT_CLI_SRC}"
-  COMMENT "Compilando cockpit-cli"
+  COMMAND "${CMAKE_COMMAND}" -E env "COCKPIT_FLAVOR=${COCKPIT_CLI_FLAVOR}"
+          cargo build --release --manifest-path "${COCKPIT_CLI_CRATE}/Cargo.toml"
+  COMMAND "${CMAKE_COMMAND}" -E copy "${COCKPIT_CLI_BUILT}" "${COCKPIT_CLI_EXE}"
+  DEPENDS ${COCKPIT_CLI_SOURCES} "${COCKPIT_CLI_CRATE}/Cargo.toml"
+  COMMENT "Compilando cockpit-cli (Rust)"
   VERBATIM)
 add_custom_target(cockpit_cli ALL DEPENDS "${COCKPIT_CLI_EXE}")
 install(PROGRAMS "${COCKPIT_CLI_EXE}" DESTINATION "${CMAKE_INSTALL_PREFIX}"

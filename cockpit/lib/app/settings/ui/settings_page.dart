@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/setup_check.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/macos_notification_instructions_dialog.dart';
 import 'package:cockpit/app/settings/domain/cron_schedule.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
@@ -54,6 +56,8 @@ enum _Category {
   appearance,
   terminal,
   languages,
+  sourceControl,
+  automations,
   shortcuts,
   notifications,
   connectivity,
@@ -109,6 +113,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     _Category.appearance => const _AppearancePanel(),
                     _Category.terminal => const _TerminalPanel(),
                     _Category.languages => const _LanguagesPanel(),
+                    _Category.sourceControl => const _SourceControlPanel(),
+                    _Category.automations => const _AutomationsPanel(),
                     _Category.shortcuts => const _ShortcutsPanel(),
                     _Category.notifications => const _NotificationsPanel(),
                     _Category.connectivity => const _ConnectivityPanel(),
@@ -206,6 +212,18 @@ class _CategoryNav extends StatelessWidget {
             label: context.t.settings.page.nav.language,
             selected: selected == _Category.languages,
             onTap: () => onSelect(_Category.languages),
+          ),
+          _NavItem(
+            icon: Icons.account_tree_outlined,
+            label: 'Source Control',
+            selected: selected == _Category.sourceControl,
+            onTap: () => onSelect(_Category.sourceControl),
+          ),
+          _NavItem(
+            icon: Icons.auto_awesome_outlined,
+            label: 'Automations',
+            selected: selected == _Category.automations,
+            onTap: () => onSelect(_Category.automations),
           ),
           _NavItem(
             icon: Icons.keyboard_outlined,
@@ -460,6 +478,311 @@ class _GeneralPanel extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Source Control
+// ---------------------------------------------------------------------------
+
+class _SourceControlPanel extends StatelessWidget {
+  const _SourceControlPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsController>();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Section(
+                label: 'View',
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: 'Default view mode',
+                      description:
+                          'Initial layout shared by every workspace, worktree, '
+                          'and Changes/Staged section.',
+                      trailing: _SourceControlViewModeDropdown(
+                        value: settings.settings.sourceControlViewMode,
+                        onChanged: settings.setSourceControlViewMode,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Automations
+// ---------------------------------------------------------------------------
+
+class _AutomationsPanel extends StatefulWidget {
+  const _AutomationsPanel();
+
+  @override
+  State<_AutomationsPanel> createState() => _AutomationsPanelState();
+}
+
+class _AutomationsPanelState extends State<_AutomationsPanel> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_discoverAndReconcile());
+    });
+  }
+
+  Future<void> _discoverAndReconcile({bool force = false}) async {
+    final automation = context.read<AutomationController>();
+    final settings = context.read<SettingsController>();
+    if (force) {
+      await automation.refresh();
+    } else {
+      await automation.ensureInitialized();
+    }
+    if (!mounted) return;
+    automation.reconcileStaleModel(
+      harnessId: settings.settings.automationHarnessId,
+      modelId: settings.settings.selectedAutomationModelId,
+      clearToCliDefault: () => settings.setAutomationModel(null),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final automation = context.watch<AutomationController>();
+    final settings = context.watch<SettingsController>();
+    final selected = automation.harnessFor(
+      settings.settings.automationHarnessId,
+    );
+    final selectedId = settings.settings.automationHarnessId;
+    final modelId = settings.settings.selectedAutomationModelId;
+    final colors = context.colors;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Section(
+                label: 'Commit messages',
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: 'Harness',
+                      description: automation.discovering
+                          ? 'Looking for installed command-line harnesses…'
+                          : automation.harnesses.isEmpty
+                          ? 'No supported harness was found on PATH.'
+                          : selected == null && selectedId != null
+                          ? '${selectedId.label} is configured but unavailable.'
+                          : selected == null
+                          ? 'Choose the CLI used to generate commit messages.'
+                          : selected.executablePath,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _AutomationHarnessDropdown(
+                            selected: selectedId,
+                            harnesses: automation.harnesses,
+                            onChanged: settings.setAutomationHarness,
+                          ),
+                          const SizedBox(width: 8),
+                          AppTooltip(
+                            message: 'Refresh installed harnesses',
+                            child: IconButton.outline(
+                              onPressed: automation.discovering
+                                  ? null
+                                  : () => unawaited(
+                                      _discoverAndReconcile(force: true),
+                                    ),
+                              icon: automation.discovering
+                                  ? const CircularProgressIndicator(size: 14)
+                                  : const Icon(Icons.refresh, size: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (selectedId != null)
+                      _Row(
+                        title: 'Model',
+                        description: selected == null
+                            ? 'The model list is unavailable until the harness is found.'
+                            : selected.models.isEmpty
+                            ? 'This harness uses its CLI default model.'
+                            : 'Optional. Leave blank to use the CLI default.',
+                        trailing: _AutomationModelDropdown(
+                          value: modelId,
+                          models: selected?.models ?? const <AutomationModel>[],
+                          onChanged: settings.setAutomationModel,
+                        ),
+                      ),
+                    _Row(
+                      title: 'Generate from Source Control',
+                      description:
+                          'Cockpit sends only the selected diff and recent commit '
+                          'subjects. Common credential patterns and sensitive '
+                          'files are redacted before the harness runs.',
+                      trailing: Icon(
+                        Icons.auto_awesome,
+                        size: 18,
+                        color: selected == null ? colors.text4 : colors.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (automation.errorMessage != null)
+                Text(
+                  automation.errorMessage!,
+                  style: context.typo.label.copyWith(color: colors.error),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AutomationHarnessDropdown extends StatelessWidget {
+  const _AutomationHarnessDropdown({
+    required this.selected,
+    required this.harnesses,
+    required this.onChanged,
+  });
+
+  final AutomationHarnessId? selected;
+  final List<AutomationHarness> harnesses;
+  final ValueChanged<AutomationHarnessId?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DropdownChip(
+      label: selected?.label ?? 'Not configured',
+      onTap: () async {
+        final picked = await showAppMenu<Object>(
+          context,
+          minWidth: 190,
+          items: <AppMenuItem<Object>>[
+            AppMenuItem<Object>(
+              value: 'disabled',
+              label: 'Not configured',
+              selected: selected == null,
+            ),
+            for (final harness in harnesses)
+              AppMenuItem<Object>(
+                value: harness.id,
+                label: harness.label,
+                selected: selected == harness.id,
+              ),
+          ],
+        );
+        if (picked == 'disabled') onChanged(null);
+        if (picked is AutomationHarnessId) onChanged(picked);
+      },
+    );
+  }
+}
+
+class _AutomationModelDropdown extends StatelessWidget {
+  const _AutomationModelDropdown({
+    required this.value,
+    required this.models,
+    required this.onChanged,
+  });
+
+  final String? value;
+  final List<AutomationModel> models;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final known = models.where((model) => model.id == value).firstOrNull;
+    return _DropdownChip(
+      label: known?.label ?? value ?? 'CLI default',
+      onTap: () async {
+        final picked = await showAppMenu<String>(
+          context,
+          minWidth: 220,
+          items: [
+            AppMenuItem<String>(
+              value: '',
+              label: 'CLI default',
+              selected: value == null,
+            ),
+            for (final model in models)
+              AppMenuItem<String>(
+                value: model.id,
+                label: model.label,
+                selected: value == model.id,
+              ),
+          ],
+        );
+        if (picked != null) onChanged(picked.isEmpty ? null : picked);
+      },
+    );
+  }
+}
+
+class _SourceControlViewModeDropdown extends StatelessWidget {
+  const _SourceControlViewModeDropdown({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final SourceControlViewMode value;
+  final ValueChanged<SourceControlViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    String label(SourceControlViewMode mode) => switch (mode) {
+      SourceControlViewMode.list => 'List',
+      SourceControlViewMode.tree => 'Tree',
+    };
+    IconData icon(SourceControlViewMode mode) => switch (mode) {
+      SourceControlViewMode.list => Icons.view_list_outlined,
+      SourceControlViewMode.tree => Icons.account_tree_outlined,
+    };
+
+    return _DropdownChip(
+      icon: icon(value),
+      label: label(value),
+      onTap: () async {
+        final picked = await showAppMenu<SourceControlViewMode>(
+          context,
+          minWidth: 160,
+          items: [
+            for (final mode in SourceControlViewMode.values)
+              AppMenuItem(
+                value: mode,
+                label: label(mode),
+                icon: icon(mode),
+                selected: mode == value,
+              ),
+          ],
+        );
+        if (picked != null) onChanged(picked);
+      },
     );
   }
 }

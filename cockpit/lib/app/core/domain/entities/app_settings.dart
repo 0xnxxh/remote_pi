@@ -1,3 +1,5 @@
+import 'package:cockpit/app/core/domain/entities/automation.dart';
+
 /// Modo de tema escolhido pelo usuário (mapeado pro `ThemeMode` do Flutter na
 /// camada de UI; o domínio não importa Flutter).
 enum AppThemeMode { system, light, dark }
@@ -8,6 +10,9 @@ enum SyntaxThemeId { one, dracula, github }
 
 /// Motor VT usado por terminais criados daqui pra frente.
 enum TerminalEngine { ghostty, xterm }
+
+/// Layout inicial das mudanças no painel Source Control.
+enum SourceControlViewMode { list, tree }
 
 enum UpdateCheckFrequency { daily, weekly, monthly, never }
 
@@ -38,6 +43,9 @@ class AppSettings {
     this.defaultTerminalProfileId,
     this.terminalEngine = TerminalEngine.ghostty,
     this.locale,
+    this.sourceControlViewMode = SourceControlViewMode.list,
+    this.automationHarnessId,
+    this.automationModelId,
     this.updateCheckFrequency = UpdateCheckFrequency.daily,
     this.lastUpdateCheckTime,
   });
@@ -134,6 +142,31 @@ class AppSettings {
   /// Configurações.
   final String? locale;
 
+  /// Layout padrão compartilhado por todos os workspaces, worktrees e seções
+  /// (Changes/Staged) do Source Control.
+  final SourceControlViewMode sourceControlViewMode;
+
+  /// Harness global usado pelas automações. Ausente = automações desabilitadas.
+  final AutomationHarnessId? automationHarnessId;
+
+  /// Modelo opcional do harness. Ausente = usar o default do próprio CLI.
+  final String? automationModelId;
+
+  /// Modelo efetivo. String vazia é o sentinel persistido para uma escolha
+  /// explícita de “CLI default”; `null` legado recebe a recomendação do harness.
+  String? get selectedAutomationModelId {
+    final stored = automationModelId;
+    if (stored != null) return stored.isEmpty ? null : stored;
+    return automationHarnessId?.recommendedModelId;
+  }
+
+  AutomationSelection? get automationSelection => automationHarnessId == null
+      ? null
+      : AutomationSelection(
+          harnessId: automationHarnessId!,
+          modelId: selectedAutomationModelId,
+        );
+
   /// Frequência de verificação de atualizações.
   final UpdateCheckFrequency updateCheckFrequency;
 
@@ -169,6 +202,12 @@ class AppSettings {
     TerminalEngine? terminalEngine,
     String? locale,
     bool clearLocale = false,
+    SourceControlViewMode? sourceControlViewMode,
+    AutomationHarnessId? automationHarnessId,
+    bool clearAutomationHarnessId = false,
+    String? automationModelId,
+    bool clearAutomationModelId = false,
+    bool useDefaultAutomationModel = false,
     UpdateCheckFrequency? updateCheckFrequency,
     DateTime? lastUpdateCheckTime,
   }) {
@@ -202,6 +241,16 @@ class AppSettings {
           : (defaultTerminalProfileId ?? this.defaultTerminalProfileId),
       terminalEngine: terminalEngine ?? this.terminalEngine,
       locale: clearLocale ? null : (locale ?? this.locale),
+      sourceControlViewMode:
+          sourceControlViewMode ?? this.sourceControlViewMode,
+      automationHarnessId: clearAutomationHarnessId
+          ? null
+          : (automationHarnessId ?? this.automationHarnessId),
+      automationModelId: clearAutomationModelId
+          ? null
+          : useDefaultAutomationModel
+          ? ''
+          : (automationModelId ?? this.automationModelId),
       updateCheckFrequency: updateCheckFrequency ?? this.updateCheckFrequency,
       lastUpdateCheckTime: lastUpdateCheckTime ?? this.lastUpdateCheckTime,
     );
@@ -239,6 +288,12 @@ class AppSettings {
     'terminal.engine': terminalEngine.name,
     // Só quando escolhido: ausência = seguir o locale do SO.
     if (locale != null) 'locale': locale,
+    'sourceControl.viewMode': sourceControlViewMode.name,
+    if (automationHarnessId != null)
+      'automation.harnessId': automationHarnessId!.name,
+    if (automationHarnessId != null)
+      'automation.modelId':
+          automationModelId ?? automationHarnessId!.recommendedModelId ?? '',
     'updateCheckFrequency': updateCheckFrequency.name,
     if (lastUpdateCheckTime != null)
       'lastUpdateCheckTime': lastUpdateCheckTime!.toIso8601String(),
@@ -249,6 +304,17 @@ class AppSettings {
       final s = (v as String?)?.trim();
       return (s == null || s.isEmpty) ? null : s;
     }
+
+    final automationHarnessId = _nullableEnumByName(
+      AutomationHarnessId.values,
+      json['automation.harnessId'],
+    );
+    final rawAutomationModel = json['automation.modelId'];
+    final automationModelId = json.containsKey('automation.modelId')
+        ? rawAutomationModel is String
+              ? rawAutomationModel.trim()
+              : automationHarnessId?.recommendedModelId
+        : automationHarnessId?.recommendedModelId;
 
     return AppSettings(
       themeMode: _enumByName(
@@ -286,6 +352,13 @@ class AppSettings {
         TerminalEngine.ghostty,
       ),
       locale: str(json['locale']),
+      sourceControlViewMode: _enumByName(
+        SourceControlViewMode.values,
+        json['sourceControl.viewMode'],
+        SourceControlViewMode.list,
+      ),
+      automationHarnessId: automationHarnessId,
+      automationModelId: automationModelId,
       updateCheckFrequency: _enumByName(
         UpdateCheckFrequency.values,
         json['updateCheckFrequency'],
@@ -313,4 +386,12 @@ T _enumByName<T extends Enum>(List<T> values, Object? raw, T fallback) {
     if (v.name == raw) return v;
   }
   return fallback;
+}
+
+T? _nullableEnumByName<T extends Enum>(List<T> values, Object? raw) {
+  if (raw is! String) return null;
+  for (final value in values) {
+    if (value.name == raw) return value;
+  }
+  return null;
 }

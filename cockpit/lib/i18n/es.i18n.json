@@ -90,7 +90,11 @@
       "errorTooLong": "Asunto demasiado largo (máx. ${max} caracteres).",
       "errorTrailingPeriod": "El asunto no debe terminar con un punto.",
       "errorControlChars": "El asunto contiene caracteres de control.",
-      "errorBlankSecondLine": "Deja la segunda línea en blanco (separador entre asunto y cuerpo de git)."
+      "errorBlankSecondLine": "Deja la segunda línea en blanco (separador entre asunto y cuerpo de git).",
+      "generate": "Generar mensaje de commit",
+      "generateWith": "Generar con ${harness}",
+      "generating": "Generando…",
+      "cancelGeneration": "Cancelar generación"
     },
     "agentEditDialog": {
       "title": "Editar agente",
@@ -275,7 +279,11 @@
       "stageAllChanges": "Poner todo en stage",
       "discardFolderChanges": "Descartar cambios de la carpeta",
       "unstageFolderChanges": "Quitar carpeta del stage",
-      "stageFolderChanges": "Poner carpeta en stage"
+      "stageFolderChanges": "Poner carpeta en stage",
+      "generateCommitMessage": "Generar mensaje de commit",
+      "generateWith": "Generar con ${harness}",
+      "generateUnavailableWhileAmending": "No disponible mientras se enmienda un commit",
+      "cancelGeneration": "Cancelar generación"
     },
     "fileViewer": {
       "cantOpen": "No se puede abrir este archivo.",

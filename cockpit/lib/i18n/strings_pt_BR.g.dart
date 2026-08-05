@@ -261,6 +261,10 @@ class _Translations$cockpit$commitMessageDialog$pt_BR extends Translations$cockp
 	@override String get errorTrailingPeriod => 'O assunto não deve terminar com ponto.';
 	@override String get errorControlChars => 'O assunto contém caracteres de controle.';
 	@override String get errorBlankSecondLine => 'Deixe a segunda linha em branco (separador entre assunto e corpo do git).';
+	@override String get generate => 'Gerar mensagem de commit';
+	@override String generateWith({required Object harness}) => 'Gerar com ${harness}';
+	@override String get generating => 'Gerando…';
+	@override String get cancelGeneration => 'Cancelar geração';
 }
 
 // Path: cockpit.agentEditDialog
@@ -509,6 +513,10 @@ class _Translations$cockpit$fileTreePanel$pt_BR extends Translations$cockpit$fil
 	@override String get discardFolderChanges => 'Descartar alterações da pasta';
 	@override String get unstageFolderChanges => 'Tirar pasta do stage';
 	@override String get stageFolderChanges => 'Colocar pasta no stage';
+	@override String get generateCommitMessage => 'Gerar mensagem de commit';
+	@override String generateWith({required Object harness}) => 'Gerar com ${harness}';
+	@override String get generateUnavailableWhileAmending => 'Indisponível durante o amend de um commit';
+	@override String get cancelGeneration => 'Cancelar geração';
 }
 
 // Path: cockpit.fileViewer
@@ -1187,6 +1195,10 @@ extension on TranslationsPtBr {
 			'cockpit.commitMessageDialog.errorTrailingPeriod' => 'O assunto não deve terminar com ponto.',
 			'cockpit.commitMessageDialog.errorControlChars' => 'O assunto contém caracteres de controle.',
 			'cockpit.commitMessageDialog.errorBlankSecondLine' => 'Deixe a segunda linha em branco (separador entre assunto e corpo do git).',
+			'cockpit.commitMessageDialog.generate' => 'Gerar mensagem de commit',
+			'cockpit.commitMessageDialog.generateWith' => ({required Object harness}) => 'Gerar com ${harness}',
+			'cockpit.commitMessageDialog.generating' => 'Gerando…',
+			'cockpit.commitMessageDialog.cancelGeneration' => 'Cancelar geração',
 			'cockpit.agentEditDialog.title' => 'Editar agente',
 			'cockpit.agentEditDialog.agentName' => 'Nome do agente',
 			'cockpit.agentEditDialog.relaySection' => 'Relay (remote-pi)',
@@ -1354,6 +1366,10 @@ extension on TranslationsPtBr {
 			'cockpit.fileTreePanel.discardFolderChanges' => 'Descartar alterações da pasta',
 			'cockpit.fileTreePanel.unstageFolderChanges' => 'Tirar pasta do stage',
 			'cockpit.fileTreePanel.stageFolderChanges' => 'Colocar pasta no stage',
+			'cockpit.fileTreePanel.generateCommitMessage' => 'Gerar mensagem de commit',
+			'cockpit.fileTreePanel.generateWith' => ({required Object harness}) => 'Gerar com ${harness}',
+			'cockpit.fileTreePanel.generateUnavailableWhileAmending' => 'Indisponível durante o amend de um commit',
+			'cockpit.fileTreePanel.cancelGeneration' => 'Cancelar geração',
 			'cockpit.fileViewer.cantOpen' => 'Não é possível abrir este arquivo.',
 			'cockpit.fileViewer.couldNotLoadImage' => 'Não foi possível carregar a imagem.',
 			'cockpit.fileViewer.preview' => 'Pré-visualização',
@@ -1621,6 +1637,8 @@ extension on TranslationsPtBr {
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'último: ${label}',
 			'settings.page.schedules.removeScheduleDialogTitle' => 'Remover agendamento?',
 			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'O job "${schedule}" de ${daemon} é excluído. Suas execuções param.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.schedules.newScheduleTitle' => 'Novo agendamento',
 			'settings.page.schedules.daemonLabel' => 'Daemon',
 			'settings.page.schedules.whenLabel' => 'Quando (expressão cron)',
@@ -1629,8 +1647,6 @@ extension on TranslationsPtBr {
 			'settings.page.schedules.previewNext' => ({required Object when}) => 'Próximo: ${when}',
 			'settings.page.schedules.exampleEveryDay9am' => 'todo dia às 9h',
 			'settings.page.schedules.exampleHourly' => 'a cada hora',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.schedules.exampleEvery15Min' => 'a cada 15 min',
 			'settings.page.schedules.exampleWeekdays6pm' => 'dias úteis às 18h',
 			'settings.page.schedules.promptLabel' => 'Prompt',

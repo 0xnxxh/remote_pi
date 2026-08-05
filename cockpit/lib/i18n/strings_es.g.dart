@@ -261,6 +261,10 @@ class _Translations$cockpit$commitMessageDialog$es extends Translations$cockpit$
 	@override String get errorTrailingPeriod => 'El asunto no debe terminar con un punto.';
 	@override String get errorControlChars => 'El asunto contiene caracteres de control.';
 	@override String get errorBlankSecondLine => 'Deja la segunda línea en blanco (separador entre asunto y cuerpo de git).';
+	@override String get generate => 'Generar mensaje de commit';
+	@override String generateWith({required Object harness}) => 'Generar con ${harness}';
+	@override String get generating => 'Generando…';
+	@override String get cancelGeneration => 'Cancelar generación';
 }
 
 // Path: cockpit.agentEditDialog
@@ -509,6 +513,10 @@ class _Translations$cockpit$fileTreePanel$es extends Translations$cockpit$fileTr
 	@override String get discardFolderChanges => 'Descartar cambios de la carpeta';
 	@override String get unstageFolderChanges => 'Quitar carpeta del stage';
 	@override String get stageFolderChanges => 'Poner carpeta en stage';
+	@override String get generateCommitMessage => 'Generar mensaje de commit';
+	@override String generateWith({required Object harness}) => 'Generar con ${harness}';
+	@override String get generateUnavailableWhileAmending => 'No disponible mientras se enmienda un commit';
+	@override String get cancelGeneration => 'Cancelar generación';
 }
 
 // Path: cockpit.fileViewer
@@ -1187,6 +1195,10 @@ extension on TranslationsEs {
 			'cockpit.commitMessageDialog.errorTrailingPeriod' => 'El asunto no debe terminar con un punto.',
 			'cockpit.commitMessageDialog.errorControlChars' => 'El asunto contiene caracteres de control.',
 			'cockpit.commitMessageDialog.errorBlankSecondLine' => 'Deja la segunda línea en blanco (separador entre asunto y cuerpo de git).',
+			'cockpit.commitMessageDialog.generate' => 'Generar mensaje de commit',
+			'cockpit.commitMessageDialog.generateWith' => ({required Object harness}) => 'Generar con ${harness}',
+			'cockpit.commitMessageDialog.generating' => 'Generando…',
+			'cockpit.commitMessageDialog.cancelGeneration' => 'Cancelar generación',
 			'cockpit.agentEditDialog.title' => 'Editar agente',
 			'cockpit.agentEditDialog.agentName' => 'Nombre del agente',
 			'cockpit.agentEditDialog.relaySection' => 'Relay (remote-pi)',
@@ -1354,6 +1366,10 @@ extension on TranslationsEs {
 			'cockpit.fileTreePanel.discardFolderChanges' => 'Descartar cambios de la carpeta',
 			'cockpit.fileTreePanel.unstageFolderChanges' => 'Quitar carpeta del stage',
 			'cockpit.fileTreePanel.stageFolderChanges' => 'Poner carpeta en stage',
+			'cockpit.fileTreePanel.generateCommitMessage' => 'Generar mensaje de commit',
+			'cockpit.fileTreePanel.generateWith' => ({required Object harness}) => 'Generar con ${harness}',
+			'cockpit.fileTreePanel.generateUnavailableWhileAmending' => 'No disponible mientras se enmienda un commit',
+			'cockpit.fileTreePanel.cancelGeneration' => 'Cancelar generación',
 			'cockpit.fileViewer.cantOpen' => 'No se puede abrir este archivo.',
 			'cockpit.fileViewer.couldNotLoadImage' => 'No se pudo cargar la imagen.',
 			'cockpit.fileViewer.preview' => 'Vista previa',
@@ -1621,6 +1637,8 @@ extension on TranslationsEs {
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'último: ${label}',
 			'settings.page.schedules.removeScheduleDialogTitle' => '¿Quitar programación?',
 			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'El job "${schedule}" de ${daemon} se elimina. Sus ejecuciones se detienen.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.schedules.newScheduleTitle' => 'Nueva programación',
 			'settings.page.schedules.daemonLabel' => 'Daemon',
 			'settings.page.schedules.whenLabel' => 'Cuándo (expresión cron)',
@@ -1629,8 +1647,6 @@ extension on TranslationsEs {
 			'settings.page.schedules.previewNext' => ({required Object when}) => 'Próximo: ${when}',
 			'settings.page.schedules.exampleEveryDay9am' => 'todos los días a las 9h',
 			'settings.page.schedules.exampleHourly' => 'cada hora',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.schedules.exampleEvery15Min' => 'cada 15 min',
 			'settings.page.schedules.exampleWeekdays6pm' => 'días laborables a las 18h',
 			'settings.page.schedules.promptLabel' => 'Prompt',

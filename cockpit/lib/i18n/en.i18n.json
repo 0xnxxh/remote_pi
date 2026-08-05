@@ -90,7 +90,11 @@
       "errorTooLong": "Subject too long (max ${max} characters).",
       "errorTrailingPeriod": "Subject should not end with a period.",
       "errorControlChars": "Subject contains control characters.",
-      "errorBlankSecondLine": "Leave the second line blank (git subject/body separator)."
+      "errorBlankSecondLine": "Leave the second line blank (git subject/body separator).",
+      "generate": "Generate commit message",
+      "generateWith": "Generate with ${harness}",
+      "generating": "Generating…",
+      "cancelGeneration": "Cancel generation"
     },
     "agentEditDialog": {
       "title": "Edit agent",
@@ -275,7 +279,11 @@
       "stageAllChanges": "Stage All Changes",
       "discardFolderChanges": "Discard Folder Changes",
       "unstageFolderChanges": "Unstage Folder Changes",
-      "stageFolderChanges": "Stage Folder Changes"
+      "stageFolderChanges": "Stage Folder Changes",
+      "generateCommitMessage": "Generate commit message",
+      "generateWith": "Generate with ${harness}",
+      "generateUnavailableWhileAmending": "Unavailable while amending a commit",
+      "cancelGeneration": "Cancel generation"
     },
     "fileViewer": {
       "cantOpen": "Can't open this file.",

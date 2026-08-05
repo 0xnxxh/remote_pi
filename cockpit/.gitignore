@@ -49,3 +49,6 @@ app.*.map.json
 
 # Plano 51 — dylibs do anakiORM copiados pro cwd em dev/teste (staging: ~/.cockpit/anaki)
 libanaki_*.dylib
+
+# CLI interna (crate Rust em cli/)
+cli/target/

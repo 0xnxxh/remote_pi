@@ -49,7 +49,17 @@ class CockpitCliHandler {
   /// [TerminalStatusServer]). Roda **fora** da árvore de widgets — não toca
   /// `BuildContext`, só lê/muta o estado da VM. Retorna rápido (o `insertText`
   /// só enfileira o write no PTY).
-  Future<CockpitCommandResult> handle(CockpitCommand c) async {
+  Future<CockpitCommandResult> handle(CockpitCommand rawCommand) async {
+    // `--focused` chega como o sentinela `@focused` no `tabId`: quem sabe qual
+    // aba está em foco é a VM, não a CLI. Resolver aqui (e não em cada case)
+    // vale pra todo comando que mira aba. Ferramenta externa (ditado por voz,
+    // por exemplo) não tem como saber o id, e copiá-lo a cada uso é inviável.
+    final c = _resolveFocusSentinel(rawCommand);
+    if (c == null) {
+      return const CockpitCommandResult.fail(
+        'no focused tab (is a workspace open?)',
+      );
+    }
     switch (c.cmd) {
       // `send` e `send-key` chegam unificados como `write` (a CLI já resolveu o
       // texto/tecla em bytes UTF-8, transmitidos em base64 pra não quebrar o
@@ -81,6 +91,7 @@ class CockpitCliHandler {
         return const CockpitCommandResult.ok();
 
       case 'list-panes':
+        final focusedId = _vm.focusedTabId;
         final panes = _vm.allSessions
             .map(
               (s) => <String, dynamic>{
@@ -101,6 +112,8 @@ class CockpitCliHandler {
                 // mesmo aceito por `read-task`. Ausente nas demais tabs.
                 if (s is TaskOutputSession) 'taskId': s.taskId,
                 'working': s.isWorking,
+                // Aba em foco (a que `--focused` mira). Sempre no máximo uma.
+                'focused': s.id == focusedId,
               },
             )
             .toList();
@@ -715,5 +728,17 @@ class CockpitCliHandler {
     if (s is RedisBrowserSession) return 'redis';
     if (s is MongoBrowserSession) return 'mongo';
     return 'other';
+  }
+
+  /// Sentinela do `--focused` da CLI. Devolve o comando com o `tabId` real, ou
+  /// `null` quando não há aba em foco pra resolver (aí o chamador falha com
+  /// mensagem clara em vez de escrever numa aba arbitrária).
+  static const String _focusSentinel = '@focused';
+
+  CockpitCommand? _resolveFocusSentinel(CockpitCommand c) {
+    if (c.tabId != _focusSentinel) return c;
+    final id = _vm.focusedTabId;
+    if (id == null || id.isEmpty) return null;
+    return CockpitCommand(cmd: c.cmd, tabId: id, args: c.args);
   }
 }
