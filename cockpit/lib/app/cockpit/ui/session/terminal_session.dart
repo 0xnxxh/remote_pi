@@ -7,6 +7,7 @@ import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/terminal/terminal_controller.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
+import 'package:cockpit/app/cockpit/ui/session/pty_output_coalescer.dart';
 import 'package:cockpit/app/cockpit/ui/session/terminal_input.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pasteboard/pasteboard.dart';
@@ -64,15 +65,21 @@ class TerminalSession extends PaneItem {
       columns: 80,
       extraEnv: spawnEnv,
     );
+    // Coalesce + backpressure (plan/57): um `terminal.write` por frame e
+    // `acknowledgeOutput` com cap, pra TUI busy não saturar o isolate principal.
+    _coalescer = PtyOutputCoalescer(
+      onAcknowledge: _gateway.acknowledgeOutput,
+      onFlush: (batch) {
+        _kitty.feed(batch); // observa push/pop do kitty antes de renderizar.
+        terminal.write(batch);
+        _record(batch); // grava o scrollback pra replay no próximo boot.
+        _trackCwd(batch); // rastreia o cwd vivo (OSC 7) pra restaurar nele.
+      },
+    );
     _sub = _gateway.output
         .cast<List<int>>()
         .transform(const Utf8Decoder(allowMalformed: true))
-        .listen((data) {
-          _kitty.feed(data); // observa push/pop do kitty antes de renderizar.
-          terminal.write(data);
-          _record(data); // grava o scrollback pra replay no próximo boot.
-          _trackCwd(data); // rastreia o cwd vivo (OSC 7) pra restaurar nele.
-        });
+        .listen(_coalescer.add);
     terminal.onOutput = (data) {
       final text = utf8.decode(data, allowMalformed: true);
       _maybeInterrupt(text);
@@ -240,6 +247,7 @@ class TerminalSession extends PaneItem {
 
   final TerminalGateway _gateway;
   final KittyKeyboardTracker _kitty = KittyKeyboardTracker();
+  late final PtyOutputCoalescer _coalescer;
 
   // --- Persistência do scrollback (replay no próximo boot) --------------------
   // Grava a saída DECODIFICADA (após o `Utf8Decoder` em streaming → sem cortar
@@ -384,6 +392,7 @@ class TerminalSession extends PaneItem {
       _flush(),
     ); // best-effort: persiste o estado final (inclui app-quit).
     await _sub?.cancel();
+    _coalescer.dispose();
     await _gateway.kill();
     terminal.dispose();
     super.dispose();

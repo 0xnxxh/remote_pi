@@ -79,6 +79,8 @@ class PtyTaskRunner implements TaskRunnerGateway {
         environment: env,
         rows: 24,
         columns: 80,
+        // Mesmo backpressure dos terminais interativos (plan/57).
+        ackRead: true,
       );
     } catch (_) {
       _starting.remove(def.id);
@@ -105,9 +107,11 @@ class PtyTaskRunner implements TaskRunnerGateway {
     _emit(initial);
 
     // Fan-out do output: alimenta o terminal e o detector de progresso.
+    // `ackRead` libera o próximo chunk só depois do fan-out (backpressure).
     task.outSub = pty.output.listen((bytes) {
       task.out.add(bytes);
       _detectProgress(task, bytes);
+      pty.ackRead();
     });
 
     unawaited(pty.exitCode.then((code) => _onExit(def.id, code)));
