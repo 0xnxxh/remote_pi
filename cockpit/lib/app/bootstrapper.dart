@@ -22,6 +22,7 @@ import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/bootstrap_error_view.dart';
+import 'package:cockpit/app/core/ui/widgets/devtools_inspector.dart';
 import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
 import 'package:cockpit/app/core/ui/widgets/loading_screen.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
@@ -310,7 +311,7 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
           colors: tokens.colors,
           typo: tokens.typo,
           syntax: tokens.syntax,
-          child: child ?? const SizedBox(),
+          child: DevToolsInspector(child: child ?? const SizedBox()),
         );
       },
     );

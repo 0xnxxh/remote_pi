@@ -7,6 +7,7 @@ import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/menu_model.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/clamping_scroll_behavior.dart';
+import 'package:cockpit/app/core/ui/widgets/devtools_inspector.dart';
 import 'package:cockpit/app/core/ui/overlay/app_popover_handler.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
@@ -78,13 +79,15 @@ class AppRoot extends StatelessWidget {
           // barra de título do shell pelo [WindowMenuBar].
           child: AppMenuBar(
             menus: menus,
-            child: _AppZoom(
-              scale: uiScale,
-              child: CockpitTheme(
-                colors: tokens.colors,
-                typo: tokens.typo,
-                syntax: tokens.syntax,
-                child: child ?? const SizedBox(),
+            child: DevToolsInspector(
+              child: _AppZoom(
+                scale: uiScale,
+                child: CockpitTheme(
+                  colors: tokens.colors,
+                  typo: tokens.typo,
+                  syntax: tokens.syntax,
+                  child: child ?? const SizedBox(),
+                ),
               ),
             ),
           ),

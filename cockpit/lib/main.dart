@@ -18,6 +18,14 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 Future<void> main() async {
   await runGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    // ShadcnApp delegates to WidgetsApp but does not expose the inspector HUD
+    // builders. Disable WidgetsApp's automatic inspector insertion so AppRoot
+    // can provide one manually with the same DevTools selection semantics and
+    // shadcn-compatible controls.
+    assert(() {
+      WidgetsBinding.instance.debugExcludeRootWidgetInspector = true;
+      return true;
+    }());
 
     // Versão primeiro: alimenta o log e os relatórios de issue.
     final version = await _resolveVersion();
