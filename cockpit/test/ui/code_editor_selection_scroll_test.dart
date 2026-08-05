@@ -4,7 +4,9 @@ import 'package:cockpit/app/core/ui/widgets/code_editing_controller.dart';
 import 'package:flutter/foundation.dart'
     show debugDefaultTargetPlatformOverride;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
-import 'package:flutter/material.dart' as m show TextField;
+import 'package:flutter/material.dart'
+    as m
+    show Scrollbar, ScrollbarOrientation, TextField;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -27,6 +29,36 @@ void main() {
       ),
     );
   }
+
+  testWidgets('exibe só a barra vertical do painel', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final ctrl = CodeEditingController(text: text, language: 'txt');
+
+    await tester.pumpWidget(harness(ctrl));
+    await tester.pumpAndSettle();
+
+    // O comportamento desktop do shadcn não deve criar barras próprias para o
+    // gutter e o TextField. Restam apenas as barras Material explícitas do
+    // painel: uma vertical e uma horizontal.
+    final automaticBars = find.descendant(
+      of: find.byType(CodeEditor),
+      matching: find.byType(Scrollbar),
+    );
+    expect(automaticBars, findsNothing);
+    final panelBars = tester
+        .widgetList<m.Scrollbar>(find.byType(m.Scrollbar))
+        .toList();
+    expect(panelBars, hasLength(2));
+    expect(
+      panelBars
+          .where(
+            (bar) => bar.scrollbarOrientation != m.ScrollbarOrientation.bottom,
+          )
+          .length,
+      1,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
 
   testWidgets(
     'drag-select com auto-scroll não faz a âncora inicial escorregar',

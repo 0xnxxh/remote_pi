@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
+import 'package:cockpit/app/core/ui/clamping_scroll_behavior.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/app/core/ui/widgets/code_editing_controller.dart';
@@ -75,6 +76,21 @@ class CodeEditor extends StatefulWidget {
 
   @override
   State<CodeEditor> createState() => _CodeEditorState();
+}
+
+/// Mantém a física global clamp, mas não desenha barras automáticas.
+///
+/// Um simples `copyWith(scrollbars: false)` não basta para o [TextField]:
+/// internamente, o Flutter reativa scrollbars quando o campo é multilinha.
+class _CodeEditorScrollBehavior extends ClampingScrollBehavior {
+  const _CodeEditorScrollBehavior();
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }
 
 class _CodeEditorState extends State<CodeEditor> {
@@ -590,108 +606,114 @@ class _CodeEditorState extends State<CodeEditor> {
       child: Scrollbar(
         controller: _vertical,
         notificationPredicate: (n) => n.metrics.axis == Axis.vertical,
-        // O padding de 14px é um frame FIXO fora dos dois scrolls (gutter e
-        // campo), pra ambos começarem o conteúdo em y=0 e rolarem em lockstep
-        // sem que o inset de topo desalinhe ao rolar.
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Gutter — scroll próprio (travado ao input) espelhando `_vertical`.
-              //
-              // `ListView.builder` (e não `Column`): com uma Column, um arquivo
-              // de 5k linhas materializava 5000 Rows+Texts A CADA rebuild — e
-              // rebuild acontece até quando o mouse cruza uma linha (o tooltip
-              // de diagnostic faz setState). Virtualizado, só as ~40 linhas
-              // visíveis são construídas, e `severityForLine` (que varre os
-              // diagnostics) roda só pra elas.
-              //
-              // `itemExtent: _lineHeight` é o que mantém o alinhamento 1:1 com
-              // o texto — mesma métrica que o campo usa por linha — e ainda dá
-              // scroll O(1) (o `jumpTo` do `_syncGutter` não precisa medir os
-              // itens anteriores). Largura fixa porque a ListView, ao contrário
-              // da Column dentro do SingleChildScrollView, não é intrínseca:
-              // sem isso o gutter esticaria e comeria o campo.
-              Padding(
-                padding: const EdgeInsets.only(left: 14, right: 14),
-                child: SizedBox(
-                  width: _iconSlot + _digitsWidth,
-                  child: ListView.builder(
-                    controller: _gutter,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: EdgeInsets.zero,
-                    itemExtent: _lineHeight,
-                    itemCount: lineCount,
-                    itemBuilder: (context, i) => _gutterLine(i + 1, numStyle),
+        // O shadcn adiciona uma scrollbar vertical automática a cada Scrollable
+        // desktop. Gutter e TextField precisam de scrolls próprios para ficarem
+        // sincronizados, mas suas barras duplicariam a barra deste painel.
+        child: ScrollConfiguration(
+          behavior: const _CodeEditorScrollBehavior(),
+          // O padding de 14px é um frame FIXO fora dos dois scrolls (gutter e
+          // campo), pra ambos começarem o conteúdo em y=0 e rolarem em lockstep
+          // sem que o inset de topo desalinhe ao rolar.
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Gutter — scroll próprio (travado ao input) espelhando `_vertical`.
+                //
+                // `ListView.builder` (e não `Column`): com uma Column, um arquivo
+                // de 5k linhas materializava 5000 Rows+Texts A CADA rebuild — e
+                // rebuild acontece até quando o mouse cruza uma linha (o tooltip
+                // de diagnostic faz setState). Virtualizado, só as ~40 linhas
+                // visíveis são construídas, e `severityForLine` (que varre os
+                // diagnostics) roda só pra elas.
+                //
+                // `itemExtent: _lineHeight` é o que mantém o alinhamento 1:1 com
+                // o texto — mesma métrica que o campo usa por linha — e ainda dá
+                // scroll O(1) (o `jumpTo` do `_syncGutter` não precisa medir os
+                // itens anteriores). Largura fixa porque a ListView, ao contrário
+                // da Column dentro do SingleChildScrollView, não é intrínseca:
+                // sem isso o gutter esticaria e comeria o campo.
+                Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 14),
+                  child: SizedBox(
+                    width: _iconSlot + _digitsWidth,
+                    child: ListView.builder(
+                      controller: _gutter,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.zero,
+                      itemExtent: _lineHeight,
+                      itemCount: lineCount,
+                      itemBuilder: (context, i) => _gutterLine(i + 1, numStyle),
+                    ),
                   ),
                 ),
-              ),
-              Container(width: 1, color: syntax.base.withValues(alpha: 0.15)),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Largura mínima = viewport (menos o padding H). Sem isso, o
-                    // IntrinsicWidth colapsa o campo a ~0 quando o arquivo está
-                    // vazio (recém-criado) → sem área pra clicar/digitar.
-                    final minWidth = (constraints.maxWidth - 30).clamp(
-                      0.0,
-                      double.infinity,
-                    );
-                    return SingleChildScrollView(
-                      controller: _horizontal,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.only(left: 14, right: 16),
-                      // `TextField` (e não `EditableText` cru) pra ganhar os
-                      // gestos de seleção do desktop: arrastar com o mouse,
-                      // duplo-clique, Cmd+A. O highlight vem do `buildTextSpan`
-                      // do controller; a decoração é zerada (sem borda/fundo).
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: minWidth),
-                        child: IntrinsicWidth(
-                          child: TextField(
-                            controller: widget.controller,
-                            focusNode: widget.focusNode,
-                            // O campo é o DONO do scroll vertical (scroll interno)
-                            // → fica parado no espaço global e a âncora da seleção
-                            // não escorrega durante o auto-scroll do drag.
-                            scrollController: _vertical,
-                            style: codeStyle,
-                            cursorColor: syntax.base,
-                            maxLines: null,
-                            minLines: null,
-                            // Preenche a altura do viewport e rola o conteúdo
-                            // internamente; o gutter espelha via `_syncGutter`.
-                            expands: true,
-                            keyboardType: TextInputType.multiline,
-                            // `onTap` do próprio TextField dispara DEPOIS que o
-                            // toque já moveu `controller.selection` pra posição
-                            // clicada (comportamento interno do EditableText) —
-                            // por isso lemos a seleção aqui, não num
-                            // GestureDetector externo (que veria a seleção ANTIGA,
-                            // antes do TextField processar o tap).
-                            onTap: _definitionModeActive
-                                ? _onDefinitionTap
-                                : null,
-                            // TextField sempre define seu PRÓPRIO cursor (I-beam)
-                            // por padrão — sobrescreve o `MouseRegion` externo, que
-                            // nunca vencia a resolução de cursor (o descendente mais
-                            // específico ganha). Precisa ser setado aqui pra virar
-                            // clicável de fato durante o hover de definition.
-                            mouseCursor: _defCursor,
-                            decoration: const InputDecoration(
-                              isCollapsed: true,
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
+                Container(width: 1, color: syntax.base.withValues(alpha: 0.15)),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Largura mínima = viewport (menos o padding H). Sem isso, o
+                      // IntrinsicWidth colapsa o campo a ~0 quando o arquivo está
+                      // vazio (recém-criado) → sem área pra clicar/digitar.
+                      final minWidth = (constraints.maxWidth - 30).clamp(
+                        0.0,
+                        double.infinity,
+                      );
+                      return SingleChildScrollView(
+                        controller: _horizontal,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.only(left: 14, right: 16),
+                        // `TextField` (e não `EditableText` cru) pra ganhar os
+                        // gestos de seleção do desktop: arrastar com o mouse,
+                        // duplo-clique, Cmd+A. O highlight vem do `buildTextSpan`
+                        // do controller; a decoração é zerada (sem borda/fundo).
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: minWidth),
+                          child: IntrinsicWidth(
+                            child: TextField(
+                              controller: widget.controller,
+                              focusNode: widget.focusNode,
+                              // O campo é o DONO do scroll vertical (scroll interno)
+                              // → fica parado no espaço global e a âncora da seleção
+                              // não escorrega durante o auto-scroll do drag.
+                              scrollController: _vertical,
+                              style: codeStyle,
+                              cursorColor: syntax.base,
+                              maxLines: null,
+                              minLines: null,
+                              // Preenche a altura do viewport e rola o conteúdo
+                              // internamente; o gutter espelha via `_syncGutter`.
+                              expands: true,
+                              keyboardType: TextInputType.multiline,
+                              // `onTap` do próprio TextField dispara DEPOIS que o
+                              // toque já moveu `controller.selection` pra posição
+                              // clicada (comportamento interno do EditableText) —
+                              // por isso lemos a seleção aqui, não num
+                              // GestureDetector externo (que veria a seleção ANTIGA,
+                              // antes do TextField processar o tap).
+                              onTap: _definitionModeActive
+                                  ? _onDefinitionTap
+                                  : null,
+                              // TextField sempre define seu PRÓPRIO cursor (I-beam)
+                              // por padrão — sobrescreve o `MouseRegion` externo, que
+                              // nunca vencia a resolução de cursor (o descendente mais
+                              // específico ganha). Precisa ser setado aqui pra virar
+                              // clicável de fato durante o hover de definition.
+                              mouseCursor: _defCursor,
+                              decoration: const InputDecoration(
+                                isCollapsed: true,
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
