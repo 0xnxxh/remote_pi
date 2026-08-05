@@ -87,3 +87,8 @@ pi-extension/test/.pi/
 !.cockpit/tasks.json
 graphify-out
 .cockpit/worktrees/
+
+# Material de divulgação (slides, PNGs exportados, copy de post). É conteúdo de
+# campanha, não do produto: muda por rede social e por publicação, e os PNGs
+# exportados são derivados dos .html. Fica local.
+marketing/
