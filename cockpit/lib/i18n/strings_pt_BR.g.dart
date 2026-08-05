@@ -461,6 +461,9 @@ class _Translations$cockpit$tasksPanel$pt_BR extends Translations$cockpit$tasksP
 	@override String get stoppingTooltip => 'Parando…';
 	@override String get switchProfileTooltip => 'Trocar perfil';
 	@override String get moreKeysTooltip => 'Mais teclas';
+	@override String get sectionTasks => 'TAREFAS';
+	@override String get noTasks => 'Nenhuma tarefa detectada neste projeto.';
+	@override String get createTasksJson => 'Criar tasks.json';
 }
 
 // Path: cockpit.cockpitPage
@@ -755,6 +758,9 @@ class _Translations$cockpit$dbPanel$pt_BR extends Translations$cockpit$dbPanel$e
 	@override String get browseKeys => 'Ver chaves';
 	@override String get deleteConnectionTitle => 'Excluir conexão';
 	@override String deleteConnectionMessage({required Object name}) => 'Remover "${name}" deste workspace? Qualquer senha salva será descartada. Arquivos .dbq que fazem referência a ela não são afetados.';
+	@override String footer({required Object n}) => '.cockpit/databases.json · ${n} conexões';
+	@override String get footerOne => '.cockpit/databases.json · 1 conexão';
+	@override String get noConnections => 'Nenhuma conexão ainda.';
 }
 
 // Path: cockpit.dbMongoView
@@ -1632,6 +1638,9 @@ extension on TranslationsPtBr {
 			'cockpit.tasksPanel.stoppingTooltip' => 'Parando…',
 			'cockpit.tasksPanel.switchProfileTooltip' => 'Trocar perfil',
 			'cockpit.tasksPanel.moreKeysTooltip' => 'Mais teclas',
+			'cockpit.tasksPanel.sectionTasks' => 'TAREFAS',
+			'cockpit.tasksPanel.noTasks' => 'Nenhuma tarefa detectada neste projeto.',
+			'cockpit.tasksPanel.createTasksJson' => 'Criar tasks.json',
 			'cockpit.cockpitPage.chooseProjectFolderDialogTitle' => 'Escolha a pasta do projeto',
 			'cockpit.cockpitPage.chooseWorkspaceFolderDialogTitle' => 'Escolha a pasta do workspace',
 			'cockpit.cockpitPage.workspaceRenamedTitle' => 'Workspace renomeado',
@@ -1818,6 +1827,9 @@ extension on TranslationsPtBr {
 			'cockpit.dbPanel.browseKeys' => 'Ver chaves',
 			'cockpit.dbPanel.deleteConnectionTitle' => 'Excluir conexão',
 			'cockpit.dbPanel.deleteConnectionMessage' => ({required Object name}) => 'Remover "${name}" deste workspace? Qualquer senha salva será descartada. Arquivos .dbq que fazem referência a ela não são afetados.',
+			'cockpit.dbPanel.footer' => ({required Object n}) => '.cockpit/databases.json · ${n} conexões',
+			'cockpit.dbPanel.footerOne' => '.cockpit/databases.json · 1 conexão',
+			'cockpit.dbPanel.noConnections' => 'Nenhuma conexão ainda.',
 			'cockpit.dbMongoView.deleteDocumentTitle' => 'Excluir documento',
 			'cockpit.dbMongoView.deleteDocumentMessage' => ({required Object id, required Object collection}) => 'Excluir o documento com _id ${id} de "${collection}"?',
 			'cockpit.dbMongoView.filterHint' => 'Filtro — JSON, ex.: {"status": "active"}',
@@ -1964,14 +1976,14 @@ extension on TranslationsPtBr {
 			'settings.page.general.agentsInUseError' => 'Não é possível desligar os agentes com uma aba de agente aberta. Feche todas as abas de agente primeiro e depois desative.',
 			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.general.updateFrequency.monthly' => 'Mensalmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnóstico',
 			'settings.page.diagnostics.logFileTitle' => 'Arquivo de log',
 			'settings.page.diagnostics.logFileDesc' => ({required Object days, required Object path}) => 'Erros e eventos de inicialização são registrados aqui, mantidos por ${days} dias.\n${path}',
 			'settings.page.diagnostics.unavailable' => 'indisponível',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.diagnostics.reveal' => 'Revelar',
 			'settings.page.diagnostics.reportTitle' => 'Reportar um problema',
 			'settings.page.diagnostics.reportDesc' => 'Abre uma issue pré-preenchida com sua versão, SO e log recente. Nada é enviado automaticamente — você revisa antes.',

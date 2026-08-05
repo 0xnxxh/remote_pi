@@ -810,6 +810,15 @@ class Translations$cockpit$tasksPanel$en {
 
 	/// en: 'More keys'
 	String get moreKeysTooltip => 'More keys';
+
+	/// en: 'TASKS'
+	String get sectionTasks => 'TASKS';
+
+	/// en: 'No tasks detected in this project.'
+	String get noTasks => 'No tasks detected in this project.';
+
+	/// en: 'Create tasks.json'
+	String get createTasksJson => 'Create tasks.json';
 }
 
 // Path: cockpit.cockpitPage
@@ -1476,6 +1485,15 @@ class Translations$cockpit$dbPanel$en {
 
 	/// en: 'Remove "${name}" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.'
 	String deleteConnectionMessage({required Object name}) => 'Remove "${name}" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.';
+
+	/// en: '.cockpit/databases.json · ${n} connections'
+	String footer({required Object n}) => '.cockpit/databases.json · ${n} connections';
+
+	/// en: '.cockpit/databases.json · 1 connection'
+	String get footerOne => '.cockpit/databases.json · 1 connection';
+
+	/// en: 'No connections yet.'
+	String get noConnections => 'No connections yet.';
 }
 
 // Path: cockpit.dbMongoView
@@ -3108,6 +3126,9 @@ extension on Translations {
 			'cockpit.tasksPanel.stoppingTooltip' => 'Stopping…',
 			'cockpit.tasksPanel.switchProfileTooltip' => 'Switch profile',
 			'cockpit.tasksPanel.moreKeysTooltip' => 'More keys',
+			'cockpit.tasksPanel.sectionTasks' => 'TASKS',
+			'cockpit.tasksPanel.noTasks' => 'No tasks detected in this project.',
+			'cockpit.tasksPanel.createTasksJson' => 'Create tasks.json',
 			'cockpit.cockpitPage.chooseProjectFolderDialogTitle' => 'Choose the project folder',
 			'cockpit.cockpitPage.chooseWorkspaceFolderDialogTitle' => 'Choose the workspace folder',
 			'cockpit.cockpitPage.workspaceRenamedTitle' => 'Workspace renamed',
@@ -3294,6 +3315,9 @@ extension on Translations {
 			'cockpit.dbPanel.browseKeys' => 'Browse keys',
 			'cockpit.dbPanel.deleteConnectionTitle' => 'Delete connection',
 			'cockpit.dbPanel.deleteConnectionMessage' => ({required Object name}) => 'Remove "${name}" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.',
+			'cockpit.dbPanel.footer' => ({required Object n}) => '.cockpit/databases.json · ${n} connections',
+			'cockpit.dbPanel.footerOne' => '.cockpit/databases.json · 1 connection',
+			'cockpit.dbPanel.noConnections' => 'No connections yet.',
 			'cockpit.dbMongoView.deleteDocumentTitle' => 'Delete document',
 			'cockpit.dbMongoView.deleteDocumentMessage' => ({required Object id, required Object collection}) => 'Delete the document with _id ${id} from "${collection}"?',
 			'cockpit.dbMongoView.filterHint' => 'Filter — JSON, e.g. {"status": "active"}',
@@ -3440,14 +3464,14 @@ extension on Translations {
 			'settings.page.general.agentsInUseError' => 'Can\'t turn agents off while an agent tab is open. Close all agent tabs first, then disable it.',
 			'settings.page.general.updateFrequency.daily' => 'Daily',
 			'settings.page.general.updateFrequency.weekly' => 'Weekly',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.general.updateFrequency.monthly' => 'Monthly',
 			'settings.page.general.updateFrequency.never' => 'Never',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnostics',
 			'settings.page.diagnostics.logFileTitle' => 'Log file',
 			'settings.page.diagnostics.logFileDesc' => ({required Object days, required Object path}) => 'Errors and startup events are recorded here, kept for ${days} days.\n${path}',
 			'settings.page.diagnostics.unavailable' => 'unavailable',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.diagnostics.reveal' => 'Reveal',
 			'settings.page.diagnostics.reportTitle' => 'Report a problem',
 			'settings.page.diagnostics.reportDesc' => 'Opens a pre-filled issue with your version, OS and recent log. Nothing is sent automatically — you review it first.',

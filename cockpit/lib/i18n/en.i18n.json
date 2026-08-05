@@ -208,7 +208,10 @@
       "startingTooltip": "Starting…",
       "stoppingTooltip": "Stopping…",
       "switchProfileTooltip": "Switch profile",
-      "moreKeysTooltip": "More keys"
+      "moreKeysTooltip": "More keys",
+      "sectionTasks": "TASKS",
+      "noTasks": "No tasks detected in this project.",
+      "createTasksJson": "Create tasks.json"
     },
     "cockpitPage": {
       "chooseProjectFolderDialogTitle": "Choose the project folder",
@@ -425,7 +428,10 @@
       "newQuery": "New query",
       "browseKeys": "Browse keys",
       "deleteConnectionTitle": "Delete connection",
-      "deleteConnectionMessage": "Remove \"${name}\" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched."
+      "deleteConnectionMessage": "Remove \"${name}\" from this workspace? Any saved password is discarded. .dbq files that reference it are not touched.",
+      "footer": ".cockpit/databases.json · ${n} connections",
+      "footerOne": ".cockpit/databases.json · 1 connection",
+      "noConnections": "No connections yet."
     },
     "dbMongoView": {
       "deleteDocumentTitle": "Delete document",

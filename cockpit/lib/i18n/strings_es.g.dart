@@ -461,6 +461,9 @@ class _Translations$cockpit$tasksPanel$es extends Translations$cockpit$tasksPane
 	@override String get stoppingTooltip => 'Deteniendo…';
 	@override String get switchProfileTooltip => 'Cambiar perfil';
 	@override String get moreKeysTooltip => 'Más teclas';
+	@override String get sectionTasks => 'TAREAS';
+	@override String get noTasks => 'No se detectaron tareas en este proyecto.';
+	@override String get createTasksJson => 'Crear tasks.json';
 }
 
 // Path: cockpit.cockpitPage
@@ -755,6 +758,9 @@ class _Translations$cockpit$dbPanel$es extends Translations$cockpit$dbPanel$en {
 	@override String get browseKeys => 'Ver claves';
 	@override String get deleteConnectionTitle => 'Eliminar conexión';
 	@override String deleteConnectionMessage({required Object name}) => '¿Quitar "${name}" de este workspace? Cualquier contraseña guardada se descartará. Los archivos .dbq que la referencian no se modifican.';
+	@override String footer({required Object n}) => '.cockpit/databases.json · ${n} conexiones';
+	@override String get footerOne => '.cockpit/databases.json · 1 conexión';
+	@override String get noConnections => 'Aún no hay conexiones.';
 }
 
 // Path: cockpit.dbMongoView
@@ -1632,6 +1638,9 @@ extension on TranslationsEs {
 			'cockpit.tasksPanel.stoppingTooltip' => 'Deteniendo…',
 			'cockpit.tasksPanel.switchProfileTooltip' => 'Cambiar perfil',
 			'cockpit.tasksPanel.moreKeysTooltip' => 'Más teclas',
+			'cockpit.tasksPanel.sectionTasks' => 'TAREAS',
+			'cockpit.tasksPanel.noTasks' => 'No se detectaron tareas en este proyecto.',
+			'cockpit.tasksPanel.createTasksJson' => 'Crear tasks.json',
 			'cockpit.cockpitPage.chooseProjectFolderDialogTitle' => 'Elige la carpeta del proyecto',
 			'cockpit.cockpitPage.chooseWorkspaceFolderDialogTitle' => 'Elige la carpeta del workspace',
 			'cockpit.cockpitPage.workspaceRenamedTitle' => 'Workspace renombrado',
@@ -1818,6 +1827,9 @@ extension on TranslationsEs {
 			'cockpit.dbPanel.browseKeys' => 'Ver claves',
 			'cockpit.dbPanel.deleteConnectionTitle' => 'Eliminar conexión',
 			'cockpit.dbPanel.deleteConnectionMessage' => ({required Object name}) => '¿Quitar "${name}" de este workspace? Cualquier contraseña guardada se descartará. Los archivos .dbq que la referencian no se modifican.',
+			'cockpit.dbPanel.footer' => ({required Object n}) => '.cockpit/databases.json · ${n} conexiones',
+			'cockpit.dbPanel.footerOne' => '.cockpit/databases.json · 1 conexión',
+			'cockpit.dbPanel.noConnections' => 'Aún no hay conexiones.',
 			'cockpit.dbMongoView.deleteDocumentTitle' => 'Eliminar documento',
 			'cockpit.dbMongoView.deleteDocumentMessage' => ({required Object id, required Object collection}) => '¿Eliminar el documento con _id ${id} de "${collection}"?',
 			'cockpit.dbMongoView.filterHint' => 'Filtro — JSON, ej.: {"status": "active"}',
@@ -1964,14 +1976,14 @@ extension on TranslationsEs {
 			'settings.page.general.agentsInUseError' => 'No se pueden desactivar los agentes mientras haya una pestaña de agente abierta. Cierra todas las pestañas de agente primero y luego desactívalo.',
 			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.general.updateFrequency.monthly' => 'Mensualmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnóstico',
 			'settings.page.diagnostics.logFileTitle' => 'Archivo de registro',
 			'settings.page.diagnostics.logFileDesc' => ({required Object days, required Object path}) => 'Los errores y eventos de inicio se registran aquí, y se conservan durante ${days} días.\n${path}',
 			'settings.page.diagnostics.unavailable' => 'no disponible',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.diagnostics.reveal' => 'Mostrar',
 			'settings.page.diagnostics.reportTitle' => 'Reportar un problema',
 			'settings.page.diagnostics.reportDesc' => 'Abre un issue prellenado con tu versión, SO y registro reciente. Nada se envía automáticamente — lo revisas antes.',

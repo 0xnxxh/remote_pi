@@ -239,7 +239,7 @@ class _DbPanelState extends State<DbPanel> {
               ? Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    'No connections yet.',
+                    context.t.cockpit.dbPanel.noConnections,
                     style: typo.label.copyWith(
                       fontSize: 11.5,
                       color: colors.text3,
@@ -266,8 +266,11 @@ class _DbPanelState extends State<DbPanel> {
             border: Border(top: BorderSide(color: colors.border)),
           ),
           child: Text(
-            '.cockpit/databases.json · ${conns.length} '
-            'connection${conns.length == 1 ? '' : 's'}',
+            // Singular/plural em chaves separadas: em pt/es a palavra muda,
+            // não só o sufixo.
+            conns.length == 1
+                ? context.t.cockpit.dbPanel.footerOne
+                : context.t.cockpit.dbPanel.footer(n: conns.length),
             style: typo.label.copyWith(fontSize: 10.5, color: colors.text4),
           ),
         ),

@@ -208,7 +208,10 @@
       "startingTooltip": "Iniciando…",
       "stoppingTooltip": "Parando…",
       "switchProfileTooltip": "Trocar perfil",
-      "moreKeysTooltip": "Mais teclas"
+      "moreKeysTooltip": "Mais teclas",
+      "sectionTasks": "TAREFAS",
+      "noTasks": "Nenhuma tarefa detectada neste projeto.",
+      "createTasksJson": "Criar tasks.json"
     },
     "cockpitPage": {
       "chooseProjectFolderDialogTitle": "Escolha a pasta do projeto",
@@ -425,7 +428,10 @@
       "newQuery": "Nova query",
       "browseKeys": "Ver chaves",
       "deleteConnectionTitle": "Excluir conexão",
-      "deleteConnectionMessage": "Remover \"${name}\" deste workspace? Qualquer senha salva será descartada. Arquivos .dbq que fazem referência a ela não são afetados."
+      "deleteConnectionMessage": "Remover \"${name}\" deste workspace? Qualquer senha salva será descartada. Arquivos .dbq que fazem referência a ela não são afetados.",
+      "footer": ".cockpit/databases.json · ${n} conexões",
+      "footerOne": ".cockpit/databases.json · 1 conexão",
+      "noConnections": "Nenhuma conexão ainda."
     },
     "dbMongoView": {
       "deleteDocumentTitle": "Excluir documento",

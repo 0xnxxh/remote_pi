@@ -121,7 +121,7 @@ class _TasksPanelState extends State<TasksPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'No tasks detected in this project.',
+            context.t.cockpit.tasksPanel.noTasks,
             style: context.typo.label.copyWith(color: colors.text3),
           ),
           if (vm.hasProject && !vm.hasConfig) ...[
@@ -145,7 +145,7 @@ class _TasksPanelState extends State<TasksPanel> {
                     Icon(Icons.add, size: 14, color: colors.text2),
                     const SizedBox(width: 6),
                     Text(
-                      'Create tasks.json',
+                      context.t.cockpit.tasksPanel.createTasksJson,
                       style: context.typo.label.copyWith(color: colors.text),
                     ),
                   ],
@@ -168,7 +168,7 @@ class _TasksPanelState extends State<TasksPanel> {
           Icon(Icons.play_circle_outline, size: 14, color: colors.text3),
           const SizedBox(width: 8),
           Text(
-            'TASKS',
+            context.t.cockpit.tasksPanel.sectionTasks,
             style: context.typo.label.copyWith(
               fontSize: 11,
               letterSpacing: 0.6,
