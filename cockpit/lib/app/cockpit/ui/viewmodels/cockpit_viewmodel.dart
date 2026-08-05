@@ -1754,6 +1754,7 @@ class CockpitViewModel extends ChangeNotifier {
     } else if (next != _selectedProjectId) {
       _selectedProjectId = next;
       _clearFocusedNotification();
+      _requestPaneKeyboard();
       unawaited(_activateProject(next));
       git.watchProject(next);
       unawaited(git.refresh(next));
@@ -2583,6 +2584,7 @@ class CockpitViewModel extends ChangeNotifier {
       }
     }
     _selectedProjectId = id;
+    _requestPaneKeyboard();
     // Persiste o workspace (raiz) pra pré-selecionar na próxima abertura —
     // por realm: cada realm lembra a própria última seleção.
     unawaited(_projects.saveLastSelected(realmCtrl.activeId, _rootOf(id)));
@@ -2664,11 +2666,21 @@ class CockpitViewModel extends ChangeNotifier {
   int get tabFocusGen => _tabFocusGen;
   int _tabFocusGen = 0;
 
+  /// Sinaliza "o teclado deve ir para o pane ativo agora".
+  ///
+  /// **Todo** caminho que muda qual pane está ativo passa por aqui: clique no
+  /// pane, seleção de aba, troca de workspace e troca de realm. Quando isso
+  /// ficava espalhado, cada caminho novo nascia sem o sinal e reproduzia o
+  /// mesmo bug: a aba aparecia selecionada e o teclado ficava para trás, porque
+  /// o `_PaneBody` só re-pede o `FocusNode` quando `focused` transiciona ou
+  /// quando esta geração avança. Foi o que aconteceu com a troca de realm.
+  void _requestPaneKeyboard() => _tabFocusGen++;
+
   void focus(String paneId) {
     final id = _selectedProjectId;
     if (id == null || _focused[id] == paneId) return;
     _focused[id] = paneId;
-    _tabFocusGen++;
+    _requestPaneKeyboard();
     _clearFocusedNotification();
     notifyListeners();
   }
@@ -2681,7 +2693,7 @@ class CockpitViewModel extends ChangeNotifier {
       updateLeaf(tree, paneId, (p) => p.copyWith(active: agentId)),
     );
     _focused[_selectedProjectId!] = paneId;
-    _tabFocusGen++;
+    _requestPaneKeyboard();
     _clearFocusedNotification();
     // Selecionar uma tab de FileView revela o arquivo na árvore: destaca +
     // expande a root e os pais (uma vez, via a geração). Só quando o arquivo é
