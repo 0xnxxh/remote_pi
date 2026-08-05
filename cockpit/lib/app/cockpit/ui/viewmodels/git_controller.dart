@@ -208,7 +208,10 @@ class GitController extends ChangeNotifier {
 
   /// Roda um comando e coleta a saída para consumidores que precisam ler o
   /// resultado (por exemplo, o seletor de commits de amend).
-  Future<(int code, String output)> output(String root, List<String> args) async {
+  Future<(int code, String output)> output(
+    String root,
+    List<String> args,
+  ) async {
     final run = _runner.run(root, args);
     final lines = <String>[];
     final sub = run.output.listen(lines.add);

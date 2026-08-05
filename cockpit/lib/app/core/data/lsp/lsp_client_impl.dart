@@ -18,14 +18,41 @@ import 'package:flutter/foundation.dart';
 /// resposta (índices na `semanticTokensProvider.legend`), então esta lista só
 /// precisa declarar que o client entende o vocabulário padrão.
 const List<String> _kSemanticTokenTypes = <String>[
-  'namespace', 'type', 'class', 'enum', 'interface', 'struct', 'typeParameter',
-  'parameter', 'variable', 'property', 'enumMember', 'event', 'function',
-  'method', 'macro', 'keyword', 'modifier', 'comment', 'string', 'number',
-  'regexp', 'operator', 'decorator',
+  'namespace',
+  'type',
+  'class',
+  'enum',
+  'interface',
+  'struct',
+  'typeParameter',
+  'parameter',
+  'variable',
+  'property',
+  'enumMember',
+  'event',
+  'function',
+  'method',
+  'macro',
+  'keyword',
+  'modifier',
+  'comment',
+  'string',
+  'number',
+  'regexp',
+  'operator',
+  'decorator',
 ];
 const List<String> _kSemanticTokenModifiers = <String>[
-  'declaration', 'definition', 'readonly', 'static', 'deprecated', 'abstract',
-  'async', 'modification', 'documentation', 'defaultLibrary',
+  'declaration',
+  'definition',
+  'readonly',
+  'static',
+  'deprecated',
+  'abstract',
+  'async',
+  'modification',
+  'documentation',
+  'defaultLibrary',
 ];
 
 /// Implementação de [LspClient] sobre `dart:io` `Process`. Dona do ciclo de vida

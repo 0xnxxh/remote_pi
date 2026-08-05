@@ -42,6 +42,7 @@ class AppSettings {
     this.showCockpit = true,
     this.defaultTerminalProfileId,
     this.terminalEngine = TerminalEngine.ghostty,
+    this.locale,
     this.sourceControlViewMode = SourceControlViewMode.list,
     this.automationHarnessId,
     this.automationModelId,
@@ -135,6 +136,12 @@ class AppSettings {
   /// motor no descritor de layout e não são recriadas ao trocar esta opção.
   final TerminalEngine terminalEngine;
 
+  /// Idioma escolhido (código raw pro `AppLocale.languageCode`/`countryCode`
+  /// do slang, ex.: `'en'`, `'es'`, `'pt-BR'`). `null` = seguir o locale do SO
+  /// (`LocaleSettings.useDeviceLocale()`). Editado na seção "Language" das
+  /// Configurações.
+  final String? locale;
+
   /// Layout padrão compartilhado por todos os workspaces, worktrees e seções
   /// (Changes/Staged) do Source Control.
   final SourceControlViewMode sourceControlViewMode;
@@ -193,6 +200,8 @@ class AppSettings {
     String? defaultTerminalProfileId,
     bool clearDefaultTerminalProfileId = false,
     TerminalEngine? terminalEngine,
+    String? locale,
+    bool clearLocale = false,
     SourceControlViewMode? sourceControlViewMode,
     AutomationHarnessId? automationHarnessId,
     bool clearAutomationHarnessId = false,
@@ -231,6 +240,7 @@ class AppSettings {
           ? null
           : (defaultTerminalProfileId ?? this.defaultTerminalProfileId),
       terminalEngine: terminalEngine ?? this.terminalEngine,
+      locale: clearLocale ? null : (locale ?? this.locale),
       sourceControlViewMode:
           sourceControlViewMode ?? this.sourceControlViewMode,
       automationHarnessId: clearAutomationHarnessId
@@ -276,6 +286,8 @@ class AppSettings {
     if (defaultTerminalProfileId != null)
       'terminal.default_profile_id': defaultTerminalProfileId,
     'terminal.engine': terminalEngine.name,
+    // Só quando escolhido: ausência = seguir o locale do SO.
+    if (locale != null) 'locale': locale,
     'sourceControl.viewMode': sourceControlViewMode.name,
     if (automationHarnessId != null)
       'automation.harnessId': automationHarnessId!.name,
@@ -339,6 +351,7 @@ class AppSettings {
         json['terminal.engine'],
         TerminalEngine.ghostty,
       ),
+      locale: str(json['locale']),
       sourceControlViewMode: _enumByName(
         SourceControlViewMode.values,
         json['sourceControl.viewMode'],

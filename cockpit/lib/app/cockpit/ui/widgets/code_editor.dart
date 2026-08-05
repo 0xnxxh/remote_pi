@@ -56,7 +56,7 @@ class CodeEditor extends StatefulWidget {
   final FocusNode focusNode;
 
   /// Callback quando Cmd/Ctrl+clique (go-to-definition). Passa {line, character}.
-  final void Function(({int line, int character}))?  onGoToDefinition;
+  final void Function(({int line, int character}))? onGoToDefinition;
 
   /// Linha (base 1) a revelar (rolar + selecionar) — vem de um resultado de
   /// busca. `null` = nenhum pedido.
@@ -150,7 +150,10 @@ class _CodeEditorState extends State<CodeEditor> {
     scheduleMicrotask(() {
       _restoringH = false;
       if (!_pinned || !_horizontal.hasClients) return;
-      final c = _lastCollapsedH.clamp(0.0, _horizontal.position.maxScrollExtent);
+      final c = _lastCollapsedH.clamp(
+        0.0,
+        _horizontal.position.maxScrollExtent,
+      );
       if ((_horizontal.offset - c).abs() > 0.5) _horizontal.jumpTo(c);
     });
   }
@@ -250,7 +253,10 @@ class _CodeEditorState extends State<CodeEditor> {
       final codeStyle = context.typo.mono.copyWith(color: syntax.base);
       // Largura do prefixo da linha até o match → coluna em px.
       final prefix = TextPainter(
-        text: TextSpan(text: text.substring(lineStart, offset), style: codeStyle),
+        text: TextSpan(
+          text: text.substring(lineStart, offset),
+          style: codeStyle,
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
       final x = prefix.width;
@@ -281,7 +287,8 @@ class _CodeEditorState extends State<CodeEditor> {
   // Hover de diagnostic ao nível de **linha** (não de coluna): mostra a(s)
   // mensagem(ns) da linha sob o mouse. Suficiente pro "suporte secundário".
   double _lineHeight = 18; // px por linha; recalculado no build via TextPainter
-  static const double _padTop = 14; // frame de padding vertical fora dos scrolls
+  static const double _padTop =
+      14; // frame de padding vertical fora dos scrolls
   int? _hoverLine;
   List<String> _hoverMsgs = const <String>[];
   double _hoverDx = 0;
@@ -335,7 +342,10 @@ class _CodeEditorState extends State<CodeEditor> {
     final scrollV = _vertical.hasClients ? _vertical.offset : 0.0;
     final contentY = event.localPosition.dy - _padTop + scrollV;
     final line = contentY ~/ _lineHeight;
-    if (contentY < 0 || _lineHeight <= 0 || line < 0 || line >= _lineStarts.length) {
+    if (contentY < 0 ||
+        _lineHeight <= 0 ||
+        line < 0 ||
+        line >= _lineStarts.length) {
       return _clearDefinitionHover();
     }
 
@@ -348,7 +358,10 @@ class _CodeEditorState extends State<CodeEditor> {
     final lineEnd = line + 1 < _lineStarts.length
         ? _lineStarts[line + 1] - 1
         : text.length;
-    final lineText = text.substring(lineStart, lineEnd.clamp(lineStart, text.length));
+    final lineText = text.substring(
+      lineStart,
+      lineEnd.clamp(lineStart, text.length),
+    );
     final painter = TextPainter(
       text: TextSpan(text: lineText, style: codeStyle),
       textDirection: TextDirection.ltr,
@@ -361,7 +374,9 @@ class _CodeEditorState extends State<CodeEditor> {
     if (hovered != _definitionModeHovered) {
       setState(() {
         _definitionModeHovered = hovered;
-        _defCursor = hovered ? SystemMouseCursors.click : SystemMouseCursors.text;
+        _defCursor = hovered
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.text;
       });
     }
     widget.controller.definitionHoverRange = range;
@@ -655,7 +670,9 @@ class _CodeEditorState extends State<CodeEditor> {
                             // por isso lemos a seleção aqui, não num
                             // GestureDetector externo (que veria a seleção ANTIGA,
                             // antes do TextField processar o tap).
-                            onTap: _definitionModeActive ? _onDefinitionTap : null,
+                            onTap: _definitionModeActive
+                                ? _onDefinitionTap
+                                : null,
                             // TextField sempre define seu PRÓPRIO cursor (I-beam)
                             // por padrão — sobrescreve o `MouseRegion` externo, que
                             // nunca vencia a resolução de cursor (o descendente mais

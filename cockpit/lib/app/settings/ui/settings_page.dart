@@ -6,6 +6,7 @@ import 'package:cockpit/app/core/domain/entities/setup_check.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
+import 'package:cockpit/app/core/ui/automation_error_message.dart';
 import 'package:cockpit/app/core/ui/widgets/macos_notification_instructions_dialog.dart';
 import 'package:cockpit/app/settings/domain/cron_schedule.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
@@ -35,6 +36,7 @@ import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -142,7 +144,7 @@ class _SettingsHeader extends StatelessWidget {
         const WindowControls(),
         const SizedBox(width: 14),
         AppTooltip(
-          message: 'Back',
+          message: context.t.settings.page.header.back,
           child: HoverTap(
             borderRadius: BorderRadius.circular(6),
             onTap: () => context.pop(),
@@ -155,7 +157,7 @@ class _SettingsHeader extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          'Settings',
+          context.t.settings.page.header.title,
           style: context.typo.title.copyWith(fontSize: 14, color: colors.text),
         ),
         const Spacer(),
@@ -190,49 +192,49 @@ class _CategoryNav extends StatelessWidget {
         children: [
           _NavItem(
             icon: Icons.tune,
-            label: 'General',
+            label: context.t.settings.page.nav.general,
             selected: selected == _Category.general,
             onTap: () => onSelect(_Category.general),
           ),
           _NavItem(
             icon: Icons.palette_outlined,
-            label: 'Appearance',
+            label: context.t.settings.page.nav.appearance,
             selected: selected == _Category.appearance,
             onTap: () => onSelect(_Category.appearance),
           ),
           _NavItem(
             icon: Icons.terminal_outlined,
-            label: 'Terminal',
+            label: context.t.settings.page.nav.terminal,
             selected: selected == _Category.terminal,
             onTap: () => onSelect(_Category.terminal),
           ),
           _NavItem(
             icon: Icons.code,
-            label: 'Language',
+            label: context.t.settings.page.nav.language,
             selected: selected == _Category.languages,
             onTap: () => onSelect(_Category.languages),
           ),
           _NavItem(
             icon: Icons.account_tree_outlined,
-            label: 'Source Control',
+            label: context.t.settings.page.nav.sourceControl,
             selected: selected == _Category.sourceControl,
             onTap: () => onSelect(_Category.sourceControl),
           ),
           _NavItem(
             icon: Icons.auto_awesome_outlined,
-            label: 'Automations',
+            label: context.t.settings.page.nav.automations,
             selected: selected == _Category.automations,
             onTap: () => onSelect(_Category.automations),
           ),
           _NavItem(
             icon: Icons.keyboard_outlined,
-            label: 'Shortcuts',
+            label: context.t.settings.page.nav.shortcuts,
             selected: selected == _Category.shortcuts,
             onTap: () => onSelect(_Category.shortcuts),
           ),
           _NavItem(
             icon: Icons.notifications_outlined,
-            label: 'Notifications',
+            label: context.t.settings.page.nav.notifications,
             selected: selected == _Category.notifications,
             onTap: () => onSelect(_Category.notifications),
           ),
@@ -245,19 +247,19 @@ class _CategoryNav extends StatelessWidget {
             ),
             _NavItem(
               icon: Icons.wifi_tethering,
-              label: 'Connectivity',
+              label: context.t.settings.page.nav.connectivity,
               selected: selected == _Category.connectivity,
               onTap: () => onSelect(_Category.connectivity),
             ),
             _NavItem(
               icon: Icons.dns_outlined,
-              label: 'Daemon Agents',
+              label: context.t.settings.page.nav.daemonAgents,
               selected: selected == _Category.daemons,
               onTap: () => onSelect(_Category.daemons),
             ),
             _NavItem(
               icon: Icons.schedule_outlined,
-              label: 'Schedules',
+              label: context.t.settings.page.nav.schedules,
               selected: selected == _Category.scheduling,
               onTap: () => onSelect(_Category.scheduling),
             ),
@@ -365,6 +367,7 @@ class _GeneralPanel extends StatelessWidget {
     final s = controller.settings;
     // `agentTabsInUse` é publicado pelo shell (cross-route) via bridge app-scoped.
     final agentsInUse = context.watch<WorkspaceMenuBridge>().agentTabsInUse;
+    final tr = context.t.settings.page.general;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -375,14 +378,12 @@ class _GeneralPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Agent',
+                label: tr.sectionAgent,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Enable agents',
-                      description:
-                          'Show the option to open agent tabs (pi). When off, '
-                          'Cockpit works as a terminal-only workspace.',
+                      title: tr.enableAgentsTitle,
+                      description: tr.enableAgentsDesc,
                       // Mantém o switch clicável: tentar DESLIGAR com um agente em
                       // uso mostra um erro explicando o porquê (em vez de um switch
                       // inerte, sem feedback). Ligar é sempre permitido.
@@ -405,11 +406,8 @@ class _GeneralPanel extends StatelessWidget {
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Show Cockpit terminal',
-                      description:
-                          'Keep a pathless, terminal-only workspace pinned at '
-                          'the top of the rail. Turning it off closes its '
-                          'terminals.',
+                      title: tr.showCockpitTitle,
+                      description: tr.showCockpitDesc,
                       trailing: Switch(
                         value: s.showCockpit,
                         onChanged: controller.setShowCockpit,
@@ -419,15 +417,29 @@ class _GeneralPanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Updates',
+                label: tr.sectionUpdates,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Check for updates',
-                      description: 'How often Cockpit should look for new versions.',
+                      title: tr.checkUpdatesTitle,
+                      description: tr.checkUpdatesDesc,
                       trailing: _UpdateCheckDropdown(
                         value: s.updateCheckFrequency,
                         onChanged: controller.setUpdateCheckFrequency,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _Section(
+                label: context.t.settings.language.title,
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: context.t.settings.language.title,
+                      trailing: _LocaleDropdown(
+                        value: s.locale,
+                        onChanged: controller.setLocale,
                       ),
                     ),
                   ],
@@ -459,8 +471,7 @@ class _GeneralPanel extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 320),
                 child: Text(
-                  "Can't turn agents off while an agent tab is open. "
-                  'Close all agent tabs first, then disable it.',
+                  context.t.settings.page.general.agentsInUseError,
                   style: context.typo.label.copyWith(color: colors.text),
                 ),
               ),
@@ -482,6 +493,7 @@ class _SourceControlPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
+    final tr = context.t.settings.page.sourceControl;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -492,14 +504,12 @@ class _SourceControlPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'View',
+                label: tr.sectionView,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Default view mode',
-                      description:
-                          'Initial layout shared by every workspace, worktree, '
-                          'and Changes/Staged section.',
+                      title: tr.defaultViewMode,
+                      description: tr.defaultViewModeDescription,
                       trailing: _SourceControlViewModeDropdown(
                         value: settings.settings.sourceControlViewMode,
                         onChanged: settings.setSourceControlViewMode,
@@ -563,6 +573,7 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
     final selectedId = settings.settings.automationHarnessId;
     final modelId = settings.settings.selectedAutomationModelId;
     final colors = context.colors;
+    final tr = context.t.settings.page.automations;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -573,19 +584,21 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Commit messages',
+                label: tr.sectionCommitMessages,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Harness',
+                      title: tr.harness,
                       description: automation.discovering
-                          ? 'Looking for installed command-line harnesses…'
+                          ? tr.harnessDiscovering
                           : automation.harnesses.isEmpty
-                          ? 'No supported harness was found on PATH.'
+                          ? tr.harnessNoneFound
                           : selected == null && selectedId != null
-                          ? '${selectedId.label} is configured but unavailable.'
+                          ? tr.harnessConfiguredUnavailable(
+                              harness: selectedId.label,
+                            )
                           : selected == null
-                          ? 'Choose the CLI used to generate commit messages.'
+                          ? tr.harnessChoose
                           : selected.executablePath,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -597,7 +610,7 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                           ),
                           const SizedBox(width: 8),
                           AppTooltip(
-                            message: 'Refresh installed harnesses',
+                            message: tr.harnessRefresh,
                             child: IconButton.outline(
                               onPressed: automation.discovering
                                   ? null
@@ -614,12 +627,12 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                     ),
                     if (selectedId != null)
                       _Row(
-                        title: 'Model',
+                        title: tr.model,
                         description: selected == null
-                            ? 'The model list is unavailable until the harness is found.'
+                            ? tr.modelUnavailable
                             : selected.models.isEmpty
-                            ? 'This harness uses its CLI default model.'
-                            : 'Optional. Leave blank to use the CLI default.',
+                            ? tr.modelCliOnly
+                            : tr.modelOptional,
                         trailing: _AutomationModelDropdown(
                           value: modelId,
                           models: selected?.models ?? const <AutomationModel>[],
@@ -627,11 +640,8 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                         ),
                       ),
                     _Row(
-                      title: 'Generate from Source Control',
-                      description:
-                          'Cockpit sends only the selected diff and recent commit '
-                          'subjects. Common credential patterns and sensitive '
-                          'files are redacted before the harness runs.',
+                      title: tr.generateFromSourceControl,
+                      description: tr.generateFromSourceControlDescription,
                       trailing: Icon(
                         Icons.auto_awesome,
                         size: 18,
@@ -641,9 +651,9 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                   ],
                 ),
               ),
-              if (automation.errorMessage != null)
+              if (automation.error != null)
                 Text(
-                  automation.errorMessage!,
+                  automationErrorMessage(context, automation.error!),
                   style: context.typo.label.copyWith(color: colors.error),
                 ),
             ],
@@ -793,36 +803,33 @@ class _DiagnosticsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dir = DiagnosticsLog.instance.directory;
+    final tr = context.t.settings.page.diagnostics;
     return _Section(
-      label: 'Diagnostics',
+      label: tr.sectionTitle,
       child: _Card(
         children: [
           _Row(
-            title: 'Log file',
-            description:
-                'Errors and startup events are recorded here, kept for '
-                '${DiagnosticsLog.retentionDays} days.'
-                '\n${dir?.path ?? 'unavailable'}',
+            title: tr.logFileTitle,
+            description: tr.logFileDesc(
+              days: DiagnosticsLog.retentionDays,
+              path: dir?.path ?? tr.unavailable,
+            ),
             trailing: OutlineButton(
               onPressed: dir == null ? null : () => _revealFolder(dir.path),
-              child: const Text('Reveal'),
+              child: Text(tr.reveal),
             ),
           ),
           _Row(
-            title: 'Report a problem',
-            description:
-                'Opens a pre-filled issue with your version, OS and recent '
-                'log. Nothing is sent automatically — you review it first.',
+            title: tr.reportTitle,
+            description: tr.reportDesc,
             trailing: OutlineButton(
               onPressed: () => showErrorReportDialog(
                 context,
-                title: 'Problem report',
-                error: 'Reported manually from Settings.',
-                description:
-                    'Describe what went wrong in the issue. The recent log is '
-                    'included below and in "Copy details".',
+                title: tr.reportDialogTitle,
+                error: tr.reportDialogError,
+                description: tr.reportDialogDescription,
               ),
-              child: const Text('Report…'),
+              child: Text(tr.reportButton),
             ),
           ),
         ],
@@ -883,8 +890,9 @@ class _StorageSectionState extends State<_StorageSection> {
 
   Future<void> _changeFolder() async {
     if (_busy) return;
+    final tr = context.t.settings.page.storage;
     final picked = await NativeFolderPicker.pick(
-      dialogTitle: 'Choose a folder for Cockpit data',
+      dialogTitle: tr.chooseFolderDialogTitle,
       initialDirectory: _root, // abre na pasta atual do Cockpit
     );
     if (picked == null || !mounted) return;
@@ -895,9 +903,7 @@ class _StorageSectionState extends State<_StorageSection> {
     await StorageLocation.setOverrideRoot(picked);
     if (!mounted) return;
     setState(() => _busy = false);
-    await _promptRestart(
-      'Cockpit will use this folder from the next launch:\n$picked',
-    );
+    await _promptRestart(tr.restartChangeFolderMessage(path: picked));
   }
 
   Future<void> _useDefault() async {
@@ -905,8 +911,7 @@ class _StorageSectionState extends State<_StorageSection> {
     await StorageLocation.setOverrideRoot(null);
     if (!mounted) return;
     await _promptRestart(
-      'Cockpit will use the default system location from the next launch. '
-      'Your data in the custom folder is left untouched.',
+      context.t.settings.page.storage.restartUseDefaultMessage,
     );
   }
 
@@ -916,7 +921,7 @@ class _StorageSectionState extends State<_StorageSection> {
     await StorageLocation.resetAll();
     if (!mounted) return;
     await _promptRestart(
-      'All Cockpit data was cleared. Restart to start fresh.',
+      context.t.settings.page.storage.restartResetMessage,
       quitOnly: true,
     );
   }
@@ -924,41 +929,42 @@ class _StorageSectionState extends State<_StorageSection> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.storage;
     return _Section(
-      label: 'Storage',
+      label: tr.sectionTitle,
       child: _Card(
         children: [
           _Row(
-            title: 'Storage location',
+            title: tr.locationTitle,
             description: _loading
-                ? 'Loading…'
-                : 'Cockpit keeps its projects, layouts and settings here. '
-                      'Point it at a synced folder to back it up.\n${_root ?? '—'}',
+                ? context.t.common.loading
+                : tr.locationDesc(root: _root ?? '—'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_custom) ...[
                   GhostButton(
                     onPressed: _loading || _busy ? null : _useDefault,
-                    child: const Text('Use default'),
+                    child: Text(tr.useDefault),
                   ),
                   const SizedBox(width: 8),
                 ],
                 OutlineButton(
                   onPressed: _loading || _busy ? null : _changeFolder,
-                  child: Text(_busy ? 'Working…' : 'Change…'),
+                  child: Text(_busy ? tr.working : tr.change),
                 ),
               ],
             ),
           ),
           _Row(
-            title: 'Reset Cockpit',
-            description:
-                'Delete all local data — projects, layouts, settings and '
-                'terminal history — and return to the default location.',
+            title: tr.resetTitle,
+            description: tr.resetDesc,
             trailing: DestructiveButton(
               onPressed: _loading ? null : _reset,
-              child: Text('Reset…', style: TextStyle(color: colors.error)),
+              child: Text(
+                tr.resetButton,
+                style: TextStyle(color: colors.error),
+              ),
             ),
           ),
         ],
@@ -973,9 +979,10 @@ class _StorageSectionState extends State<_StorageSection> {
       barrierColor: const Color(0x99000000),
       builder: (context) {
         final colors = context.colors;
+        final tr = context.t.settings.page.storage;
         return AlertDialog(
           title: Text(
-            'Reset Cockpit?',
+            tr.resetDialogTitle,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -984,9 +991,7 @@ class _StorageSectionState extends State<_StorageSection> {
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 380),
             child: Text(
-              'This permanently deletes all local Cockpit data — projects, '
-              'layouts, settings and terminal history. This cannot be undone. '
-              'Cockpit will close so you can start fresh.',
+              tr.resetDialogContent,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text2,
@@ -996,11 +1001,14 @@ class _StorageSectionState extends State<_StorageSection> {
           actions: [
             GhostButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.t.common.cancel),
             ),
             DestructiveButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Reset', style: TextStyle(color: colors.error)),
+              child: Text(
+                tr.resetConfirm,
+                style: TextStyle(color: colors.error),
+              ),
             ),
           ],
         );
@@ -1017,9 +1025,10 @@ class _StorageSectionState extends State<_StorageSection> {
       barrierColor: const Color(0x99000000),
       builder: (context) {
         final colors = context.colors;
+        final tr = context.t.settings.page.storage;
         return AlertDialog(
           title: Text(
-            'Restart required',
+            tr.restartRequiredTitle,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -1039,7 +1048,7 @@ class _StorageSectionState extends State<_StorageSection> {
             if (!quitOnly)
               GhostButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Later'),
+                child: Text(tr.later),
               ),
             PrimaryButton(
               // Encerra abrupto de propósito: descarta escritas pendentes nas
@@ -1051,7 +1060,7 @@ class _StorageSectionState extends State<_StorageSection> {
                 DiagnosticsLog.instance.markCleanExit();
                 exit(0);
               },
-              child: const Text('Quit Cockpit'),
+              child: Text(tr.quitCockpit),
             ),
           ],
         );
@@ -1084,6 +1093,7 @@ class _TerminalPanel extends StatelessWidget {
     final effective = resolver.effectiveDefault(
       controller.settings.defaultTerminalProfileId,
     );
+    final tr = context.t.settings.page.terminal;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -1094,7 +1104,7 @@ class _TerminalPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Default terminal',
+                label: tr.sectionDefaultTerminal,
                 child: _Card(
                   children: [
                     // O seletor de engine some no Windows: Ghostty ainda engole
@@ -1102,10 +1112,8 @@ class _TerminalPanel extends StatelessWidget {
                     // no xterm (ver `terminalEngineIsSelectable`).
                     if (terminalEngineIsSelectable)
                       _Row(
-                        title: 'Engine',
-                        description:
-                            'Used by new terminal tabs and task output buffers. '
-                            'Open tabs keep their current engine.',
+                        title: tr.engineTitle,
+                        description: tr.engineDesc,
                         trailing: _TerminalEngineDropdown(
                           value: controller.settings.terminalEngine,
                           onChanged: controller.setTerminalEngine,
@@ -1113,10 +1121,8 @@ class _TerminalPanel extends StatelessWidget {
                       ),
                     if (Platform.isWindows)
                       _Row(
-                        title: 'Shell',
-                        description:
-                            'Which shell new terminal tabs open. The arrow next '
-                            'to + still opens any other one, just for that tab.',
+                        title: tr.shellTitle,
+                        description: tr.shellDesc,
                         trailing: _TerminalProfileDropdown(
                           profiles: profiles,
                           value: effective,
@@ -1135,8 +1141,7 @@ class _TerminalPanel extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 4, right: 4),
                   child: Text(
-                    'No WSL distros found. Install one (wsl.exe --install) and '
-                    'restart Cockpit to see it listed here.',
+                    tr.noWslMessage,
                     style: context.typo.label.copyWith(
                       color: context.colors.text3,
                     ),
@@ -1234,6 +1239,7 @@ class _AppearancePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<SettingsController>();
     final s = controller.settings;
+    final tr = context.t.settings.page.appearance;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -1244,11 +1250,11 @@ class _AppearancePanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Theme',
+                label: tr.sectionTheme,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Theme',
+                      title: tr.sectionTheme,
                       trailing: _ThemeDropdown(
                         value: s.themeMode,
                         onChanged: controller.setThemeMode,
@@ -1258,13 +1264,12 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Fonts',
+                label: tr.sectionFonts,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Interface font',
-                      description:
-                          'Used across the whole app. Empty = system default.',
+                      title: tr.interfaceFontTitle,
+                      description: tr.interfaceFontDesc,
                       trailing: _FontField(
                         value: s.interfaceFont,
                         hint: 'Space Grotesk · Hanken',
@@ -1272,7 +1277,7 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Interface size',
+                      title: tr.interfaceSizeTitle,
                       trailing: _SizeStepper(
                         value: s.interfaceSize,
                         min: 11,
@@ -1281,8 +1286,8 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Code font',
-                      description: 'Code and diffs. Empty = system default.',
+                      title: tr.codeFontTitle,
+                      description: tr.codeFontDesc,
                       trailing: _FontField(
                         value: s.codeFont,
                         hint: 'JetBrains Mono',
@@ -1290,7 +1295,7 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Code size',
+                      title: tr.codeSizeTitle,
                       trailing: _SizeStepper(
                         value: s.codeSize,
                         min: 9,
@@ -1299,9 +1304,8 @@ class _AppearancePanel extends StatelessWidget {
                       ),
                     ),
                     _Row(
-                      title: 'Terminal font',
-                      description:
-                          'Uses the code size. Empty = system default.',
+                      title: tr.terminalFontTitle,
+                      description: tr.terminalFontDesc,
                       trailing: _FontField(
                         value: s.terminalFont,
                         hint: 'Menlo · monospace',
@@ -1312,16 +1316,15 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Syntax',
+                label: tr.sectionSyntax,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _Card(
                       children: [
                         _Row(
-                          title: 'Highlight theme',
-                          description:
-                              'Code colors, independent of the app theme.',
+                          title: tr.highlightThemeTitle,
+                          description: tr.highlightThemeDesc,
                           trailing: _SyntaxDropdown(
                             value: s.syntaxTheme,
                             onChanged: controller.setSyntaxTheme,
@@ -1335,14 +1338,12 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _Section(
-                label: 'Conversation',
+                label: tr.sectionConversation,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Pin user message',
-                      description:
-                          'The question stays fixed at the top while the answer '
-                          'scrolls.',
+                      title: tr.pinUserMessageTitle,
+                      description: tr.pinUserMessageDesc,
                       trailing: Switch(
                         value: s.pinUserMessage,
                         onChanged: controller.setPinUserMessage,
@@ -1373,6 +1374,7 @@ class _NotificationsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<SettingsController>();
     final s = controller.settings;
+    final tr = context.t.settings.page.notifications;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -1383,14 +1385,12 @@ class _NotificationsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Notifications',
+                label: tr.sectionTitle,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Enable notifications',
-                      description:
-                          'Alert me when an agent finishes a turn and the window '
-                          'is not focused.',
+                      title: tr.enableTitle,
+                      description: tr.enableDesc,
                       trailing: Switch(
                         value: s.notificationsEnabled,
                         onChanged: controller.setNotificationsEnabled,
@@ -1399,10 +1399,8 @@ class _NotificationsPanel extends StatelessWidget {
                     if (Platform.isMacOS && s.notificationsEnabled)
                       const _NotificationPermissionRow(),
                     _Row(
-                      title: 'Play sound on finish',
-                      description:
-                          'Play a short chime when a turn finishes and the '
-                          'window is focused (on any tab or workspace).',
+                      title: tr.playSoundTitle,
+                      description: tr.playSoundDesc,
                       trailing: Switch(
                         value: s.soundEnabled,
                         onChanged: controller.setSoundEnabled,
@@ -1453,11 +1451,10 @@ class _NotificationPermissionRowState
     final colors = context.colors;
     final granted =
         context.watch<NotificationsViewModel>().status == CheckStatus.ok;
+    final tr = context.t.settings.page.notifications;
     return _Row(
-      title: 'System permission',
-      description: granted
-          ? 'Cockpit is allowed to send notifications.'
-          : 'macOS has not granted notification access yet.',
+      title: tr.systemPermissionTitle,
+      description: granted ? tr.grantedDesc : tr.notGrantedDesc,
       trailing: granted
           ? Row(
               mainAxisSize: MainAxisSize.min,
@@ -1465,14 +1462,14 @@ class _NotificationPermissionRowState
                 Icon(Icons.check_circle, size: 18, color: colors.online),
                 const SizedBox(width: 6),
                 Text(
-                  'Granted',
+                  tr.granted,
                   style: context.typo.label.copyWith(color: colors.text2),
                 ),
               ],
             )
           : SecondaryButton(
               onPressed: _request,
-              child: const Text('Request permission'),
+              child: Text(tr.requestPermission),
             ),
     );
   }
@@ -1547,7 +1544,7 @@ class _ShortcutsPanel extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 20),
                 child: Text(
-                  'Keyboard shortcuts are not customizable yet.',
+                  context.t.settings.page.shortcuts.notCustomizable,
                   style: context.typo.label.copyWith(color: colors.text3),
                 ),
               ),
@@ -1751,18 +1748,21 @@ class _ThemeDropdown extends StatelessWidget {
   final AppThemeMode value;
   final ValueChanged<AppThemeMode> onChanged;
 
-  static const _meta = <AppThemeMode, ({String label, IconData icon})>{
-    AppThemeMode.system: (
-      label: 'System',
-      icon: Icons.desktop_windows_outlined,
-    ),
-    AppThemeMode.light: (label: 'Light', icon: Icons.light_mode_outlined),
-    AppThemeMode.dark: (label: 'Dark', icon: Icons.dark_mode_outlined),
-  };
-
   @override
   Widget build(BuildContext context) {
-    final current = _meta[value]!;
+    final tr = context.t.settings.page.appearance;
+    final meta = <AppThemeMode, ({String label, IconData icon})>{
+      AppThemeMode.system: (
+        label: tr.themeSystem,
+        icon: Icons.desktop_windows_outlined,
+      ),
+      AppThemeMode.light: (
+        label: tr.themeLight,
+        icon: Icons.light_mode_outlined,
+      ),
+      AppThemeMode.dark: (label: tr.themeDark, icon: Icons.dark_mode_outlined),
+    };
+    final current = meta[value]!;
     return _DropdownChip(
       icon: current.icon,
       label: current.label,
@@ -1771,7 +1771,7 @@ class _ThemeDropdown extends StatelessWidget {
           context,
           minWidth: 180,
           items: [
-            for (final e in _meta.entries)
+            for (final e in meta.entries)
               AppMenuItem(
                 value: e.key,
                 label: e.value.label,
@@ -1781,6 +1781,69 @@ class _ThemeDropdown extends StatelessWidget {
           ],
         );
         if (picked != null) onChanged(picked);
+      },
+    );
+  }
+}
+
+/// Opções de idioma da interface. `system` = seguir o locale do SO
+/// (`AppSettings.locale == null`); as demais mapeiam pro código raw persistido
+/// e repassado ao `slang` (`LocaleSettings.setLocaleRaw`).
+enum _LocaleOption { system, en, es, ptBr }
+
+class _LocaleDropdown extends StatelessWidget {
+  const _LocaleDropdown({required this.value, required this.onChanged});
+
+  /// Código raw persistido (`null` = System). Ver [AppSettings.locale].
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  static const _codes = <_LocaleOption, String?>{
+    _LocaleOption.system: null,
+    _LocaleOption.en: 'en',
+    _LocaleOption.es: 'es',
+    _LocaleOption.ptBr: 'pt-BR',
+  };
+
+  _LocaleOption _optionOf(String? code) => switch (code) {
+    'en' => _LocaleOption.en,
+    'es' => _LocaleOption.es,
+    'pt-BR' => _LocaleOption.ptBr,
+    _ => _LocaleOption.system,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.t.settings.language;
+    final labels = <_LocaleOption, ({String label, IconData icon})>{
+      _LocaleOption.system: (
+        label: tr.system,
+        icon: Icons.desktop_windows_outlined,
+      ),
+      _LocaleOption.en: (label: tr.english, icon: Icons.language),
+      _LocaleOption.es: (label: tr.spanish, icon: Icons.language),
+      _LocaleOption.ptBr: (label: tr.portugueseBr, icon: Icons.language),
+    };
+    final current = _optionOf(value);
+    final currentMeta = labels[current]!;
+    return _DropdownChip(
+      icon: currentMeta.icon,
+      label: currentMeta.label,
+      onTap: () async {
+        final picked = await showAppMenu<_LocaleOption>(
+          context,
+          minWidth: 180,
+          items: [
+            for (final e in labels.entries)
+              AppMenuItem(
+                value: e.key,
+                label: e.value.label,
+                icon: e.value.icon,
+                selected: e.key == current,
+              ),
+          ],
+        );
+        if (picked != null) onChanged(_codes[picked]);
       },
     );
   }
@@ -1825,23 +1888,23 @@ class _UpdateCheckDropdown extends StatelessWidget {
   final UpdateCheckFrequency value;
   final ValueChanged<UpdateCheckFrequency> onChanged;
 
-  static const _labels = <UpdateCheckFrequency, String>{
-    UpdateCheckFrequency.daily: 'Daily',
-    UpdateCheckFrequency.weekly: 'Weekly',
-    UpdateCheckFrequency.monthly: 'Monthly',
-    UpdateCheckFrequency.never: 'Never',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final tr = context.t.settings.page.general.updateFrequency;
+    final labels = <UpdateCheckFrequency, String>{
+      UpdateCheckFrequency.daily: tr.daily,
+      UpdateCheckFrequency.weekly: tr.weekly,
+      UpdateCheckFrequency.monthly: tr.monthly,
+      UpdateCheckFrequency.never: tr.never,
+    };
     return _DropdownChip(
-      label: _labels[value]!,
+      label: labels[value]!,
       onTap: () async {
         final picked = await showAppMenu<UpdateCheckFrequency>(
           context,
           minWidth: 180,
           items: [
-            for (final e in _labels.entries)
+            for (final e in labels.entries)
               AppMenuItem(
                 value: e.key,
                 label: e.value,
@@ -1977,19 +2040,19 @@ class _LanguagesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = context.watch<SettingsController>();
     final settings = ctrl.settings;
+    final tr = context.t.settings.page.languages;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Section(
-            label: 'FORMATTING',
+            label: tr.sectionFormatting,
             child: _Card(
               children: [
                 _Row(
-                  title: 'Format on save',
-                  description:
-                      'Format the file automatically when you save (⌘S).',
+                  title: tr.formatOnSaveTitle,
+                  description: tr.formatOnSaveDesc,
                   trailing: Switch(
                     value: settings.formatOnSave,
                     onChanged: ctrl.setFormatOnSave,
@@ -1999,7 +2062,7 @@ class _LanguagesPanel extends StatelessWidget {
             ),
           ),
           _Section(
-            label: 'LANGUAGE SERVERS',
+            label: tr.sectionLanguageServers,
             child: _Card(
               children: [
                 for (final def in kLanguageDefs)
@@ -2015,10 +2078,7 @@ class _LanguagesPanel extends StatelessWidget {
             ),
           ),
           Text(
-            'Errors and formatting use each language\'s language server. '
-            'Cockpit does not install servers — it uses what is already on your '
-            'machine. ● responds · ○ not found or invalid command (install the '
-            'server or adjust the command).',
+            tr.footerNote,
             style: context.typo.label.copyWith(color: context.colors.text3),
           ),
         ],
@@ -2165,11 +2225,17 @@ class _LanguageRowState extends State<_LanguageRow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _fieldLabel(context, 'Language server command'),
+                _fieldLabel(
+                  context,
+                  context.t.settings.page.languages.serverCommandLabel,
+                ),
                 const SizedBox(height: 6),
                 _commandField(context, _serverCtrl, _default),
                 const SizedBox(height: 14),
-                _fieldLabel(context, 'Formatter command (optional)'),
+                _fieldLabel(
+                  context,
+                  context.t.settings.page.languages.formatterCommandLabel,
+                ),
                 const SizedBox(height: 6),
                 _commandField(
                   context,
@@ -2178,8 +2244,7 @@ class _LanguageRowState extends State<_LanguageRow> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'External formatter with %FILE% placeholder. Takes precedence '
-                  'over the LSP formatter when set.',
+                  context.t.settings.page.languages.formatterHint,
                   style: context.typo.label.copyWith(color: colors.text4),
                 ),
                 const SizedBox(height: 12),
@@ -2193,7 +2258,7 @@ class _LanguageRowState extends State<_LanguageRow> {
                         vertical: 7,
                       ),
                       child: Text(
-                        'Reset to default',
+                        context.t.settings.page.languages.resetToDefault,
                         style: context.typo.body.copyWith(
                           fontSize: 12.5,
                           color: colors.text2,
@@ -2210,7 +2275,7 @@ class _LanguageRowState extends State<_LanguageRow> {
                         vertical: 7,
                       ),
                       child: Text(
-                        'Save & restart',
+                        context.t.settings.page.languages.saveAndRestart,
                         style: context.typo.body.copyWith(
                           fontSize: 12.5,
                           color: _dirty ? colors.accentText : colors.text4,
@@ -2256,10 +2321,11 @@ class _StatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.languages;
     final (Color color, String tip) = switch (available) {
-      true => (const Color(0xFF22C55E), 'Server responds'),
-      false => (colors.text4, 'Server not found or command invalid'),
-      null => (colors.border, 'Checking…'),
+      true => (const Color(0xFF22C55E), tr.statusResponds),
+      false => (colors.text4, tr.statusNotFound),
+      null => (colors.border, context.t.common.checking),
     };
     return AppTooltip(
       message: tip,
@@ -2320,33 +2386,32 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
     final vm = context.read<ConnectivityViewModel>();
     final colors = context.colors;
     final name = device.label.isEmpty ? device.shortId : device.label;
+    final tr = context.t.settings.page.connectivity;
 
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Revoke device?',
+          tr.revokeDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          '"$name" will lose access to your agents and will need to pair again.'
-          '\n\nYou must be connected to the relay — the app will connect '
-          'automatically to revoke.',
+          tr.revokeDialogContent(name: name),
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Revoke',
+              tr.revoke,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.error,
@@ -2375,6 +2440,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<ConnectivityViewModel>();
+    final tr = context.t.settings.page.connectivity;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -2384,12 +2450,12 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _Section(
-                label: 'Relay',
-                child: _Card(children: [_RelayEditor()]),
+              _Section(
+                label: tr.sectionRelay,
+                child: const _Card(children: [_RelayEditor()]),
               ),
               _Section(
-                label: 'Paired devices',
+                label: tr.sectionPairedDevices,
                 trailing: _ReloadButton(
                   busy: vm.devicesLoad == ConnLoad.loading,
                   onTap: vm.loadDevices,
@@ -2412,6 +2478,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
 
   Widget _devicesCard(BuildContext context, ConnectivityViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.connectivity;
 
     // Primeira carga (ainda sem dados).
     if (vm.devicesLoad == ConnLoad.loading && vm.devices.isEmpty) {
@@ -2426,7 +2493,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Loading…',
+              context.t.common.loading,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text3,
@@ -2440,7 +2507,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
     if (vm.devicesLoad == ConnLoad.error && vm.devices.isEmpty) {
       return _MessageCard(
         child: Text(
-          vm.devicesError ?? 'Failed to list devices.',
+          vm.devicesError ?? tr.failedToListDevices,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.error,
@@ -2452,7 +2519,7 @@ class _ConnectivityPanelState extends State<_ConnectivityPanel> {
     if (vm.devices.isEmpty) {
       return _MessageCard(
         child: Text(
-          'No paired devices.',
+          tr.noPairedDevices,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -2521,6 +2588,7 @@ class _RelayEditorState extends State<_RelayEditor> {
     final value = _ctrl.text.trim();
     final canSave =
         !vm.savingRelay && value.isNotEmpty && value != (vm.relayUrl ?? '');
+    final tr = context.t.settings.page.connectivity;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -2528,7 +2596,7 @@ class _RelayEditorState extends State<_RelayEditor> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Relay address',
+            tr.relayAddressTitle,
             style: context.typo.body.copyWith(
               fontSize: 13.5,
               color: colors.text,
@@ -2536,8 +2604,7 @@ class _RelayEditorState extends State<_RelayEditor> {
           ),
           const SizedBox(height: 3),
           Text(
-            'Server that connects your agents to the phone. Applies to every '
-            'agent with the relay enabled.',
+            tr.relayAddressDesc,
             style: context.typo.label.copyWith(color: colors.text3),
           ),
           const SizedBox(height: 12),
@@ -2564,7 +2631,7 @@ class _RelayEditorState extends State<_RelayEditor> {
               const SizedBox(width: 8),
               PrimaryButton(
                 onPressed: canSave ? () => _save() : null,
-                child: Text(vm.savingRelay ? 'Saving…' : 'Save'),
+                child: Text(vm.savingRelay ? tr.saving : context.t.common.save),
               ),
             ],
           ),
@@ -2583,7 +2650,7 @@ class _RelayEditorState extends State<_RelayEditor> {
                     ? null
                     : () => vm.checkRelay(_ctrl.text),
                 leading: const Icon(Icons.wifi_tethering, size: 15),
-                child: const Text('Check'),
+                child: Text(tr.check),
               ),
               const SizedBox(width: 12),
               Expanded(child: _HealthIndicator(vm: vm)),
@@ -2603,6 +2670,7 @@ class _HealthIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.connectivity;
 
     if (vm.healthState == HealthState.checking) {
       return Row(
@@ -2614,7 +2682,7 @@ class _HealthIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Checking…',
+            context.t.common.checking,
             style: context.typo.label.copyWith(color: colors.text3),
           ),
         ],
@@ -2622,13 +2690,13 @@ class _HealthIndicator extends StatelessWidget {
     }
 
     final (Color dot, String label, Color text) = switch (vm.healthState) {
-      HealthState.healthy => (colors.online, 'Online', colors.text2),
+      HealthState.healthy => (colors.online, tr.healthOnline, colors.text2),
       HealthState.unhealthy => (
         colors.error,
-        vm.healthMessage ?? 'No response',
+        vm.healthMessage ?? tr.healthNoResponse,
         colors.error,
       ),
-      _ => (colors.text4, 'Not checked', colors.text3),
+      _ => (colors.text4, tr.healthNotChecked, colors.text3),
     };
 
     return Row(
@@ -2673,7 +2741,9 @@ class _DeviceTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  device.label.isEmpty ? 'Device' : device.label,
+                  device.label.isEmpty
+                      ? context.t.settings.page.connectivity.deviceDefaultLabel
+                      : device.label,
                   style: context.typo.body.copyWith(
                     fontSize: 13.5,
                     color: colors.text,
@@ -2692,7 +2762,7 @@ class _DeviceTile extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           AppTooltip(
-            message: 'Revoke',
+            message: context.t.settings.page.connectivity.revoke,
             child: HoverTap(
               borderRadius: BorderRadius.circular(6),
               onTap: onRevoke,
@@ -2719,7 +2789,7 @@ class _ReloadButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return AppTooltip(
-      message: 'Reload',
+      message: context.t.settings.page.connectivity.reloadTooltip,
       child: HoverTap(
         borderRadius: BorderRadius.circular(6),
         onTap: busy ? null : () => onTap(),
@@ -2784,7 +2854,7 @@ class _PairButton extends StatelessWidget {
           Icon(Icons.qr_code_2, size: 17, color: colors.accentText),
           const SizedBox(width: 8),
           Text(
-            'Pair new device',
+            context.t.settings.page.connectivity.pairNewDevice,
             style: context.typo.body.copyWith(
               fontSize: 13.5,
               color: colors.accentText,
@@ -2859,31 +2929,34 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
   Future<void> _confirmRemove(CronJob job) async {
     final vm = context.read<CronViewModel>();
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Remove schedule?',
+          tr.removeScheduleDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          'The job "${job.schedule}" for ${vm.daemonName(job.daemonId)} is deleted. '
-          'Its runs stop.',
+          tr.removeScheduleDialogContent(
+            schedule: job.schedule,
+            daemon: vm.daemonName(job.daemonId),
+          ),
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Remove',
+              context.t.common.remove,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.error,
@@ -2919,7 +2992,8 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
                 const SizedBox(height: 16),
               ],
               _Section(
-                label: 'Scheduled prompts',
+                label:
+                    context.t.settings.page.schedules.sectionScheduledPrompts,
                 trailing: _ReloadButton(
                   busy: vm.load == CronLoad.loading,
                   onTap: vm.reload,
@@ -2935,18 +3009,19 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
 
   Widget _cronActions(BuildContext context, CronViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
     return Row(
       children: [
         PrimaryButton(
           onPressed: vm.hasDaemons ? () => _openEditor() : null,
           leading: const Icon(Icons.add, size: 16),
-          child: const Text('Create schedule'),
+          child: Text(tr.createSchedule),
         ),
         if (!vm.hasDaemons) ...[
           const SizedBox(width: 12),
           Flexible(
             child: Text(
-              'Create a Daemon Agent first.',
+              tr.createDaemonFirst,
               style: context.typo.label.copyWith(color: colors.text3),
             ),
           ),
@@ -2957,12 +3032,12 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
 
   Widget _body(BuildContext context, CronViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
 
     if (!vm.online && vm.load != CronLoad.loading) {
       return _MessageCard(
         child: Text(
-          'Supervisor offline. Schedules need pi-supervisord running '
-          '(`remote-pi install`).',
+          tr.supervisorOffline,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -2982,7 +3057,7 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Loading…',
+              context.t.common.loading,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text3,
@@ -2995,7 +3070,7 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
     if (vm.load == CronLoad.error && vm.jobs.isEmpty) {
       return _MessageCard(
         child: Text(
-          vm.error ?? 'Failed to list schedules.',
+          vm.error ?? tr.failedToListSchedules,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.error,
@@ -3006,7 +3081,7 @@ class _AgendamentosPanelState extends State<_AgendamentosPanel> {
     if (vm.jobs.isEmpty) {
       return _MessageCard(
         child: Text(
-          'No schedules. Create a recurring prompt for a daemon.',
+          tr.noSchedules,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -3111,9 +3186,24 @@ class _CronTile extends StatelessWidget {
             )
           else ...[
             Switch(value: job.enabled, onChanged: onToggle),
-            _cronAct(context, Icons.play_arrow, 'Run now', onRun),
-            _cronAct(context, Icons.history, 'View log', onLog),
-            _cronAct(context, Icons.delete_outline, 'Remove', onRemove),
+            _cronAct(
+              context,
+              Icons.play_arrow,
+              context.t.settings.page.schedules.runNow,
+              onRun,
+            ),
+            _cronAct(
+              context,
+              Icons.history,
+              context.t.settings.page.schedules.viewLog,
+              onLog,
+            ),
+            _cronAct(
+              context,
+              Icons.delete_outline,
+              context.t.common.remove,
+              onRemove,
+            ),
           ],
         ],
       ),
@@ -3149,19 +3239,20 @@ class _CronMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.schedules;
     final children = <Widget>[];
 
     if (!job.enabled) {
       children.add(
         Text(
-          'disabled',
+          tr.disabled,
           style: context.typo.label.copyWith(color: colors.text4),
         ),
       );
     } else if (job.nextRun != null) {
       children.add(
         Text(
-          'next ${_fmtIso(job.nextRun)}',
+          tr.nextRun(when: _fmtIso(job.nextRun)),
           style: context.typo.label.copyWith(color: colors.text3),
         ),
       );
@@ -3181,7 +3272,10 @@ class _CronMeta extends StatelessWidget {
         );
       }
       children.add(
-        Text('last: $label', style: context.typo.label.copyWith(color: color)),
+        Text(
+          tr.lastRun(label: label),
+          style: context.typo.label.copyWith(color: color),
+        ),
       );
     }
 
@@ -3212,13 +3306,6 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
   bool _saving = false;
   String? _localError;
 
-  static const _examples = <(String, String)>[
-    ('0 9 * * *', 'every day 9am'),
-    ('0 * * * *', 'hourly'),
-    ('*/15 * * * *', 'every 15 min'),
-    ('0 18 * * 1-5', 'weekdays 6pm'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -3235,18 +3322,21 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
   }
 
   String get _previewText {
+    final tr = context.t.settings.page.schedules;
     final expr = _expr.text.trim();
-    if (expr.isEmpty) return 'Next run shows up here';
+    if (expr.isEmpty) return tr.previewPlaceholder;
     final next = nextCronRun(expr, DateTime.now());
-    if (next == null) return 'Next: computed on save';
-    return 'Next: ${_fmtDateTime(next)}';
+    if (next == null) return tr.previewComputed;
+    return tr.previewNext(when: _fmtDateTime(next));
   }
 
   Future<void> _submit() async {
     final expr = _expr.text.trim();
     final prompt = _prompt.text.trim();
     if (expr.isEmpty || prompt.isEmpty) {
-      setState(() => _localError = 'Fill in the expression and the prompt.');
+      setState(
+        () => _localError = context.t.settings.page.schedules.fillRequiredError,
+      );
       return;
     }
     setState(() {
@@ -3269,7 +3359,9 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
     } else {
       setState(() {
         _saving = false;
-        _localError = widget.vm.actionError ?? 'Failed to create the schedule.';
+        _localError =
+            widget.vm.actionError ??
+            context.t.settings.page.schedules.failedToCreateSchedule;
       });
     }
   }
@@ -3278,10 +3370,17 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final vm = widget.vm;
+    final tr = context.t.settings.page.schedules;
+    final examples = <(String, String)>[
+      ('0 9 * * *', tr.exampleEveryDay9am),
+      ('0 * * * *', tr.exampleHourly),
+      ('*/15 * * * *', tr.exampleEvery15Min),
+      ('0 18 * * 1-5', tr.exampleWeekdays6pm),
+    ];
 
     return AlertDialog(
       title: Text(
-        'New schedule',
+        tr.newScheduleTitle,
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: SizedBox(
@@ -3291,7 +3390,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _fieldLabel(context, 'Daemon'),
+              _fieldLabel(context, tr.daemonLabel),
               const SizedBox(height: 6),
               // Builder garante um BuildContext cujo RenderBox é o próprio chip,
               // não o do AlertDialog — senão o menu ancora fora do dialog.
@@ -3317,7 +3416,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              _fieldLabel(context, 'When (cron expression)'),
+              _fieldLabel(context, tr.whenLabel),
               const SizedBox(height: 6),
               _dialogField(context, _expr, 'e.g. 0 9 * * *', mono: true),
               const SizedBox(height: 6),
@@ -3330,7 +3429,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  for (final (expr, label) in _examples)
+                  for (final (expr, label) in examples)
                     _ExampleChip(
                       expr: expr,
                       label: label,
@@ -3344,7 +3443,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 ],
               ),
               const SizedBox(height: 16),
-              _fieldLabel(context, 'Prompt'),
+              _fieldLabel(context, tr.promptLabel),
               const SizedBox(height: 6),
               _dialogField(
                 context,
@@ -3353,7 +3452,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              _fieldLabel(context, 'Timezone (optional)'),
+              _fieldLabel(context, tr.timezoneLabel),
               const SizedBox(height: 6),
               _dialogField(
                 context,
@@ -3363,17 +3462,17 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
               ),
               const SizedBox(height: 12),
               _CronOptionSwitch(
-                label: 'Skip if the agent is busy',
+                label: tr.skipIfBusy,
                 value: _skipIfBusy,
                 onChanged: (v) => setState(() => _skipIfBusy = v),
               ),
               _CronOptionSwitch(
-                label: 'Wake the daemon if stopped',
+                label: tr.wakeIfStopped,
                 value: _wake,
                 onChanged: (v) => setState(() => _wake = v),
               ),
               _CronOptionSwitch(
-                label: 'Recover 1 missed run (catchup)',
+                label: tr.catchup,
                 value: _catchup,
                 onChanged: (v) => setState(() => _catchup = v),
               ),
@@ -3392,7 +3491,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
         GhostButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
           child: Text(
-            'Cancel',
+            context.t.common.cancel,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.text2,
@@ -3402,7 +3501,7 @@ class _CronEditorDialogState extends State<_CronEditorDialog> {
         GhostButton(
           onPressed: _saving ? null : _submit,
           child: Text(
-            _saving ? 'Creating…' : 'Create',
+            _saving ? tr.creating : context.t.common.create,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.accentText,
@@ -3526,7 +3625,8 @@ class _CronLogDialogState extends State<_CronLogDialog> {
     setState(() {
       _entries = entries;
       _error = entries == null
-          ? (widget.vm.actionError ?? 'Failed to read the log.')
+          ? (widget.vm.actionError ??
+                context.t.settings.page.schedules.failedToReadLog)
           : null;
       _loading = false;
     });
@@ -3537,7 +3637,9 @@ class _CronLogDialogState extends State<_CronLogDialog> {
     final colors = context.colors;
     return AlertDialog(
       title: Text(
-        'History — ${widget.job.schedule}',
+        context.t.settings.page.schedules.historyTitle(
+          schedule: widget.job.schedule,
+        ),
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: SizedBox(width: 460, child: _content(context)),
@@ -3545,7 +3647,7 @@ class _CronLogDialogState extends State<_CronLogDialog> {
         GhostButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
-            'Close',
+            context.t.common.close,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.text2,
@@ -3579,7 +3681,7 @@ class _CronLogDialogState extends State<_CronLogDialog> {
     final entries = _entries ?? const <CronLogEntry>[];
     if (entries.isEmpty) {
       return Text(
-        'No records yet.',
+        context.t.settings.page.schedules.noRecordsYet,
         style: context.typo.body.copyWith(fontSize: 13.5, color: colors.text3),
       );
     }
@@ -3657,13 +3759,14 @@ class _CronLogDialogState extends State<_CronLogDialog> {
 
 (Color, String) _cronResultView(BuildContext context, CronResult r) {
   final colors = context.colors;
+  final tr = context.t.settings.page.schedules;
   return switch (r) {
-    CronResult.delivered => (colors.online, 'delivered'),
-    CronResult.wokeAndDelivered => (colors.online, 'woke + delivered'),
-    CronResult.deliverFailed => (colors.error, 'failed'),
-    CronResult.skippedBusy => (colors.warn, 'skipped (busy)'),
-    CronResult.skippedDown => (colors.text4, 'skipped (stopped)'),
-    CronResult.skippedDisabled => (colors.text4, 'skipped (disabled)'),
+    CronResult.delivered => (colors.online, tr.cronDelivered),
+    CronResult.wokeAndDelivered => (colors.online, tr.cronWokeDelivered),
+    CronResult.deliverFailed => (colors.error, tr.cronFailed),
+    CronResult.skippedBusy => (colors.warn, tr.cronSkippedBusy),
+    CronResult.skippedDown => (colors.text4, tr.cronSkippedStopped),
+    CronResult.skippedDisabled => (colors.text4, tr.cronSkippedDisabled),
     CronResult.unknown => (colors.text4, '—'),
   };
 }
@@ -3742,31 +3845,31 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
   Future<void> _confirmRestartSupervisor() async {
     final vm = context.read<DaemonsViewModel>();
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Restart the supervisor?',
+          tr.restartSupervisorDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          'Restarts the supervisor process (reloads the code). All daemons '
-          'restart with it and go offline for a few seconds.',
+          tr.restartSupervisorDialogContent,
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Restart',
+              context.t.common.restart,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.warn,
@@ -3784,31 +3887,31 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
   Future<void> _confirmRemove(DaemonInfo daemon) async {
     final vm = context.read<DaemonsViewModel>();
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: const Color(0x99000000),
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Remove daemon?',
+          tr.removeDaemonDialogTitle,
           style: ctx.typo.title.copyWith(fontSize: 15, color: colors.text),
         ),
         content: Text(
-          '"${daemon.name}" stops running and leaves the registry. The folder and '
-          'its local config are kept — you can recreate it later.',
+          tr.removeDaemonDialogContent(name: daemon.name),
           style: ctx.typo.body.copyWith(fontSize: 13.5, color: colors.text2),
         ),
         actions: [
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: Text(
-              'Cancel',
+              context.t.common.cancel,
               style: ctx.typo.body.copyWith(fontSize: 13, color: colors.text2),
             ),
           ),
           GhostButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
-              'Remove',
+              context.t.common.remove,
               style: ctx.typo.body.copyWith(
                 fontSize: 13,
                 color: colors.error,
@@ -3848,7 +3951,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
                 const SizedBox(height: 16),
               ],
               _Section(
-                label: 'Always-on agents',
+                label: context.t.settings.page.daemons.sectionAlwaysOnAgents,
                 trailing: _ReloadButton(
                   busy: vm.load == DaemonsLoad.loading,
                   onTap: vm.reload,
@@ -3864,6 +3967,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
 
   Widget _body(BuildContext context, DaemonsViewModel vm) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
 
     if (!vm.online && vm.load != DaemonsLoad.loading) {
       return _MessageCard(
@@ -3875,7 +3979,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
                 Icon(Icons.power_off_outlined, size: 16, color: colors.text3),
                 const SizedBox(width: 8),
                 Text(
-                  'Supervisor offline',
+                  tr.supervisorOfflineTitle,
                   style: context.typo.body.copyWith(
                     fontSize: 13.5,
                     color: colors.text2,
@@ -3885,8 +3989,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
             ),
             const SizedBox(height: 6),
             Text(
-              'pi-supervisord is not running. Install it with '
-              '`remote-pi install` to manage 24/7 agents.',
+              tr.supervisorOfflineDesc,
               style: context.typo.label.copyWith(color: colors.text3),
             ),
           ],
@@ -3906,7 +4009,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Loading…',
+              context.t.common.loading,
               style: context.typo.body.copyWith(
                 fontSize: 13.5,
                 color: colors.text3,
@@ -3920,7 +4023,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
     if (vm.load == DaemonsLoad.error && vm.daemons.isEmpty) {
       return _MessageCard(
         child: Text(
-          vm.error ?? 'Failed to list daemons.',
+          vm.error ?? tr.failedToListDaemons,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.error,
@@ -3932,7 +4035,7 @@ class _DaemonsPanelState extends State<_DaemonsPanel> {
     if (vm.daemons.isEmpty) {
       return _MessageCard(
         child: Text(
-          'No registered agents. Create one from a folder.',
+          tr.noRegisteredAgents,
           style: context.typo.body.copyWith(
             fontSize: 13.5,
             color: colors.text3,
@@ -3972,6 +4075,7 @@ class _DaemonActionsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     final hasDaemons = vm.daemons.isNotEmpty;
     final fleetEnabled = hasDaemons && !vm.busyAll;
 
@@ -3983,7 +4087,7 @@ class _DaemonActionsBar extends StatelessWidget {
         PrimaryButton(
           onPressed: () => onCreate(),
           leading: const Icon(Icons.add, size: 16),
-          child: const Text('Create daemon'),
+          child: Text(tr.createDaemon),
         ),
         if (vm.busyAll)
           CircularProgressIndicator(
@@ -3992,22 +4096,22 @@ class _DaemonActionsBar extends StatelessWidget {
             color: colors.text3,
           ),
         _FleetButton(
-          label: 'Start all',
+          label: tr.startAll,
           icon: Icons.play_arrow,
           onTap: fleetEnabled ? vm.startAll : null,
         ),
         _FleetButton(
-          label: 'Stop all',
+          label: tr.stopAll,
           icon: Icons.stop,
           onTap: fleetEnabled ? vm.stopAll : null,
         ),
         _FleetButton(
-          label: 'Restart all',
+          label: tr.restartAll,
           icon: Icons.restart_alt,
           onTap: fleetEnabled ? vm.restartAll : null,
         ),
         _FleetButton(
-          label: 'Restart supervisor',
+          label: tr.restartSupervisor,
           icon: Icons.sync,
           tint: colors.warn,
           onTap: vm.busyAll ? null : onRestartSupervisor,
@@ -4123,13 +4227,30 @@ class _DaemonTile extends StatelessWidget {
                 _act(
                   context,
                   running ? Icons.stop : Icons.play_arrow,
-                  running ? 'Stop' : 'Start',
+                  running
+                      ? context.t.settings.page.daemons.stop
+                      : context.t.settings.page.daemons.start,
                   running ? onStop : onStart,
                 ),
                 if (running)
-                  _act(context, Icons.restart_alt, 'Restart', onRestart),
-                _act(context, Icons.edit_outlined, 'Edit', onEdit),
-                _act(context, Icons.delete_outline, 'Remove', onRemove),
+                  _act(
+                    context,
+                    Icons.restart_alt,
+                    context.t.common.restart,
+                    onRestart,
+                  ),
+                _act(
+                  context,
+                  Icons.edit_outlined,
+                  context.t.settings.page.daemons.edit,
+                  onEdit,
+                ),
+                _act(
+                  context,
+                  Icons.delete_outline,
+                  context.t.common.remove,
+                  onRemove,
+                ),
               ],
             ),
         ],
@@ -4150,11 +4271,12 @@ class _DaemonTile extends StatelessWidget {
 
   (Color, String) _stateView(BuildContext context, DaemonState state) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
     return switch (state) {
-      DaemonState.running => (colors.online, 'running'),
-      DaemonState.starting => (colors.warn, 'starting'),
-      DaemonState.stopped => (colors.text4, 'stopped'),
-      DaemonState.crashed => (colors.error, 'failed'),
+      DaemonState.running => (colors.online, tr.stateRunning),
+      DaemonState.starting => (colors.warn, tr.stateStarting),
+      DaemonState.stopped => (colors.text4, tr.stateStopped),
+      DaemonState.crashed => (colors.error, tr.stateFailed),
       DaemonState.unknown => (colors.text4, '—'),
     };
   }
@@ -4269,7 +4391,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
 
   Future<void> _pickFolder() async {
     final picked = await NativeFolderPicker.pick(
-      dialogTitle: 'Choose the Daemon Agent folder',
+      dialogTitle: context.t.settings.page.daemons.pickFolderDialogTitle,
       initialDirectory: _cwd, // reabre onde já estava, se já escolhido
     );
     if (picked == null || !mounted) return;
@@ -4284,19 +4406,20 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
 
   void _submit() {
     final name = _nameCtrl.text.trim();
+    final tr = context.t.settings.page.daemons;
     String? nameError;
     String? pathError;
 
     if (name.isEmpty) {
-      nameError = 'Enter a name.';
+      nameError = tr.nameRequiredError;
     } else if (widget.existingNames.contains(name.toLowerCase())) {
-      nameError = 'An agent with this name already exists.';
+      nameError = tr.nameDuplicateError;
     }
     if (!_isEdit) {
       if (_cwd == null) {
-        pathError = 'Choose a folder.';
+        pathError = tr.folderRequiredError;
       } else if (widget.existingCwds.contains(_cwd)) {
-        pathError = 'An agent already exists in this folder.';
+        pathError = tr.folderDuplicateError;
       }
     }
 
@@ -4318,10 +4441,11 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.settings.page.daemons;
 
     return AlertDialog(
       title: Text(
-        _isEdit ? 'Edit daemon' : 'New daemon',
+        _isEdit ? tr.editDaemonTitle : tr.newDaemonTitle,
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: SizedBox(
@@ -4330,7 +4454,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label(context, 'Name'),
+            _label(context, tr.nameLabel),
             const SizedBox(height: 6),
             TextField(
               controller: _nameCtrl,
@@ -4343,7 +4467,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
                 fontSize: 13.5,
                 color: colors.text,
               ),
-              placeholder: const Text('e.g. PC, Server, Home'),
+              placeholder: Text(tr.namePlaceholder),
               borderRadius: BorderRadius.circular(7),
             ),
             if (_nameError != null) ...[
@@ -4354,7 +4478,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
               ),
             ],
             const SizedBox(height: 16),
-            _label(context, 'Folder'),
+            _label(context, tr.folderLabel),
             const SizedBox(height: 6),
             if (_isEdit)
               SizedBox(
@@ -4367,21 +4491,21 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
                   Expanded(
                     child: _pathBox(
                       context,
-                      _cwd ?? 'No folder chosen',
+                      _cwd ?? tr.noFolderChosen,
                       enabled: _cwd != null,
                     ),
                   ),
                   const SizedBox(width: 8),
                   OutlineButton(
                     onPressed: () => _pickFolder(),
-                    child: Text(_cwd == null ? 'Choose' : 'Change'),
+                    child: Text(_cwd == null ? tr.choose : tr.changeFolder),
                   ),
                 ],
               ),
             if (_isEdit) ...[
               const SizedBox(height: 6),
               Text(
-                'The folder cannot be changed.',
+                tr.folderCannotBeChanged,
                 style: context.typo.label.copyWith(color: colors.text3),
               ),
             ],
@@ -4399,7 +4523,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
         GhostButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
-            'Cancel',
+            context.t.common.cancel,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.text2,
@@ -4409,7 +4533,7 @@ class _DaemonEditorDialogState extends State<_DaemonEditorDialog> {
         GhostButton(
           onPressed: _submit,
           child: Text(
-            _isEdit ? 'Save' : 'Create',
+            _isEdit ? context.t.common.save : context.t.common.create,
             style: context.typo.body.copyWith(
               fontSize: 13,
               color: colors.accentText,

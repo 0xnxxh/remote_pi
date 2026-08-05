@@ -21,6 +21,7 @@ import 'package:cockpit/app/core/ui/widgets/selectable_scroll.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/media_view.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 // SelectionArea (Material) fica SEMPRE dentro do scroll (markdown via
 // SelectableScroll, código em volta do Text) — em volta do scroll a seleção
@@ -758,7 +759,7 @@ class _FileViewerState extends State<FileViewer> {
       ),
       FileViewUnsupported() => Center(
         child: Text(
-          'Can\'t open this file.',
+          context.t.cockpit.fileViewer.cantOpen,
           style: context.typo.body.copyWith(color: colors.text3),
         ),
       ),
@@ -942,8 +943,8 @@ class _Toolbar extends StatelessWidget {
           if (hasPreview) ...[
             const SizedBox(width: 4),
             _Segmented(
-              leftLabel: 'Preview',
-              rightLabel: 'Source',
+              leftLabel: context.t.cockpit.fileViewer.preview,
+              rightLabel: context.t.cockpit.fileViewer.source,
               leftActive: previewing,
               onTap: onToggle,
             ),
@@ -1220,7 +1221,7 @@ class _ImageView extends StatelessWidget {
                   file,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stack) => Text(
-                    'Could not load the image.',
+                    context.t.cockpit.fileViewer.couldNotLoadImage,
                     style: context.typo.body.copyWith(color: colors.text3),
                   ),
                 ),

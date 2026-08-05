@@ -9,6 +9,8 @@ import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/panel_resize_handle.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
+import 'package:cockpit/app/core/ui/automation_error_message.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -16,14 +18,17 @@ import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 typedef GenerateCommitMessage =
-    Future<Result<GeneratedCommitMessage, String>> Function(String absPath);
+    Future<Result<GeneratedCommitMessage, AutomationError>> Function(
+      String absPath,
+    );
 typedef GenerateStagedCommitMessage =
-    Future<Result<GeneratedCommitMessage, String>> Function();
+    Future<Result<GeneratedCommitMessage, AutomationError>> Function();
 
 /// Root git de um workspace **multi-root** (multirepo) — alimenta o cabeçalho
 /// de seção na aba Files e no Source Control. Derivada em runtime pela VM
@@ -404,13 +409,14 @@ class _FileTreePanelState extends State<FileTreePanel> {
         widget.gitStatusOf(absPath) == GitFileStatus.untracked;
     if (!mounted) return;
     final name = absPath.split('/').last;
+    final tr = context.t.cockpit.fileTreePanel;
     final ok = await showConfirmDialog(
       context,
-      title: isNew ? 'Delete new file?' : 'Discard changes?',
+      title: isNew ? tr.deleteNewFileTitle : tr.discardChangesTitle,
       message: isNew
-          ? '"$name" is a new file and cannot be restored. Delete it?'
-          : 'Discard all changes in "$name"? Deleted files will be restored.',
-      confirmLabel: isNew ? 'Delete' : 'Discard',
+          ? tr.deleteNewFileMessage(name: name)
+          : tr.discardOneMessage(name: name),
+      confirmLabel: isNew ? context.t.common.delete : tr.discard,
       danger: true,
     );
     if (!ok || !mounted) return;
@@ -435,14 +441,19 @@ class _FileTreePanelState extends State<FileTreePanel> {
     // todos são novos, não há nada restaurável: oferece apagar o lote inteiro.
     final deleteAll = trackedFiles.isEmpty;
     final targets = deleteAll ? newFiles : trackedFiles;
+    final tr = context.t.cockpit.fileTreePanel;
     final ok = await showConfirmDialog(
       context,
-      title: deleteAll ? 'Delete all new files?' : 'Discard changes?',
+      title: deleteAll ? tr.deleteAllNewFilesTitle : tr.discardChangesTitle,
       message: deleteAll
-          ? 'All ${newFiles.length} files are new and will be deleted. This cannot be undone.'
-          : 'Discard changes in ${trackedFiles.length} tracked file(s)?'
-                '${newFiles.isEmpty ? '' : ' ${newFiles.length} new file(s) will be kept.'}',
-      confirmLabel: deleteAll ? 'Delete All' : 'Discard',
+          ? tr.allNewFilesMessage(count: newFiles.length)
+          : tr.discardTrackedMessage(
+              count: trackedFiles.length,
+              extra: newFiles.isEmpty
+                  ? ''
+                  : tr.discardTrackedExtra(count: newFiles.length),
+            ),
+      confirmLabel: deleteAll ? tr.deleteAll : tr.discard,
       danger: true,
     );
     if (!ok || !mounted) return;
@@ -461,37 +472,38 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required bool staged,
   }) async {
     final name = absPath.split('/').last;
+    final tr = context.t.cockpit.fileTreePanel;
     final pick = await showAppMenu<String>(
       context,
       globalPosition: pos,
       items: [
-        const AppMenuItem(
+        AppMenuItem(
           value: 'diff',
-          label: 'View Diff',
+          label: tr.viewDiff,
           icon: Icons.difference_outlined,
         ),
         if (widget.onCommitFile != null)
           AppMenuItem(
             value: 'commit',
-            label: staged ? 'Commit' : 'Stage and Commit',
+            label: staged ? tr.commit : tr.stageAndCommit,
             icon: Icons.check_circle_outline,
           ),
         if (staged && widget.onUnstageFile != null)
-          const AppMenuItem(
+          AppMenuItem(
             value: 'unstage',
-            label: 'Unstage',
+            label: tr.unstage,
             icon: Icons.remove_circle_outline,
           )
         else if (!staged && widget.onStageFile != null)
-          const AppMenuItem(
+          AppMenuItem(
             value: 'stage',
-            label: 'Stage Changes',
+            label: tr.stageChanges,
             icon: Icons.add_circle_outline,
           ),
         if (widget.onDiscardFile != null)
-          const AppMenuItem(
+          AppMenuItem(
             value: 'discard',
-            label: 'Discard Changes',
+            label: tr.discardChanges,
             icon: Icons.undo,
             danger: true,
           ),
@@ -546,7 +558,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
       },
       (error) => setState(() {
         _generatingCommit = false;
-        _commitError = error;
+        // Cancelamento é ação do usuário, não erro a exibir em vermelho.
+        _commitError = error.kind == AutomationErrorKind.cancelled
+            ? null
+            : automationErrorMessage(context, error);
       }),
     );
   }
@@ -560,12 +575,14 @@ class _FileTreePanelState extends State<FileTreePanel> {
     final message = _commitMessage.text.trim();
     if (_committing) return;
     if (message.isEmpty) {
-      setState(() => _commitError = 'Enter a commit message.');
+      setState(
+        () => _commitError = context.t.cockpit.fileTreePanel.enterCommitMessage,
+      );
       return;
     }
     if (widget.onCommitStaged == null) {
       setState(
-        () => _commitError = 'Commit is unavailable for this workspace.',
+        () => _commitError = context.t.cockpit.fileTreePanel.commitUnavailable,
       );
       return;
     }
@@ -587,9 +604,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   Future<void> _showGitError(String message) => showConfirmDialog(
     context,
-    title: 'Git error',
+    title: context.t.cockpit.fileTreePanel.gitErrorTitle,
     message: message,
-    confirmLabel: 'OK',
+    confirmLabel: context.t.common.ok,
   );
 
   /// Cmd+Shift+F: revela a aba de busca (o campo é focado pelo próprio painel).
@@ -710,25 +727,29 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   Future<void> _requestDelete(String path) async {
     final name = path.split('/').where((p) => p.isNotEmpty).last;
+    final tr = context.t.cockpit.fileTreePanel;
     // Confirma sempre. No macOS o destino é a Lixeira (reversível); nas demais
     // plataformas a deleção é permanente — a mensagem reflete a diferença.
     final ok = await showConfirmDialog(
       context,
-      title: 'Delete?',
+      title: tr.deleteQuestionTitle,
       message: Platform.isMacOS
-          ? 'Move “$name” to the Trash?'
-          : 'Permanently delete “$name”? This can’t be undone.',
-      confirmLabel: 'Delete',
+          ? tr.moveToTrash(name: name)
+          : tr.permanentlyDelete(name: name),
+      confirmLabel: context.t.common.delete,
       danger: true,
     );
     if (!ok || !mounted) return;
     final r = await widget.onDelete(path);
     if (!mounted) return;
-    r.fold((_) {
-      if (_selectedPath != null && _isUnder(_selectedPath!, path)) {
-        setState(() => _selectedPath = null);
-      }
-    }, (e) => showInfoDialog(context, title: 'Could not delete', message: e));
+    r.fold(
+      (_) {
+        if (_selectedPath != null && _isUnder(_selectedPath!, path)) {
+          setState(() => _selectedPath = null);
+        }
+      },
+      (e) => showInfoDialog(context, title: tr.couldNotDeleteTitle, message: e),
+    );
   }
 
   // ---- mover (drag-and-drop) ------------------------------------------------
@@ -740,11 +761,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
   Future<void> _requestMove(String path, String targetDir) async {
     final name = path.split('/').where((p) => p.isNotEmpty).last;
     final destName = targetDir.split('/').where((p) => p.isNotEmpty).lastOrNull;
+    final tr = context.t.cockpit.fileTreePanel;
     final ok = await showConfirmDialog(
       context,
-      title: 'Move?',
-      message: 'Move “$name” to “${destName ?? '/'}”?',
-      confirmLabel: 'Move',
+      title: tr.moveQuestionTitle,
+      message: tr.moveMessage(name: name, dest: destName ?? '/'),
+      confirmLabel: tr.moveAction,
     );
     if (!ok || !mounted) return;
     final r = await widget.onMove(path, targetDir);
@@ -753,7 +775,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
       if (_selectedPath != null && _isUnder(_selectedPath!, path)) {
         setState(() => _selectedPath = '$targetDir/$name');
       }
-    }, (e) => showInfoDialog(context, title: 'Could not move', message: e));
+    }, (e) => showInfoDialog(context, title: tr.couldNotMoveTitle, message: e));
   }
 
   // ---- copiar / recortar / colar --------------------------------------------
@@ -765,7 +787,11 @@ class _FileTreePanelState extends State<FileTreePanel> {
     if (!mounted) return;
     r.fold(
       (_) {},
-      (e) => showInfoDialog(context, title: 'Could not paste', message: e),
+      (e) => showInfoDialog(
+        context,
+        title: context.t.cockpit.fileTreePanel.couldNotPasteTitle,
+        message: e,
+      ),
     );
   }
 
@@ -939,14 +965,14 @@ class _FileTreePanelState extends State<FileTreePanel> {
               children: [
                 _HeaderIcon(
                   icon: Icons.folder_outlined,
-                  tooltip: 'Files',
+                  tooltip: context.t.cockpit.fileTreePanel.filesTooltip,
                   selected: tab == _RightPaneTab.files,
                   onTap: () => setState(() => _tab = _RightPaneTab.files),
                 ),
                 if (hasSearch)
                   _HeaderIcon(
                     icon: Icons.search,
-                    tooltip: 'Search',
+                    tooltip: context.t.cockpit.fileTreePanel.searchTooltip,
                     selected: searchMode,
                     onTap: () => setState(() => _tab = _RightPaneTab.search),
                   ),
@@ -954,7 +980,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   _HeaderIcon(
                     key: const ValueKey('source-control-tab'),
                     icon: Icons.account_tree_outlined,
-                    tooltip: 'Source Control',
+                    tooltip:
+                        context.t.cockpit.fileTreePanel.sourceControlTooltip,
                     selected: scMode,
                     onTap: () =>
                         setState(() => _tab = _RightPaneTab.sourceControl),
@@ -963,7 +990,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   _HeaderIcon(
                     key: const ValueKey('database-tab'),
                     icon: Icons.storage,
-                    tooltip: 'Database',
+                    tooltip: context.t.cockpit.fileTreePanel.databaseTooltip,
                     selected: dbMode,
                     onTap: () => setState(() => _tab = _RightPaneTab.database),
                   ),
@@ -974,39 +1001,41 @@ class _FileTreePanelState extends State<FileTreePanel> {
           // painel Database (a barra de tabs acima fica só com as tabs).
           if (widget.rootPath.isNotEmpty && tab == _RightPaneTab.files)
             _PanelHeader(
-              title: 'FILES',
+              title: context.t.cockpit.fileTreePanel.sectionFiles,
               actions: [
                 // "New file/folder": pasta/arquivo selecionado, senão a raiz
                 // do workspace.
                 if (_headerCreateTarget()?.isNotEmpty ?? false) ...[
                   _PanelHeaderAction(
                     icon: Icons.note_add_outlined,
-                    tooltip: 'New file',
+                    tooltip: context.t.cockpit.fileTreePanel.newFile,
                     onTap: () => _headerCreate(false),
                   ),
                   _PanelHeaderAction(
                     icon: Icons.create_new_folder_outlined,
-                    tooltip: 'New folder',
+                    tooltip: context.t.cockpit.fileTreePanel.newFolder,
                     onTap: () => _headerCreate(true),
                   ),
                 ],
                 _PanelHeaderAction(
                   icon: Icons.refresh,
-                  tooltip: 'Refresh',
+                  tooltip: context.t.cockpit.fileTreePanel.refreshTooltip,
                   onTap: () => setState(() => _localRefresh++),
                 ),
               ],
             ),
           if (widget.rootPath.isNotEmpty && scMode)
             _PanelHeader(
-              title: 'SOURCE CONTROL',
+              title: context.t.cockpit.fileTreePanel.sectionSourceControl,
               actions: [
                 _PanelHeaderAction(
                   key: const ValueKey('source-control-view-toggle'),
                   icon: _sourceControlTree
                       ? Icons.view_list_outlined
                       : Icons.account_tree_outlined,
-                  tooltip: _sourceControlTree ? 'View as List' : 'View as Tree',
+                  tooltip: _sourceControlTree
+                      ? context.t.cockpit.fileTreePanel.viewAsList
+                      : context.t.cockpit.fileTreePanel.viewAsTree,
                   onTap: () =>
                       setState(() => _sourceControlTree = !_sourceControlTree),
                 ),
@@ -1016,7 +1045,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
             child: widget.rootPath.isEmpty
                 ? Center(
                     child: Text(
-                      'No folder — open a workspace.',
+                      context.t.cockpit.fileTreePanel.noFolderMessage,
                       textAlign: TextAlign.center,
                       style: context.typo.label.copyWith(color: colors.text3),
                     ),
@@ -1199,7 +1228,7 @@ class _CommitComposer extends StatelessWidget {
   Widget _commitPicker(BuildContext context) {
     final colors = context.colors;
     final label = amendSubject == null
-        ? 'last commit'
+        ? context.t.cockpit.fileTreePanel.lastCommit
         : _truncate(amendSubject!, 20);
 
     return HoverTap(
@@ -1233,6 +1262,7 @@ class _CommitComposer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tr = context.t.cockpit.fileTreePanel;
     return SizedBox(
       height: height,
       child: Container(
@@ -1303,7 +1333,7 @@ class _CommitComposer extends StatelessWidget {
                                       },
                               ),
                               Text(
-                                'Amend',
+                                tr.amend,
                                 style: context.typo.label.copyWith(
                                   color: colors.text,
                                   fontSize: 11,
@@ -1315,12 +1345,12 @@ class _CommitComposer extends StatelessWidget {
                           ),
                           AppTooltip(
                             message: amend
-                                ? 'Unavailable while amending a commit'
+                                ? tr.generateUnavailableWhileAmending
                                 : generating
-                                ? 'Cancel generation'
+                                ? tr.cancelGeneration
                                 : generatorLabel == null
-                                ? 'Generate commit message'
-                                : 'Generate with $generatorLabel',
+                                ? tr.generateCommitMessage
+                                : tr.generateWith(harness: generatorLabel!),
                             child: IconButton.outline(
                               key: const ValueKey(
                                 'generate-staged-commit-message',
@@ -1347,7 +1377,13 @@ class _CommitComposer extends StatelessWidget {
                         expands: true,
                         textAlignVertical: TextAlignVertical.top,
                         onChanged: (_) => onChanged(),
-                        placeholder: const Text('Commit Message'),
+                        placeholder: Text(
+                          context
+                              .t
+                              .cockpit
+                              .fileTreePanel
+                              .commitMessagePlaceholder,
+                        ),
                         style: context.typo.mono.copyWith(
                           fontSize: 12,
                           color: colors.text,
@@ -1378,7 +1414,7 @@ class _CommitComposer extends StatelessWidget {
                                   size: 16,
                                   color: Colors.white,
                                 )
-                              : Text(amend ? 'Amend Commit' : 'Commit'),
+                              : Text(amend ? tr.amendCommit : tr.commit),
                         ),
                       ],
                     ),
@@ -1814,9 +1850,11 @@ class _RowState extends State<_Row> {
   }
 
   String get _fileExplorerLabel {
-    if (Platform.isMacOS) return 'Open in Finder';
-    if (Platform.isWindows) return 'Open in Explorer';
-    return 'Open in file manager';
+    if (Platform.isMacOS) return context.t.cockpit.fileTreePanel.openInFinder;
+    if (Platform.isWindows) {
+      return context.t.cockpit.fileTreePanel.openInExplorer;
+    }
+    return context.t.cockpit.fileTreePanel.openInFileManager;
   }
 
   void _showMenu(BuildContext context, Offset globalPosition) {
@@ -1829,57 +1867,54 @@ class _RowState extends State<_Row> {
         .read<SettingsController>()
         .settings
         .enableAgent;
+    final tr = context.t.cockpit.fileTreePanel;
     showAppMenu<String>(
       context,
       minWidth: 220,
       globalPosition: globalPosition,
       items: [
         if (isFile) ...[
-          const AppMenuItem(
-            value: 'open',
-            label: 'Open',
-            icon: Icons.open_in_new,
-          ),
-          const AppMenuItem(
+          AppMenuItem(value: 'open', label: tr.open, icon: Icons.open_in_new),
+          AppMenuItem(
             value: 'openwith',
-            label: 'Open with',
+            label: tr.openWith,
             icon: Icons.launch_outlined,
           ),
           // Só arquivos `.ckp`: aplica o layout de orquestração de panes.
           if (widget.onOpenLayout != null)
-            const AppMenuItem(
+            AppMenuItem(
               value: 'layout',
-              label: 'Open layout',
+              label: tr.openLayout,
               icon: Icons.grid_view_outlined,
             ),
           // Sempre visível; desabilitado quando o arquivo não tem mudança git.
           AppMenuItem(
             value: 'diff',
-            label: 'Show git diff',
+            label: tr.showGitDiff,
             icon: Icons.difference_outlined,
             enabled: widget.gitStatus != null,
           ),
         ],
         if (isFolder) ...[
-          const AppMenuItem(
+          AppMenuItem(
             value: 'newfile',
-            label: 'New file',
+            label: tr.newFile,
             icon: Icons.note_add_outlined,
           ),
-          const AppMenuItem(
+          AppMenuItem(
             value: 'newfolder',
-            label: 'New folder',
+            label: tr.newFolder,
             icon: Icons.create_new_folder_outlined,
           ),
           if (agentsEnabled)
-            const AppMenuItem(
+            AppMenuItem(
               value: 'agent',
-              label: 'Create agent',
+              label: tr.createAgent,
               icon: Icons.auto_awesome,
             ),
-          const AppMenuItem(
+          AppMenuItem(
             value: 'terminal',
-            label: 'Create terminal',
+            label: tr.createTerminal,
             icon: Icons.terminal_outlined,
           ),
         ],
@@ -1889,36 +1924,36 @@ class _RowState extends State<_Row> {
             label: _fileExplorerLabel,
             icon: Icons.folder_open_outlined,
           ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'rename',
-          label: 'Rename',
+          label: tr.rename,
           icon: Icons.drive_file_rename_outline,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'delete',
-          label: 'Delete',
+          label: context.t.common.delete,
           icon: Icons.delete_outline,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'copy',
-          label: 'Copy',
+          label: tr.copy,
           icon: Icons.copy_all_outlined,
         ),
-        const AppMenuItem(value: 'cut', label: 'Cut', icon: Icons.content_cut),
+        AppMenuItem(value: 'cut', label: tr.cut, icon: Icons.content_cut),
         AppMenuItem(
           value: 'paste',
-          label: 'Paste',
+          label: tr.paste,
           icon: Icons.content_paste,
           enabled: widget.canPaste,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'rel',
-          label: 'Copy relative path',
+          label: tr.copyRelativePath,
           icon: Icons.content_copy_outlined,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'abs',
-          label: 'Copy absolute path',
+          label: tr.copyAbsolutePath,
           icon: Icons.content_copy,
         ),
       ],
@@ -1968,8 +2003,10 @@ class _RowState extends State<_Row> {
             initial: widget.name,
             // Arquivos: pré-seleciona o nome sem extensão (estilo VSCode).
             selectBasename: !widget.isFolder,
-            onSubmit: (name) async =>
-                await widget.onCommitRename?.call(name) ?? 'Rename failed.',
+            onSubmit: (name) async {
+              final renameFailed = context.t.cockpit.fileTreePanel.renameFailed;
+              return await widget.onCommitRename?.call(name) ?? renameFailed;
+            },
             onCancel: () => widget.onCancelRename?.call(),
           )
         : Text(
@@ -2243,7 +2280,7 @@ class _ChangedTree extends StatelessWidget {
     if (stagedPaths.isEmpty && unstagedPaths.isEmpty) {
       return Center(
         child: Text(
-          'No changes.',
+          context.t.cockpit.fileTreePanel.noChanges,
           style: context.typo.label.copyWith(color: context.colors.text3),
         ),
       );
@@ -2329,12 +2366,18 @@ class _ChangedTree extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                '${staged ? 'STAGED CHANGES' : 'CHANGES'} (${files.length})',
+                staged
+                    ? context.t.cockpit.fileTreePanel.stagedChangesHeader(
+                        count: files.length,
+                      )
+                    : context.t.cockpit.fileTreePanel.changesHeader(
+                        count: files.length,
+                      ),
                 style: context.typo.label.copyWith(color: context.colors.text3),
               ),
               const Spacer(),
               AppTooltip(
-                message: 'Discard All Changes',
+                message: context.t.cockpit.fileTreePanel.discardAllChanges,
                 child: HoverTap(
                   key: ValueKey(
                     staged ? 'discard-all-staged' : 'discard-all-changes',
@@ -2351,7 +2394,9 @@ class _ChangedTree extends StatelessWidget {
                 ),
               ),
               AppTooltip(
-                message: staged ? 'Unstage All Changes' : 'Stage All Changes',
+                message: staged
+                    ? context.t.cockpit.fileTreePanel.unstageAllChanges
+                    : context.t.cockpit.fileTreePanel.stageAllChanges,
                 child: HoverTap(
                   key: ValueKey(
                     staged ? 'unstage-all-changes' : 'stage-all-changes',
@@ -2374,7 +2419,7 @@ class _ChangedTree extends StatelessWidget {
         ),
         viewAsTree
             ? _buildTree(files, staged)
-            : Column(children: _buildRows(files, staged)),
+            : Column(children: _buildRows(context, files, staged)),
       ],
     );
   }
@@ -2410,22 +2455,29 @@ class _ChangedTree extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildRows(List<_ChangedFile> files, bool staged) => [
-    for (final f in files)
-      _ChangedRow(
-        file: f,
-        gitStatus: staged ? GitFileStatus.staged : gitStatusOf(f.absPath),
-        selected: f.absPath == selectedPath,
-        onTap: () => onTapDiff(f.absPath),
-        onDoubleTap: () => onOpenDiff(f.absPath),
-        onSecondaryTap: (pos) =>
-            onFileContextMenu(f.absPath, pos, staged: staged),
-        onTrailingTap: () => onStageToggle(f.absPath, staged),
-        onDiscardTap: () => onDiscard(f.absPath),
-        trailingTooltip: staged ? 'Unstage' : 'Stage Changes',
-        trailingIcon: staged ? Icons.remove : Icons.add,
-      ),
-  ];
+  List<Widget> _buildRows(
+    BuildContext context,
+    List<_ChangedFile> files,
+    bool staged,
+  ) {
+    final tr = context.t.cockpit.fileTreePanel;
+    return [
+      for (final f in files)
+        _ChangedRow(
+          file: f,
+          gitStatus: staged ? GitFileStatus.staged : gitStatusOf(f.absPath),
+          selected: f.absPath == selectedPath,
+          onTap: () => onTapDiff(f.absPath),
+          onDoubleTap: () => onOpenDiff(f.absPath),
+          onSecondaryTap: (pos) =>
+              onFileContextMenu(f.absPath, pos, staged: staged),
+          onTrailingTap: () => onStageToggle(f.absPath, staged),
+          onDiscardTap: () => onDiscard(f.absPath),
+          trailingTooltip: staged ? tr.unstage : tr.stageChanges,
+          trailingIcon: staged ? Icons.remove : Icons.add,
+        ),
+    ];
+  }
 
   /// Seção de uma root no modo multi-root. Root limpa = sem seção.
   List<Widget> _rootSection(
@@ -2651,7 +2703,8 @@ class _ChangedDirectoryViewState extends State<_ChangedDirectoryView> {
                   top: 1,
                   bottom: 1,
                   child: AppTooltip(
-                    message: 'Discard Folder Changes',
+                    message:
+                        context.t.cockpit.fileTreePanel.discardFolderChanges,
                     child: HoverTap(
                       key: ValueKey('discard-folder:$actionKey'),
                       onTap: () => widget.onDiscardAll(paths),
@@ -2666,8 +2719,8 @@ class _ChangedDirectoryViewState extends State<_ChangedDirectoryView> {
                   bottom: 1,
                   child: AppTooltip(
                     message: widget.staged
-                        ? 'Unstage Folder Changes'
-                        : 'Stage Folder Changes',
+                        ? context.t.cockpit.fileTreePanel.unstageFolderChanges
+                        : context.t.cockpit.fileTreePanel.stageFolderChanges,
                     child: HoverTap(
                       key: ValueKey('toggle-stage-folder:$actionKey'),
                       onTap: () => widget.onStageAll(paths),
@@ -2734,7 +2787,9 @@ class _ChangedDirectoryViewState extends State<_ChangedDirectoryView> {
                   widget.onFileContextMenu(file.absPath, pos),
               onTrailingTap: () => widget.onStageToggle(file.absPath),
               onDiscardTap: () => widget.onDiscard(file.absPath),
-              trailingTooltip: widget.staged ? 'Unstage' : 'Stage Changes',
+              trailingTooltip: widget.staged
+                  ? context.t.cockpit.fileTreePanel.unstage
+                  : context.t.cockpit.fileTreePanel.stageChanges,
               trailingIcon: widget.staged ? Icons.remove : Icons.add,
             ),
         ],
@@ -2876,7 +2931,7 @@ class _ChangedRowState extends State<_ChangedRow> {
                     top: 1,
                     bottom: 1,
                     child: AppTooltip(
-                      message: 'Discard Changes',
+                      message: context.t.cockpit.fileTreePanel.discardChanges,
                       child: HoverTap(
                         onTap: widget.onDiscardTap,
                         padding: const EdgeInsets.all(4),
@@ -2890,7 +2945,9 @@ class _ChangedRowState extends State<_ChangedRow> {
                     top: 1,
                     bottom: 1,
                     child: AppTooltip(
-                      message: widget.trailingTooltip ?? 'Stage Changes',
+                      message:
+                          widget.trailingTooltip ??
+                          context.t.cockpit.fileTreePanel.stageChanges,
                       child: HoverTap(
                         onTap: widget.onTrailingTap,
                         padding: const EdgeInsets.all(4),

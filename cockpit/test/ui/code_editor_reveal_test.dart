@@ -31,8 +31,9 @@ void main() {
     );
   }
 
-  testWidgets('reveal de match assenta sem travar (scroll anexado)',
-      (tester) async {
+  testWidgets('reveal de match assenta sem travar (scroll anexado)', (
+    tester,
+  ) async {
     final ctrl = CodeEditingController(text: text, language: 'txt');
     await tester.pumpWidget(harness(ctrl));
     await tester.pumpAndSettle();
@@ -43,8 +44,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('reveal repetido (navegação entre matches) assenta',
-      (tester) async {
+  testWidgets('reveal repetido (navegação entre matches) assenta', (
+    tester,
+  ) async {
     final ctrl = CodeEditingController(text: text, language: 'txt');
     final second = text.indexOf('target', matchStart + 1);
     await tester.pumpWidget(harness(ctrl));

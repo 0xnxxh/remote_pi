@@ -109,8 +109,9 @@ void main() {
     expect(result.isFailure, isTrue);
     result.fold<void>((_) => fail('expected failure'), (error) {
       expect(error.kind, AutomationErrorKind.unavailable);
-      expect(error.message, contains('retired-model'));
-      expect(error.message, contains('Settings'));
+      // O erro carrega os dados, não a frase: quem traduz é a UI.
+      expect(error.model, 'retired-model');
+      expect(error.harness, 'Codex CLI');
     });
     controller.dispose();
   });
@@ -128,8 +129,9 @@ void main() {
     );
 
     expect(cleared, isTrue);
-    expect(warning, contains('retired-model'));
-    expect(controller.errorMessage, contains('CLI default'));
+    expect(warning?.model, 'retired-model');
+    expect(controller.error?.kind, AutomationErrorKind.unavailable);
+    expect(controller.error?.model, 'retired-model');
     controller.dispose();
   });
 

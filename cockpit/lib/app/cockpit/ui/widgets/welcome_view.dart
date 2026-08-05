@@ -1,4 +1,5 @@
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Tela inicial quando ainda não há workspace. Diferente do antigo onboarding,
@@ -34,7 +35,7 @@ class WelcomeView extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               Text(
-                'Welcome to Cockpit',
+                context.t.cockpit.welcomeView.title,
                 style: context.typo.title.copyWith(
                   fontSize: 20,
                   color: colors.text,
@@ -42,7 +43,7 @@ class WelcomeView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Open a folder to start a workspace.',
+                context.t.cockpit.welcomeView.subtitle,
                 textAlign: TextAlign.center,
                 style: context.typo.body.copyWith(
                   fontSize: 13.5,
@@ -54,7 +55,7 @@ class WelcomeView extends StatelessWidget {
               PrimaryButton(
                 onPressed: () => onCreateWorkspace(),
                 leading: const Icon(Icons.add, size: 16),
-                child: const Text('Create workspace'),
+                child: Text(context.t.cockpit.welcomeView.createWorkspace),
               ),
             ],
           ),

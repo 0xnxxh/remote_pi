@@ -17,6 +17,7 @@ import 'package:cockpit/app/core/ui/widgets/code_editing_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/code_highlight.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/code_editor.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, LogicalKeyboardKey;
 import 'package:flutter_modular/flutter_modular.dart';
@@ -196,7 +197,7 @@ class _DbQueryViewState extends State<DbQueryView> {
         final colors = context.colors;
         return AlertDialog(
           title: Text(
-            'Save query as',
+            context.t.cockpit.dbQueryView.saveQueryAs,
             style: context.typo.title.copyWith(
               fontSize: 15,
               color: colors.text,
@@ -220,11 +221,11 @@ class _DbQueryViewState extends State<DbQueryView> {
           actions: [
             GhostButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(context.t.common.cancel),
             ),
             PrimaryButton(
               onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),
+              child: Text(context.t.common.save),
             ),
           ],
         );
@@ -237,7 +238,7 @@ class _DbQueryViewState extends State<DbQueryView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          'Could not save',
+          context.t.cockpit.dbQueryView.couldNotSave,
           style: context.typo.title.copyWith(
             fontSize: 15,
             color: context.colors.text,
@@ -253,7 +254,7 @@ class _DbQueryViewState extends State<DbQueryView> {
         actions: [
           PrimaryButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(context.t.common.ok),
           ),
         ],
       ),
@@ -349,9 +350,9 @@ class _DbQueryViewState extends State<DbQueryView> {
             selected: c.name == _connName,
           ),
         if (conns.isEmpty)
-          const AppMenuItem(
+          AppMenuItem(
             value: '',
-            label: 'No SQL connections — add one in the Database panel',
+            label: context.t.cockpit.dbQueryView.noSqlConnections,
             enabled: false,
           ),
       ],
@@ -425,8 +426,10 @@ class _DbQueryViewState extends State<DbQueryView> {
                           behavior: HitTestBehavior.opaque,
                           onVerticalDragUpdate: (d) => setState(() {
                             _view.split =
-                                ((editorH + d.delta.dy) / box.maxHeight)
-                                    .clamp(0.12, 0.85);
+                                ((editorH + d.delta.dy) / box.maxHeight).clamp(
+                                  0.12,
+                                  0.85,
+                                );
                           }),
                           child: SizedBox(
                             height: 7,
@@ -478,7 +481,7 @@ class _DbQueryViewState extends State<DbQueryView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _connName ?? 'Select database',
+                    _connName ?? context.t.cockpit.dbQueryView.selectDatabase,
                     style: typo.label.copyWith(
                       fontSize: 11,
                       color: _connName == null ? colors.warn : colors.text2,
@@ -529,12 +532,13 @@ class _DbQueryViewState extends State<DbQueryView> {
                   builder: (context, _) {
                     final sel = _sql.selection;
                     final hasSel = sel.isValid && !sel.isCollapsed;
+                    final tr = context.t.cockpit.dbQueryView;
                     return Text(
                       _running
-                          ? 'Running…'
+                          ? tr.running
                           : hasSel
-                          ? 'Run selection'
-                          : 'Run',
+                          ? tr.runSelection
+                          : tr.run,
                       style: typo.label.copyWith(
                         fontSize: 11.5,
                         color: Colors.white,
@@ -592,12 +596,11 @@ class _DbQueryViewState extends State<DbQueryView> {
       );
     }
     final result = _view.result;
+    final tr = context.t.cockpit.dbQueryView;
     if (result == null) {
       return Center(
         child: Text(
-          _connName == null
-              ? 'Pick a database above, then Run (⌘↵).'
-              : 'Run the query (⌘↵) to see results here.',
+          _connName == null ? tr.pickDatabaseHint : tr.runQueryHint,
           style: typo.label.copyWith(fontSize: 12, color: colors.text3),
         ),
       );
@@ -605,8 +608,7 @@ class _DbQueryViewState extends State<DbQueryView> {
     if (result.affectedRows != null) {
       return Center(
         child: Text(
-          '${result.affectedRows} row'
-          '${result.affectedRows == 1 ? '' : 's'} affected',
+          tr.rowsAffected(n: result.affectedRows!),
           style: typo.label.copyWith(fontSize: 12.5, color: colors.text2),
         ),
       );
@@ -614,7 +616,7 @@ class _DbQueryViewState extends State<DbQueryView> {
     if (result.rows.isEmpty) {
       return Center(
         child: Text(
-          'No rows.',
+          tr.noRows,
           style: typo.label.copyWith(fontSize: 12, color: colors.text3),
         ),
       );
@@ -640,11 +642,12 @@ class _DbQueryViewState extends State<DbQueryView> {
   Widget _footer(BuildContext context) {
     final colors = context.colors;
     final typo = context.typo;
+    final tr = context.t.cockpit.dbQueryView;
     final result = _view.result;
     final info = StringBuffer();
     if (result != null && result.affectedRows == null) {
-      info.write('${result.rows.length} rows');
-      if (result.truncated) info.write(' · truncated (raise -- limit)');
+      info.write(tr.rowsFooter(n: result.rows.length));
+      if (result.truncated) info.write(tr.truncatedSuffix);
       info.write(' · ${result.elapsed.inMilliseconds} ms');
     }
     return Container(
@@ -664,19 +667,19 @@ class _DbQueryViewState extends State<DbQueryView> {
           // fora do frontmatter.
           if (result != null && result.affectedRows == null) ...[
             _ViewToggle(
-              label: 'Table',
+              label: tr.table,
               active: !_view.asJson,
               onTap: () => setState(() => _view.asJson = false),
             ),
             _ViewToggle(
-              label: 'JSON',
+              label: tr.json,
               active: _view.asJson,
               onTap: () => setState(() => _view.asJson = true),
             ),
             const SizedBox(width: 10),
           ],
           Text(
-            _dirty ? 'unsaved' : 'saved',
+            _dirty ? tr.unsaved : tr.saved,
             style: typo.label.copyWith(
               fontSize: 10.5,
               color: _dirty ? colors.warn : colors.text4,
@@ -758,16 +761,15 @@ class _JsonView extends StatelessWidget {
     final names = [for (final c in result.columns) c.name];
     final list = [
       for (final row in rows)
-        {
-          for (var i = 0; i < names.length; i++) names[i]: _jsonCell(row[i]),
-        },
+        {for (var i = 0; i < names.length; i++) names[i]: _jsonCell(row[i])},
     ];
     return const JsonEncoder.withIndent('  ').convert(list);
   }
 
   /// JSON exibido (cortado no preview) e JSON completo (pro Copy).
-  String get _previewJson =>
-      _buildJson(_capped ? result.rows.take(_previewRows).toList() : result.rows);
+  String get _previewJson => _buildJson(
+    _capped ? result.rows.take(_previewRows).toList() : result.rows,
+  );
   String get _fullJson => _capped ? _buildJson(result.rows) : _previewJson;
 
   static Object? _jsonCell(Object? v) => switch (v) {
@@ -827,11 +829,7 @@ class _JsonView extends StatelessWidget {
             ],
           ),
         ),
-        Positioned(
-          top: 6,
-          right: 14,
-          child: _CopyButton(text: _fullJson),
-        ),
+        Positioned(top: 6, right: 14, child: _CopyButton(text: _fullJson)),
       ],
     );
   }
@@ -874,7 +872,9 @@ class _CopyButtonState extends State<_CopyButton> {
           ),
           const SizedBox(width: 5),
           Text(
-            _copied ? 'Copied' : 'Copy',
+            _copied
+                ? context.t.cockpit.dbQueryView.copied
+                : context.t.cockpit.dbQueryView.copy,
             style: context.typo.label.copyWith(
               fontSize: 10.5,
               color: colors.text3,

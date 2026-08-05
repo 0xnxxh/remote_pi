@@ -17,8 +17,7 @@ Future<void> showFileFinderPalette(
   return showDialog<void>(
     context: context,
     barrierColor: const Color(0x66000000),
-    builder: (context) =>
-        _FileFinderPalette(search: search, onPick: onPick),
+    builder: (context) => _FileFinderPalette(search: search, onPick: onPick),
   );
 }
 

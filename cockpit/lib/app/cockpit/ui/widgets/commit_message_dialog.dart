@@ -1,7 +1,10 @@
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+import 'package:cockpit/app/core/ui/automation_error_message.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Dialog de mensagem de commit (Source Control → "Commit"/"Stage and Commit").
@@ -19,7 +22,8 @@ Future<void> showCommitMessageDialog(
   required String fileName,
   required bool staged,
   required Future<String?> Function(String message) onCommit,
-  Future<Result<GeneratedCommitMessage, String>> Function()? onGenerate,
+  Future<Result<GeneratedCommitMessage, AutomationError>> Function()?
+  onGenerate,
   Future<void> Function()? onCancelGenerate,
   String? generatorLabel,
 }) {
@@ -51,7 +55,8 @@ class _CommitMessageDialog extends StatefulWidget {
   final String fileName;
   final bool staged;
   final Future<String?> Function(String message) onCommit;
-  final Future<Result<GeneratedCommitMessage, String>> Function()? onGenerate;
+  final Future<Result<GeneratedCommitMessage, AutomationError>> Function()?
+  onGenerate;
   final Future<void> Function()? onCancelGenerate;
   final String? generatorLabel;
 
@@ -85,23 +90,24 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
   String? get _reason {
     final text = _message.text;
     if (text.isEmpty) return null; // intacto: sem erro, botão desabilitado
+    final tr = context.t.cockpit.commitMessageDialog;
     final subject = _subject;
-    if (subject.isEmpty) return 'The first line (subject) cannot be empty.';
+    if (subject.isEmpty) return tr.errorEmptySubject;
     if (subject.length < _subjectMin) {
-      return 'Subject too short (min $_subjectMin characters).';
+      return tr.errorTooShort(min: _subjectMin);
     }
     if (subject.length > _subjectMax) {
-      return 'Subject too long (max $_subjectMax characters).';
+      return tr.errorTooLong(max: _subjectMax);
     }
     if (subject.endsWith('.')) {
-      return 'Subject should not end with a period.';
+      return tr.errorTrailingPeriod;
     }
     if (subject.codeUnits.any((c) => c < 0x20)) {
-      return 'Subject contains control characters.';
+      return tr.errorControlChars;
     }
     final lines = text.split('\n');
     if (lines.length > 1 && lines[1].trim().isNotEmpty) {
-      return 'Leave the second line blank (git subject/body separator).';
+      return tr.errorBlankSecondLine;
     }
     return null;
   }
@@ -137,7 +143,10 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
       },
       (error) => setState(() {
         _generating = false;
-        _generationError = error;
+        // Cancelamento é ação do usuário, não erro a exibir em vermelho.
+        _generationError = error.kind == AutomationErrorKind.cancelled
+            ? null
+            : automationErrorMessage(context, error);
       }),
     );
   }
@@ -176,6 +185,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
     final reason = _gitError ?? _generationError ?? _reason;
     final showError = reason != null;
     final count = _subject.length;
+    final tr = context.t.cockpit.commitMessageDialog;
 
     return PopScope(
       canPop: !_busy,
@@ -185,7 +195,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.staged ? 'Commit' : 'Stage and Commit',
+              widget.staged ? tr.commitTitle : tr.stageAndCommitTitle,
               style: context.typo.title.copyWith(
                 fontSize: 15,
                 color: colors.text,
@@ -193,7 +203,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Commit "${widget.fileName}" only.',
+              tr.scopeNote(fileName: widget.fileName),
               style: context.typo.label.copyWith(color: colors.text3),
             ),
           ],
@@ -213,7 +223,7 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
                   _gitError = null;
                   _generationError = null;
                 }),
-                placeholder: const Text('fix: short summary of the change'),
+                placeholder: Text(tr.placeholder),
                 style: context.typo.mono.copyWith(
                   fontSize: 13,
                   color: colors.text,
@@ -248,38 +258,40 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
         actions: [
           AppTooltip(
             message: widget.generatorLabel == null
-                ? 'Generate commit message'
-                : 'Generate with ${widget.generatorLabel}',
+                ? tr.generate
+                : tr.generateWith(harness: widget.generatorLabel!),
             child: OutlineButton(
               onPressed: widget.onGenerate == null || _busy ? null : _generate,
               child: _generating
-                  ? const Row(
+                  ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(size: 14),
-                        SizedBox(width: 8),
-                        Text('Generating…'),
+                        const CircularProgressIndicator(size: 14),
+                        const SizedBox(width: 8),
+                        Text(tr.generating),
                       ],
                     )
-                  : const Row(
+                  : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.auto_awesome, size: 15),
-                        SizedBox(width: 7),
-                        Text('Generate commit message'),
+                        const Icon(Icons.auto_awesome, size: 15),
+                        const SizedBox(width: 7),
+                        Text(tr.generate),
                       ],
                     ),
             ),
           ),
           OutlineButton(
             onPressed: _submitting ? null : _cancel,
-            child: Text(_generating ? 'Cancel generation' : 'Cancel'),
+            child: Text(
+              _generating ? tr.cancelGeneration : context.t.common.cancel,
+            ),
           ),
           PrimaryButton(
             onPressed: _canCommit ? _submit : null,
             child: _submitting
                 ? const CircularProgressIndicator(size: 16, color: Colors.white)
-                : const Text('Commit'),
+                : Text(tr.commitTitle),
           ),
         ],
       ),

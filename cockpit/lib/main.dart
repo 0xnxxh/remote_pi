@@ -3,6 +3,7 @@ import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
 import 'package:cockpit/app/core/data/diagnostics/error_handlers.dart';
 import 'package:cockpit/app/core/ui/widgets/app_error_view.dart';
 import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -29,7 +30,13 @@ Future<void> main() async {
     // Plano 46 — inicializa o media_kit (libmpv) antes de qualquer Player.
     MediaKit.ensureInitialized();
 
-    runApp(const CockpitBootstrapper());
+    // i18n: fallback inicial = locale do SO. O `SettingsController.load()`
+    // (dentro do bootstrapper) sobrescreve com a preferência salva, se houver.
+    await LocaleSettings.useDeviceLocale();
+
+    // `TranslationProvider` fica acima de tudo — é ele quem reconstrói a árvore
+    // quando `LocaleSettings.setLocale()` é chamado (troca de idioma em runtime).
+    runApp(TranslationProvider(child: const CockpitBootstrapper()));
   });
 }
 

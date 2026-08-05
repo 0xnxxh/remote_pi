@@ -121,35 +121,33 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
     });
     if (term.trim().isEmpty) return;
 
-    _sub =
-        widget
-            .search(
-              term,
-              caseSensitive: _caseSensitive,
-              wholeWord: _wholeWord,
-              regex: _regex,
-            )
-            .listen(
-              (file) {
-                if (!mounted) return;
-                setState(() => _results.add(file));
-              },
-              onError: (_) {
-                if (!mounted) return;
-                setState(() {
-                  _invalidRegex = _regex;
-                  _searching = false;
-                });
-              },
-              onDone: () {
-                if (!mounted) return;
-                setState(() => _searching = false);
-              },
-            );
+    _sub = widget
+        .search(
+          term,
+          caseSensitive: _caseSensitive,
+          wholeWord: _wholeWord,
+          regex: _regex,
+        )
+        .listen(
+          (file) {
+            if (!mounted) return;
+            setState(() => _results.add(file));
+          },
+          onError: (_) {
+            if (!mounted) return;
+            setState(() {
+              _invalidRegex = _regex;
+              _searching = false;
+            });
+          },
+          onDone: () {
+            if (!mounted) return;
+            setState(() => _searching = false);
+          },
+        );
   }
 
-  int get _totalMatches =>
-      _results.fold(0, (sum, f) => sum + f.matchCount);
+  int get _totalMatches => _results.fold(0, (sum, f) => sum + f.matchCount);
 
   @override
   Widget build(BuildContext context) {
@@ -177,10 +175,7 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
           _resizeHandle(context),
           _header(context),
           _field(context),
-          SizedBox(
-            height: widget.resultsHeight,
-            child: _resultsList(context),
-          ),
+          SizedBox(height: widget.resultsHeight, child: _resultsList(context)),
         ],
       ),
     );
@@ -286,10 +281,7 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
                   color: _invalidRegex ? colors.error : colors.border,
                 ),
                 borderRadius: BorderRadius.circular(6),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 onChanged: (_) => _onQueryChanged(),
               ),
             ),
@@ -400,7 +392,10 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
                   child: Text(
                     dir,
                     overflow: TextOverflow.ellipsis,
-                    style: typo.label.copyWith(fontSize: 11, color: colors.text4),
+                    style: typo.label.copyWith(
+                      fontSize: 11,
+                      color: colors.text4,
+                    ),
                   ),
                 ),
               ],
@@ -429,10 +424,7 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
   Widget _matchRow(BuildContext context, String relativePath, LineMatch line) {
     final colors = context.colors;
     final typo = context.typo;
-    final numStyle = typo.mono.copyWith(
-      fontSize: 11.5,
-      color: colors.text4,
-    );
+    final numStyle = typo.mono.copyWith(fontSize: 11.5, color: colors.text4);
     final baseStyle = typo.mono.copyWith(fontSize: 11.5, color: colors.text2);
 
     return HoverTap(
@@ -464,11 +456,7 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
   }
 
   /// Constrói os spans da linha, destacando os intervalos casados.
-  TextSpan _highlightSpan(
-    LineMatch line,
-    TextStyle base,
-    AppColors colors,
-  ) {
+  TextSpan _highlightSpan(LineMatch line, TextStyle base, AppColors colors) {
     final text = line.text;
     final spans = <TextSpan>[];
     var cursor = 0;
