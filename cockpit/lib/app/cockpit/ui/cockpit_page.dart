@@ -545,8 +545,7 @@ class _CockpitPageState extends State<CockpitPage> {
       rootName: _gitOpLabel(root, rootPath),
       namespace: namespace,
       hasPostCheckout: hasHook,
-      onCreate: (name) =>
-          vm.createWorktree(root.id, name, rootPath: rootPath),
+      onCreate: (name) => vm.createWorktree(root.id, name, rootPath: rootPath),
     );
   }
 

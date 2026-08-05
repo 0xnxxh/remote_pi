@@ -180,6 +180,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$transcript$en transcript = Translations$cockpit$transcript$en.internal(_root);
 	late final Translations$cockpit$tasks$en tasks = Translations$cockpit$tasks$en.internal(_root);
 	late final Translations$cockpit$notifications$en notifications = Translations$cockpit$notifications$en.internal(_root);
+	late final Translations$cockpit$terminal$en terminal = Translations$cockpit$terminal$en.internal(_root);
 }
 
 // Path: settings
@@ -1904,6 +1905,18 @@ class Translations$cockpit$notifications$en {
 	String get open => 'Open';
 }
 
+// Path: cockpit.terminal
+class Translations$cockpit$terminal$en {
+	Translations$cockpit$terminal$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".'
+	String cwdFallbackWarning({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".';
+}
+
 // Path: settings.language
 class Translations$settings$language$en {
 	Translations$settings$language$en.internal(this._root);
@@ -3398,6 +3411,7 @@ extension on Translations {
 			'cockpit.tasks.quit' => 'Quit',
 			'cockpit.notifications.agentFinished' => 'Agent finished',
 			'cockpit.notifications.open' => 'Open',
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
@@ -3441,9 +3455,9 @@ extension on Translations {
 			'settings.page.general.checkUpdatesTitle' => 'Check for updates',
 			'settings.page.general.checkUpdatesDesc' => 'How often Cockpit should look for new versions.',
 			'settings.page.general.agentsInUseError' => 'Can\'t turn agents off while an agent tab is open. Close all agent tabs first, then disable it.',
-			'settings.page.general.updateFrequency.daily' => 'Daily',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.general.updateFrequency.daily' => 'Daily',
 			'settings.page.general.updateFrequency.weekly' => 'Weekly',
 			'settings.page.general.updateFrequency.monthly' => 'Monthly',
 			'settings.page.general.updateFrequency.never' => 'Never',

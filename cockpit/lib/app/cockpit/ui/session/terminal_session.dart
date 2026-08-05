@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/terminal/terminal_controller.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
@@ -65,6 +66,20 @@ class TerminalSession extends PaneItem {
       columns: 80,
       extraEnv: spawnEnv,
     );
+    // A pasta do workspace pode ter sumido entre dois boots (o layout salvo
+    // ainda aponta pra lá). O gateway abre no ancestral mais próximo em vez de
+    // falhar, mas isso precisa ficar VISÍVEL: senão o usuário digita achando
+    // que está na pasta do projeto.
+    final spawned = _gateway.spawnDirectory;
+    if (spawned != null && spawned.fellBack) {
+      // Fora da árvore de widgets não há `context`: o `t` global é o acesso
+      // certo aqui (ver a regra de i18n no CLAUDE.md).
+      terminal.write(
+        '\x1b[33m'
+        '${t.cockpit.terminal.cwdFallbackWarning(requested: spawned.requested, path: spawned.path)}'
+        '\x1b[0m\r\n',
+      );
+    }
     // Coalesce + backpressure (plan/57): um `terminal.write` por frame e
     // `acknowledgeOutput` com cap, pra TUI busy não saturar o isolate principal.
     _coalescer = PtyOutputCoalescer(

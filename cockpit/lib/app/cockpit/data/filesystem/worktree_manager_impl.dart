@@ -115,10 +115,7 @@ class WorktreeManagerImpl implements WorktreeManager {
         // Sem isso, `worktree add -b` falha ("branch already exists") e/ou deixa
         // o repo num estado meio-criado.
         if (await _branchExists(git, repoPath, name)) {
-          await _emit(
-            controller,
-            'A branch with that name already exists.',
-          );
+          await _emit(controller, 'A branch with that name already exists.');
           resultCompleter.complete(
             const Failure(
               WorktreeOpError('A branch with that name already exists.'),
@@ -132,23 +129,12 @@ class WorktreeManagerImpl implements WorktreeManager {
         // ignore o checkout apareceria como `untracked` no status do usuário.
         await _ensureIgnored(repoPath);
         final target = '$repoPath/$worktreesSubdir/$name';
-        final args = <String>[
-          'worktree',
-          'add',
-          target,
-          '-b',
-          name,
-          ?baseRef,
-        ];
+        final args = <String>['worktree', 'add', target, '-b', name, ?baseRef];
         await _emit(controller, '\$ git ${args.join(' ')}');
         final code = await _spawn(git, repoPath, args, controller);
         if (code != 0) {
           resultCompleter.complete(
-            Failure(
-              WorktreeOpError(
-                'git worktree add exited with code $code',
-              ),
-            ),
+            Failure(WorktreeOpError('git worktree add exited with code $code')),
           );
           return;
         }
@@ -235,11 +221,11 @@ class WorktreeManagerImpl implements WorktreeManager {
     StreamController<String> controller,
   ) async {
     try {
-      final proc = await Process.start(
-        git,
-        ['-C', repoPath, ...args],
-        environment: await envWithNodeOnPath(),
-      );
+      final proc = await Process.start(git, [
+        '-C',
+        repoPath,
+        ...args,
+      ], environment: await envWithNodeOnPath());
       final done = <Future<void>>[];
       for (final stream in [proc.stdout, proc.stderr]) {
         done.add(

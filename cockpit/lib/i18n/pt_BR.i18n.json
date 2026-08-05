@@ -559,6 +559,9 @@
     "notifications": {
       "agentFinished": "Agente terminou",
       "open": "Abrir"
+    },
+    "terminal": {
+      "cwdFallbackWarning": "Aviso: a pasta \"${requested}\" não existe. Este terminal abriu em \"${path}\"."
     }
   },
   "settings": {

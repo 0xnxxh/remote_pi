@@ -188,9 +188,9 @@ void main() {
     final hookPath = hooksDir.startsWith('/')
         ? '$hooksDir/post-checkout'
         : '${repo.path}/$hooksDir/post-checkout';
-    await File(hookPath).writeAsString(
-      '#!/bin/sh\necho post-checkout-marker\n',
-    );
+    await File(
+      hookPath,
+    ).writeAsString('#!/bin/sh\necho post-checkout-marker\n');
     await Process.run('chmod', ['+x', hookPath]);
 
     final run = manager.add(repo.path, 'feat/hooked');

@@ -133,6 +133,7 @@ class _Translations$cockpit$es extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$transcript$es transcript = _Translations$cockpit$transcript$es._(_root);
 	@override late final _Translations$cockpit$tasks$es tasks = _Translations$cockpit$tasks$es._(_root);
 	@override late final _Translations$cockpit$notifications$es notifications = _Translations$cockpit$notifications$es._(_root);
+	@override late final _Translations$cockpit$terminal$es terminal = _Translations$cockpit$terminal$es._(_root);
 }
 
 // Path: settings
@@ -965,6 +966,16 @@ class _Translations$cockpit$notifications$es extends Translations$cockpit$notifi
 	// Translations
 	@override String get agentFinished => 'El agente terminó';
 	@override String get open => 'Abrir';
+}
+
+// Path: cockpit.terminal
+class _Translations$cockpit$terminal$es extends Translations$cockpit$terminal$en {
+	_Translations$cockpit$terminal$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String cwdFallbackWarning({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".';
 }
 
 // Path: settings.language
@@ -1918,6 +1929,7 @@ extension on TranslationsEs {
 			'cockpit.tasks.quit' => 'Salir',
 			'cockpit.notifications.agentFinished' => 'El agente terminó',
 			'cockpit.notifications.open' => 'Abrir',
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',
@@ -1961,9 +1973,9 @@ extension on TranslationsEs {
 			'settings.page.general.checkUpdatesTitle' => 'Buscar actualizaciones',
 			'settings.page.general.checkUpdatesDesc' => 'Con qué frecuencia Cockpit debe buscar nuevas versiones.',
 			'settings.page.general.agentsInUseError' => 'No se pueden desactivar los agentes mientras haya una pestaña de agente abierta. Cierra todas las pestañas de agente primero y luego desactívalo.',
-			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
 			'settings.page.general.updateFrequency.monthly' => 'Mensualmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',

@@ -559,6 +559,9 @@
     "notifications": {
       "agentFinished": "Agent finished",
       "open": "Open"
+    },
+    "terminal": {
+      "cwdFallbackWarning": "Warning: the folder \"${requested}\" does not exist. This terminal opened in \"${path}\"."
     }
   },
   "settings": {

@@ -133,6 +133,7 @@ class _Translations$cockpit$pt_BR extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$transcript$pt_BR transcript = _Translations$cockpit$transcript$pt_BR._(_root);
 	@override late final _Translations$cockpit$tasks$pt_BR tasks = _Translations$cockpit$tasks$pt_BR._(_root);
 	@override late final _Translations$cockpit$notifications$pt_BR notifications = _Translations$cockpit$notifications$pt_BR._(_root);
+	@override late final _Translations$cockpit$terminal$pt_BR terminal = _Translations$cockpit$terminal$pt_BR._(_root);
 }
 
 // Path: settings
@@ -965,6 +966,16 @@ class _Translations$cockpit$notifications$pt_BR extends Translations$cockpit$not
 	// Translations
 	@override String get agentFinished => 'Agente terminou';
 	@override String get open => 'Abrir';
+}
+
+// Path: cockpit.terminal
+class _Translations$cockpit$terminal$pt_BR extends Translations$cockpit$terminal$en {
+	_Translations$cockpit$terminal$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
+
+	final TranslationsPtBr _root; // ignore: unused_field
+
+	// Translations
+	@override String cwdFallbackWarning({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".';
 }
 
 // Path: settings.language
@@ -1918,6 +1929,7 @@ extension on TranslationsPtBr {
 			'cockpit.tasks.quit' => 'Sair',
 			'cockpit.notifications.agentFinished' => 'Agente terminou',
 			'cockpit.notifications.open' => 'Abrir',
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglês',
@@ -1961,9 +1973,9 @@ extension on TranslationsPtBr {
 			'settings.page.general.checkUpdatesTitle' => 'Verificar atualizações',
 			'settings.page.general.checkUpdatesDesc' => 'Com que frequência o Cockpit deve procurar novas versões.',
 			'settings.page.general.agentsInUseError' => 'Não é possível desligar os agentes com uma aba de agente aberta. Feche todas as abas de agente primeiro e depois desative.',
-			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
 			'settings.page.general.updateFrequency.monthly' => 'Mensalmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',

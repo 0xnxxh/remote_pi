@@ -1614,10 +1614,22 @@ class CockpitViewModel extends ChangeNotifier {
     _selectedProjectId = await _initialSelection();
     // Só o projeto selecionado é ativado (sobe os processos) no boot.
     final selected = _selectedProjectId;
-    if (selected != null) await _activateProject(selected);
-    git.watchProject(selected); // watcher ao vivo do projeto inicial
-    _ready = true;
-    notifyListeners();
+    // `init()` é chamado fire-and-forget pelo `CockpitPage` (sem await, sem
+    // catch), então qualquer exceção aqui virava erro assíncrono solto e o
+    // `_ready` nunca chegava: a tela ficava no loading pra sempre, sem nada
+    // impresso. Ativar o workspace é a parte que toca o mundo externo (spawn de
+    // PTY, git, FS) e é a que de fato quebrou em produção. Falhando, seguimos
+    // com o shell montado: melhor um workspace vazio, onde o usuário consegue
+    // trocar de projeto ou remover o quebrado, do que um app travado.
+    try {
+      if (selected != null) await _activateProject(selected);
+      git.watchProject(selected); // watcher ao vivo do projeto inicial
+    } catch (error, stack) {
+      debugPrint('[boot] falha ao ativar o workspace inicial: $error\n$stack');
+    } finally {
+      _ready = true;
+      notifyListeners();
+    }
     // Estado git + worktrees de todos os projetos (assíncrono — a rail atualiza
     // conforme chega). Só há raízes no boot; os forks entram pela reconciliação.
     for (final project in _projectList) {
@@ -2003,12 +2015,10 @@ class CockpitViewModel extends ChangeNotifier {
     // Multi-root: o `git worktree add` parte da root escolhida, nao da mae.
     // [baseRef] ("Fork Worktree"): ramifica da branch de outro fork, mas a
     // pasta nasce sempre no repo de origem.
-    final run = _worktreeMgr.add(
-      rootPath ?? root.path,
-      name,
-      baseRef: baseRef,
-    );
-    final result = run.result.then<Result<Project, WorktreeOpError>>((res) async {
+    final run = _worktreeMgr.add(rootPath ?? root.path, name, baseRef: baseRef);
+    final result = run.result.then<Result<Project, WorktreeOpError>>((
+      res,
+    ) async {
       switch (res) {
         case Failure(:final error):
           return Failure<Project, WorktreeOpError>(error);
@@ -2016,7 +2026,9 @@ class CockpitViewModel extends ChangeNotifier {
           // Clona a estrutura (panes/abas/posicoes) pro fork: do pai por padrao,
           // ou do fork de origem no "Fork Worktree" (mesma organizacao, pasta
           // nova, sessoes do zero — ver _cloneLayoutForWorktree).
-          final clonedLayout = _cloneLayoutForWorktree(layoutSourceId ?? rootId);
+          final clonedLayout = _cloneLayoutForWorktree(
+            layoutSourceId ?? rootId,
+          );
           await _refreshWorktrees(rootId); // insere o fork em _projectList
           // Id de fork e namespaced pela raiz (ver _refreshWorktrees) — o path
           // cru deixou de ser o id na migracao dos Realms.
@@ -2034,9 +2046,7 @@ class CockpitViewModel extends ChangeNotifier {
             _savedLayouts[fork.id] = clonedLayout;
             unawaited(_layoutStore.save(fork.id, clonedLayout));
           }
-          selectProject(
-            fork.id,
-          ); // auto-select → activate → reconstrucao
+          selectProject(fork.id); // auto-select → activate → reconstrucao
           // Orquestracao: `*.ckp` com `autorun: worktree` na raiz do fork
           // aplica o layout sozinho (worktree nasce vazia → deterministico).
           unawaited(_autorunWorktreeLayout(fork.path));
@@ -3717,8 +3727,17 @@ class CockpitViewModel extends ChangeNotifier {
     final created = <String>{};
     for (final entry in sessionsJson.entries) {
       final desc = (entry.value as Map).cast<String, dynamic>();
-      if (await _restoreSession(entry.key, desc, project)) {
-        created.add(entry.key);
+      // Uma aba que não restaura **não pode derrubar o boot**: antes, qualquer
+      // exceção aqui subia até o `init()`, que morria antes de `_ready = true`
+      // e deixava o app no loading pra sempre. O caso real foi apagar a pasta
+      // do workspace: o PTY falhava no spawn e não havia mais volta sem editar
+      // o `projects.json` na mão. Falhou, a aba é descartada no sanitize.
+      try {
+        if (await _restoreSession(entry.key, desc, project)) {
+          created.add(entry.key);
+        }
+      } catch (error, stack) {
+        debugPrint('[restore] sessão ${entry.key} falhou: $error\n$stack');
       }
     }
 
