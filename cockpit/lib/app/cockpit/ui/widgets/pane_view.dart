@@ -801,8 +801,9 @@ class _TabState extends State<_Tab> {
         // Builder garante um BuildContext com RenderBox para showAppMenu.
         final interactive = Builder(
           builder: (menuCtx) => GestureDetector(
-            onTapUp: (d) => _handleTap(),
-            onSecondaryTapUp: isEmpty ? null : (d) => _showTabMenu(menuCtx),
+            onTapUp: (_) => _handleTap(),
+            onSecondaryTapUp: isEmpty ? null : (_) => _showTabMenu(menuCtx),
+            onTertiaryTapUp: (_) => _requestClose(),
             child: tabBody,
           ),
         );
