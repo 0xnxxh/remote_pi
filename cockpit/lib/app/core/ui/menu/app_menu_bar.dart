@@ -394,7 +394,7 @@ List<MenuItem> _windowItems(BuildContext context, List<MenuNode> items) {
           out.add(
             MenuButton(
               onPressed: (_) => action(),
-              child: Text(_roleLabel(node.role)),
+              child: Text(_roleLabel(context, node.role)),
             ),
           );
         }
@@ -420,9 +420,11 @@ void Function()? _windowRole(MenuBarRole role) => switch (role) {
   _ => null,
 };
 
-String _roleLabel(MenuBarRole role) => switch (role) {
-  MenuBarRole.quit => t.core.menu.quit,
-  MenuBarRole.minimizeWindow => t.core.menu.minimize,
-  MenuBarRole.zoomWindow => t.core.menu.zoom,
+/// Rótulo dos roles que a barra **desenhada** (Windows/Linux) renderiza. Os
+/// demais roles são omitidos ali: só existem como item nativo no macOS.
+String _roleLabel(BuildContext context, MenuBarRole role) => switch (role) {
+  MenuBarRole.quit => context.t.core.menu.quit,
+  MenuBarRole.minimizeWindow => context.t.core.menu.minimize,
+  MenuBarRole.zoomWindow => context.t.core.menu.zoom,
   _ => '',
 };
