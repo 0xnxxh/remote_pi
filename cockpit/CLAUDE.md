@@ -33,6 +33,8 @@ Decisões fechadas (plano 37, 2026-06-05):
 - Consumo de estado na UI: `context.watch/read/select`, `Consumer`/`Selector`
   (re-exportados pelo `flutter_modular` — API igual à do `provider`).
 - Resultado tipado: `Result<T, E>`
+- i18n: **`slang`** (codegen tipado) — en/pt-BR/es em `lib/i18n/*.i18n.json`,
+  consumo via `context.t`. Regra completa na seção "i18n" abaixo
 - Subprocesso: `dart:io` `Process.start` (spawn do `pi --mode rpc`)
 - Menu de app: abstração em `core/ui/menu/` — modelo declarativo único
   (`menu_model.dart`), renderizado nativo no macOS (`PlatformMenuBar`) e
@@ -157,6 +159,77 @@ ui ──► domain ◄── data
     injetável** (ex.: `UpdateTarget` no `cockpit_module`).
 - **Tema**: nunca hardcode `Color(0x…)` / `TextStyle(fontFamily:…)`; leia via
   `context.colors.<token>` / `context.typo.<estilo>` (barrel `app/core/ui/themes`)
+- **i18n**: nenhuma string user-facing literal no código. Ver a seção abaixo.
+
+## Regra crítica: i18n — toda feature nova nasce traduzida
+
+O cockpit é internacionalizado com [`slang`](https://pub.dev/packages/slang)
+(codegen tipado). **Feature sem tradução é feature incompleta** — não é polimento
+posterior, entra no mesmo PR.
+
+Idiomas: **en (base)** · **pt-BR** · **es**. As três `lib/i18n/*.i18n.json`
+precisam ter a **mesma árvore de chaves**; o `dart run slang` falha se um
+placeholder `${...}` divergir entre locales.
+
+### Como consumir
+
+```dart
+// SEMPRE context.t — reconstrói na troca de idioma em runtime.
+final tr = context.t.cockpit.fileTreePanel;
+Text(tr.commit)
+Text(tr.generateWith(harness: label))   // interpolação é parâmetro nomeado
+```
+
+> **Nunca use o `t` global** (`t.foo.bar`). Ele resolve, compila e passa no
+> analyze, mas o widget **não** reconstrói quando o usuário troca de idioma —
+> a tela fica congelada no locale do primeiro build. `context.t` lê o
+> `TranslationProvider` e é o único acesso correto na UI.
+
+### Strings sem `BuildContext` (`data/`, ViewModels, contratos)
+
+`data/` e ViewModels **não podem traduzir** — não têm contexto, e importar UI
+neles quebraria a regra de camadas. Então eles **não produzem frase nenhuma**:
+produzem um **erro/estado tipado** com os dados variáveis, e a UI monta o texto.
+
+O caso de referência é a automação de mensagem de commit:
+
+```dart
+// domain/exceptions/automation_error.dart — sem texto de usuário
+class AutomationError implements Exception {
+  const AutomationError(this.kind, {this.harness, this.model, this.detail, ...});
+  final AutomationErrorKind kind;   // o QUE houve
+  final String? harness, model, detail;  // dados variáveis (detail = stderr cru)
+}
+
+// data/ e viewmodel só descrevem:
+return const Failure(AutomationError(AutomationErrorKind.noStagedChanges));
+
+// core/ui/automation_error_message.dart — a frase nasce AQUI
+String automationErrorMessage(BuildContext context, AutomationError e) =>
+    switch (e.kind) { ... context.t.automation.error.xxx ... };
+```
+
+Regras que caem disso:
+- `Result<T, String>` com mensagem pronta é **anti-padrão** em fluxo novo. Use
+  `Result<T, ErroTipado>` e traduza na borda da UI.
+- O `switch` do tradutor é **exaustivo sobre o enum**: adicionar um `kind` sem
+  tradução vira erro de compilação, não string em inglês vazando em produção.
+- Texto de terceiros (stderr de CLI, mensagem do SO) **não se traduz**: entra
+  como `detail` e é interpolado dentro da frase traduzida.
+- Os legados que ainda devolvem `String` (`file_system_mutator_impl`,
+  `lsp_command`, parte do `CockpitViewModel`) são dívida conhecida — não copie
+  o padrão deles, e converta quando encostar no arquivo.
+
+### Checklist de feature nova
+
+1. Nenhum literal em `Text(...)`, `label:`, `title:`, `tooltip:`,
+   `placeholder:`, `hint:`, `message:`.
+2. Chaves adicionadas nos **três** `lib/i18n/*.i18n.json`, mesma estrutura.
+3. `dart run slang` rodado e o `strings.g.dart` commitado junto.
+4. Erro que a UI exibe = tipo, não frase (seção acima).
+5. Widget test que monta a árvore precisa de `TranslationProvider` na raiz,
+   senão `context.t` estoura.
+6. `flutter analyze` limpo + `flutter test`.
 
 ## Regra crítica: `BuildContext` em código assíncrono
 
@@ -200,6 +273,13 @@ await viewModel.spawnAgent().onSuccess((_) {
   feature→core é permitido (ver fluxo de dependência acima)
 - Recriar god classes: **não** centralize rotas ou binds num arquivo só — cada
   feature declara os seus no próprio `<feature>_module.dart`
+- **Entregar feature com string literal user-facing** (nem "só esse botão", nem
+  "traduzo depois"): ver a seção de i18n — vale para `Text`, `label:`, `title:`,
+  `tooltip:`, `placeholder:` e para as mensagens de erro que a UI exibe
+- Usar o `t` global do slang na UI (`t.foo.bar`) — só `context.t` reconstrói na
+  troca de idioma
+- Devolver frase pronta de `data/` ou de ViewModel (`Result<T, String>` com
+  texto): devolva erro **tipado** e traduza na UI
 
 ## Modo orquestrado
 

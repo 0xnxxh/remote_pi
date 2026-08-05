@@ -115,9 +115,8 @@ LeafPane? findLeaf(PaneNode node, String id) {
 SplitPane? findSplit(PaneNode node, String id) {
   return switch (node) {
     LeafPane() => null,
-    SplitPane() => node.id == id
-        ? node
-        : (findSplit(node.a, id) ?? findSplit(node.b, id)),
+    SplitPane() =>
+      node.id == id ? node : (findSplit(node.a, id) ?? findSplit(node.b, id)),
   };
 }
 

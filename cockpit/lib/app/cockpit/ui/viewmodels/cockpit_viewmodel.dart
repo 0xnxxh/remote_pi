@@ -32,6 +32,7 @@ import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
 import 'package:cockpit/app/core/domain/services/commit_message_prompt.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/workspace_layout_store.dart';
@@ -2257,14 +2258,17 @@ class CockpitViewModel extends ChangeNotifier {
   /// Gera uma mensagem para o commit isolado de [absPath]. O contexto enviado
   /// ao harness contém só o diff desse arquivo (mais os últimos subjects), não
   /// o restante do working tree.
-  Future<Result<GeneratedCommitMessage, String>> generateCommitMessageForFile(
-    String absPath,
-  ) async {
+  Future<Result<GeneratedCommitMessage, AutomationError>>
+  generateCommitMessageForFile(String absPath) async {
     final pid = _selectedProjectId;
-    if (pid == null) return const Failure('No workspace selected.');
+    if (pid == null) {
+      return const Failure(AutomationError(AutomationErrorKind.noWorkspace));
+    }
     final root = rootContaining(pid, absPath);
     if (root == null) {
-      return const Failure('File is outside the workspace roots.');
+      return const Failure(
+        AutomationError(AutomationErrorKind.fileOutsideWorkspace),
+      );
     }
     final rel = _subOf(absPath, root);
     String diff;
@@ -2278,23 +2282,30 @@ class CockpitViewModel extends ChangeNotifier {
             '+++ b/$rel\n'
             '${content.split('\n').map((line) => '+$line').join('\n')}';
       } on FileSystemException catch (error) {
-        return Failure('Could not read the file: ${error.message}');
-      } on FormatException {
-        return const Failure(
-          'A commit message cannot be generated for a binary file.',
+        return Failure(
+          AutomationError(
+            AutomationErrorKind.fileUnreadable,
+            detail: error.message,
+            cause: error,
+          ),
         );
+      } on FormatException {
+        return const Failure(AutomationError(AutomationErrorKind.binaryFile));
       }
     } else {
       final captured = await git.output(root, ['diff', 'HEAD', '--', rel]);
       if (captured.$1 != 0) {
         return Failure(
-          captured.$2.isEmpty ? 'Could not read the file diff.' : captured.$2,
+          AutomationError(
+            AutomationErrorKind.diffUnavailable,
+            detail: captured.$2,
+          ),
         );
       }
       diff = captured.$2;
     }
     if (diff.trim().isEmpty) {
-      return const Failure('There are no changes to describe for this file.');
+      return const Failure(AutomationError(AutomationErrorKind.noFileChanges));
     }
 
     return _generateCommitMessage(root, diff);
@@ -2302,38 +2313,43 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Gera uma mensagem para o composer principal do Source Control usando
   /// exatamente o index que [commitStaged] vai comitar.
-  Future<Result<GeneratedCommitMessage, String>>
+  Future<Result<GeneratedCommitMessage, AutomationError>>
   generateStagedCommitMessage() async {
     final pid = _selectedProjectId;
-    if (pid == null) return const Failure('No workspace selected.');
+    if (pid == null) {
+      return const Failure(AutomationError(AutomationErrorKind.noWorkspace));
+    }
     final roots = rootsOf(
       pid,
     ).where((root) => stagedFilesOfRoot(root).isNotEmpty).toList();
     if (roots.isEmpty) {
-      return const Failure('There are no staged changes to describe.');
+      return const Failure(
+        AutomationError(AutomationErrorKind.noStagedChanges),
+      );
     }
     if (roots.length > 1) {
       return const Failure(
-        'Staged changes belong to multiple repositories. Generate them separately.',
+        AutomationError(AutomationErrorKind.multipleRepositories),
       );
     }
     final root = roots.single;
     final captured = await git.output(root, const ['diff', '--cached']);
     if (captured.$1 != 0 || captured.$2.trim().isEmpty) {
       return Failure(
-        captured.$2.isEmpty ? 'Could not read the staged diff.' : captured.$2,
+        AutomationError(
+          AutomationErrorKind.diffUnavailable,
+          detail: captured.$2,
+        ),
       );
     }
     return _generateCommitMessage(root, captured.$2);
   }
 
-  Future<Result<GeneratedCommitMessage, String>> _generateCommitMessage(
-    String root,
-    String diff,
-  ) async {
+  Future<Result<GeneratedCommitMessage, AutomationError>>
+  _generateCommitMessage(String root, String diff) async {
     final selection = _automationSelection;
     if (selection == null) {
-      return const Failure('Configure a commit message harness in Settings.');
+      return const Failure(AutomationError(AutomationErrorKind.notConfigured));
     }
     final history = await git.output(root, const [
       'log',
@@ -2353,10 +2369,7 @@ class CockpitViewModel extends ChangeNotifier {
         prompt: CommitMessagePrompt.build(diff, subjects),
       ),
     );
-    return generated.fold<Result<GeneratedCommitMessage, String>>(
-      Success.new,
-      (error) => Failure(error.message),
-    );
+    return generated;
   }
 
   Future<void> cancelCommitMessageGeneration() =>

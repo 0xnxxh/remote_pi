@@ -38,7 +38,10 @@ class _HistoryDialog extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(tr.subtitle, style: context.typo.label.copyWith(color: colors.text3)),
+          Text(
+            tr.subtitle,
+            style: context.typo.label.copyWith(color: colors.text3),
+          ),
         ],
       ),
       content: ConstrainedBox(
@@ -87,7 +90,8 @@ class _SessionRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  session.title ?? context.t.cockpit.historyDialog.untitledSession,
+                  session.title ??
+                      context.t.cockpit.historyDialog.untitledSession,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.typo.body.copyWith(

@@ -14,13 +14,15 @@ class AutomationController extends ChangeNotifier {
   bool _initialized = false;
   bool _discovering = false;
   bool _generating = false;
-  String? _errorMessage;
+  AutomationError? _error;
 
   List<AutomationHarness> get harnesses => _harnesses;
   bool get initialized => _initialized;
   bool get discovering => _discovering;
   bool get generating => _generating;
-  String? get errorMessage => _errorMessage;
+
+  /// Última falha, **sem texto** — a UI traduz com `automationErrorMessage`.
+  AutomationError? get error => _error;
 
   AutomationHarness? harnessFor(AutomationHarnessId? id) {
     if (id == null) return null;
@@ -39,12 +41,12 @@ class AutomationController extends ChangeNotifier {
   Future<void> refresh() async {
     if (_discovering) return;
     _discovering = true;
-    _errorMessage = null;
+    _error = null;
     notifyListeners();
     try {
       _harnesses = await _gateway.discover();
     } catch (error) {
-      _errorMessage = 'Could not discover installed automation harnesses.';
+      _error = AutomationError(AutomationErrorKind.process, cause: error);
       debugPrint('[automation] discovery failed: $error');
     } finally {
       _initialized = true;
@@ -54,8 +56,8 @@ class AutomationController extends ChangeNotifier {
   }
 
   /// Limpa um modelId que sumiu da lista descoberta e avisa o usuário.
-  /// Retorna a mensagem de aviso, ou `null` se nada mudou.
-  String? reconcileStaleModel({
+  /// Retorna o aviso tipado (a UI traduz), ou `null` se nada mudou.
+  AutomationError? reconcileStaleModel({
     required AutomationHarnessId? harnessId,
     required String? modelId,
     required void Function() clearToCliDefault,
@@ -67,10 +69,12 @@ class AutomationController extends ChangeNotifier {
     if (harness == null || harness.models.isEmpty) return null;
     if (harness.models.any((model) => model.id == trimmed)) return null;
     clearToCliDefault();
-    final warning =
-        'Model "$trimmed" is no longer available for ${harness.label}. '
-        'Using the CLI default — pick another model in Settings if needed.';
-    _errorMessage = warning;
+    final warning = AutomationError(
+      AutomationErrorKind.unavailable,
+      harness: harness.label,
+      model: trimmed,
+    );
+    _error = warning;
     notifyListeners();
     return warning;
   }
@@ -80,12 +84,7 @@ class AutomationController extends ChangeNotifier {
     required AutomationRequest request,
   }) async {
     if (_generating) {
-      return const Failure(
-        AutomationError(
-          AutomationErrorKind.process,
-          'Another commit message is already being generated.',
-        ),
-      );
+      return const Failure(AutomationError(AutomationErrorKind.busy));
     }
     await ensureInitialized();
     final harness = harnessFor(selection.harnessId);
@@ -93,7 +92,7 @@ class AutomationController extends ChangeNotifier {
       return Failure(
         AutomationError(
           AutomationErrorKind.unavailable,
-          '${selection.harnessId.label} is not installed or is no longer available.',
+          harness: selection.harnessId.label,
         ),
       );
     }
@@ -105,29 +104,29 @@ class AutomationController extends ChangeNotifier {
       return Failure(
         AutomationError(
           AutomationErrorKind.unavailable,
-          'Model "$modelId" is not available for ${harness.label}. '
-          'Choose another model in Settings.',
+          harness: harness.label,
+          model: modelId,
         ),
       );
     }
     _generating = true;
-    _errorMessage = null;
+    _error = null;
     notifyListeners();
     try {
       return Success(
         await _gateway.generate(selection: selection, request: request),
       );
     } on AutomationError catch (error) {
-      _errorMessage = error.message;
+      _error = error;
       return Failure(error);
     } catch (error) {
-      const failure = AutomationError(
+      final failure = AutomationError(
         AutomationErrorKind.process,
-        'The automation could not generate a commit message.',
+        cause: error,
       );
-      _errorMessage = failure.message;
+      _error = failure;
       debugPrint('[automation] generation failed: $error');
-      return const Failure(failure);
+      return Failure(failure);
     } finally {
       _generating = false;
       notifyListeners();

@@ -465,7 +465,10 @@ class _MongoCollectionViewState extends State<MongoCollectionView> {
                 child: Text(context.t.common.cancel),
               ),
               const SizedBox(width: 6),
-              PrimaryButton(onPressed: _commitEdit, child: Text(context.t.common.save)),
+              PrimaryButton(
+                onPressed: _commitEdit,
+                child: Text(context.t.common.save),
+              ),
             ],
           ),
         ],

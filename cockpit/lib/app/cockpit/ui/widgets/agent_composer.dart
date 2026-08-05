@@ -1173,7 +1173,9 @@ class _SendButton extends StatelessWidget {
       icon = Icons.arrow_upward;
     }
     return AppTooltip(
-      message: streaming ? context.t.cockpit.agentComposer.stop : context.t.cockpit.agentComposer.send,
+      message: streaming
+          ? context.t.cockpit.agentComposer.stop
+          : context.t.cockpit.agentComposer.send,
       // borderRadius 15 num quadrado 30×30 = círculo (substitui o CircleBorder
       // do Material; HoverTap só aceita BorderRadius).
       child: HoverTap(
@@ -1206,7 +1208,11 @@ class _RelayButton extends StatelessWidget {
     final status = session.relayStatus;
     final tr = context.t.cockpit.agentComposer;
     final (icon, color, tooltip) = switch (status) {
-      RelayStatus.connected => (Icons.cell_tower, colors.online, tr.relayOnline),
+      RelayStatus.connected => (
+        Icons.cell_tower,
+        colors.online,
+        tr.relayOnline,
+      ),
       RelayStatus.reconnecting => (
         Icons.cell_tower,
         colors.warn,

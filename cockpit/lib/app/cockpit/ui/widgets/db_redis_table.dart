@@ -955,10 +955,7 @@ class _RedisTableViewState extends State<RedisTableView> {
                   child: Text(context.t.common.cancel),
                 ),
                 const SizedBox(width: 6),
-                PrimaryButton(
-                  onPressed: _commitDraft,
-                  child: Text(tr.addKey),
-                ),
+                PrimaryButton(onPressed: _commitDraft, child: Text(tr.addKey)),
               ],
             ),
           ],

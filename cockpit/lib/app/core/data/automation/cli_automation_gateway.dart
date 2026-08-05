@@ -149,10 +149,7 @@ class CliAutomationGateway implements AutomationGateway {
     required AutomationRequest request,
   }) async {
     if (_activeProcess != null) {
-      throw const AutomationError(
-        AutomationErrorKind.process,
-        'Another commit message is already being generated.',
-      );
+      throw const AutomationError(AutomationErrorKind.busy);
     }
     // Zerado **antes** do primeiro await: resolver o executável e escrever o
     // system prompt do codex leva tempo suficiente para o usuário cancelar, e
@@ -165,7 +162,7 @@ class CliAutomationGateway implements AutomationGateway {
     if (!await isExecutableAvailable(executable)) {
       throw AutomationError(
         AutomationErrorKind.unavailable,
-        '${selection.harnessId.label} is not installed or is not on PATH.',
+        harness: selection.harnessId.label,
       );
     }
 
@@ -189,10 +186,7 @@ class CliAutomationGateway implements AutomationGateway {
     );
     if (_cancelRequested) {
       await _deleteTemporaryDirectory(systemPromptDirectory);
-      throw const AutomationError(
-        AutomationErrorKind.cancelled,
-        'Commit message generation was cancelled.',
-      );
+      throw const AutomationError(AutomationErrorKind.cancelled);
     }
     Process process;
     try {
@@ -207,7 +201,7 @@ class CliAutomationGateway implements AutomationGateway {
       await _deleteTemporaryDirectory(systemPromptDirectory);
       throw AutomationError(
         AutomationErrorKind.unavailable,
-        'Could not start ${selection.harnessId.label}.',
+        harness: selection.harnessId.label,
         cause: error,
       );
     }
@@ -223,18 +217,12 @@ class CliAutomationGateway implements AutomationGateway {
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
       if (_cancelRequested) {
-        throw const AutomationError(
-          AutomationErrorKind.cancelled,
-          'Commit message generation was cancelled.',
-        );
+        throw const AutomationError(AutomationErrorKind.cancelled);
       }
       if (exitCode != 0) throw _processError(selection.harnessId, stderr);
       final message = parseOutput(selection.harnessId, stdout);
       if (message.isEmpty) {
-        throw const AutomationError(
-          AutomationErrorKind.invalidResponse,
-          'The automation returned an empty commit message.',
-        );
+        throw const AutomationError(AutomationErrorKind.invalidResponse);
       }
       // Convenções (72 chars, ponto final, …) viram aviso — o rascunho fica
       // editável. Só mensagem vazia é hard-fail acima.
@@ -246,7 +234,8 @@ class CliAutomationGateway implements AutomationGateway {
       process.kill();
       throw AutomationError(
         AutomationErrorKind.timeout,
-        '${selection.harnessId.label} did not respond within ${timeout.inSeconds} seconds.',
+        harness: selection.harnessId.label,
+        timeoutSeconds: timeout.inSeconds,
         cause: error,
       );
     } finally {
@@ -509,9 +498,8 @@ class CliAutomationGateway implements AutomationGateway {
       authentication
           ? AutomationErrorKind.authentication
           : AutomationErrorKind.process,
-      detail.isEmpty
-          ? '${id.label} could not generate a commit message.'
-          : '${id.label}: $detail',
+      harness: id.label,
+      detail: detail,
     );
   }
 

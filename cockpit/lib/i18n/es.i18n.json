@@ -472,7 +472,9 @@
         "notifications": "Notificaciones",
         "connectivity": "Conectividad",
         "daemonAgents": "Agentes Daemon",
-        "schedules": "Programaciones"
+        "schedules": "Programaciones",
+        "sourceControl": "Control de versiones",
+        "automations": "Automatizaciones"
       },
       "general": {
         "sectionAgent": "Agente",
@@ -680,7 +682,56 @@
         "folderRequiredError": "Elige una carpeta.",
         "folderDuplicateError": "Ya existe un agente en esta carpeta.",
         "pickFolderDialogTitle": "Elige la carpeta del Agente Daemon"
+      },
+      "sourceControl": {
+        "sectionView": "Vista",
+        "defaultViewMode": "Modo de vista predeterminado",
+        "defaultViewModeDescription": "Diseño inicial compartido por todos los workspaces, worktrees y secciones Changes/Staged.",
+        "viewModeList": "Lista",
+        "viewModeTree": "Árbol"
+      },
+      "automations": {
+        "sectionCommitMessages": "Mensajes de commit",
+        "harness": "Harness",
+        "harnessDiscovering": "Buscando harnesses de línea de comandos instalados…",
+        "harnessNoneFound": "No se encontró ningún harness compatible en el PATH.",
+        "harnessConfiguredUnavailable": "${harness} está configurado, pero no disponible.",
+        "harnessChoose": "Elige la CLI usada para generar mensajes de commit.",
+        "harnessRefresh": "Actualizar harnesses instalados",
+        "notConfigured": "Sin configurar",
+        "model": "Modelo",
+        "modelUnavailable": "La lista de modelos no está disponible hasta encontrar el harness.",
+        "modelCliOnly": "Este harness usa el modelo predeterminado de su CLI.",
+        "modelOptional": "Opcional. Déjalo en blanco para usar el predeterminado de la CLI.",
+        "modelCliDefault": "Predeterminado de la CLI",
+        "generateFromSourceControl": "Generar desde Control de versiones",
+        "generateFromSourceControlDescription": "Cockpit envía solo el diff seleccionado y los asuntos de los commits recientes. Los patrones habituales de credenciales y los archivos sensibles se redactan antes de ejecutar el harness.",
+        "discoveryFailed": "No se pudieron descubrir los harnesses de automatización instalados.",
+        "staleModel": "El modelo \"${model}\" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas."
       }
+    }
+  },
+  "automation": {
+    "error": {
+      "unavailable": "${harness} no está instalado o no está en el PATH.",
+      "modelUnavailable": "El modelo \"${model}\" no está disponible para ${harness}. Elige otro modelo en Configuración.",
+      "authentication": "${harness}: ${detail}",
+      "timeout": "${harness} no respondió en ${seconds} segundos.",
+      "cancelled": "Se canceló la generación del mensaje de commit.",
+      "process": "${harness}: ${detail}",
+      "processNoDetail": "${harness} no pudo generar un mensaje de commit.",
+      "invalidResponse": "La automatización devolvió un mensaje de commit vacío.",
+      "busy": "Ya se está generando otro mensaje de commit.",
+      "unknown": "La automatización no pudo generar un mensaje de commit.",
+      "noWorkspace": "Ningún workspace seleccionado.",
+      "fileOutsideWorkspace": "El archivo está fuera de las raíces del workspace.",
+      "fileUnreadable": "No se pudo leer el archivo: ${detail}",
+      "binaryFile": "No se puede generar un mensaje de commit para un archivo binario.",
+      "noFileChanges": "No hay cambios que describir en este archivo.",
+      "noStagedChanges": "No hay cambios en stage que describir.",
+      "multipleRepositories": "Los cambios en stage pertenecen a varios repositorios. Genéralos por separado.",
+      "diffUnavailable": "No se pudo leer el diff.",
+      "notConfigured": "Configura un harness de mensajes de commit en Configuración."
     }
   }
 }

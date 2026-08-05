@@ -9,6 +9,8 @@ import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/panel_resize_handle.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
+import 'package:cockpit/app/core/ui/automation_error_message.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -22,9 +24,11 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 typedef GenerateCommitMessage =
-    Future<Result<GeneratedCommitMessage, String>> Function(String absPath);
+    Future<Result<GeneratedCommitMessage, AutomationError>> Function(
+      String absPath,
+    );
 typedef GenerateStagedCommitMessage =
-    Future<Result<GeneratedCommitMessage, String>> Function();
+    Future<Result<GeneratedCommitMessage, AutomationError>> Function();
 
 /// Root git de um workspace **multi-root** (multirepo) — alimenta o cabeçalho
 /// de seção na aba Files e no Source Control. Derivada em runtime pela VM
@@ -554,7 +558,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
       },
       (error) => setState(() {
         _generatingCommit = false;
-        _commitError = error;
+        // Cancelamento é ação do usuário, não erro a exibir em vermelho.
+        _commitError = error.kind == AutomationErrorKind.cancelled
+            ? null
+            : automationErrorMessage(context, error);
       }),
     );
   }

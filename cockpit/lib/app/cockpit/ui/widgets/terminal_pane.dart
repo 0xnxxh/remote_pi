@@ -417,7 +417,8 @@ class _TerminalPaneState extends State<TerminalPane>
   void _onPointerCancel(PointerCancelEvent e) {
     if (_forwardingMouse) {
       final r = _render;
-      final cell = r?.getCellOffset(r.globalToLocal(e.position)) ?? _tuiLastCell;
+      final cell =
+          r?.getCellOffset(r.globalToLocal(e.position)) ?? _tuiLastCell;
       if (cell != null) {
         widget.terminal.mouseInput(
           TerminalMouseButton.left,

@@ -6,6 +6,7 @@ import 'package:cockpit/app/cockpit/domain/entities/git_file_status.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_tree_panel.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -283,7 +284,8 @@ void main() {
       'staged automation action follows amend picker and shows loading',
       (tester) async {
         const changedPath = '/workspace/lib/app/main.dart';
-        final generation = Completer<Result<GeneratedCommitMessage, String>>();
+        final generation =
+            Completer<Result<GeneratedCommitMessage, AutomationError>>();
 
         await tester.pumpWidget(
           TranslationProvider(

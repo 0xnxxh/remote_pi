@@ -39,13 +39,25 @@ class MacosNotificationInstructionsDialog extends StatelessWidget {
           children: [
             Text(tr.intro, style: stepStyle),
             const SizedBox(height: 14),
-            _InstructionStep(step: '1', content: Text(tr.step1, style: stepStyle)),
+            _InstructionStep(
+              step: '1',
+              content: Text(tr.step1, style: stepStyle),
+            ),
             const SizedBox(height: 8),
-            _InstructionStep(step: '2', content: Text(tr.step2, style: stepStyle)),
+            _InstructionStep(
+              step: '2',
+              content: Text(tr.step2, style: stepStyle),
+            ),
             const SizedBox(height: 8),
-            _InstructionStep(step: '3', content: Text(tr.step3, style: stepStyle)),
+            _InstructionStep(
+              step: '3',
+              content: Text(tr.step3, style: stepStyle),
+            ),
             const SizedBox(height: 8),
-            _InstructionStep(step: '4', content: Text(tr.step4, style: stepStyle)),
+            _InstructionStep(
+              step: '4',
+              content: Text(tr.step4, style: stepStyle),
+            ),
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(10),

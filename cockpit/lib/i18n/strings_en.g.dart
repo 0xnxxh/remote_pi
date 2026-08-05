@@ -44,6 +44,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$common$en common = Translations$common$en.internal(_root);
 	late final Translations$cockpit$en cockpit = Translations$cockpit$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
+	late final Translations$automation$en automation = Translations$automation$en.internal(_root);
 }
 
 // Path: core
@@ -156,6 +157,16 @@ class Translations$settings$en {
 	late final Translations$settings$revokeDialog$en revokeDialog = Translations$settings$revokeDialog$en.internal(_root);
 	late final Translations$settings$pairingDialog$en pairingDialog = Translations$settings$pairingDialog$en.internal(_root);
 	late final Translations$settings$page$en page = Translations$settings$page$en.internal(_root);
+}
+
+// Path: automation
+class Translations$automation$en {
+	Translations$automation$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$automation$error$en error = Translations$automation$error$en.internal(_root);
 }
 
 // Path: core.bootstrapError
@@ -1555,6 +1566,74 @@ class Translations$settings$page$en {
 	late final Translations$settings$page$connectivity$en connectivity = Translations$settings$page$connectivity$en.internal(_root);
 	late final Translations$settings$page$schedules$en schedules = Translations$settings$page$schedules$en.internal(_root);
 	late final Translations$settings$page$daemons$en daemons = Translations$settings$page$daemons$en.internal(_root);
+	late final Translations$settings$page$sourceControl$en sourceControl = Translations$settings$page$sourceControl$en.internal(_root);
+	late final Translations$settings$page$automations$en automations = Translations$settings$page$automations$en.internal(_root);
+}
+
+// Path: automation.error
+class Translations$automation$error$en {
+	Translations$automation$error$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${harness} is not installed or is not on PATH.'
+	String unavailable({required Object harness}) => '${harness} is not installed or is not on PATH.';
+
+	/// en: 'Model "${model}" is not available for ${harness}. Choose another model in Settings.'
+	String modelUnavailable({required Object model, required Object harness}) => 'Model "${model}" is not available for ${harness}. Choose another model in Settings.';
+
+	/// en: '${harness}: ${detail}'
+	String authentication({required Object harness, required Object detail}) => '${harness}: ${detail}';
+
+	/// en: '${harness} did not respond within ${seconds} seconds.'
+	String timeout({required Object harness, required Object seconds}) => '${harness} did not respond within ${seconds} seconds.';
+
+	/// en: 'Commit message generation was cancelled.'
+	String get cancelled => 'Commit message generation was cancelled.';
+
+	/// en: '${harness}: ${detail}'
+	String process({required Object harness, required Object detail}) => '${harness}: ${detail}';
+
+	/// en: '${harness} could not generate a commit message.'
+	String processNoDetail({required Object harness}) => '${harness} could not generate a commit message.';
+
+	/// en: 'The automation returned an empty commit message.'
+	String get invalidResponse => 'The automation returned an empty commit message.';
+
+	/// en: 'Another commit message is already being generated.'
+	String get busy => 'Another commit message is already being generated.';
+
+	/// en: 'The automation could not generate a commit message.'
+	String get unknown => 'The automation could not generate a commit message.';
+
+	/// en: 'No workspace selected.'
+	String get noWorkspace => 'No workspace selected.';
+
+	/// en: 'File is outside the workspace roots.'
+	String get fileOutsideWorkspace => 'File is outside the workspace roots.';
+
+	/// en: 'Could not read the file: ${detail}'
+	String fileUnreadable({required Object detail}) => 'Could not read the file: ${detail}';
+
+	/// en: 'A commit message cannot be generated for a binary file.'
+	String get binaryFile => 'A commit message cannot be generated for a binary file.';
+
+	/// en: 'There are no changes to describe for this file.'
+	String get noFileChanges => 'There are no changes to describe for this file.';
+
+	/// en: 'There are no staged changes to describe.'
+	String get noStagedChanges => 'There are no staged changes to describe.';
+
+	/// en: 'Staged changes belong to multiple repositories. Generate them separately.'
+	String get multipleRepositories => 'Staged changes belong to multiple repositories. Generate them separately.';
+
+	/// en: 'Could not read the diff.'
+	String get diffUnavailable => 'Could not read the diff.';
+
+	/// en: 'Configure a commit message harness in Settings.'
+	String get notConfigured => 'Configure a commit message harness in Settings.';
 }
 
 // Path: settings.page.header
@@ -1606,6 +1685,12 @@ class Translations$settings$page$nav$en {
 
 	/// en: 'Schedules'
 	String get schedules => 'Schedules';
+
+	/// en: 'Source Control'
+	String get sourceControl => 'Source Control';
+
+	/// en: 'Automations'
+	String get automations => 'Automations';
 }
 
 // Path: settings.page.general
@@ -2246,6 +2331,90 @@ class Translations$settings$page$daemons$en {
 	String get pickFolderDialogTitle => 'Choose the Daemon Agent folder';
 }
 
+// Path: settings.page.sourceControl
+class Translations$settings$page$sourceControl$en {
+	Translations$settings$page$sourceControl$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'View'
+	String get sectionView => 'View';
+
+	/// en: 'Default view mode'
+	String get defaultViewMode => 'Default view mode';
+
+	/// en: 'Initial layout shared by every workspace, worktree, and Changes/Staged section.'
+	String get defaultViewModeDescription => 'Initial layout shared by every workspace, worktree, and Changes/Staged section.';
+
+	/// en: 'List'
+	String get viewModeList => 'List';
+
+	/// en: 'Tree'
+	String get viewModeTree => 'Tree';
+}
+
+// Path: settings.page.automations
+class Translations$settings$page$automations$en {
+	Translations$settings$page$automations$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Commit messages'
+	String get sectionCommitMessages => 'Commit messages';
+
+	/// en: 'Harness'
+	String get harness => 'Harness';
+
+	/// en: 'Looking for installed command-line harnesses…'
+	String get harnessDiscovering => 'Looking for installed command-line harnesses…';
+
+	/// en: 'No supported harness was found on PATH.'
+	String get harnessNoneFound => 'No supported harness was found on PATH.';
+
+	/// en: '${harness} is configured but unavailable.'
+	String harnessConfiguredUnavailable({required Object harness}) => '${harness} is configured but unavailable.';
+
+	/// en: 'Choose the CLI used to generate commit messages.'
+	String get harnessChoose => 'Choose the CLI used to generate commit messages.';
+
+	/// en: 'Refresh installed harnesses'
+	String get harnessRefresh => 'Refresh installed harnesses';
+
+	/// en: 'Not configured'
+	String get notConfigured => 'Not configured';
+
+	/// en: 'Model'
+	String get model => 'Model';
+
+	/// en: 'The model list is unavailable until the harness is found.'
+	String get modelUnavailable => 'The model list is unavailable until the harness is found.';
+
+	/// en: 'This harness uses its CLI default model.'
+	String get modelCliOnly => 'This harness uses its CLI default model.';
+
+	/// en: 'Optional. Leave blank to use the CLI default.'
+	String get modelOptional => 'Optional. Leave blank to use the CLI default.';
+
+	/// en: 'CLI default'
+	String get modelCliDefault => 'CLI default';
+
+	/// en: 'Generate from Source Control'
+	String get generateFromSourceControl => 'Generate from Source Control';
+
+	/// en: 'Cockpit sends only the selected diff and recent commit subjects. Common credential patterns and sensitive files are redacted before the harness runs.'
+	String get generateFromSourceControlDescription => 'Cockpit sends only the selected diff and recent commit subjects. Common credential patterns and sensitive files are redacted before the harness runs.';
+
+	/// en: 'Could not discover installed automation harnesses.'
+	String get discoveryFailed => 'Could not discover installed automation harnesses.';
+
+	/// en: 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.'
+	String staleModel({required Object model, required Object harness}) => 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.';
+}
+
 // Path: settings.page.general.updateFrequency
 class Translations$settings$page$general$updateFrequency$en {
 	Translations$settings$page$general$updateFrequency$en.internal(this._root);
@@ -2666,6 +2835,8 @@ extension on Translations {
 			'settings.page.nav.connectivity' => 'Connectivity',
 			'settings.page.nav.daemonAgents' => 'Daemon Agents',
 			'settings.page.nav.schedules' => 'Schedules',
+			'settings.page.nav.sourceControl' => 'Source Control',
+			'settings.page.nav.automations' => 'Automations',
 			'settings.page.general.sectionAgent' => 'Agent',
 			'settings.page.general.enableAgentsTitle' => 'Enable agents',
 			'settings.page.general.enableAgentsDesc' => 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.',
@@ -2785,10 +2956,10 @@ extension on Translations {
 			'settings.page.schedules.disabled' => 'disabled',
 			'settings.page.schedules.nextRun' => ({required Object when}) => 'next ${when}',
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'last: ${label}',
-			'settings.page.schedules.removeScheduleDialogTitle' => 'Remove schedule?',
-			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.schedules.removeScheduleDialogTitle' => 'Remove schedule?',
+			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.',
 			'settings.page.schedules.newScheduleTitle' => 'New schedule',
 			'settings.page.schedules.daemonLabel' => 'Daemon',
 			'settings.page.schedules.whenLabel' => 'When (cron expression)',
@@ -2851,6 +3022,47 @@ extension on Translations {
 			'settings.page.daemons.folderRequiredError' => 'Choose a folder.',
 			'settings.page.daemons.folderDuplicateError' => 'An agent already exists in this folder.',
 			'settings.page.daemons.pickFolderDialogTitle' => 'Choose the Daemon Agent folder',
+			'settings.page.sourceControl.sectionView' => 'View',
+			'settings.page.sourceControl.defaultViewMode' => 'Default view mode',
+			'settings.page.sourceControl.defaultViewModeDescription' => 'Initial layout shared by every workspace, worktree, and Changes/Staged section.',
+			'settings.page.sourceControl.viewModeList' => 'List',
+			'settings.page.sourceControl.viewModeTree' => 'Tree',
+			'settings.page.automations.sectionCommitMessages' => 'Commit messages',
+			'settings.page.automations.harness' => 'Harness',
+			'settings.page.automations.harnessDiscovering' => 'Looking for installed command-line harnesses…',
+			'settings.page.automations.harnessNoneFound' => 'No supported harness was found on PATH.',
+			'settings.page.automations.harnessConfiguredUnavailable' => ({required Object harness}) => '${harness} is configured but unavailable.',
+			'settings.page.automations.harnessChoose' => 'Choose the CLI used to generate commit messages.',
+			'settings.page.automations.harnessRefresh' => 'Refresh installed harnesses',
+			'settings.page.automations.notConfigured' => 'Not configured',
+			'settings.page.automations.model' => 'Model',
+			'settings.page.automations.modelUnavailable' => 'The model list is unavailable until the harness is found.',
+			'settings.page.automations.modelCliOnly' => 'This harness uses its CLI default model.',
+			'settings.page.automations.modelOptional' => 'Optional. Leave blank to use the CLI default.',
+			'settings.page.automations.modelCliDefault' => 'CLI default',
+			'settings.page.automations.generateFromSourceControl' => 'Generate from Source Control',
+			'settings.page.automations.generateFromSourceControlDescription' => 'Cockpit sends only the selected diff and recent commit subjects. Common credential patterns and sensitive files are redacted before the harness runs.',
+			'settings.page.automations.discoveryFailed' => 'Could not discover installed automation harnesses.',
+			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.',
+			'automation.error.unavailable' => ({required Object harness}) => '${harness} is not installed or is not on PATH.',
+			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'Model "${model}" is not available for ${harness}. Choose another model in Settings.',
+			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',
+			'automation.error.timeout' => ({required Object harness, required Object seconds}) => '${harness} did not respond within ${seconds} seconds.',
+			'automation.error.cancelled' => 'Commit message generation was cancelled.',
+			'automation.error.process' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',
+			'automation.error.processNoDetail' => ({required Object harness}) => '${harness} could not generate a commit message.',
+			'automation.error.invalidResponse' => 'The automation returned an empty commit message.',
+			'automation.error.busy' => 'Another commit message is already being generated.',
+			'automation.error.unknown' => 'The automation could not generate a commit message.',
+			'automation.error.noWorkspace' => 'No workspace selected.',
+			'automation.error.fileOutsideWorkspace' => 'File is outside the workspace roots.',
+			'automation.error.fileUnreadable' => ({required Object detail}) => 'Could not read the file: ${detail}',
+			'automation.error.binaryFile' => 'A commit message cannot be generated for a binary file.',
+			'automation.error.noFileChanges' => 'There are no changes to describe for this file.',
+			'automation.error.noStagedChanges' => 'There are no staged changes to describe.',
+			'automation.error.multipleRepositories' => 'Staged changes belong to multiple repositories. Generate them separately.',
+			'automation.error.diffUnavailable' => 'Could not read the diff.',
+			'automation.error.notConfigured' => 'Configure a commit message harness in Settings.',
 			_ => null,
 		};
 	}

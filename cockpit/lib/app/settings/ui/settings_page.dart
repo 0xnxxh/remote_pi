@@ -6,6 +6,7 @@ import 'package:cockpit/app/core/domain/entities/setup_check.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
+import 'package:cockpit/app/core/ui/automation_error_message.dart';
 import 'package:cockpit/app/core/ui/widgets/macos_notification_instructions_dialog.dart';
 import 'package:cockpit/app/settings/domain/cron_schedule.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
@@ -215,13 +216,13 @@ class _CategoryNav extends StatelessWidget {
           ),
           _NavItem(
             icon: Icons.account_tree_outlined,
-            label: 'Source Control',
+            label: context.t.settings.page.nav.sourceControl,
             selected: selected == _Category.sourceControl,
             onTap: () => onSelect(_Category.sourceControl),
           ),
           _NavItem(
             icon: Icons.auto_awesome_outlined,
-            label: 'Automations',
+            label: context.t.settings.page.nav.automations,
             selected: selected == _Category.automations,
             onTap: () => onSelect(_Category.automations),
           ),
@@ -492,6 +493,7 @@ class _SourceControlPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
+    final tr = context.t.settings.page.sourceControl;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -502,14 +504,12 @@ class _SourceControlPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'View',
+                label: tr.sectionView,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Default view mode',
-                      description:
-                          'Initial layout shared by every workspace, worktree, '
-                          'and Changes/Staged section.',
+                      title: tr.defaultViewMode,
+                      description: tr.defaultViewModeDescription,
                       trailing: _SourceControlViewModeDropdown(
                         value: settings.settings.sourceControlViewMode,
                         onChanged: settings.setSourceControlViewMode,
@@ -573,6 +573,7 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
     final selectedId = settings.settings.automationHarnessId;
     final modelId = settings.settings.selectedAutomationModelId;
     final colors = context.colors;
+    final tr = context.t.settings.page.automations;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
@@ -583,19 +584,21 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Section(
-                label: 'Commit messages',
+                label: tr.sectionCommitMessages,
                 child: _Card(
                   children: [
                     _Row(
-                      title: 'Harness',
+                      title: tr.harness,
                       description: automation.discovering
-                          ? 'Looking for installed command-line harnesses…'
+                          ? tr.harnessDiscovering
                           : automation.harnesses.isEmpty
-                          ? 'No supported harness was found on PATH.'
+                          ? tr.harnessNoneFound
                           : selected == null && selectedId != null
-                          ? '${selectedId.label} is configured but unavailable.'
+                          ? tr.harnessConfiguredUnavailable(
+                              harness: selectedId.label,
+                            )
                           : selected == null
-                          ? 'Choose the CLI used to generate commit messages.'
+                          ? tr.harnessChoose
                           : selected.executablePath,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -607,7 +610,7 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                           ),
                           const SizedBox(width: 8),
                           AppTooltip(
-                            message: 'Refresh installed harnesses',
+                            message: tr.harnessRefresh,
                             child: IconButton.outline(
                               onPressed: automation.discovering
                                   ? null
@@ -624,12 +627,12 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                     ),
                     if (selectedId != null)
                       _Row(
-                        title: 'Model',
+                        title: tr.model,
                         description: selected == null
-                            ? 'The model list is unavailable until the harness is found.'
+                            ? tr.modelUnavailable
                             : selected.models.isEmpty
-                            ? 'This harness uses its CLI default model.'
-                            : 'Optional. Leave blank to use the CLI default.',
+                            ? tr.modelCliOnly
+                            : tr.modelOptional,
                         trailing: _AutomationModelDropdown(
                           value: modelId,
                           models: selected?.models ?? const <AutomationModel>[],
@@ -637,11 +640,8 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                         ),
                       ),
                     _Row(
-                      title: 'Generate from Source Control',
-                      description:
-                          'Cockpit sends only the selected diff and recent commit '
-                          'subjects. Common credential patterns and sensitive '
-                          'files are redacted before the harness runs.',
+                      title: tr.generateFromSourceControl,
+                      description: tr.generateFromSourceControlDescription,
                       trailing: Icon(
                         Icons.auto_awesome,
                         size: 18,
@@ -651,9 +651,9 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                   ],
                 ),
               ),
-              if (automation.errorMessage != null)
+              if (automation.error != null)
                 Text(
-                  automation.errorMessage!,
+                  automationErrorMessage(context, automation.error!),
                   style: context.typo.label.copyWith(color: colors.error),
                 ),
             ],

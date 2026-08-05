@@ -43,6 +43,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$common$es common = _Translations$common$es._(_root);
 	@override late final _Translations$cockpit$es cockpit = _Translations$cockpit$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
+	@override late final _Translations$automation$es automation = _Translations$automation$es._(_root);
 }
 
 // Path: core
@@ -125,6 +126,16 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$revokeDialog$es revokeDialog = _Translations$settings$revokeDialog$es._(_root);
 	@override late final _Translations$settings$pairingDialog$es pairingDialog = _Translations$settings$pairingDialog$es._(_root);
 	@override late final _Translations$settings$page$es page = _Translations$settings$page$es._(_root);
+}
+
+// Path: automation
+class _Translations$automation$es extends Translations$automation$en {
+	_Translations$automation$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$automation$error$es error = _Translations$automation$error$es._(_root);
 }
 
 // Path: core.bootstrapError
@@ -794,6 +805,36 @@ class _Translations$settings$page$es extends Translations$settings$page$en {
 	@override late final _Translations$settings$page$connectivity$es connectivity = _Translations$settings$page$connectivity$es._(_root);
 	@override late final _Translations$settings$page$schedules$es schedules = _Translations$settings$page$schedules$es._(_root);
 	@override late final _Translations$settings$page$daemons$es daemons = _Translations$settings$page$daemons$es._(_root);
+	@override late final _Translations$settings$page$sourceControl$es sourceControl = _Translations$settings$page$sourceControl$es._(_root);
+	@override late final _Translations$settings$page$automations$es automations = _Translations$settings$page$automations$es._(_root);
+}
+
+// Path: automation.error
+class _Translations$automation$error$es extends Translations$automation$error$en {
+	_Translations$automation$error$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String unavailable({required Object harness}) => '${harness} no está instalado o no está en el PATH.';
+	@override String modelUnavailable({required Object model, required Object harness}) => 'El modelo "${model}" no está disponible para ${harness}. Elige otro modelo en Configuración.';
+	@override String authentication({required Object harness, required Object detail}) => '${harness}: ${detail}';
+	@override String timeout({required Object harness, required Object seconds}) => '${harness} no respondió en ${seconds} segundos.';
+	@override String get cancelled => 'Se canceló la generación del mensaje de commit.';
+	@override String process({required Object harness, required Object detail}) => '${harness}: ${detail}';
+	@override String processNoDetail({required Object harness}) => '${harness} no pudo generar un mensaje de commit.';
+	@override String get invalidResponse => 'La automatización devolvió un mensaje de commit vacío.';
+	@override String get busy => 'Ya se está generando otro mensaje de commit.';
+	@override String get unknown => 'La automatización no pudo generar un mensaje de commit.';
+	@override String get noWorkspace => 'Ningún workspace seleccionado.';
+	@override String get fileOutsideWorkspace => 'El archivo está fuera de las raíces del workspace.';
+	@override String fileUnreadable({required Object detail}) => 'No se pudo leer el archivo: ${detail}';
+	@override String get binaryFile => 'No se puede generar un mensaje de commit para un archivo binario.';
+	@override String get noFileChanges => 'No hay cambios que describir en este archivo.';
+	@override String get noStagedChanges => 'No hay cambios en stage que describir.';
+	@override String get multipleRepositories => 'Los cambios en stage pertenecen a varios repositorios. Genéralos por separado.';
+	@override String get diffUnavailable => 'No se pudo leer el diff.';
+	@override String get notConfigured => 'Configura un harness de mensajes de commit en Configuración.';
 }
 
 // Path: settings.page.header
@@ -823,6 +864,8 @@ class _Translations$settings$page$nav$es extends Translations$settings$page$nav$
 	@override String get connectivity => 'Conectividad';
 	@override String get daemonAgents => 'Agentes Daemon';
 	@override String get schedules => 'Programaciones';
+	@override String get sourceControl => 'Control de versiones';
+	@override String get automations => 'Automatizaciones';
 }
 
 // Path: settings.page.general
@@ -1102,6 +1145,46 @@ class _Translations$settings$page$daemons$es extends Translations$settings$page$
 	@override String get folderRequiredError => 'Elige una carpeta.';
 	@override String get folderDuplicateError => 'Ya existe un agente en esta carpeta.';
 	@override String get pickFolderDialogTitle => 'Elige la carpeta del Agente Daemon';
+}
+
+// Path: settings.page.sourceControl
+class _Translations$settings$page$sourceControl$es extends Translations$settings$page$sourceControl$en {
+	_Translations$settings$page$sourceControl$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get sectionView => 'Vista';
+	@override String get defaultViewMode => 'Modo de vista predeterminado';
+	@override String get defaultViewModeDescription => 'Diseño inicial compartido por todos los workspaces, worktrees y secciones Changes/Staged.';
+	@override String get viewModeList => 'Lista';
+	@override String get viewModeTree => 'Árbol';
+}
+
+// Path: settings.page.automations
+class _Translations$settings$page$automations$es extends Translations$settings$page$automations$en {
+	_Translations$settings$page$automations$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get sectionCommitMessages => 'Mensajes de commit';
+	@override String get harness => 'Harness';
+	@override String get harnessDiscovering => 'Buscando harnesses de línea de comandos instalados…';
+	@override String get harnessNoneFound => 'No se encontró ningún harness compatible en el PATH.';
+	@override String harnessConfiguredUnavailable({required Object harness}) => '${harness} está configurado, pero no disponible.';
+	@override String get harnessChoose => 'Elige la CLI usada para generar mensajes de commit.';
+	@override String get harnessRefresh => 'Actualizar harnesses instalados';
+	@override String get notConfigured => 'Sin configurar';
+	@override String get model => 'Modelo';
+	@override String get modelUnavailable => 'La lista de modelos no está disponible hasta encontrar el harness.';
+	@override String get modelCliOnly => 'Este harness usa el modelo predeterminado de su CLI.';
+	@override String get modelOptional => 'Opcional. Déjalo en blanco para usar el predeterminado de la CLI.';
+	@override String get modelCliDefault => 'Predeterminado de la CLI';
+	@override String get generateFromSourceControl => 'Generar desde Control de versiones';
+	@override String get generateFromSourceControlDescription => 'Cockpit envía solo el diff seleccionado y los asuntos de los commits recientes. Los patrones habituales de credenciales y los archivos sensibles se redactan antes de ejecutar el harness.';
+	@override String get discoveryFailed => 'No se pudieron descubrir los harnesses de automatización instalados.';
+	@override String staleModel({required Object model, required Object harness}) => 'El modelo "${model}" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas.';
 }
 
 // Path: settings.page.general.updateFrequency
@@ -1516,6 +1599,8 @@ extension on TranslationsEs {
 			'settings.page.nav.connectivity' => 'Conectividad',
 			'settings.page.nav.daemonAgents' => 'Agentes Daemon',
 			'settings.page.nav.schedules' => 'Programaciones',
+			'settings.page.nav.sourceControl' => 'Control de versiones',
+			'settings.page.nav.automations' => 'Automatizaciones',
 			'settings.page.general.sectionAgent' => 'Agente',
 			'settings.page.general.enableAgentsTitle' => 'Activar agentes',
 			'settings.page.general.enableAgentsDesc' => 'Muestra la opción de abrir pestañas de agente (pi). Cuando está desactivado, Cockpit funciona solo como workspace de terminal.',
@@ -1635,10 +1720,10 @@ extension on TranslationsEs {
 			'settings.page.schedules.disabled' => 'desactivado',
 			'settings.page.schedules.nextRun' => ({required Object when}) => 'próximo ${when}',
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'último: ${label}',
-			'settings.page.schedules.removeScheduleDialogTitle' => '¿Quitar programación?',
-			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'El job "${schedule}" de ${daemon} se elimina. Sus ejecuciones se detienen.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.schedules.removeScheduleDialogTitle' => '¿Quitar programación?',
+			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'El job "${schedule}" de ${daemon} se elimina. Sus ejecuciones se detienen.',
 			'settings.page.schedules.newScheduleTitle' => 'Nueva programación',
 			'settings.page.schedules.daemonLabel' => 'Daemon',
 			'settings.page.schedules.whenLabel' => 'Cuándo (expresión cron)',
@@ -1701,6 +1786,47 @@ extension on TranslationsEs {
 			'settings.page.daemons.folderRequiredError' => 'Elige una carpeta.',
 			'settings.page.daemons.folderDuplicateError' => 'Ya existe un agente en esta carpeta.',
 			'settings.page.daemons.pickFolderDialogTitle' => 'Elige la carpeta del Agente Daemon',
+			'settings.page.sourceControl.sectionView' => 'Vista',
+			'settings.page.sourceControl.defaultViewMode' => 'Modo de vista predeterminado',
+			'settings.page.sourceControl.defaultViewModeDescription' => 'Diseño inicial compartido por todos los workspaces, worktrees y secciones Changes/Staged.',
+			'settings.page.sourceControl.viewModeList' => 'Lista',
+			'settings.page.sourceControl.viewModeTree' => 'Árbol',
+			'settings.page.automations.sectionCommitMessages' => 'Mensajes de commit',
+			'settings.page.automations.harness' => 'Harness',
+			'settings.page.automations.harnessDiscovering' => 'Buscando harnesses de línea de comandos instalados…',
+			'settings.page.automations.harnessNoneFound' => 'No se encontró ningún harness compatible en el PATH.',
+			'settings.page.automations.harnessConfiguredUnavailable' => ({required Object harness}) => '${harness} está configurado, pero no disponible.',
+			'settings.page.automations.harnessChoose' => 'Elige la CLI usada para generar mensajes de commit.',
+			'settings.page.automations.harnessRefresh' => 'Actualizar harnesses instalados',
+			'settings.page.automations.notConfigured' => 'Sin configurar',
+			'settings.page.automations.model' => 'Modelo',
+			'settings.page.automations.modelUnavailable' => 'La lista de modelos no está disponible hasta encontrar el harness.',
+			'settings.page.automations.modelCliOnly' => 'Este harness usa el modelo predeterminado de su CLI.',
+			'settings.page.automations.modelOptional' => 'Opcional. Déjalo en blanco para usar el predeterminado de la CLI.',
+			'settings.page.automations.modelCliDefault' => 'Predeterminado de la CLI',
+			'settings.page.automations.generateFromSourceControl' => 'Generar desde Control de versiones',
+			'settings.page.automations.generateFromSourceControlDescription' => 'Cockpit envía solo el diff seleccionado y los asuntos de los commits recientes. Los patrones habituales de credenciales y los archivos sensibles se redactan antes de ejecutar el harness.',
+			'settings.page.automations.discoveryFailed' => 'No se pudieron descubrir los harnesses de automatización instalados.',
+			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'El modelo "${model}" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas.',
+			'automation.error.unavailable' => ({required Object harness}) => '${harness} no está instalado o no está en el PATH.',
+			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'El modelo "${model}" no está disponible para ${harness}. Elige otro modelo en Configuración.',
+			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',
+			'automation.error.timeout' => ({required Object harness, required Object seconds}) => '${harness} no respondió en ${seconds} segundos.',
+			'automation.error.cancelled' => 'Se canceló la generación del mensaje de commit.',
+			'automation.error.process' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',
+			'automation.error.processNoDetail' => ({required Object harness}) => '${harness} no pudo generar un mensaje de commit.',
+			'automation.error.invalidResponse' => 'La automatización devolvió un mensaje de commit vacío.',
+			'automation.error.busy' => 'Ya se está generando otro mensaje de commit.',
+			'automation.error.unknown' => 'La automatización no pudo generar un mensaje de commit.',
+			'automation.error.noWorkspace' => 'Ningún workspace seleccionado.',
+			'automation.error.fileOutsideWorkspace' => 'El archivo está fuera de las raíces del workspace.',
+			'automation.error.fileUnreadable' => ({required Object detail}) => 'No se pudo leer el archivo: ${detail}',
+			'automation.error.binaryFile' => 'No se puede generar un mensaje de commit para un archivo binario.',
+			'automation.error.noFileChanges' => 'No hay cambios que describir en este archivo.',
+			'automation.error.noStagedChanges' => 'No hay cambios en stage que describir.',
+			'automation.error.multipleRepositories' => 'Los cambios en stage pertenecen a varios repositorios. Genéralos por separado.',
+			'automation.error.diffUnavailable' => 'No se pudo leer el diff.',
+			'automation.error.notConfigured' => 'Configura un harness de mensajes de commit en Configuración.',
 			_ => null,
 		};
 	}

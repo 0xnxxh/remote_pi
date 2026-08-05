@@ -652,11 +652,7 @@ class _TabState extends State<_Tab> {
             icon: Icons.cell_tower_outlined,
             selected: agent.autoStartRelay,
           ),
-          AppMenuItem(
-            value: 'history',
-            label: tr.history,
-            icon: Icons.history,
-          ),
+          AppMenuItem(value: 'history', label: tr.history, icon: Icons.history),
         ],
         AppMenuItem(value: 'close', label: tr.close, icon: Icons.close),
       ],

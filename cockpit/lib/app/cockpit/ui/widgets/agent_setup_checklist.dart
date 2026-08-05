@@ -404,7 +404,11 @@ class _InstallDialogState extends State<_InstallDialog> {
                   Expanded(
                     child: Text(
                       result.ok
-                          ? context.t.cockpit.agentSetupChecklist.installedSuccessfully
+                          ? context
+                                .t
+                                .cockpit
+                                .agentSetupChecklist
+                                .installedSuccessfully
                           : result.detail,
                       style: context.typo.body.copyWith(
                         fontSize: 13.5,

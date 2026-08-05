@@ -55,7 +55,9 @@ class _ModelPickerState extends State<_ModelPicker> {
               style: context.typo.body.copyWith(color: colors.text),
               onChanged: (v) => setState(() => _query = v),
               placeholder: Text(
-                context.t.cockpit.modelPicker.search(count: widget.models.length),
+                context.t.cockpit.modelPicker.search(
+                  count: widget.models.length,
+                ),
               ),
               borderRadius: BorderRadius.circular(7),
               features: const [InputFeature.leading(Icon(Icons.search))],

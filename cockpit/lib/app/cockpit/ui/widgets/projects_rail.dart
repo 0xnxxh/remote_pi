@@ -813,9 +813,7 @@ class _MultiRootBadge extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final r in rootList) _RootStatusRow(root: r),
-                ],
+                children: [for (final r in rootList) _RootStatusRow(root: r)],
               ),
             ),
           ],

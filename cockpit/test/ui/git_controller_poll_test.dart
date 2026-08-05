@@ -14,8 +14,7 @@ class _NullReader implements GitStatusReader {
 /// Runner que nunca é exercido neste teste (o poll só lê estado).
 class _UnusedRunner implements GitCommandRunner {
   @override
-  GitRun run(String repoPath, List<String> args) =>
-      throw UnimplementedError();
+  GitRun run(String repoPath, List<String> args) => throw UnimplementedError();
   @override
   GitRun syncPullPush(String repoPath) => throw UnimplementedError();
   @override

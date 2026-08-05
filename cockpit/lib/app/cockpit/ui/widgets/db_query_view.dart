@@ -426,8 +426,10 @@ class _DbQueryViewState extends State<DbQueryView> {
                           behavior: HitTestBehavior.opaque,
                           onVerticalDragUpdate: (d) => setState(() {
                             _view.split =
-                                ((editorH + d.delta.dy) / box.maxHeight)
-                                    .clamp(0.12, 0.85);
+                                ((editorH + d.delta.dy) / box.maxHeight).clamp(
+                                  0.12,
+                                  0.85,
+                                );
                           }),
                           child: SizedBox(
                             height: 7,
@@ -759,16 +761,15 @@ class _JsonView extends StatelessWidget {
     final names = [for (final c in result.columns) c.name];
     final list = [
       for (final row in rows)
-        {
-          for (var i = 0; i < names.length; i++) names[i]: _jsonCell(row[i]),
-        },
+        {for (var i = 0; i < names.length; i++) names[i]: _jsonCell(row[i])},
     ];
     return const JsonEncoder.withIndent('  ').convert(list);
   }
 
   /// JSON exibido (cortado no preview) e JSON completo (pro Copy).
-  String get _previewJson =>
-      _buildJson(_capped ? result.rows.take(_previewRows).toList() : result.rows);
+  String get _previewJson => _buildJson(
+    _capped ? result.rows.take(_previewRows).toList() : result.rows,
+  );
   String get _fullJson => _capped ? _buildJson(result.rows) : _previewJson;
 
   static Object? _jsonCell(Object? v) => switch (v) {
@@ -828,11 +829,7 @@ class _JsonView extends StatelessWidget {
             ],
           ),
         ),
-        Positioned(
-          top: 6,
-          right: 14,
-          child: _CopyButton(text: _fullJson),
-        ),
+        Positioned(top: 6, right: 14, child: _CopyButton(text: _fullJson)),
       ],
     );
   }
@@ -875,7 +872,9 @@ class _CopyButtonState extends State<_CopyButton> {
           ),
           const SizedBox(width: 5),
           Text(
-            _copied ? context.t.cockpit.dbQueryView.copied : context.t.cockpit.dbQueryView.copy,
+            _copied
+                ? context.t.cockpit.dbQueryView.copied
+                : context.t.cockpit.dbQueryView.copy,
             style: context.typo.label.copyWith(
               fontSize: 10.5,
               color: colors.text3,

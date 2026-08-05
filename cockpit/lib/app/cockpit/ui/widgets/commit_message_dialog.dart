@@ -1,5 +1,7 @@
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+import 'package:cockpit/app/core/ui/automation_error_message.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/i18n/strings.g.dart';
@@ -20,7 +22,8 @@ Future<void> showCommitMessageDialog(
   required String fileName,
   required bool staged,
   required Future<String?> Function(String message) onCommit,
-  Future<Result<GeneratedCommitMessage, String>> Function()? onGenerate,
+  Future<Result<GeneratedCommitMessage, AutomationError>> Function()?
+  onGenerate,
   Future<void> Function()? onCancelGenerate,
   String? generatorLabel,
 }) {
@@ -52,7 +55,8 @@ class _CommitMessageDialog extends StatefulWidget {
   final String fileName;
   final bool staged;
   final Future<String?> Function(String message) onCommit;
-  final Future<Result<GeneratedCommitMessage, String>> Function()? onGenerate;
+  final Future<Result<GeneratedCommitMessage, AutomationError>> Function()?
+  onGenerate;
   final Future<void> Function()? onCancelGenerate;
   final String? generatorLabel;
 
@@ -139,7 +143,10 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
       },
       (error) => setState(() {
         _generating = false;
-        _generationError = error;
+        // Cancelamento é ação do usuário, não erro a exibir em vermelho.
+        _generationError = error.kind == AutomationErrorKind.cancelled
+            ? null
+            : automationErrorMessage(context, error);
       }),
     );
   }
