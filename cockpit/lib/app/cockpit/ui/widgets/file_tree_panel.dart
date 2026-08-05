@@ -10,7 +10,9 @@ import 'package:cockpit/app/cockpit/ui/widgets/panel_resize_handle.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
+import 'package:cockpit/app/core/domain/exceptions/file_operation_error.dart';
 import 'package:cockpit/app/core/ui/automation_error_message.dart';
+import 'package:cockpit/app/core/ui/file_operation_error_message.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -144,7 +146,7 @@ class FileTreePanel extends StatefulWidget {
 
   /// Source Control: descarta a mudança do working tree (destrutivo — o
   /// painel confirma antes). `null` = sucesso.
-  final Future<String?> Function(String absPath)? onDiscardFile;
+  final Future<FileOperationError?> Function(String absPath)? onDiscardFile;
 
   /// Detecta arquivos que não existem no HEAD (untracked ou staged-add).
   final Future<bool> Function(String absPath)? isNewGitFile;
@@ -227,7 +229,7 @@ class FileTreePanel extends StatefulWidget {
   final void Function(String relativeSub, bool terminal) onCreateInFolder;
 
   /// Cria arquivo (ou pasta) chamado [name] dentro de [parentDir]. Falha → msg.
-  final Future<Result<void, String>> Function(
+  final Future<Result<void, FileOperationError>> Function(
     String parentDir,
     String name,
     bool isFolder,
@@ -235,14 +237,20 @@ class FileTreePanel extends StatefulWidget {
   onCreate;
 
   /// Renomeia [path] para [newName] (mesma pasta).
-  final Future<Result<void, String>> Function(String path, String newName)
+  final Future<Result<void, FileOperationError>> Function(
+    String path,
+    String newName,
+  )
   onRename;
 
   /// Manda [path] pra lixeira (a confirmação/condições ficam no painel).
-  final Future<Result<void, String>> Function(String path) onDelete;
+  final Future<Result<void, FileOperationError>> Function(String path) onDelete;
 
   /// Move [path] pra dentro de [targetDir] (drag-and-drop na árvore).
-  final Future<Result<void, String>> Function(String path, String targetDir)
+  final Future<Result<void, FileOperationError>> Function(
+    String path,
+    String targetDir,
+  )
   onMove;
 
   /// Marca [path] pra copiar (Cmd+C / menu). O paste duplica.
@@ -252,7 +260,8 @@ class FileTreePanel extends StatefulWidget {
   final ValueChanged<String> onCut;
 
   /// Cola o item do clipboard dentro de [targetDir] (Cmd+V / menu).
-  final Future<Result<void, String>> Function(String targetDir) onPaste;
+  final Future<Result<void, FileOperationError>> Function(String targetDir)
+  onPaste;
 
   /// Há algo no clipboard pra colar — habilita o item "Paste" e o Cmd+V.
   final bool canPaste;
@@ -421,7 +430,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
     );
     if (!ok || !mounted) return;
     final err = await action(absPath);
-    if (err != null && mounted) await _showGitError(err);
+    if (err != null && mounted) {
+      await _showGitError(fileOperationErrorMessage(context, err));
+    }
   }
 
   Future<void> _discardAll(List<String> paths) async {
@@ -460,7 +471,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
     for (final path in targets) {
       final err = await action(path);
       if (err != null) {
-        if (mounted) await _showGitError(err);
+        if (mounted)
+          await _showGitError(fileOperationErrorMessage(context, err));
         return;
       }
     }
@@ -686,10 +698,11 @@ class _FileTreePanelState extends State<FileTreePanel> {
     String name,
   ) async {
     final r = await widget.onCreate(parentPath, name, isFolder);
+    if (!mounted) return null;
     return r.fold((_) {
-      if (mounted) setState(() => _pending = null);
+      setState(() => _pending = null);
       return null;
-    }, (e) => e);
+    }, (e) => fileOperationErrorMessage(context, e));
   }
 
   // ---- rename inline --------------------------------------------------------
@@ -707,8 +720,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   Future<String?> _commitRename(String path, String newName) async {
     final r = await widget.onRename(path, newName);
+    if (!mounted) return null;
     return r.fold((_) {
-      if (mounted) {
+      {
         // A seleção segue o novo caminho.
         final parent = path.substring(0, path.lastIndexOf('/'));
         final newPath = '$parent/${newName.trim()}';
@@ -720,7 +734,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
         });
       }
       return null;
-    }, (e) => e);
+    }, (e) => fileOperationErrorMessage(context, e));
   }
 
   // ---- deleção --------------------------------------------------------------
@@ -748,7 +762,11 @@ class _FileTreePanelState extends State<FileTreePanel> {
           setState(() => _selectedPath = null);
         }
       },
-      (e) => showInfoDialog(context, title: tr.couldNotDeleteTitle, message: e),
+      (e) => showInfoDialog(
+        context,
+        title: tr.couldNotDeleteTitle,
+        message: fileOperationErrorMessage(context, e),
+      ),
     );
   }
 
@@ -771,11 +789,18 @@ class _FileTreePanelState extends State<FileTreePanel> {
     if (!ok || !mounted) return;
     final r = await widget.onMove(path, targetDir);
     if (!mounted) return;
-    r.fold((_) {
-      if (_selectedPath != null && _isUnder(_selectedPath!, path)) {
-        setState(() => _selectedPath = '$targetDir/$name');
-      }
-    }, (e) => showInfoDialog(context, title: tr.couldNotMoveTitle, message: e));
+    r.fold(
+      (_) {
+        if (_selectedPath != null && _isUnder(_selectedPath!, path)) {
+          setState(() => _selectedPath = '$targetDir/$name');
+        }
+      },
+      (e) => showInfoDialog(
+        context,
+        title: tr.couldNotMoveTitle,
+        message: fileOperationErrorMessage(context, e),
+      ),
+    );
   }
 
   // ---- copiar / recortar / colar --------------------------------------------
@@ -790,7 +815,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
       (e) => showInfoDialog(
         context,
         title: context.t.cockpit.fileTreePanel.couldNotPasteTitle,
-        message: e,
+        message: fileOperationErrorMessage(context, e),
       ),
     );
   }

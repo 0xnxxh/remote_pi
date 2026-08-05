@@ -209,6 +209,10 @@ String automationErrorMessage(BuildContext context, AutomationError e) =>
     switch (e.kind) { ... context.t.automation.error.xxx ... };
 ```
 
+Já existem dois tradutores no `core/ui/`, e o padrão para um novo domínio é
+copiar a forma deles: `automation_error_message.dart` (`AutomationError`) e
+`file_operation_error_message.dart` (`FileOperationError`).
+
 Regras que caem disso:
 - `Result<T, String>` com mensagem pronta é **anti-padrão** em fluxo novo. Use
   `Result<T, ErroTipado>` e traduza na borda da UI.
@@ -216,9 +220,24 @@ Regras que caem disso:
   tradução vira erro de compilação, não string em inglês vazando em produção.
 - Texto de terceiros (stderr de CLI, mensagem do SO) **não se traduz**: entra
   como `detail` e é interpolado dentro da frase traduzida.
-- Os legados que ainda devolvem `String` (`file_system_mutator_impl`,
-  `lsp_command`, parte do `CockpitViewModel`) são dívida conhecida — não copie
-  o padrão deles, e converta quando encostar no arquivo.
+- Texto de **git** (stderr de `git.collect`/`git.output`) é a mesma coisa: vai
+  em `detail`, dentro de um `osFailure`, e a UI mostra cru.
+
+### O que **não** se traduz
+
+Nem toda string em inglês é bug de i18n. Ficam em inglês de propósito:
+
+- **Saída da CLI interna** (`cockpit send`, `orchestrate`, `db`, e o parser
+  `.ckp` em `data/layout/ckp_layout_loader.dart`). A CLI fala com agentes e
+  scripts em terminal; traduzir quebraria quem faz parse da saída. Os erros de
+  `applyLayoutFile` e das operações de terminal chamadas pelo
+  `cockpit_cli_handler` seguem `Result<_, String>` **por decisão**, não por
+  esquecimento.
+- **Nomes próprios**: harnesses (`Pi`, `Claude Code`, `Codex CLI`), linguagens
+  do LSP (`Dart`, `TypeScript`), perfis de terminal (`PowerShell 7`), ids de
+  modelo (`sonnet`, `gpt-5.6-terra`).
+- **Texto de terceiros em runtime**: stderr de CLI, mensagem do SO, erro do git.
+  Entra como `detail` e é interpolado na frase traduzida.
 
 ### Checklist de feature nova
 

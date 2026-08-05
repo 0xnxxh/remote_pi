@@ -44,6 +44,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$cockpit$es cockpit = _Translations$cockpit$es._(_root);
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
 	@override late final _Translations$automation$es automation = _Translations$automation$es._(_root);
+	@override late final _Translations$fileOperation$es fileOperation = _Translations$fileOperation$es._(_root);
 }
 
 // Path: core
@@ -136,6 +137,16 @@ class _Translations$automation$es extends Translations$automation$en {
 
 	// Translations
 	@override late final _Translations$automation$error$es error = _Translations$automation$error$es._(_root);
+}
+
+// Path: fileOperation
+class _Translations$fileOperation$es extends Translations$fileOperation$en {
+	_Translations$fileOperation$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$fileOperation$error$es error = _Translations$fileOperation$error$es._(_root);
 }
 
 // Path: core.bootstrapError
@@ -835,6 +846,32 @@ class _Translations$automation$error$es extends Translations$automation$error$en
 	@override String get multipleRepositories => 'Los cambios en stage pertenecen a varios repositorios. Genéralos por separado.';
 	@override String get diffUnavailable => 'No se pudo leer el diff.';
 	@override String get notConfigured => 'Configura un harness de mensajes de commit en Configuración.';
+}
+
+// Path: fileOperation.error
+class _Translations$fileOperation$error$es extends Translations$fileOperation$error$en {
+	_Translations$fileOperation$error$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String alreadyExists({required Object name}) => 'Ya existe: “${name}”.';
+	@override String notFound({required Object name}) => 'No se encontró: “${name}”.';
+	@override String get invalidPath => 'Ruta inválida.';
+	@override String get emptyName => 'El nombre no puede estar vacío.';
+	@override String get noWorkspace => 'Ningún workspace seleccionado.';
+	@override String get cannotMoveIntoItself => 'No se puede mover una carpeta dentro de sí misma.';
+	@override String get clipboardEmpty => 'El portapapeles está vacío.';
+	@override String get notScratchTab => 'Esta pestaña no es un archivo temporal.';
+	@override String get writeFailed => 'No se pudo escribir el archivo.';
+	@override String get formatterEmptyCommand => 'Comando de formato vacío.';
+	@override String get formatterMissingPlaceholder => 'El comando de formato debe incluir el marcador %FILE%.';
+	@override String get formatterTimeout => 'El formateador agotó el tiempo de espera.';
+	@override String formatterExitCode({required Object code}) => 'El formateador terminó con el código ${code}.';
+	@override String get formatterFailed => 'No se pudo ejecutar el formateador.';
+	@override String osFailure({required Object detail}) => '${detail}';
+	@override String get nameHasSlash => 'El nombre no puede contener “/”.';
+	@override String get invalidName => 'Nombre inválido.';
 }
 
 // Path: settings.page.header
@@ -1827,6 +1864,23 @@ extension on TranslationsEs {
 			'automation.error.multipleRepositories' => 'Los cambios en stage pertenecen a varios repositorios. Genéralos por separado.',
 			'automation.error.diffUnavailable' => 'No se pudo leer el diff.',
 			'automation.error.notConfigured' => 'Configura un harness de mensajes de commit en Configuración.',
+			'fileOperation.error.alreadyExists' => ({required Object name}) => 'Ya existe: “${name}”.',
+			'fileOperation.error.notFound' => ({required Object name}) => 'No se encontró: “${name}”.',
+			'fileOperation.error.invalidPath' => 'Ruta inválida.',
+			'fileOperation.error.emptyName' => 'El nombre no puede estar vacío.',
+			'fileOperation.error.noWorkspace' => 'Ningún workspace seleccionado.',
+			'fileOperation.error.cannotMoveIntoItself' => 'No se puede mover una carpeta dentro de sí misma.',
+			'fileOperation.error.clipboardEmpty' => 'El portapapeles está vacío.',
+			'fileOperation.error.notScratchTab' => 'Esta pestaña no es un archivo temporal.',
+			'fileOperation.error.writeFailed' => 'No se pudo escribir el archivo.',
+			'fileOperation.error.formatterEmptyCommand' => 'Comando de formato vacío.',
+			'fileOperation.error.formatterMissingPlaceholder' => 'El comando de formato debe incluir el marcador %FILE%.',
+			'fileOperation.error.formatterTimeout' => 'El formateador agotó el tiempo de espera.',
+			'fileOperation.error.formatterExitCode' => ({required Object code}) => 'El formateador terminó con el código ${code}.',
+			'fileOperation.error.formatterFailed' => 'No se pudo ejecutar el formateador.',
+			'fileOperation.error.osFailure' => ({required Object detail}) => '${detail}',
+			'fileOperation.error.nameHasSlash' => 'El nombre no puede contener “/”.',
+			'fileOperation.error.invalidName' => 'Nombre inválido.',
 			_ => null,
 		};
 	}

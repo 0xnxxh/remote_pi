@@ -733,5 +733,26 @@
       "diffUnavailable": "Could not read the diff.",
       "notConfigured": "Configure a commit message harness in Settings."
     }
+  },
+  "fileOperation": {
+    "error": {
+      "alreadyExists": "Already exists: “${name}”.",
+      "notFound": "Not found: “${name}”.",
+      "invalidPath": "Invalid path.",
+      "emptyName": "The name cannot be empty.",
+      "noWorkspace": "No workspace selected.",
+      "cannotMoveIntoItself": "Cannot move a folder into itself.",
+      "clipboardEmpty": "Clipboard is empty.",
+      "notScratchTab": "This tab is not a scratch file.",
+      "writeFailed": "Could not write the file.",
+      "formatterEmptyCommand": "Empty formatter command.",
+      "formatterMissingPlaceholder": "Formatter command must include the %FILE% placeholder.",
+      "formatterTimeout": "Formatter timed out.",
+      "formatterExitCode": "Formatter exited with ${code}.",
+      "formatterFailed": "The formatter could not run.",
+      "osFailure": "${detail}",
+      "nameHasSlash": "Name cannot contain “/”.",
+      "invalidName": "Invalid name."
+    }
   }
 }

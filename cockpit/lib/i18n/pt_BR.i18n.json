@@ -733,5 +733,26 @@
       "diffUnavailable": "Não foi possível ler o diff.",
       "notConfigured": "Configure um harness de mensagem de commit em Configurações."
     }
+  },
+  "fileOperation": {
+    "error": {
+      "alreadyExists": "Já existe: “${name}”.",
+      "notFound": "Não encontrado: “${name}”.",
+      "invalidPath": "Caminho inválido.",
+      "emptyName": "O nome não pode ficar vazio.",
+      "noWorkspace": "Nenhum workspace selecionado.",
+      "cannotMoveIntoItself": "Não é possível mover uma pasta para dentro dela mesma.",
+      "clipboardEmpty": "A área de transferência está vazia.",
+      "notScratchTab": "Esta aba não é um arquivo temporário.",
+      "writeFailed": "Não foi possível gravar o arquivo.",
+      "formatterEmptyCommand": "Comando de formatação vazio.",
+      "formatterMissingPlaceholder": "O comando de formatação precisa incluir o placeholder %FILE%.",
+      "formatterTimeout": "O formatador excedeu o tempo limite.",
+      "formatterExitCode": "O formatador saiu com código ${code}.",
+      "formatterFailed": "Não foi possível executar o formatador.",
+      "osFailure": "${detail}",
+      "nameHasSlash": "O nome não pode conter “/”.",
+      "invalidName": "Nome inválido."
+    }
   }
 }

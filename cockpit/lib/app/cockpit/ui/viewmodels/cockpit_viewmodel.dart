@@ -33,6 +33,7 @@ import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
+import 'package:cockpit/app/core/domain/exceptions/file_operation_error.dart';
 import 'package:cockpit/app/core/domain/services/commit_message_prompt.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/workspace_layout_store.dart';
@@ -841,27 +842,43 @@ class CockpitViewModel extends ChangeNotifier {
   /// Salva um buffer scratch como arquivo real [fileName] na raiz do workspace
   /// (o `.dbq` é anexado se faltar). Retarga a sessão, arma o watcher e limpa
   /// o flag scratch → daí vira uma tab de arquivo normal. Plano 51.
-  Future<Result<void, String>> saveScratchAs(
+  Future<Result<void, FileOperationError>> saveScratchAs(
     String sessionId,
     String fileName,
     String content,
   ) async {
     final s = _sessions[sessionId];
     if (s is! FileViewerSession || !s.scratch) {
-      return const Failure('not a scratch tab');
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.notScratchTab),
+      );
     }
     var name = fileName.trim();
-    if (name.isEmpty) return const Failure('empty name');
+    if (name.isEmpty) {
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.emptyName),
+      );
+    }
     if (!name.toLowerCase().endsWith('.dbq')) name = '$name.dbq';
     final invalid = _validateName(name);
     if (invalid != null) return Failure(invalid);
     final root = _projectById(s.projectId)?.path;
-    if (root == null) return const Failure('no workspace');
+    if (root == null) {
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.noWorkspace),
+      );
+    }
     final path = _join(root, name);
-    if (await File(path).exists()) return Failure('"$name" already exists');
+    if (await File(path).exists()) {
+      return Failure(
+        FileOperationError(FileOperationErrorKind.alreadyExists, name: name),
+      );
+    }
 
     if (!await _fileReader.write(path, content)) {
-      return const Failure('could not write file');
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.writeFailed),
+      );
     }
     s
       ..path = path
@@ -1314,7 +1331,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// Cria um arquivo vazio chamado [name] dentro de [dirPath] e o abre no pane
   /// (quando [open]). Valida o nome (não-vazio, sem `/`). Devolve a falha
   /// (mensagem) pra UI mostrar inline. Refaz a árvore no sucesso.
-  Future<Result<void, String>> createFileIn(
+  Future<Result<void, FileOperationError>> createFileIn(
     String dirPath,
     String name, {
     bool open = true,
@@ -1331,7 +1348,10 @@ class CockpitViewModel extends ChangeNotifier {
   }
 
   /// Cria uma pasta [name] dentro de [dirPath]. Refaz a árvore no sucesso.
-  Future<Result<void, String>> createDirIn(String dirPath, String name) async {
+  Future<Result<void, FileOperationError>> createDirIn(
+    String dirPath,
+    String name,
+  ) async {
     final invalid = _validateName(name);
     if (invalid != null) return Failure(invalid);
     final r = await _fileMutator.createDirectory(_join(dirPath, name.trim()));
@@ -1341,7 +1361,10 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Renomeia [path] para [newName] (mesma pasta). As abas abertas do arquivo
   /// (ou de descendentes, se for pasta) **seguem** o novo caminho.
-  Future<Result<void, String>> renamePath(String path, String newName) async {
+  Future<Result<void, FileOperationError>> renamePath(
+    String path,
+    String newName,
+  ) async {
     final invalid = _validateName(newName);
     if (invalid != null) return Failure(invalid);
     final to = _join(_parentOf(path), newName.trim());
@@ -1355,12 +1378,21 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Move [path] pra **dentro** de [targetDir] (drag-and-drop na árvore),
   /// mantendo o nome. As abas abertas seguem o novo caminho, como no rename.
-  Future<Result<void, String>> movePath(String path, String targetDir) async {
+  Future<Result<void, FileOperationError>> movePath(
+    String path,
+    String targetDir,
+  ) async {
     final name = path.split('/').where((p) => p.isNotEmpty).lastOrNull;
-    if (name == null) return const Failure('Invalid path.');
+    if (name == null) {
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.invalidPath),
+      );
+    }
     if (_parentOf(path) == targetDir) return const Success(null); // já está lá
     if (_isUnder(targetDir, path)) {
-      return const Failure('Cannot move a folder into itself.');
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.cannotMoveIntoItself),
+      );
     }
     final to = _join(targetDir, name);
     final r = await _fileMutator.rename(path, to);
@@ -1373,7 +1405,7 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Manda [path] pra lixeira. **Fecha antes** as abas do arquivo (ou de tudo
   /// dentro da pasta), sem prompt de salvar — a deleção sobrepõe.
-  Future<Result<void, String>> deletePath(String path) async {
+  Future<Result<void, FileOperationError>> deletePath(String path) async {
     _closeSessionsUnder(path);
     final r = await _fileMutator.moveToTrash(path);
     if (r.isSuccess) _bumpFileTree();
@@ -1410,13 +1442,23 @@ class CockpitViewModel extends ChangeNotifier {
   /// o modo. Se o nome colidir no destino, gera um sufixo (`nome copy`,
   /// `nome copy 2`, ...). Recorte limpa o clipboard no sucesso; cópia mantém
   /// (permite colar várias vezes). Abas abertas seguem no move, como no rename.
-  Future<Result<void, String>> pasteInto(String targetDir) async {
+  Future<Result<void, FileOperationError>> pasteInto(String targetDir) async {
     final from = _clipboardPath;
-    if (from == null) return const Failure('Clipboard is empty.');
+    if (from == null) {
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.clipboardEmpty),
+      );
+    }
     final name = from.split('/').where((p) => p.isNotEmpty).lastOrNull;
-    if (name == null) return const Failure('Invalid path.');
+    if (name == null) {
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.invalidPath),
+      );
+    }
     if (_clipboardCut && _isUnder(targetDir, from)) {
-      return const Failure('Cannot move a folder into itself.');
+      return const Failure(
+        FileOperationError(FileOperationErrorKind.cannotMoveIntoItself),
+      );
     }
     final to = await _uniqueDest(targetDir, name);
     final r = _clipboardCut
@@ -1458,11 +1500,17 @@ class CockpitViewModel extends ChangeNotifier {
   }
 
   /// `null` se válido; senão a mensagem do erro. Nesta fase: sem aninhar (`/`).
-  String? _validateName(String name) {
+  FileOperationError? _validateName(String name) {
     final n = name.trim();
-    if (n.isEmpty) return 'Name cannot be empty.';
-    if (n.contains('/')) return 'Name cannot contain “/”.';
-    if (n == '.' || n == '..') return 'Invalid name.';
+    if (n.isEmpty) {
+      return const FileOperationError(FileOperationErrorKind.emptyName);
+    }
+    if (n.contains('/')) {
+      return const FileOperationError(FileOperationErrorKind.nameHasSlash);
+    }
+    if (n == '.' || n == '..') {
+      return const FileOperationError(FileOperationErrorKind.invalidName);
+    }
     return null;
   }
 
@@ -2220,11 +2268,15 @@ class CockpitViewModel extends ChangeNotifier {
   /// Discard completo de um arquivo. Arquivo novo é removido do index e vai
   /// para a lixeira; arquivo rastreado é restaurado do HEAD tanto no index
   /// quanto no working tree. Assim uma deleção volta a existir no disco.
-  Future<String?> discardFile(String absPath) async {
+  Future<FileOperationError?> discardFile(String absPath) async {
     final pid = _selectedProjectId;
-    if (pid == null) return 'No workspace selected.';
+    if (pid == null) {
+      return const FileOperationError(FileOperationErrorKind.noWorkspace);
+    }
     final root = rootContaining(pid, absPath);
-    if (root == null) return 'File is outside the workspace roots.';
+    if (root == null) {
+      return const FileOperationError(FileOperationErrorKind.invalidPath);
+    }
     final rel = _subOf(absPath, root);
     if (await isNewGitFile(absPath)) {
       if (stagedFilesOfRoot(root).containsKey(rel)) {
@@ -2235,7 +2287,8 @@ class CockpitViewModel extends ChangeNotifier {
           '--',
           rel,
         ]);
-        if (err != null) return err;
+        // stderr do git é texto de terceiro: não se traduz, vai como detail.
+        if (err != null) return _gitFailure(err);
       }
       final res = await deletePath(absPath);
       unawaited(git.refresh(pid));
@@ -2252,8 +2305,12 @@ class CockpitViewModel extends ChangeNotifier {
     unawaited(git.refresh(pid));
     _fileTreeRevision++;
     notifyListeners();
-    return err;
+    return err == null ? null : _gitFailure(err);
   }
+
+  /// Erro de git (stderr cru) embrulhado no tipo que a UI sabe traduzir.
+  FileOperationError _gitFailure(String stderr) =>
+      FileOperationError(FileOperationErrorKind.osFailure, detail: stderr);
 
   /// Gera uma mensagem para o commit isolado de [absPath]. O contexto enviado
   /// ao harness contém só o diff desse arquivo (mais os últimos subjects), não

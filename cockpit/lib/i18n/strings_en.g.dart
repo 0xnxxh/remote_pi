@@ -45,6 +45,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$cockpit$en cockpit = Translations$cockpit$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$automation$en automation = Translations$automation$en.internal(_root);
+	late final Translations$fileOperation$en fileOperation = Translations$fileOperation$en.internal(_root);
 }
 
 // Path: core
@@ -167,6 +168,16 @@ class Translations$automation$en {
 
 	// Translations
 	late final Translations$automation$error$en error = Translations$automation$error$en.internal(_root);
+}
+
+// Path: fileOperation
+class Translations$fileOperation$en {
+	Translations$fileOperation$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$fileOperation$error$en error = Translations$fileOperation$error$en.internal(_root);
 }
 
 // Path: core.bootstrapError
@@ -1636,6 +1647,66 @@ class Translations$automation$error$en {
 	String get notConfigured => 'Configure a commit message harness in Settings.';
 }
 
+// Path: fileOperation.error
+class Translations$fileOperation$error$en {
+	Translations$fileOperation$error$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Already exists: “${name}”.'
+	String alreadyExists({required Object name}) => 'Already exists: “${name}”.';
+
+	/// en: 'Not found: “${name}”.'
+	String notFound({required Object name}) => 'Not found: “${name}”.';
+
+	/// en: 'Invalid path.'
+	String get invalidPath => 'Invalid path.';
+
+	/// en: 'The name cannot be empty.'
+	String get emptyName => 'The name cannot be empty.';
+
+	/// en: 'No workspace selected.'
+	String get noWorkspace => 'No workspace selected.';
+
+	/// en: 'Cannot move a folder into itself.'
+	String get cannotMoveIntoItself => 'Cannot move a folder into itself.';
+
+	/// en: 'Clipboard is empty.'
+	String get clipboardEmpty => 'Clipboard is empty.';
+
+	/// en: 'This tab is not a scratch file.'
+	String get notScratchTab => 'This tab is not a scratch file.';
+
+	/// en: 'Could not write the file.'
+	String get writeFailed => 'Could not write the file.';
+
+	/// en: 'Empty formatter command.'
+	String get formatterEmptyCommand => 'Empty formatter command.';
+
+	/// en: 'Formatter command must include the %FILE% placeholder.'
+	String get formatterMissingPlaceholder => 'Formatter command must include the %FILE% placeholder.';
+
+	/// en: 'Formatter timed out.'
+	String get formatterTimeout => 'Formatter timed out.';
+
+	/// en: 'Formatter exited with ${code}.'
+	String formatterExitCode({required Object code}) => 'Formatter exited with ${code}.';
+
+	/// en: 'The formatter could not run.'
+	String get formatterFailed => 'The formatter could not run.';
+
+	/// en: '${detail}'
+	String osFailure({required Object detail}) => '${detail}';
+
+	/// en: 'Name cannot contain “/”.'
+	String get nameHasSlash => 'Name cannot contain “/”.';
+
+	/// en: 'Invalid name.'
+	String get invalidName => 'Invalid name.';
+}
+
 // Path: settings.page.header
 class Translations$settings$page$header$en {
 	Translations$settings$page$header$en.internal(this._root);
@@ -3063,6 +3134,23 @@ extension on Translations {
 			'automation.error.multipleRepositories' => 'Staged changes belong to multiple repositories. Generate them separately.',
 			'automation.error.diffUnavailable' => 'Could not read the diff.',
 			'automation.error.notConfigured' => 'Configure a commit message harness in Settings.',
+			'fileOperation.error.alreadyExists' => ({required Object name}) => 'Already exists: “${name}”.',
+			'fileOperation.error.notFound' => ({required Object name}) => 'Not found: “${name}”.',
+			'fileOperation.error.invalidPath' => 'Invalid path.',
+			'fileOperation.error.emptyName' => 'The name cannot be empty.',
+			'fileOperation.error.noWorkspace' => 'No workspace selected.',
+			'fileOperation.error.cannotMoveIntoItself' => 'Cannot move a folder into itself.',
+			'fileOperation.error.clipboardEmpty' => 'Clipboard is empty.',
+			'fileOperation.error.notScratchTab' => 'This tab is not a scratch file.',
+			'fileOperation.error.writeFailed' => 'Could not write the file.',
+			'fileOperation.error.formatterEmptyCommand' => 'Empty formatter command.',
+			'fileOperation.error.formatterMissingPlaceholder' => 'Formatter command must include the %FILE% placeholder.',
+			'fileOperation.error.formatterTimeout' => 'Formatter timed out.',
+			'fileOperation.error.formatterExitCode' => ({required Object code}) => 'Formatter exited with ${code}.',
+			'fileOperation.error.formatterFailed' => 'The formatter could not run.',
+			'fileOperation.error.osFailure' => ({required Object detail}) => '${detail}',
+			'fileOperation.error.nameHasSlash' => 'Name cannot contain “/”.',
+			'fileOperation.error.invalidName' => 'Invalid name.',
 			_ => null,
 		};
 	}

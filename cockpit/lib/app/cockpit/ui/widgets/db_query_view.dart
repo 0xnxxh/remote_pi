@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_result.dart';
+import 'package:cockpit/app/core/ui/file_operation_error_message.dart';
 import 'package:cockpit/app/cockpit/domain/entities/dbq_document.dart';
 import 'package:cockpit/app/cockpit/domain/entities/file_view.dart';
 import 'package:cockpit/app/cockpit/domain/entities/sql_statements.dart';
@@ -170,7 +171,7 @@ class _DbQueryViewState extends State<DbQueryView> {
       if (!mounted) return false;
       final error = result.fold((_) => null, (f) => f);
       if (error != null) {
-        _showSaveError(error);
+        _showSaveError(fileOperationErrorMessage(context, error));
         return false;
       }
       // saveScratchAs já retargou a sessão e limpou o scratch; baseline agora

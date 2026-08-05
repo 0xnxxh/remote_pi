@@ -44,6 +44,7 @@ class TranslationsPtBr extends Translations with BaseTranslations<AppLocale, Tra
 	@override late final _Translations$cockpit$pt_BR cockpit = _Translations$cockpit$pt_BR._(_root);
 	@override late final _Translations$settings$pt_BR settings = _Translations$settings$pt_BR._(_root);
 	@override late final _Translations$automation$pt_BR automation = _Translations$automation$pt_BR._(_root);
+	@override late final _Translations$fileOperation$pt_BR fileOperation = _Translations$fileOperation$pt_BR._(_root);
 }
 
 // Path: core
@@ -136,6 +137,16 @@ class _Translations$automation$pt_BR extends Translations$automation$en {
 
 	// Translations
 	@override late final _Translations$automation$error$pt_BR error = _Translations$automation$error$pt_BR._(_root);
+}
+
+// Path: fileOperation
+class _Translations$fileOperation$pt_BR extends Translations$fileOperation$en {
+	_Translations$fileOperation$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
+
+	final TranslationsPtBr _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$fileOperation$error$pt_BR error = _Translations$fileOperation$error$pt_BR._(_root);
 }
 
 // Path: core.bootstrapError
@@ -835,6 +846,32 @@ class _Translations$automation$error$pt_BR extends Translations$automation$error
 	@override String get multipleRepositories => 'As mudanças no stage pertencem a repositórios diferentes. Gere uma de cada vez.';
 	@override String get diffUnavailable => 'Não foi possível ler o diff.';
 	@override String get notConfigured => 'Configure um harness de mensagem de commit em Configurações.';
+}
+
+// Path: fileOperation.error
+class _Translations$fileOperation$error$pt_BR extends Translations$fileOperation$error$en {
+	_Translations$fileOperation$error$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
+
+	final TranslationsPtBr _root; // ignore: unused_field
+
+	// Translations
+	@override String alreadyExists({required Object name}) => 'Já existe: “${name}”.';
+	@override String notFound({required Object name}) => 'Não encontrado: “${name}”.';
+	@override String get invalidPath => 'Caminho inválido.';
+	@override String get emptyName => 'O nome não pode ficar vazio.';
+	@override String get noWorkspace => 'Nenhum workspace selecionado.';
+	@override String get cannotMoveIntoItself => 'Não é possível mover uma pasta para dentro dela mesma.';
+	@override String get clipboardEmpty => 'A área de transferência está vazia.';
+	@override String get notScratchTab => 'Esta aba não é um arquivo temporário.';
+	@override String get writeFailed => 'Não foi possível gravar o arquivo.';
+	@override String get formatterEmptyCommand => 'Comando de formatação vazio.';
+	@override String get formatterMissingPlaceholder => 'O comando de formatação precisa incluir o placeholder %FILE%.';
+	@override String get formatterTimeout => 'O formatador excedeu o tempo limite.';
+	@override String formatterExitCode({required Object code}) => 'O formatador saiu com código ${code}.';
+	@override String get formatterFailed => 'Não foi possível executar o formatador.';
+	@override String osFailure({required Object detail}) => '${detail}';
+	@override String get nameHasSlash => 'O nome não pode conter “/”.';
+	@override String get invalidName => 'Nome inválido.';
 }
 
 // Path: settings.page.header
@@ -1827,6 +1864,23 @@ extension on TranslationsPtBr {
 			'automation.error.multipleRepositories' => 'As mudanças no stage pertencem a repositórios diferentes. Gere uma de cada vez.',
 			'automation.error.diffUnavailable' => 'Não foi possível ler o diff.',
 			'automation.error.notConfigured' => 'Configure um harness de mensagem de commit em Configurações.',
+			'fileOperation.error.alreadyExists' => ({required Object name}) => 'Já existe: “${name}”.',
+			'fileOperation.error.notFound' => ({required Object name}) => 'Não encontrado: “${name}”.',
+			'fileOperation.error.invalidPath' => 'Caminho inválido.',
+			'fileOperation.error.emptyName' => 'O nome não pode ficar vazio.',
+			'fileOperation.error.noWorkspace' => 'Nenhum workspace selecionado.',
+			'fileOperation.error.cannotMoveIntoItself' => 'Não é possível mover uma pasta para dentro dela mesma.',
+			'fileOperation.error.clipboardEmpty' => 'A área de transferência está vazia.',
+			'fileOperation.error.notScratchTab' => 'Esta aba não é um arquivo temporário.',
+			'fileOperation.error.writeFailed' => 'Não foi possível gravar o arquivo.',
+			'fileOperation.error.formatterEmptyCommand' => 'Comando de formatação vazio.',
+			'fileOperation.error.formatterMissingPlaceholder' => 'O comando de formatação precisa incluir o placeholder %FILE%.',
+			'fileOperation.error.formatterTimeout' => 'O formatador excedeu o tempo limite.',
+			'fileOperation.error.formatterExitCode' => ({required Object code}) => 'O formatador saiu com código ${code}.',
+			'fileOperation.error.formatterFailed' => 'Não foi possível executar o formatador.',
+			'fileOperation.error.osFailure' => ({required Object detail}) => '${detail}',
+			'fileOperation.error.nameHasSlash' => 'O nome não pode conter “/”.',
+			'fileOperation.error.invalidName' => 'Nome inválido.',
 			_ => null,
 		};
 	}
