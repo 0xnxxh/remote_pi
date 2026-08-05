@@ -1222,6 +1222,34 @@ class _PaneBodyState extends State<_PaneBody> {
     });
   }
 
+  /// Envolve o terminal num [Listener] que **devolve o teclado ao próprio
+  /// node** no pointer-down.
+  ///
+  /// Por que isso não é redundante com o `Listener` do pane (que chama
+  /// `vm.focus`): `vm.focus` é *estado* ("qual pane é o focado") e sai cedo
+  /// quando o pane já é o focado, então não avança `tabFocusGen` e o
+  /// [didUpdateWidget] daqui nunca roda. Se o `FocusNode` tiver perdido o
+  /// teclado enquanto a VM continua achando que este pane está focado, clicar
+  /// no corpo do terminal não trazia o foco de volta por caminho nenhum do app
+  /// — só clicar no cabeçalho da aba, porque `selectTab` sempre bumpa a
+  /// geração. Era esse o sintoma: "tenho que clicar na aba pra voltar a
+  /// digitar".
+  ///
+  /// Quem sabe se o node tem o teclado é quem é dono dele, e é aqui. Sem passar
+  /// pela VM também não há `notifyListeners` por clique (nenhum rebuild da
+  /// árvore de panes só pra reconquistar foco que já era nosso).
+  Widget _grantsKeyboardOnPointerDown(Widget child) => Listener(
+    behavior: HitTestBehavior.translucent,
+    onPointerDown: (_) {
+      // `widget.focused` false = o pane ainda vai ser focado pela VM neste
+      // frame; o caminho da geração cobre esse caso.
+      if (!_wantsTerminalFocus || !widget.focused) return;
+      if (_terminalFocus.hasFocus) return;
+      _requestTerminalFocusSoon();
+    },
+    child: child,
+  );
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -1333,17 +1361,19 @@ class _PaneBodyState extends State<_PaneBody> {
       final termStyle = (termFont == null || termFont.isEmpty)
           ? TerminalStyle(fontSize: settings.codeSize)
           : TerminalStyle(fontSize: settings.codeSize, fontFamily: termFont);
-      return ColoredBox(
-        color: context.colors.panel,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 0, 8),
-          child: AdaptiveTerminalPane(
-            terminal: item.terminal,
-            focusNode: _terminalFocus,
-            onKeyEvent: (_) => KeyEventResult.ignored,
-            readOnly: true,
-            theme: cockpitTerminalThemeFor(Theme.of(context).brightness),
-            textStyle: termStyle,
+      return _grantsKeyboardOnPointerDown(
+        ColoredBox(
+          color: context.colors.panel,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 0, 8),
+            child: AdaptiveTerminalPane(
+              terminal: item.terminal,
+              focusNode: _terminalFocus,
+              onKeyEvent: (_) => KeyEventResult.ignored,
+              readOnly: true,
+              theme: cockpitTerminalThemeFor(Theme.of(context).brightness),
+              textStyle: termStyle,
+            ),
           ),
         ),
       );
@@ -1358,29 +1388,31 @@ class _PaneBodyState extends State<_PaneBody> {
       final termStyle = (termFont == null || termFont.isEmpty)
           ? TerminalStyle(fontSize: settings.codeSize)
           : TerminalStyle(fontSize: settings.codeSize, fontFamily: termFont);
-      return _TerminalDropTarget(
-        session: item,
-        child: ColoredBox(
-          color: context.colors.panel,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 0, 8),
-            child: AdaptiveTerminalPane(
-              terminal: item.terminal,
-              focusNode: _terminalFocus,
-              // Intercepta o atalho de colar pra suportar IMAGEM do clipboard
-              // (o paste padrão do xterm só cola texto). Ver `_onTerminalKey`.
-              onKeyEvent: (event) => _onTerminalKey(event, item),
-              onPaste: item.pasteFromClipboard,
-              // Cmd+clique num caminho de arquivo do buffer → abre no FileViewer,
-              // resolvido contra o cwd vivo do shell (OSC 7).
-              onOpenFile: (path, {line}) =>
-                  context.read<CockpitViewModel>().openTerminalPath(
-                    path,
-                    cwd: item.currentDirectory,
-                    line: line,
-                  ),
-              theme: cockpitTerminalThemeFor(Theme.of(context).brightness),
-              textStyle: termStyle,
+      return _grantsKeyboardOnPointerDown(
+        _TerminalDropTarget(
+          session: item,
+          child: ColoredBox(
+            color: context.colors.panel,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 0, 8),
+              child: AdaptiveTerminalPane(
+                terminal: item.terminal,
+                focusNode: _terminalFocus,
+                // Intercepta o atalho de colar pra suportar IMAGEM do clipboard
+                // (o paste padrão do xterm só cola texto). Ver `_onTerminalKey`.
+                onKeyEvent: (event) => _onTerminalKey(event, item),
+                onPaste: item.pasteFromClipboard,
+                // Cmd+clique num caminho de arquivo do buffer → abre no FileViewer,
+                // resolvido contra o cwd vivo do shell (OSC 7).
+                onOpenFile: (path, {line}) =>
+                    context.read<CockpitViewModel>().openTerminalPath(
+                      path,
+                      cwd: item.currentDirectory,
+                      line: line,
+                    ),
+                theme: cockpitTerminalThemeFor(Theme.of(context).brightness),
+                textStyle: termStyle,
+              ),
             ),
           ),
         ),
