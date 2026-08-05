@@ -335,6 +335,8 @@ class _Translations$cockpit$worktreeCreateDialog$es extends Translations$cockpit
 	@override String get errorDuplicateBranch => 'Ya existe una branch con ese nombre.';
 	@override String get errorDuplicateWorktree => 'Ya existe un worktree con ese nombre.';
 	@override String get fork => 'Fork';
+	@override String get postCheckoutHint => 'Este repositorio tiene un hook post-checkout.';
+	@override String get running => 'Ejecutando…';
 }
 
 // Path: cockpit.subfolderDialog
@@ -1550,6 +1552,8 @@ extension on TranslationsEs {
 			'cockpit.worktreeCreateDialog.errorDuplicateBranch' => 'Ya existe una branch con ese nombre.',
 			'cockpit.worktreeCreateDialog.errorDuplicateWorktree' => 'Ya existe un worktree con ese nombre.',
 			'cockpit.worktreeCreateDialog.fork' => 'Fork',
+			'cockpit.worktreeCreateDialog.postCheckoutHint' => 'Este repositorio tiene un hook post-checkout.',
+			'cockpit.worktreeCreateDialog.running' => 'Ejecutando…',
 			'cockpit.subfolderDialog.title' => '¿Dónde trabajar?',
 			'cockpit.subfolderDialog.empty' => 'No hay subcarpetas aquí.',
 			'cockpit.subfolderDialog.useRoot' => ({required Object project}) => 'Usar la raíz de ${project}',
@@ -1958,10 +1962,10 @@ extension on TranslationsEs {
 			'settings.page.general.checkUpdatesDesc' => 'Con qué frecuencia Cockpit debe buscar nuevas versiones.',
 			'settings.page.general.agentsInUseError' => 'No se pueden desactivar los agentes mientras haya una pestaña de agente abierta. Cierra todas las pestañas de agente primero y luego desactívalo.',
 			'settings.page.general.updateFrequency.daily' => 'Diariamente',
-			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
-			'settings.page.general.updateFrequency.monthly' => 'Mensualmente',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
+			'settings.page.general.updateFrequency.monthly' => 'Mensualmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnóstico',
 			'settings.page.diagnostics.logFileTitle' => 'Archivo de registro',

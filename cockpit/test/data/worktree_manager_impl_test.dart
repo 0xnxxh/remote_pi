@@ -23,6 +23,17 @@ void main() {
     }
   }
 
+  /// Aguarda o [WorktreeAddRun] e devolve o resultado (descarta o stream).
+  Future<Result<Worktree, WorktreeOpError>> addResult(
+    String name, {
+    String? baseRef,
+  }) {
+    final run = manager.add(repo.path, name, baseRef: baseRef);
+    // Drena o stream pra não vazar o controller.
+    run.output.drain<void>();
+    return run.result;
+  }
+
   setUp(() async {
     repo = await Directory.systemTemp.createTemp('cockpit_wt_test_');
     await git(['init']);
@@ -49,7 +60,7 @@ void main() {
     }
 
     // add: cria worktree aninhada + branch nova a partir do HEAD.
-    final added = await manager.add(repo.path, 'feat/sso');
+    final added = await addResult('feat/sso');
     expect(
       added.isSuccess,
       isTrue,
@@ -102,7 +113,7 @@ void main() {
       markTestSkipped('git não disponível no ambiente');
       return;
     }
-    final dup = await manager.add(repo.path, mainBranch);
+    final dup = await addResult(mainBranch);
     expect(dup.isFailure, isTrue);
     expect(
       (dup as Failure<Worktree, WorktreeOpError>).error.message,
@@ -126,7 +137,7 @@ void main() {
         markTestSkipped('git não disponível no ambiente');
         return;
       }
-      final added = await manager.add(repo.path, 'feat/x');
+      final added = await addResult('feat/x');
       final wt = (added as Success<Worktree, WorktreeOpError>).value;
 
       // Recém-criada do HEAD, sem commits → mergeada (tip alcançável do HEAD).
@@ -143,4 +154,56 @@ void main() {
       expect(await manager.isBranchMerged(repo.path, 'nao/existe'), isFalse);
     },
   );
+
+  test('hasPostCheckoutHook: false sem hook, true com arquivo', () async {
+    if (!await gitAvailable()) {
+      markTestSkipped('git não disponível no ambiente');
+      return;
+    }
+    expect(await manager.hasPostCheckoutHook(repo.path), isFalse);
+
+    final hooksDir = (await git([
+      'rev-parse',
+      '--git-path',
+      'hooks',
+    ])).stdout.toString().trim();
+    final hookPath = hooksDir.startsWith('/')
+        ? '$hooksDir/post-checkout'
+        : '${repo.path}/$hooksDir/post-checkout';
+    await File(hookPath).writeAsString('#!/bin/sh\necho hook-ok\n');
+    // Não precisa ser executável pra detecção — só existência do arquivo.
+    expect(await manager.hasPostCheckoutHook(repo.path), isTrue);
+  });
+
+  test('add com post-checkout: stream contém saída do hook', () async {
+    if (!await gitAvailable()) {
+      markTestSkipped('git não disponível no ambiente');
+      return;
+    }
+    final hooksDir = (await git([
+      'rev-parse',
+      '--git-path',
+      'hooks',
+    ])).stdout.toString().trim();
+    final hookPath = hooksDir.startsWith('/')
+        ? '$hooksDir/post-checkout'
+        : '${repo.path}/$hooksDir/post-checkout';
+    await File(hookPath).writeAsString(
+      '#!/bin/sh\necho post-checkout-marker\n',
+    );
+    await Process.run('chmod', ['+x', hookPath]);
+
+    final run = manager.add(repo.path, 'feat/hooked');
+    final lines = <String>[];
+    final sub = run.output.listen(lines.add);
+    final added = await run.result;
+    await sub.cancel();
+
+    expect(added.isSuccess, isTrue, reason: lines.join('\n'));
+    expect(
+      lines.any((l) => l.contains('post-checkout-marker')),
+      isTrue,
+      reason: 'stream should include hook stdout; got:\n${lines.join('\n')}',
+    );
+  });
 }

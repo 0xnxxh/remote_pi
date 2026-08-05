@@ -1,22 +1,27 @@
+import 'dart:async';
+
 import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
+import 'package:cockpit/app/cockpit/domain/entities/project.dart';
 import 'package:cockpit/app/cockpit/domain/validators/worktree_name_validator.dart';
+import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Dialog de criar worktree. Valida o nome **ao vivo** (decisões 10, 11) contra
 /// o [namespace] (branches locais + worktrees existentes); Criar só acende com
-/// nome válido. Ao confirmar, trava com spinner e chama [onCreate] (que roda o
-/// `git worktree add` real): se devolver uma mensagem de erro, mostra inline e
-/// reabre; `null` = sucesso → fecha (decisão 21).
+/// nome válido. Ao confirmar, mostra o stream do `git worktree add` (incluindo
+/// post-checkout, se houver): sucesso → fecha; falha → mantém logs + erro
+/// (decisão 21).
 Future<void> showWorktreeCreateDialog(
   BuildContext context, {
   required String rootName,
   required WorktreeNamespace namespace,
-  required Future<String?> Function(String name) onCreate,
+  required WorktreeAddRun<Project> Function(String name) onCreate,
   // "Fork Worktree": mesmo dialog, copy própria — a base é a branch do fork
   // ([rootName]), não o HEAD do pai.
   bool fork = false,
+  bool hasPostCheckout = false,
 }) {
   return showDialog<void>(
     context: context,
@@ -26,6 +31,7 @@ Future<void> showWorktreeCreateDialog(
       namespace: namespace,
       onCreate: onCreate,
       fork: fork,
+      hasPostCheckout: hasPostCheckout,
     ),
   );
 }
@@ -36,12 +42,14 @@ class _WorktreeCreateDialog extends StatefulWidget {
     required this.namespace,
     required this.onCreate,
     required this.fork,
+    required this.hasPostCheckout,
   });
 
   final String rootName;
   final bool fork;
+  final bool hasPostCheckout;
   final WorktreeNamespace namespace;
-  final Future<String?> Function(String name) onCreate;
+  final WorktreeAddRun<Project> Function(String name) onCreate;
 
   @override
   State<_WorktreeCreateDialog> createState() => _WorktreeCreateDialogState();
@@ -50,12 +58,17 @@ class _WorktreeCreateDialog extends StatefulWidget {
 class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   static const _validator = WorktreeNameValidator();
   final TextEditingController _name = TextEditingController();
+  final ScrollController _logScroll = ScrollController();
+  final List<String> _logLines = [];
+  StreamSubscription<String>? _logSub;
   bool _submitting = false;
   String? _gitError; // erro do git no último submit
 
   @override
   void dispose() {
+    _logSub?.cancel();
     _name.dispose();
+    _logScroll.dispose();
     super.dispose();
   }
 
@@ -82,22 +95,48 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
     };
   }
 
+  void _autoScrollLog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_logScroll.hasClients) return;
+      _logScroll.jumpTo(_logScroll.position.maxScrollExtent);
+    });
+  }
+
   Future<void> _submit() async {
     if (!_canCreate) return;
+    await _logSub?.cancel();
     setState(() {
       _submitting = true;
       _gitError = null;
+      _logLines.clear();
     });
-    final error = await widget.onCreate(_name.text);
+    final run = widget.onCreate(_name.text);
+    _logSub = run.output.listen(
+      (line) {
+        if (!mounted) return;
+        setState(() => _logLines.add(line));
+        _autoScrollLog();
+      },
+      onError: (Object e) {
+        if (!mounted) return;
+        setState(() => _logLines.add('$e'));
+        _autoScrollLog();
+      },
+    );
+    final res = await run.result;
     if (!mounted) return;
-    if (error == null) {
-      Navigator.of(context).pop();
-      return;
+    await _logSub?.cancel();
+    _logSub = null;
+    switch (res) {
+      case Success():
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      case Failure(:final error):
+        setState(() {
+          _submitting = false;
+          _gitError = error.message;
+        });
     }
-    setState(() {
-      _submitting = false;
-      _gitError = error;
-    });
   }
 
   @override
@@ -105,8 +144,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
     final colors = context.colors;
     final check = _check;
     final reason = _gitError ?? _reason(check);
-    final showError = reason != null;
+    final showError = reason != null && !_submitting;
     final tr = context.t.cockpit.worktreeCreateDialog;
+    final showLog = _submitting || _logLines.isNotEmpty;
 
     return AlertDialog(
       title: Column(
@@ -130,7 +170,10 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
         ],
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: BoxConstraints(
+          maxWidth: showLog ? 560 : 420,
+          maxHeight: showLog ? 420 : 200,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,11 +192,60 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
               borderRadius: BorderRadius.circular(7),
               border: showError ? Border.all(color: colors.error) : null,
             ),
+
+            if (widget.hasPostCheckout) ...[
+              const SizedBox(height: 8),
+              Text(
+                tr.postCheckoutHint,
+                style: context.typo.label.copyWith(color: colors.text3),
+              ),
+            ],
             if (showError) ...[
               const SizedBox(height: 8),
               Text(
                 reason,
                 style: context.typo.label.copyWith(color: colors.error),
+              ),
+            ],
+            if (showLog) ...[
+              const SizedBox(height: 12),
+              if (_submitting)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(size: 14),
+                      const SizedBox(width: 8),
+                      Text(
+                        tr.running,
+                        style: context.typo.label.copyWith(
+                          color: colors.text3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Container(
+                width: double.infinity,
+                height: 200,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.panel3,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: colors.border),
+                ),
+                child: SingleChildScrollView(
+                  controller: _logScroll,
+                  child: SelectableText(
+                    _logLines.isEmpty ? ' ' : _logLines.join('\n'),
+                    style: context.typo.mono.copyWith(
+                      fontSize: 12,
+                      color: colors.text2,
+                    ),
+                  ),
+                ),
               ),
             ],
           ],

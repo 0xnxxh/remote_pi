@@ -540,6 +540,12 @@ class Translations$cockpit$worktreeCreateDialog$en {
 
 	/// en: 'Fork'
 	String get fork => 'Fork';
+
+	/// en: 'This repository has a post-checkout hook.'
+	String get postCheckoutHint => 'This repository has a post-checkout hook.';
+
+	/// en: 'Running…'
+	String get running => 'Running…';
 }
 
 // Path: cockpit.subfolderDialog
@@ -3026,6 +3032,8 @@ extension on Translations {
 			'cockpit.worktreeCreateDialog.errorDuplicateBranch' => 'A branch with that name already exists.',
 			'cockpit.worktreeCreateDialog.errorDuplicateWorktree' => 'A worktree with that name already exists.',
 			'cockpit.worktreeCreateDialog.fork' => 'Fork',
+			'cockpit.worktreeCreateDialog.postCheckoutHint' => 'This repository has a post-checkout hook.',
+			'cockpit.worktreeCreateDialog.running' => 'Running…',
 			'cockpit.subfolderDialog.title' => 'Where to work?',
 			'cockpit.subfolderDialog.empty' => 'No subfolders here.',
 			'cockpit.subfolderDialog.useRoot' => ({required Object project}) => 'Use the root of ${project}',
@@ -3434,10 +3442,10 @@ extension on Translations {
 			'settings.page.general.checkUpdatesDesc' => 'How often Cockpit should look for new versions.',
 			'settings.page.general.agentsInUseError' => 'Can\'t turn agents off while an agent tab is open. Close all agent tabs first, then disable it.',
 			'settings.page.general.updateFrequency.daily' => 'Daily',
-			'settings.page.general.updateFrequency.weekly' => 'Weekly',
-			'settings.page.general.updateFrequency.monthly' => 'Monthly',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.general.updateFrequency.weekly' => 'Weekly',
+			'settings.page.general.updateFrequency.monthly' => 'Monthly',
 			'settings.page.general.updateFrequency.never' => 'Never',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnostics',
 			'settings.page.diagnostics.logFileTitle' => 'Log file',
