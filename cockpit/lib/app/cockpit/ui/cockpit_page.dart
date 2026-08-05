@@ -490,16 +490,15 @@ class _CockpitPageState extends State<CockpitPage> {
   Future<void> _forkWorktree(Project base) async {
     final vm = _vm;
     final namespace = await vm.forkWorktreeNamespace(base.id);
+    final hasHook = await vm.hasPostCheckoutHookForFork(base.id);
     if (!mounted) return;
     await showWorktreeCreateDialog(
       context,
       rootName: base.name,
       namespace: namespace,
       fork: true,
-      onCreate: (name) async {
-        final res = await vm.forkWorktree(base.id, name);
-        return res.fold((_) => null, (e) => e.message);
-      },
+      hasPostCheckout: hasHook,
+      onCreate: (name) => vm.forkWorktree(base.id, name),
     );
   }
 
@@ -539,15 +538,15 @@ class _CockpitPageState extends State<CockpitPage> {
     // Multi-root: a worktree é de UMA root — a escolha já veio do submenu do
     // kebab (o fork nasce como filho single-root apontando pro checkout dela).
     final namespace = await vm.worktreeNamespace(root.id, rootPath: rootPath);
+    final hasHook = await vm.hasPostCheckoutHook(rootPath);
     if (!mounted) return;
     await showWorktreeCreateDialog(
       context,
       rootName: _gitOpLabel(root, rootPath),
       namespace: namespace,
-      onCreate: (name) async {
-        final res = await vm.createWorktree(root.id, name, rootPath: rootPath);
-        return res.fold((_) => null, (e) => e.message);
-      },
+      hasPostCheckout: hasHook,
+      onCreate: (name) =>
+          vm.createWorktree(root.id, name, rootPath: rootPath),
     );
   }
 

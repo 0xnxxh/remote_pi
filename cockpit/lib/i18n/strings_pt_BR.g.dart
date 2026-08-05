@@ -335,6 +335,8 @@ class _Translations$cockpit$worktreeCreateDialog$pt_BR extends Translations$cock
 	@override String get errorDuplicateBranch => 'Já existe um branch com esse nome.';
 	@override String get errorDuplicateWorktree => 'Já existe uma worktree com esse nome.';
 	@override String get fork => 'Fork';
+	@override String get postCheckoutHint => 'Este repositório tem um hook post-checkout.';
+	@override String get running => 'Executando…';
 }
 
 // Path: cockpit.subfolderDialog
@@ -1550,6 +1552,8 @@ extension on TranslationsPtBr {
 			'cockpit.worktreeCreateDialog.errorDuplicateBranch' => 'Já existe um branch com esse nome.',
 			'cockpit.worktreeCreateDialog.errorDuplicateWorktree' => 'Já existe uma worktree com esse nome.',
 			'cockpit.worktreeCreateDialog.fork' => 'Fork',
+			'cockpit.worktreeCreateDialog.postCheckoutHint' => 'Este repositório tem um hook post-checkout.',
+			'cockpit.worktreeCreateDialog.running' => 'Executando…',
 			'cockpit.subfolderDialog.title' => 'Onde trabalhar?',
 			'cockpit.subfolderDialog.empty' => 'Nenhuma subpasta aqui.',
 			'cockpit.subfolderDialog.useRoot' => ({required Object project}) => 'Usar a raiz de ${project}',
@@ -1958,10 +1962,10 @@ extension on TranslationsPtBr {
 			'settings.page.general.checkUpdatesDesc' => 'Com que frequência o Cockpit deve procurar novas versões.',
 			'settings.page.general.agentsInUseError' => 'Não é possível desligar os agentes com uma aba de agente aberta. Feche todas as abas de agente primeiro e depois desative.',
 			'settings.page.general.updateFrequency.daily' => 'Diariamente',
-			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
-			'settings.page.general.updateFrequency.monthly' => 'Mensalmente',
 			_ => null,
 		} ?? switch (path) {
+			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
+			'settings.page.general.updateFrequency.monthly' => 'Mensalmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnóstico',
 			'settings.page.diagnostics.logFileTitle' => 'Arquivo de log',

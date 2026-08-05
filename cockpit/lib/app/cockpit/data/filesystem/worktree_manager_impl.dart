@@ -1,13 +1,21 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cockpit/app/cockpit/data/filesystem/git_binary.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
 import 'package:cockpit/app/cockpit/domain/entities/worktree.dart';
+import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/utils/path_utils.dart';
+import 'package:path/path.dart' as p;
 
 /// Roda o binário `git` pra listar/criar/remover worktrees. O caminho do `git`
 /// vem do [GitBinary] compartilhado (o app macOS **não herda o PATH do shell**).
+///
+/// `add` usa [Process.start] com streaming (stdout∥stderr) e
+/// [envWithNodeOnPath] pra hooks (ex.: post-checkout com `npx`/`node`) acharem
+/// o binário — mesmo tratamento do [GitCommandRunnerImpl].
 class WorktreeManagerImpl implements WorktreeManager {
   WorktreeManagerImpl(this._gitBinary);
 
@@ -68,54 +76,110 @@ class WorktreeManagerImpl implements WorktreeManager {
   }
 
   @override
-  Future<Result<Worktree, WorktreeOpError>> add(
-    String repoPath,
-    String name, {
-    String? baseRef,
-  }) async {
+  Future<bool> hasPostCheckoutHook(String repoPath) async {
     try {
       final git = await _resolveGit();
-      // Regra cross-plataforma: só cria worktree quando a branch NÃO existe.
-      // Sem isso, `worktree add -b` falha ("branch already exists") e/ou deixa
-      // o repo num estado meio-criado.
-      if (await _branchExists(git, repoPath, name)) {
-        return const Failure(
-          WorktreeOpError('A branch with that name already exists.'),
-        );
-      }
-      // Guard rail: garante `.cockpit/worktrees/` no `.gitignore` do repo ANTES
-      // de materializar a worktree. Sob `.pi/` a pasta era ignorada de graça
-      // (repos pi já ignoram `.pi`); sob `.cockpit/` isso não vale, e sem o
-      // ignore o checkout apareceria como `untracked` no status do usuário.
-      await _ensureIgnored(repoPath);
-      final target = '$repoPath/$worktreesSubdir/$name';
-      // Branch nova a partir do HEAD do repo, ou de [baseRef] (fork de fork).
       final res = await Process.run(git, [
         '-C',
         repoPath,
-        'worktree',
-        'add',
-        target,
-        '-b',
-        name,
-        ?baseRef,
+        'rev-parse',
+        '--git-path',
+        'hooks',
       ]);
-      if (res.exitCode != 0) {
-        return Failure(WorktreeOpError(_errText(res)));
-      }
-      // Devolve o path **como o git lista** (separadores nativos do SO), não o
-      // `target` que montamos com `/`. No Windows o git lista com `\`, então o
-      // `target` com `/` não casaria com `list()` → o chamador não encontraria
-      // o fork recém-criado ("não apareceu na lista") e o dialog não fecharia.
-      final created = (await list(repoPath)).where((w) => w.branch == name);
-      return Success(
-        created.isNotEmpty
-            ? created.first
-            : Worktree(path: target, branch: name, isDetached: false),
-      );
-    } catch (e) {
-      return Failure(WorktreeOpError('Failed to create worktree: $e'));
+      if (res.exitCode != 0) return false;
+      final hooksDir = (res.stdout as String).trim();
+      if (hooksDir.isEmpty) return false;
+      // --git-path pode ser relativo ao repo.
+      final resolved = p.isAbsolute(hooksDir)
+          ? hooksDir
+          : p.normalize(p.join(repoPath, hooksDir));
+      return File(p.join(resolved, 'post-checkout')).existsSync();
+    } catch (_) {
+      return false;
     }
+  }
+
+  @override
+  WorktreeAddRun<Worktree> add(
+    String repoPath,
+    String name, {
+    String? baseRef,
+  }) {
+    final controller = StreamController<String>();
+    final resultCompleter = Completer<Result<Worktree, WorktreeOpError>>();
+
+    () async {
+      try {
+        final git = await _resolveGit();
+        // Regra cross-plataforma: só cria worktree quando a branch NÃO existe.
+        // Sem isso, `worktree add -b` falha ("branch already exists") e/ou deixa
+        // o repo num estado meio-criado.
+        if (await _branchExists(git, repoPath, name)) {
+          await _emit(
+            controller,
+            'A branch with that name already exists.',
+          );
+          resultCompleter.complete(
+            const Failure(
+              WorktreeOpError('A branch with that name already exists.'),
+            ),
+          );
+          return;
+        }
+        // Guard rail: garante `.cockpit/worktrees/` no `.gitignore` do repo ANTES
+        // de materializar a worktree. Sob `.pi/` a pasta era ignorada de graça
+        // (repos pi já ignoram `.pi`); sob `.cockpit/` isso não vale, e sem o
+        // ignore o checkout apareceria como `untracked` no status do usuário.
+        await _ensureIgnored(repoPath);
+        final target = '$repoPath/$worktreesSubdir/$name';
+        final args = <String>[
+          'worktree',
+          'add',
+          target,
+          '-b',
+          name,
+          ?baseRef,
+        ];
+        await _emit(controller, '\$ git ${args.join(' ')}');
+        final code = await _spawn(git, repoPath, args, controller);
+        if (code != 0) {
+          resultCompleter.complete(
+            Failure(
+              WorktreeOpError(
+                'git worktree add exited with code $code',
+              ),
+            ),
+          );
+          return;
+        }
+        // Devolve o path **como o git lista** (separadores nativos do SO), não o
+        // `target` que montamos com `/`. No Windows o git lista com `\`, então o
+        // `target` com `/` não casaria com `list()` → o chamador não encontraria
+        // o fork recém-criado ("não apareceu na lista") e o dialog não fecharia.
+        final created = (await list(repoPath)).where((w) => w.branch == name);
+        resultCompleter.complete(
+          Success(
+            created.isNotEmpty
+                ? created.first
+                : Worktree(path: target, branch: name, isDetached: false),
+          ),
+        );
+      } catch (e) {
+        await _emit(controller, 'Failed to create worktree: $e');
+        if (!resultCompleter.isCompleted) {
+          resultCompleter.complete(
+            Failure(WorktreeOpError('Failed to create worktree: $e')),
+          );
+        }
+      } finally {
+        if (!controller.isClosed) await controller.close();
+      }
+    }();
+
+    return WorktreeAddRun<Worktree>(
+      output: controller.stream,
+      result: resultCompleter.future,
+    );
   }
 
   /// Guard rail: garante que `.cockpit/worktrees/` está no `.gitignore` da
@@ -160,6 +224,43 @@ class WorktreeManagerImpl implements WorktreeManager {
       'refs/heads/$name',
     ]);
     return res.exitCode == 0;
+  }
+
+  /// Spawna `git -C <repoPath> <args>`, encaminha stdout+stderr (por linha) e
+  /// devolve o exit code.
+  Future<int> _spawn(
+    String git,
+    String repoPath,
+    List<String> args,
+    StreamController<String> controller,
+  ) async {
+    try {
+      final proc = await Process.start(
+        git,
+        ['-C', repoPath, ...args],
+        environment: await envWithNodeOnPath(),
+      );
+      final done = <Future<void>>[];
+      for (final stream in [proc.stdout, proc.stderr]) {
+        done.add(
+          stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .forEach((line) {
+                if (!controller.isClosed) controller.add(line);
+              }),
+        );
+      }
+      await Future.wait(done);
+      return await proc.exitCode;
+    } catch (e) {
+      await _emit(controller, 'Failed to run git: $e');
+      return -1;
+    }
+  }
+
+  Future<void> _emit(StreamController<String> controller, String line) async {
+    if (!controller.isClosed) controller.add(line);
   }
 
   @override

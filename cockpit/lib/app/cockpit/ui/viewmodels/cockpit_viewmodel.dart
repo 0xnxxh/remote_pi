@@ -1980,79 +1980,93 @@ class CockpitViewModel extends ChangeNotifier {
     _saveTimers.remove(id)?.cancel();
   }
 
-  /// Cria uma worktree [name] no workspace [rootId] (decisões 2, 3, 14, 15). Em
-  /// sucesso, reconcilia, **auto-seleciona** o fork (pane vazia) e o devolve; em
-  /// falha, devolve o erro do git pra mostrar inline no dialog (decisão 21).
-  Future<Result<Project, WorktreeOpError>> createWorktree(
+  /// Cria uma worktree [name] no workspace [rootId] (decisoes 2, 3, 14, 15).
+  /// Devolve o handle ao vivo imediatamente; em sucesso (quando
+  /// [WorktreeAddRun.result] completa), reconcilia, **auto-seleciona** o fork
+  /// e o devolve; em falha, o erro do git vai pro dialog (decisao 21).
+  WorktreeAddRun<Project> createWorktree(
     String rootId,
     String name, {
     String? rootPath,
     String? baseRef,
     String? layoutSourceId,
-  }) async {
+  }) {
     final root = _projectById(rootId);
     if (root == null) {
-      return const Failure(WorktreeOpError('Workspace not found.'));
+      return WorktreeAddRun<Project>(
+        output: Stream.value('Workspace not found.'),
+        result: Future.value(
+          const Failure(WorktreeOpError('Workspace not found.')),
+        ),
+      );
     }
-    // Multi-root: o `git worktree add` parte da root escolhida, não da mãe.
+    // Multi-root: o `git worktree add` parte da root escolhida, nao da mae.
     // [baseRef] ("Fork Worktree"): ramifica da branch de outro fork, mas a
     // pasta nasce sempre no repo de origem.
-    final res = await _worktreeMgr.add(
+    final run = _worktreeMgr.add(
       rootPath ?? root.path,
       name,
       baseRef: baseRef,
     );
-    switch (res) {
-      case Failure(:final error):
-        return Failure<Project, WorktreeOpError>(error);
-      case Success(:final value):
-        // Clona a estrutura (panes/abas/posições) pro fork: do pai por padrão,
-        // ou do fork de origem no "Fork Worktree" (mesma organização, pasta
-        // nova, sessões do zero — ver _cloneLayoutForWorktree).
-        final clonedLayout = _cloneLayoutForWorktree(layoutSourceId ?? rootId);
-        await _refreshWorktrees(rootId); // insere o fork em _projectList
-        // Id de fork é namespaced pela raiz (ver _refreshWorktrees) — o path
-        // cru deixou de ser o id na migração dos Realms.
-        final fork = _projectById('$rootId::${value.path}');
-        if (fork == null) {
-          return const Failure(
-            WorktreeOpError(
-              'Worktree created, but did not appear in the list.',
-            ),
-          );
-        }
-        if (clonedLayout != null) {
-          // Vira o layout salvo do fork → _activateProject reconstrói a estrutura
-          // apontando pra fork.path. Persiste pra sobreviver a reload.
-          _savedLayouts[fork.id] = clonedLayout;
-          unawaited(_layoutStore.save(fork.id, clonedLayout));
-        }
-        selectProject(
-          fork.id,
-        ); // auto-select → activate → reconstrói a estrutura
-        // Orquestração: `*.ckp` com `autorun: worktree` na raiz do fork
-        // aplica o layout sozinho (worktree nasce vazia → determinístico).
-        unawaited(_autorunWorktreeLayout(fork.path));
-        return Success<Project, WorktreeOpError>(fork);
-    }
+    final result = run.result.then<Result<Project, WorktreeOpError>>((res) async {
+      switch (res) {
+        case Failure(:final error):
+          return Failure<Project, WorktreeOpError>(error);
+        case Success(:final value):
+          // Clona a estrutura (panes/abas/posicoes) pro fork: do pai por padrao,
+          // ou do fork de origem no "Fork Worktree" (mesma organizacao, pasta
+          // nova, sessoes do zero — ver _cloneLayoutForWorktree).
+          final clonedLayout = _cloneLayoutForWorktree(layoutSourceId ?? rootId);
+          await _refreshWorktrees(rootId); // insere o fork em _projectList
+          // Id de fork e namespaced pela raiz (ver _refreshWorktrees) — o path
+          // cru deixou de ser o id na migracao dos Realms.
+          final fork = _projectById('$rootId::${value.path}');
+          if (fork == null) {
+            return const Failure(
+              WorktreeOpError(
+                'Worktree created, but did not appear in the list.',
+              ),
+            );
+          }
+          if (clonedLayout != null) {
+            // Vira o layout salvo do fork → _activateProject reconstrucao.
+            // Persiste pra sobreviver a reload.
+            _savedLayouts[fork.id] = clonedLayout;
+            unawaited(_layoutStore.save(fork.id, clonedLayout));
+          }
+          selectProject(
+            fork.id,
+          ); // auto-select → activate → reconstrucao
+          // Orquestracao: `*.ckp` com `autorun: worktree` na raiz do fork
+          // aplica o layout sozinho (worktree nasce vazia → deterministico).
+          unawaited(_autorunWorktreeLayout(fork.path));
+          return Success<Project, WorktreeOpError>(fork);
+      }
+    });
+    return WorktreeAddRun<Project>(output: run.output, result: result);
   }
 
-  /// Branches locais + worktrees de [rootId], pra validação ao vivo do dialog
-  /// de criar (decisão 11).
   /// "Fork Worktree": cria uma worktree nova ramificada da **branch do fork**
   /// [forkId], materializada no repo de origem (nunca aninhada). O fork novo
-  /// entra como irmão na lista (mesmo pai), herdando o layout do fork base.
-  Future<Result<Project, WorktreeOpError>> forkWorktree(
-    String forkId,
-    String name,
-  ) async {
+  /// entra como irmao na lista (mesmo pai), herdando o layout do fork base.
+  WorktreeAddRun<Project> forkWorktree(String forkId, String name) {
     final fork = _projectById(forkId);
     if (fork == null || fork.parentId == null) {
-      return const Failure(WorktreeOpError('Worktree not found.'));
+      return WorktreeAddRun<Project>(
+        output: Stream.value('Worktree not found.'),
+        result: Future.value(
+          const Failure(WorktreeOpError('Worktree not found.')),
+        ),
+      );
     }
     final origin = _forkOriginPath(fork);
     if (origin == null) {
-      return const Failure(WorktreeOpError('Origin root not found.'));
+      return WorktreeAddRun<Project>(
+        output: Stream.value('Origin root not found.'),
+        result: Future.value(
+          const Failure(WorktreeOpError('Origin root not found.')),
+        ),
+      );
     }
     return createWorktree(
       fork.parentId!,
@@ -2063,7 +2077,19 @@ class CockpitViewModel extends ChangeNotifier {
     );
   }
 
-  /// Namespace pra validação do "Fork Worktree" — o do repo de origem do fork.
+  /// `true` se o repo em [repoPath] tem hook `post-checkout`.
+  Future<bool> hasPostCheckoutHook(String repoPath) =>
+      _worktreeMgr.hasPostCheckoutHook(repoPath);
+
+  /// `true` se o repo de origem do fork [forkId] tem hook `post-checkout`.
+  Future<bool> hasPostCheckoutHookForFork(String forkId) async {
+    final fork = _projectById(forkId);
+    final origin = fork == null ? null : _forkOriginPath(fork);
+    if (origin == null) return false;
+    return _worktreeMgr.hasPostCheckoutHook(origin);
+  }
+
+  /// Namespace pra validacao do "Fork Worktree" — o do repo de origem do fork.
   Future<WorktreeNamespace> forkWorktreeNamespace(String forkId) async {
     final fork = _projectById(forkId);
     final origin = fork == null ? null : _forkOriginPath(fork);

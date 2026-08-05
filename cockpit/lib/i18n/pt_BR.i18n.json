@@ -124,7 +124,9 @@
       "errorReserved": "Posição reservada (não comece com \"-\"/\".\" nem termine com \".lock\").",
       "errorDuplicateBranch": "Já existe um branch com esse nome.",
       "errorDuplicateWorktree": "Já existe uma worktree com esse nome.",
-      "fork": "Fork"
+      "fork": "Fork",
+      "postCheckoutHint": "Este repositório tem um hook post-checkout.",
+      "running": "Executando…"
     },
     "subfolderDialog": {
       "title": "Onde trabalhar?",
