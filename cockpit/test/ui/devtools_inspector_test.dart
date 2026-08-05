@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/widgets/devtools_inspector.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter_test/flutter_test.dart';
@@ -52,6 +53,8 @@ void main() {
     expect(find.bySemanticsLabel('Move to the right'), findsOneWidget);
     expect(find.byType(material.Tooltip), findsNothing);
 
+    // Exercise the inspector's own HUD tooltip path. The buttons must not ask
+    // Material Tooltip for an Overlay because the inspector is below ShadcnApp.
     final mouse = await tester.createGesture(kind: ui.PointerDeviceKind.mouse);
     await mouse.addPointer(location: tester.getCenter(exitButton));
     await tester.pump(const Duration(milliseconds: 200));
@@ -71,4 +74,51 @@ void main() {
     expect(find.bySemanticsLabel('Exit Select Widget mode'), findsNothing);
     expect(errors, isEmpty);
   });
+
+  testWidgets('clearing the workspace menu during disposal is deferred', (
+    tester,
+  ) async {
+    final previous = FlutterError.onError;
+    final errors = <FlutterErrorDetails>[];
+    FlutterError.onError = errors.add;
+    addTearDown(() => FlutterError.onError = previous);
+
+    final bridge = WorkspaceMenuBridge();
+    bridge.setWorkspace(hasWorkspace: true);
+    await tester.pumpWidget(
+      ListenableBuilder(
+        listenable: bridge,
+        builder: (context, child) =>
+            _ClearBridgeOnDispose(bridge: bridge, child: child!),
+        child: const SizedBox(),
+      ),
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+
+    expect(bridge.hasWorkspace, isFalse);
+    expect(errors, isEmpty);
+  });
+}
+
+class _ClearBridgeOnDispose extends StatefulWidget {
+  const _ClearBridgeOnDispose({required this.bridge, required this.child});
+
+  final WorkspaceMenuBridge bridge;
+  final Widget child;
+
+  @override
+  State<_ClearBridgeOnDispose> createState() => _ClearBridgeOnDisposeState();
+}
+
+class _ClearBridgeOnDisposeState extends State<_ClearBridgeOnDispose> {
+  @override
+  Widget build(BuildContext context) => widget.child;
+
+  @override
+  void dispose() {
+    widget.bridge.setWorkspace(hasWorkspace: false);
+    super.dispose();
+  }
 }
