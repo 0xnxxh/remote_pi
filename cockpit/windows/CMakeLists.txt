@@ -117,6 +117,16 @@ install(PROGRAMS "${COCKPIT_HOOK_EXE}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
 # papel. Rust porque o `dart compile exe` sai de UMA arquitetura, não
 # cross-compila e não sobrevive ao `lipo` — ver macos/build_cli.sh.
 set(COCKPIT_CLI_CRATE "${CMAKE_SOURCE_DIR}/../cli")
+# O PATH do processo que roda o CMake nem sempre traz o `cargo` (IDE/launcher
+# não herda o shell de login), então a instalação padrão do rustup entra como
+# hint — mesma resolução do `resolve_cargo` do macos/build_cli.sh. Falhar aqui,
+# no configure, troca o "no such file or directory" do ninja por uma causa.
+find_program(CARGO_EXECUTABLE cargo HINTS "$ENV{USERPROFILE}/.cargo/bin")
+if(NOT CARGO_EXECUTABLE)
+  message(FATAL_ERROR
+    "'cargo' não encontrado: a CLI interna (cli/) é um crate Rust e faz parte "
+    "do build. Instale o Rust (https://rustup.rs) e rode o build de novo.")
+endif()
 file(GLOB_RECURSE COCKPIT_CLI_SOURCES CONFIGURE_DEPENDS
   "${COCKPIT_CLI_CRATE}/src/*.rs" "${COCKPIT_CLI_CRATE}/text/*")
 set(COCKPIT_CLI_BUILT "${COCKPIT_CLI_CRATE}/target/release/cockpit.exe")
@@ -131,7 +141,8 @@ endif()
 add_custom_command(
   OUTPUT "${COCKPIT_CLI_EXE}"
   COMMAND "${CMAKE_COMMAND}" -E env "COCKPIT_FLAVOR=${COCKPIT_CLI_FLAVOR}"
-          cargo build --release --manifest-path "${COCKPIT_CLI_CRATE}/Cargo.toml"
+          "${CARGO_EXECUTABLE}" build --release
+          --manifest-path "${COCKPIT_CLI_CRATE}/Cargo.toml"
   COMMAND "${CMAKE_COMMAND}" -E copy "${COCKPIT_CLI_BUILT}" "${COCKPIT_CLI_EXE}"
   DEPENDS ${COCKPIT_CLI_SOURCES} "${COCKPIT_CLI_CRATE}/Cargo.toml"
   COMMENT "Compilando cockpit-cli.exe (Rust)"
