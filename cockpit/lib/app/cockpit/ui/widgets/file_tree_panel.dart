@@ -94,6 +94,7 @@ class FileTreePanel extends StatefulWidget {
     this.tasksPanel,
     this.roots = const <WorkspaceRoot>[],
     this.sourceControlViewMode = SourceControlViewMode.list,
+    this.onSourceControlViewModeChanged,
     this.onStageFile,
     this.onStageFiles,
     this.onCommitStaged,
@@ -155,9 +156,14 @@ class FileTreePanel extends StatefulWidget {
   /// (2+ = mudanças seccionadas por root); a árvore de Files é sempre única.
   final List<WorkspaceRoot> roots;
 
-  /// Layout inicial compartilhado do Source Control. O toggle do header pode
-  /// alterá-lo temporariamente enquanto este painel permanece montado.
+  /// Layout do Source Control, compartilhado por todos os workspaces. O toggle
+  /// do header é o único controle: alterna aqui e persiste via
+  /// [onSourceControlViewModeChanged] (não há opção equivalente em Settings).
   final SourceControlViewMode sourceControlViewMode;
+
+  /// Notificado quando o toggle do header troca o layout, para persistir a
+  /// escolha. `null` = alterna só enquanto o painel estiver montado.
+  final ValueChanged<SourceControlViewMode>? onSourceControlViewModeChanged;
 
   /// Notificado a cada Cmd+Shift+F → ativa a aba de busca (além de focar o
   /// campo, que o próprio [searchPanel] faz). `null` = sem projeto.
@@ -1061,8 +1067,15 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   tooltip: _sourceControlTree
                       ? context.t.cockpit.fileTreePanel.viewAsList
                       : context.t.cockpit.fileTreePanel.viewAsTree,
-                  onTap: () =>
-                      setState(() => _sourceControlTree = !_sourceControlTree),
+                  onTap: () {
+                    final next = !_sourceControlTree;
+                    setState(() => _sourceControlTree = next);
+                    widget.onSourceControlViewModeChanged?.call(
+                      next
+                          ? SourceControlViewMode.tree
+                          : SourceControlViewMode.list,
+                    );
+                  },
                 ),
               ],
             ),

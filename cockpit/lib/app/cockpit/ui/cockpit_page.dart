@@ -885,6 +885,9 @@ class _CockpitPageState extends State<CockpitPage> {
                               width: _treeWidth,
                               rootPath: vm.selectedProject?.path ?? '',
                               sourceControlViewMode: _sourceControlViewMode,
+                              onSourceControlViewModeChanged: context
+                                  .read<SettingsController>()
+                                  .setSourceControlViewMode,
                               // Roots derivadas (multi-root = seções por repo).
                               roots: [
                                 for (final r

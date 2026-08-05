@@ -603,7 +603,6 @@
         "connectivity": "Conectividad",
         "daemonAgents": "Agentes Daemon",
         "schedules": "Programaciones",
-        "sourceControl": "Control de versiones",
         "automations": "Automatizaciones"
       },
       "general": {
@@ -812,13 +811,6 @@
         "folderRequiredError": "Elige una carpeta.",
         "folderDuplicateError": "Ya existe un agente en esta carpeta.",
         "pickFolderDialogTitle": "Elige la carpeta del Agente Daemon"
-      },
-      "sourceControl": {
-        "sectionView": "Vista",
-        "defaultViewMode": "Modo de vista predeterminado",
-        "defaultViewModeDescription": "Diseño inicial compartido por todos los workspaces, worktrees y secciones Changes/Staged.",
-        "viewModeList": "Lista",
-        "viewModeTree": "Árbol"
       },
       "automations": {
         "sectionCommitMessages": "Mensajes de commit",

@@ -2011,7 +2011,6 @@ class Translations$settings$page$en {
 	late final Translations$settings$page$connectivity$en connectivity = Translations$settings$page$connectivity$en.internal(_root);
 	late final Translations$settings$page$schedules$en schedules = Translations$settings$page$schedules$en.internal(_root);
 	late final Translations$settings$page$daemons$en daemons = Translations$settings$page$daemons$en.internal(_root);
-	late final Translations$settings$page$sourceControl$en sourceControl = Translations$settings$page$sourceControl$en.internal(_root);
 	late final Translations$settings$page$automations$en automations = Translations$settings$page$automations$en.internal(_root);
 }
 
@@ -2190,9 +2189,6 @@ class Translations$settings$page$nav$en {
 
 	/// en: 'Schedules'
 	String get schedules => 'Schedules';
-
-	/// en: 'Source Control'
-	String get sourceControl => 'Source Control';
 
 	/// en: 'Automations'
 	String get automations => 'Automations';
@@ -2836,30 +2832,6 @@ class Translations$settings$page$daemons$en {
 	String get pickFolderDialogTitle => 'Choose the Daemon Agent folder';
 }
 
-// Path: settings.page.sourceControl
-class Translations$settings$page$sourceControl$en {
-	Translations$settings$page$sourceControl$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'View'
-	String get sectionView => 'View';
-
-	/// en: 'Default view mode'
-	String get defaultViewMode => 'Default view mode';
-
-	/// en: 'Initial layout shared by every workspace, worktree, and Changes/Staged section.'
-	String get defaultViewModeDescription => 'Initial layout shared by every workspace, worktree, and Changes/Staged section.';
-
-	/// en: 'List'
-	String get viewModeList => 'List';
-
-	/// en: 'Tree'
-	String get viewModeTree => 'Tree';
-}
-
 // Path: settings.page.automations
 class Translations$settings$page$automations$en {
 	Translations$settings$page$automations$en.internal(this._root);
@@ -3451,7 +3423,6 @@ extension on Translations {
 			'settings.page.nav.connectivity' => 'Connectivity',
 			'settings.page.nav.daemonAgents' => 'Daemon Agents',
 			'settings.page.nav.schedules' => 'Schedules',
-			'settings.page.nav.sourceControl' => 'Source Control',
 			'settings.page.nav.automations' => 'Automations',
 			'settings.page.general.sectionAgent' => 'Agent',
 			'settings.page.general.enableAgentsTitle' => 'Enable agents',
@@ -3464,9 +3435,9 @@ extension on Translations {
 			'settings.page.general.agentsInUseError' => 'Can\'t turn agents off while an agent tab is open. Close all agent tabs first, then disable it.',
 			'settings.page.general.updateFrequency.daily' => 'Daily',
 			'settings.page.general.updateFrequency.weekly' => 'Weekly',
+			'settings.page.general.updateFrequency.monthly' => 'Monthly',
 			_ => null,
 		} ?? switch (path) {
-			'settings.page.general.updateFrequency.monthly' => 'Monthly',
 			'settings.page.general.updateFrequency.never' => 'Never',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnostics',
 			'settings.page.diagnostics.logFileTitle' => 'Log file',
@@ -3638,11 +3609,6 @@ extension on Translations {
 			'settings.page.daemons.folderRequiredError' => 'Choose a folder.',
 			'settings.page.daemons.folderDuplicateError' => 'An agent already exists in this folder.',
 			'settings.page.daemons.pickFolderDialogTitle' => 'Choose the Daemon Agent folder',
-			'settings.page.sourceControl.sectionView' => 'View',
-			'settings.page.sourceControl.defaultViewMode' => 'Default view mode',
-			'settings.page.sourceControl.defaultViewModeDescription' => 'Initial layout shared by every workspace, worktree, and Changes/Staged section.',
-			'settings.page.sourceControl.viewModeList' => 'List',
-			'settings.page.sourceControl.viewModeTree' => 'Tree',
 			'settings.page.automations.sectionCommitMessages' => 'Commit messages',
 			'settings.page.automations.harness' => 'Harness',
 			'settings.page.automations.harnessDiscovering' => 'Looking for installed command-line harnesses…',

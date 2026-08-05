@@ -1034,7 +1034,6 @@ class _Translations$settings$page$es extends Translations$settings$page$en {
 	@override late final _Translations$settings$page$connectivity$es connectivity = _Translations$settings$page$connectivity$es._(_root);
 	@override late final _Translations$settings$page$schedules$es schedules = _Translations$settings$page$schedules$es._(_root);
 	@override late final _Translations$settings$page$daemons$es daemons = _Translations$settings$page$daemons$es._(_root);
-	@override late final _Translations$settings$page$sourceControl$es sourceControl = _Translations$settings$page$sourceControl$es._(_root);
 	@override late final _Translations$settings$page$automations$es automations = _Translations$settings$page$automations$es._(_root);
 }
 
@@ -1119,7 +1118,6 @@ class _Translations$settings$page$nav$es extends Translations$settings$page$nav$
 	@override String get connectivity => 'Conectividad';
 	@override String get daemonAgents => 'Agentes Daemon';
 	@override String get schedules => 'Programaciones';
-	@override String get sourceControl => 'Control de versiones';
 	@override String get automations => 'Automatizaciones';
 }
 
@@ -1400,20 +1398,6 @@ class _Translations$settings$page$daemons$es extends Translations$settings$page$
 	@override String get folderRequiredError => 'Elige una carpeta.';
 	@override String get folderDuplicateError => 'Ya existe un agente en esta carpeta.';
 	@override String get pickFolderDialogTitle => 'Elige la carpeta del Agente Daemon';
-}
-
-// Path: settings.page.sourceControl
-class _Translations$settings$page$sourceControl$es extends Translations$settings$page$sourceControl$en {
-	_Translations$settings$page$sourceControl$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get sectionView => 'Vista';
-	@override String get defaultViewMode => 'Modo de vista predeterminado';
-	@override String get defaultViewModeDescription => 'Diseño inicial compartido por todos los workspaces, worktrees y secciones Changes/Staged.';
-	@override String get viewModeList => 'Lista';
-	@override String get viewModeTree => 'Árbol';
 }
 
 // Path: settings.page.automations
@@ -1963,7 +1947,6 @@ extension on TranslationsEs {
 			'settings.page.nav.connectivity' => 'Conectividad',
 			'settings.page.nav.daemonAgents' => 'Agentes Daemon',
 			'settings.page.nav.schedules' => 'Programaciones',
-			'settings.page.nav.sourceControl' => 'Control de versiones',
 			'settings.page.nav.automations' => 'Automatizaciones',
 			'settings.page.general.sectionAgent' => 'Agente',
 			'settings.page.general.enableAgentsTitle' => 'Activar agentes',
@@ -1976,9 +1959,9 @@ extension on TranslationsEs {
 			'settings.page.general.agentsInUseError' => 'No se pueden desactivar los agentes mientras haya una pestaña de agente abierta. Cierra todas las pestañas de agente primero y luego desactívalo.',
 			'settings.page.general.updateFrequency.daily' => 'Diariamente',
 			'settings.page.general.updateFrequency.weekly' => 'Semanalmente',
+			'settings.page.general.updateFrequency.monthly' => 'Mensualmente',
 			_ => null,
 		} ?? switch (path) {
-			'settings.page.general.updateFrequency.monthly' => 'Mensualmente',
 			'settings.page.general.updateFrequency.never' => 'Nunca',
 			'settings.page.diagnostics.sectionTitle' => 'Diagnóstico',
 			'settings.page.diagnostics.logFileTitle' => 'Archivo de registro',
@@ -2150,11 +2133,6 @@ extension on TranslationsEs {
 			'settings.page.daemons.folderRequiredError' => 'Elige una carpeta.',
 			'settings.page.daemons.folderDuplicateError' => 'Ya existe un agente en esta carpeta.',
 			'settings.page.daemons.pickFolderDialogTitle' => 'Elige la carpeta del Agente Daemon',
-			'settings.page.sourceControl.sectionView' => 'Vista',
-			'settings.page.sourceControl.defaultViewMode' => 'Modo de vista predeterminado',
-			'settings.page.sourceControl.defaultViewModeDescription' => 'Diseño inicial compartido por todos los workspaces, worktrees y secciones Changes/Staged.',
-			'settings.page.sourceControl.viewModeList' => 'Lista',
-			'settings.page.sourceControl.viewModeTree' => 'Árbol',
 			'settings.page.automations.sectionCommitMessages' => 'Mensajes de commit',
 			'settings.page.automations.harness' => 'Harness',
 			'settings.page.automations.harnessDiscovering' => 'Buscando harnesses de línea de comandos instalados…',

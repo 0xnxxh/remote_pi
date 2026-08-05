@@ -603,7 +603,6 @@
         "connectivity": "Connectivity",
         "daemonAgents": "Daemon Agents",
         "schedules": "Schedules",
-        "sourceControl": "Source Control",
         "automations": "Automations"
       },
       "general": {
@@ -812,13 +811,6 @@
         "folderRequiredError": "Choose a folder.",
         "folderDuplicateError": "An agent already exists in this folder.",
         "pickFolderDialogTitle": "Choose the Daemon Agent folder"
-      },
-      "sourceControl": {
-        "sectionView": "View",
-        "defaultViewMode": "Default view mode",
-        "defaultViewModeDescription": "Initial layout shared by every workspace, worktree, and Changes/Staged section.",
-        "viewModeList": "List",
-        "viewModeTree": "Tree"
       },
       "automations": {
         "sectionCommitMessages": "Commit messages",

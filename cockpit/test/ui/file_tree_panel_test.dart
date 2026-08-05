@@ -152,6 +152,59 @@ void main() {
       expect(find.text('lib/app'), findsOneWidget);
     });
 
+    testWidgets('toggling the view mode reports it back for persistence', (
+      tester,
+    ) async {
+      const changedPath = '/workspace/lib/app/main.dart';
+      final reported = <SourceControlViewMode>[];
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: ShadcnApp(
+            theme: buildTheme(brightness: Brightness.dark),
+            home: Scaffold(
+              child: FileTreePanel(
+                rootPath: '/workspace',
+                revision: 1,
+                onSourceControlViewModeChanged: reported.add,
+                listChildren: (_) async => const [],
+                gitStatusOf: (_) => GitFileStatus.modified,
+                onOpenFile: (_) {},
+                onOpenDiff: (_) {},
+                isGitRepo: true,
+                changedPaths: const [changedPath],
+                unstagedPaths: const [changedPath],
+                onOpenWith: (_) {},
+                onCreateInFolder: (_, _) {},
+                onCreate: (_, _, _) async => const Success(null),
+                onRename: (_, _) async => const Success(null),
+                onDelete: (_) async => const Success(null),
+                onMove: (_, _) async => const Success(null),
+                onCopy: (_) {},
+                onCut: (_) {},
+                onPaste: (_) async => const Success(null),
+                canPaste: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('source-control-tab')));
+      await tester.pumpAndSettle();
+
+      final toggle = find.byKey(const ValueKey('source-control-view-toggle'));
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+
+      expect(reported, [
+        SourceControlViewMode.tree,
+        SourceControlViewMode.list,
+      ]);
+    });
+
     testWidgets('source control honors the configured tree default', (
       tester,
     ) async {

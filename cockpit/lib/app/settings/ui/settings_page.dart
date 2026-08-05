@@ -57,7 +57,6 @@ enum _Category {
   appearance,
   terminal,
   languages,
-  sourceControl,
   automations,
   shortcuts,
   notifications,
@@ -114,7 +113,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     _Category.appearance => const _AppearancePanel(),
                     _Category.terminal => const _TerminalPanel(),
                     _Category.languages => const _LanguagesPanel(),
-                    _Category.sourceControl => const _SourceControlPanel(),
                     _Category.automations => const _AutomationsPanel(),
                     _Category.shortcuts => const _ShortcutsPanel(),
                     _Category.notifications => const _NotificationsPanel(),
@@ -213,12 +211,6 @@ class _CategoryNav extends StatelessWidget {
             label: context.t.settings.page.nav.language,
             selected: selected == _Category.languages,
             onTap: () => onSelect(_Category.languages),
-          ),
-          _NavItem(
-            icon: Icons.account_tree_outlined,
-            label: context.t.settings.page.nav.sourceControl,
-            selected: selected == _Category.sourceControl,
-            onTap: () => onSelect(_Category.sourceControl),
           ),
           _NavItem(
             icon: Icons.auto_awesome_outlined,
@@ -484,49 +476,6 @@ class _GeneralPanel extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Source Control
-// ---------------------------------------------------------------------------
-
-class _SourceControlPanel extends StatelessWidget {
-  const _SourceControlPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = context.watch<SettingsController>();
-    final tr = context.t.settings.page.sourceControl;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _Section(
-                label: tr.sectionView,
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.defaultViewMode,
-                      description: tr.defaultViewModeDescription,
-                      trailing: _SourceControlViewModeDropdown(
-                        value: settings.settings.sourceControlViewMode,
-                        onChanged: settings.setSourceControlViewMode,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Automations
 // ---------------------------------------------------------------------------
 
@@ -753,51 +702,6 @@ class _AutomationModelDropdown extends StatelessWidget {
           ],
         );
         if (picked != null) onChanged(picked.isEmpty ? null : picked);
-      },
-    );
-  }
-}
-
-class _SourceControlViewModeDropdown extends StatelessWidget {
-  const _SourceControlViewModeDropdown({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final SourceControlViewMode value;
-  final ValueChanged<SourceControlViewMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    String label(SourceControlViewMode mode) => switch (mode) {
-      SourceControlViewMode.list =>
-        context.t.settings.page.sourceControl.viewModeList,
-      SourceControlViewMode.tree =>
-        context.t.settings.page.sourceControl.viewModeTree,
-    };
-    IconData icon(SourceControlViewMode mode) => switch (mode) {
-      SourceControlViewMode.list => Icons.view_list_outlined,
-      SourceControlViewMode.tree => Icons.account_tree_outlined,
-    };
-
-    return _DropdownChip(
-      icon: icon(value),
-      label: label(value),
-      onTap: () async {
-        final picked = await showAppMenu<SourceControlViewMode>(
-          context,
-          minWidth: 160,
-          items: [
-            for (final mode in SourceControlViewMode.values)
-              AppMenuItem(
-                value: mode,
-                label: label(mode),
-                icon: icon(mode),
-                selected: mode == value,
-              ),
-          ],
-        );
-        if (picked != null) onChanged(picked);
       },
     );
   }
