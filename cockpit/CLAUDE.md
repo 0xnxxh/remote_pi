@@ -71,6 +71,20 @@ virou módulo/plugin interno; o resto vem do pub.dev.
 
 ## Comandos
 
+### Pré-requisitos de build (além do Flutter SDK)
+
+O build desktop **não é só Dart** — ele compila dois motores nativos junto, e
+sem eles o `flutter run/build` falha antes de chegar no app:
+
+| Ferramenta | Por quê | Sem ela |
+|---|---|---|
+| **Rust** (`cargo`, via [rustup](https://rustup.rs)) | a CLI interna (`cli/`) é um crate Rust, compilado por macOS/Linux/Windows e empacotado ao lado do binário | build para no alvo `cockpit-cli` |
+| **Zig 0.16.0** | `hooks.user_defines.libghostty.source: compile` no pubspec compila a dylib do Ghostty (0.15.x não serve) | falha no build hook do `libghostty` |
+
+O `cargo` é resolvido pelo PATH e, como fallback, em `~/.cargo/bin` — o mesmo
+lugar onde o rustup instala. Isso cobre IDE/launcher que não herda o PATH do
+shell de login; se faltar mesmo, o CMake para no configure com a causa.
+
 - `flutter pub get` — instala deps
 - `flutter analyze` — lint estático (deve passar zero issues)
 - `flutter test` — testes
