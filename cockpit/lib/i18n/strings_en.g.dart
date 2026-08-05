@@ -61,6 +61,7 @@ class Translations$core$en {
 	late final Translations$core$errorReportDialog$en errorReportDialog = Translations$core$errorReportDialog$en.internal(_root);
 	late final Translations$core$windowControls$en windowControls = Translations$core$windowControls$en.internal(_root);
 	late final Translations$core$crash$en crash = Translations$core$crash$en.internal(_root);
+	late final Translations$core$menu$en menu = Translations$core$menu$en.internal(_root);
 }
 
 // Path: common
@@ -344,6 +345,102 @@ class Translations$core$crash$en {
 
 	/// en: 'No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part.'
 	String get crashDescription => 'No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part.';
+}
+
+// Path: core.menu
+class Translations$core$menu$en {
+	Translations$core$menu$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Settings…'
+	String get settings => 'Settings…';
+
+	/// en: 'Check for Updates…'
+	String get checkForUpdates => 'Check for Updates…';
+
+	/// en: 'File'
+	String get file => 'File';
+
+	/// en: 'New Agent'
+	String get newAgent => 'New Agent';
+
+	/// en: 'New Terminal'
+	String get newTerminal => 'New Terminal';
+
+	/// en: 'Open Workspace'
+	String get openWorkspace => 'Open Workspace';
+
+	/// en: 'Save'
+	String get save => 'Save';
+
+	/// en: 'Discard'
+	String get discard => 'Discard';
+
+	/// en: 'Format'
+	String get format => 'Format';
+
+	/// en: 'View'
+	String get view => 'View';
+
+	/// en: 'Toggle Workspace Panel'
+	String get toggleWorkspacePanel => 'Toggle Workspace Panel';
+
+	/// en: 'Toggle Files'
+	String get toggleFiles => 'Toggle Files';
+
+	/// en: 'Split Right'
+	String get splitRight => 'Split Right';
+
+	/// en: 'Split Down'
+	String get splitDown => 'Split Down';
+
+	/// en: 'Focus Pane'
+	String get focusPane => 'Focus Pane';
+
+	/// en: 'Left (⌘⌥←)'
+	String get focusLeft => 'Left  (⌘⌥←)';
+
+	/// en: 'Right (⌘⌥→)'
+	String get focusRight => 'Right  (⌘⌥→)';
+
+	/// en: 'Up (⌘⌥↑)'
+	String get focusUp => 'Up  (⌘⌥↑)';
+
+	/// en: 'Down (⌘⌥↓)'
+	String get focusDown => 'Down  (⌘⌥↓)';
+
+	/// en: 'Select Tab'
+	String get selectTab => 'Select Tab';
+
+	/// en: 'Tab ${n}'
+	String tabN({required Object n}) => 'Tab ${n}';
+
+	/// en: 'Last Tab'
+	String get lastTab => 'Last Tab';
+
+	/// en: 'Zoom In'
+	String get zoomIn => 'Zoom In';
+
+	/// en: 'Zoom Out'
+	String get zoomOut => 'Zoom Out';
+
+	/// en: 'Actual Size'
+	String get actualSize => 'Actual Size';
+
+	/// en: 'Window'
+	String get window => 'Window';
+
+	/// en: 'Quit'
+	String get quit => 'Quit';
+
+	/// en: 'Minimize'
+	String get minimize => 'Minimize';
+
+	/// en: 'Zoom'
+	String get zoom => 'Zoom';
 }
 
 // Path: cockpit.confirmDialog
@@ -2863,6 +2960,35 @@ extension on Translations {
 			'core.crash.crashMessage' => ({required Object version}) => 'The previous session (version ${version}) ended without shutting down cleanly. Want to report it? The log is included and you can review everything before sending.',
 			'core.crash.crashError' => ({required Object startedAt, required Object pid}) => 'Session started at ${startedAt} (pid ${pid}) ended without a clean shutdown.',
 			'core.crash.crashDescription' => 'No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part.',
+			'core.menu.settings' => 'Settings…',
+			'core.menu.checkForUpdates' => 'Check for Updates…',
+			'core.menu.file' => 'File',
+			'core.menu.newAgent' => 'New Agent',
+			'core.menu.newTerminal' => 'New Terminal',
+			'core.menu.openWorkspace' => 'Open Workspace',
+			'core.menu.save' => 'Save',
+			'core.menu.discard' => 'Discard',
+			'core.menu.format' => 'Format',
+			'core.menu.view' => 'View',
+			'core.menu.toggleWorkspacePanel' => 'Toggle Workspace Panel',
+			'core.menu.toggleFiles' => 'Toggle Files',
+			'core.menu.splitRight' => 'Split Right',
+			'core.menu.splitDown' => 'Split Down',
+			'core.menu.focusPane' => 'Focus Pane',
+			'core.menu.focusLeft' => 'Left  (⌘⌥←)',
+			'core.menu.focusRight' => 'Right  (⌘⌥→)',
+			'core.menu.focusUp' => 'Up  (⌘⌥↑)',
+			'core.menu.focusDown' => 'Down  (⌘⌥↓)',
+			'core.menu.selectTab' => 'Select Tab',
+			'core.menu.tabN' => ({required Object n}) => 'Tab ${n}',
+			'core.menu.lastTab' => 'Last Tab',
+			'core.menu.zoomIn' => 'Zoom In',
+			'core.menu.zoomOut' => 'Zoom Out',
+			'core.menu.actualSize' => 'Actual Size',
+			'core.menu.window' => 'Window',
+			'core.menu.quit' => 'Quit',
+			'core.menu.minimize' => 'Minimize',
+			'core.menu.zoom' => 'Zoom',
 			'common.cancel' => 'Cancel',
 			'common.confirm' => 'Confirm',
 			'common.create' => 'Create',
@@ -3320,6 +3446,8 @@ extension on Translations {
 			'settings.page.diagnostics.logFileTitle' => 'Log file',
 			'settings.page.diagnostics.logFileDesc' => ({required Object days, required Object path}) => 'Errors and startup events are recorded here, kept for ${days} days.\n${path}',
 			'settings.page.diagnostics.unavailable' => 'unavailable',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.diagnostics.reveal' => 'Reveal',
 			'settings.page.diagnostics.reportTitle' => 'Report a problem',
 			'settings.page.diagnostics.reportDesc' => 'Opens a pre-filled issue with your version, OS and recent log. Nothing is sent automatically — you review it first.',
@@ -3349,8 +3477,6 @@ extension on Translations {
 			'settings.page.terminal.sectionDefaultTerminal' => 'Default terminal',
 			'settings.page.terminal.engineTitle' => 'Engine',
 			'settings.page.terminal.engineDesc' => 'Used by new terminal tabs and task output buffers. Open tabs keep their current engine.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.terminal.shellTitle' => 'Shell',
 			'settings.page.terminal.shellDesc' => 'Which shell new terminal tabs open. The arrow next to + still opens any other one, just for that tab.',
 			'settings.page.terminal.noWslMessage' => 'No WSL distros found. Install one (wsl.exe --install) and restart Cockpit to see it listed here.',

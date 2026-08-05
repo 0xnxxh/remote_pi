@@ -51,6 +51,7 @@ class CockpitTopbar extends StatelessWidget {
         if (!Platform.isMacOS) ...[
           WindowMenuBar(
             menus: buildAppMenus(
+              context.t,
               context.watch<SettingsController>(),
               context.watch<EditorMenuBridge>(),
               context.watch<WorkspaceMenuBridge>(),

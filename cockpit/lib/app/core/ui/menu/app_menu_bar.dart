@@ -5,6 +5,7 @@ import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/menu_model.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -27,15 +28,20 @@ const List<LogicalKeyboardKey> _tabDigitKeys = <LogicalKeyboardKey>[
   LogicalKeyboardKey.digit8,
 ];
 
-/// Monta a árvore de menus do app. Referencia só o `core`: o [controller]
+/// Monta a árvore de menus do app. Recebe [t] (as traduções) em vez de ler
+/// `context.t`: a função é pura e roda fora de um `build`. Quem chama é o
+/// `AppRoot`, dentro do `build`, então trocar de idioma remonta a barra.
+/// Referencia só o `core`: o [controller]
 /// (zoom/tamanho da interface) e as pontes globais de `app_intents.dart` (abrir
 /// configurações/projeto, checar updates) — resolvidas pelo `CockpitPage`, então
 /// `null`-safe enquanto o shell não montou.
 List<MenuBarMenu> buildAppMenus(
+  Translations t,
   SettingsController controller,
   EditorMenuBridge editor,
   WorkspaceMenuBridge workspace,
 ) {
+  final tr = t.core.menu;
   void zoom(double delta) => controller.setInterfaceSize(
     (controller.settings.interfaceSize + delta).clamp(11.0, 22.0),
   );
@@ -46,12 +52,12 @@ List<MenuBarMenu> buildAppMenus(
       const MenuRole(MenuBarRole.about),
       const MenuSeparator(),
       MenuAction(
-        'Settings…',
+        tr.settings,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.comma),
         onSelected: () => requestOpenSettings?.call(),
       ),
       MenuAction(
-        'Check for Updates…',
+        tr.checkForUpdates,
         onSelected: () => requestCheckForUpdates?.call(),
       ),
       const MenuSeparator(),
@@ -63,23 +69,23 @@ List<MenuBarMenu> buildAppMenus(
       const MenuSeparator(),
       const MenuRole(MenuBarRole.quit),
     ]),
-    MenuBarMenu('File', <MenuNode>[
+    MenuBarMenu(tr.file, <MenuNode>[
       // New Agent/Terminal abrem uma aba no workspace ativo (via CockpitPage →
       // newTabIn). Só habilitam quando há workspace selecionado. "New Agent" só
       // aparece quando o suporte a agentes está ligado (Settings → General) e o
       // workspace ativo permite agentes (o Cockpit terminal-only não permite).
       if (controller.settings.enableAgent && workspace.agentsAllowed)
         MenuAction(
-          'New Agent',
+          tr.newAgent,
           onSelected: workspace.hasWorkspace ? workspace.newAgent : null,
         ),
       MenuAction(
-        'New Terminal',
+        tr.newTerminal,
         onSelected: workspace.hasWorkspace ? workspace.newTerminal : null,
       ),
       const MenuSeparator(),
       MenuAction(
-        'Open Workspace',
+        tr.openWorkspace,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.keyO),
         onSelected: () => requestOpenProject?.call(),
       ),
@@ -90,17 +96,17 @@ List<MenuBarMenu> buildAppMenus(
       // acelerador aqui: o próprio editor já trata ⌘S/⇧⌘F em todas as plataformas
       // (evita disparo duplo). `onSelected` null = item cinza/desabilitado.
       MenuAction(
-        'Save',
+        tr.save,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.keyS),
         shortcutHandledExternally: true,
         onSelected: editor.canSave ? editor.save : null,
       ),
       MenuAction(
-        'Discard',
+        tr.discard,
         onSelected: editor.canDiscard ? editor.discard : null,
       ),
       MenuAction(
-        'Format',
+        tr.format,
         accelerator: const MenuAccelerator(
           LogicalKeyboardKey.keyF,
           shift: true,
@@ -112,16 +118,16 @@ List<MenuBarMenu> buildAppMenus(
     // Zoom: aceleradores só EXIBIDOS (hint) — a tecla já é tratada pelo
     // `_zoomBindings` do `AppRoot` em todas as plataformas. `shortcutHandledExternally`
     // impede o `menuShortcuts` de registrar de novo fora do macOS (disparo duplo).
-    MenuBarMenu('View', <MenuNode>[
+    MenuBarMenu(tr.view, <MenuNode>[
       // Layout do workspace (ativos só com workspace aberto). Aceleradores reais:
       // no macOS o menu nativo dispara; fora dele o `menuShortcuts` registra.
       MenuAction(
-        'Toggle Workspace Panel',
+        tr.toggleWorkspacePanel,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.keyB),
         onSelected: workspace.hasWorkspace ? workspace.toggleRail : null,
       ),
       MenuAction(
-        'Toggle Files',
+        tr.toggleFiles,
         accelerator: const MenuAccelerator(
           LogicalKeyboardKey.keyB,
           shift: true,
@@ -130,12 +136,12 @@ List<MenuBarMenu> buildAppMenus(
       ),
       const MenuSeparator(),
       MenuAction(
-        'Split Right',
+        tr.splitRight,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.keyD),
         onSelected: workspace.hasWorkspace ? workspace.splitRight : null,
       ),
       MenuAction(
-        'Split Down',
+        tr.splitDown,
         accelerator: const MenuAccelerator(
           LogicalKeyboardKey.keyD,
           shift: true,
@@ -151,60 +157,60 @@ List<MenuBarMenu> buildAppMenus(
       // antes do menu), então quem trata a tecla é um handler global do
       // HardwareKeyboard no `CockpitPage`. Aqui ficam só os itens clicáveis (com
       // o hint da tecla no rótulo, já que o menu não desenha acelerador nenhum).
-      MenuBarMenu('Focus Pane', <MenuNode>[
+      MenuBarMenu(tr.focusPane, <MenuNode>[
         MenuAction(
-          'Left  (⌘⌥←)',
+          tr.focusLeft,
           onSelected: workspace.hasWorkspace ? workspace.focusPaneLeft : null,
         ),
         MenuAction(
-          'Right  (⌘⌥→)',
+          tr.focusRight,
           onSelected: workspace.hasWorkspace ? workspace.focusPaneRight : null,
         ),
         MenuAction(
-          'Up  (⌘⌥↑)',
+          tr.focusUp,
           onSelected: workspace.hasWorkspace ? workspace.focusPaneUp : null,
         ),
         MenuAction(
-          'Down  (⌘⌥↓)',
+          tr.focusDown,
           onSelected: workspace.hasWorkspace ? workspace.focusPaneDown : null,
         ),
       ]),
-      MenuBarMenu('Select Tab', <MenuNode>[
+      MenuBarMenu(tr.selectTab, <MenuNode>[
         for (var i = 0; i < _tabDigitKeys.length; i++)
           MenuAction(
-            'Tab ${i + 1}',
+            tr.tabN(n: i + 1),
             accelerator: MenuAccelerator(_tabDigitKeys[i]),
             onSelected: workspace.hasWorkspace
                 ? () => workspace.selectTab(i)
                 : null,
           ),
         MenuAction(
-          'Last Tab',
+          tr.lastTab,
           accelerator: const MenuAccelerator(LogicalKeyboardKey.digit9),
           onSelected: workspace.hasWorkspace ? workspace.selectLastTab : null,
         ),
       ]),
       const MenuSeparator(),
       MenuAction(
-        'Zoom In',
+        tr.zoomIn,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.equal),
         shortcutHandledExternally: true,
         onSelected: () => zoom(1),
       ),
       MenuAction(
-        'Zoom Out',
+        tr.zoomOut,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.minus),
         shortcutHandledExternally: true,
         onSelected: () => zoom(-1),
       ),
       MenuAction(
-        'Actual Size',
+        tr.actualSize,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.digit0),
         shortcutHandledExternally: true,
         onSelected: () => controller.setInterfaceSize(14),
       ),
     ]),
-    const MenuBarMenu('Window', <MenuNode>[
+    MenuBarMenu(tr.window, const <MenuNode>[
       MenuRole(MenuBarRole.minimizeWindow),
       MenuRole(MenuBarRole.zoomWindow),
     ]),
@@ -415,8 +421,8 @@ void Function()? _windowRole(MenuBarRole role) => switch (role) {
 };
 
 String _roleLabel(MenuBarRole role) => switch (role) {
-  MenuBarRole.quit => 'Quit',
-  MenuBarRole.minimizeWindow => 'Minimize',
-  MenuBarRole.zoomWindow => 'Zoom',
+  MenuBarRole.quit => t.core.menu.quit,
+  MenuBarRole.minimizeWindow => t.core.menu.minimize,
+  MenuBarRole.zoomWindow => t.core.menu.zoom,
   _ => '',
 };

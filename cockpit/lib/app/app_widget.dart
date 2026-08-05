@@ -10,6 +10,7 @@ import 'package:cockpit/app/core/ui/clamping_scroll_behavior.dart';
 import 'package:cockpit/app/core/ui/overlay/app_popover_handler.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -34,7 +35,7 @@ class AppRoot extends StatelessWidget {
     // (Save/Discard/Format) reconstrói e re-habilita conforme a aba focada.
     final editor = context.watch<EditorMenuBridge>();
     final workspace = context.watch<WorkspaceMenuBridge>();
-    final menus = buildAppMenus(controller, editor, workspace);
+    final menus = buildAppMenus(context.t, controller, editor, workspace);
     final app = ShadcnApp.router(
       title: 'Cockpit',
       debugShowCheckedModeBanner: false,

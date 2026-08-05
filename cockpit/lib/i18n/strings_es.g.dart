@@ -60,6 +60,7 @@ class _Translations$core$es extends Translations$core$en {
 	@override late final _Translations$core$errorReportDialog$es errorReportDialog = _Translations$core$errorReportDialog$es._(_root);
 	@override late final _Translations$core$windowControls$es windowControls = _Translations$core$windowControls$es._(_root);
 	@override late final _Translations$core$crash$es crash = _Translations$core$crash$es._(_root);
+	@override late final _Translations$core$menu$es menu = _Translations$core$menu$es._(_root);
 }
 
 // Path: common
@@ -245,6 +246,44 @@ class _Translations$core$crash$es extends Translations$core$crash$en {
 	@override String crashMessage({required Object version}) => 'La sesión anterior (versión ${version}) terminó sin cerrarse correctamente. ¿Quieres reportarlo? El log se incluye y puedes revisar todo antes de enviar.';
 	@override String crashError({required Object startedAt, required Object pid}) => 'La sesión iniciada el ${startedAt} (pid ${pid}) terminó sin un cierre limpio.';
 	@override String get crashDescription => 'No se capturó ningún error: el sistema terminó la app. El log de abajo es de esa sesión y es la parte más útil.';
+}
+
+// Path: core.menu
+class _Translations$core$menu$es extends Translations$core$menu$en {
+	_Translations$core$menu$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get settings => 'Configuración…';
+	@override String get checkForUpdates => 'Buscar Actualizaciones…';
+	@override String get file => 'Archivo';
+	@override String get newAgent => 'Nuevo Agente';
+	@override String get newTerminal => 'Nueva Terminal';
+	@override String get openWorkspace => 'Abrir Workspace';
+	@override String get save => 'Guardar';
+	@override String get discard => 'Descartar';
+	@override String get format => 'Formatear';
+	@override String get view => 'Ver';
+	@override String get toggleWorkspacePanel => 'Alternar Panel de Workspaces';
+	@override String get toggleFiles => 'Alternar Archivos';
+	@override String get splitRight => 'Dividir a la Derecha';
+	@override String get splitDown => 'Dividir Abajo';
+	@override String get focusPane => 'Enfocar Panel';
+	@override String get focusLeft => 'Izquierda  (⌘⌥←)';
+	@override String get focusRight => 'Derecha  (⌘⌥→)';
+	@override String get focusUp => 'Arriba  (⌘⌥↑)';
+	@override String get focusDown => 'Abajo  (⌘⌥↓)';
+	@override String get selectTab => 'Seleccionar Pestaña';
+	@override String tabN({required Object n}) => 'Pestaña ${n}';
+	@override String get lastTab => 'Última Pestaña';
+	@override String get zoomIn => 'Acercar';
+	@override String get zoomOut => 'Alejar';
+	@override String get actualSize => 'Tamaño Real';
+	@override String get window => 'Ventana';
+	@override String get quit => 'Salir';
+	@override String get minimize => 'Minimizar';
+	@override String get zoom => 'Zoom';
 }
 
 // Path: cockpit.confirmDialog
@@ -1068,7 +1107,7 @@ class _Translations$settings$page$nav$es extends Translations$settings$page$nav$
 	@override String get general => 'General';
 	@override String get appearance => 'Apariencia';
 	@override String get terminal => 'Terminal';
-	@override String get language => 'Idioma';
+	@override String get language => 'Lenguaje';
 	@override String get shortcuts => 'Atajos';
 	@override String get notifications => 'Notificaciones';
 	@override String get connectivity => 'Conectividad';
@@ -1445,6 +1484,35 @@ extension on TranslationsEs {
 			'core.crash.crashMessage' => ({required Object version}) => 'La sesión anterior (versión ${version}) terminó sin cerrarse correctamente. ¿Quieres reportarlo? El log se incluye y puedes revisar todo antes de enviar.',
 			'core.crash.crashError' => ({required Object startedAt, required Object pid}) => 'La sesión iniciada el ${startedAt} (pid ${pid}) terminó sin un cierre limpio.',
 			'core.crash.crashDescription' => 'No se capturó ningún error: el sistema terminó la app. El log de abajo es de esa sesión y es la parte más útil.',
+			'core.menu.settings' => 'Configuración…',
+			'core.menu.checkForUpdates' => 'Buscar Actualizaciones…',
+			'core.menu.file' => 'Archivo',
+			'core.menu.newAgent' => 'Nuevo Agente',
+			'core.menu.newTerminal' => 'Nueva Terminal',
+			'core.menu.openWorkspace' => 'Abrir Workspace',
+			'core.menu.save' => 'Guardar',
+			'core.menu.discard' => 'Descartar',
+			'core.menu.format' => 'Formatear',
+			'core.menu.view' => 'Ver',
+			'core.menu.toggleWorkspacePanel' => 'Alternar Panel de Workspaces',
+			'core.menu.toggleFiles' => 'Alternar Archivos',
+			'core.menu.splitRight' => 'Dividir a la Derecha',
+			'core.menu.splitDown' => 'Dividir Abajo',
+			'core.menu.focusPane' => 'Enfocar Panel',
+			'core.menu.focusLeft' => 'Izquierda  (⌘⌥←)',
+			'core.menu.focusRight' => 'Derecha  (⌘⌥→)',
+			'core.menu.focusUp' => 'Arriba  (⌘⌥↑)',
+			'core.menu.focusDown' => 'Abajo  (⌘⌥↓)',
+			'core.menu.selectTab' => 'Seleccionar Pestaña',
+			'core.menu.tabN' => ({required Object n}) => 'Pestaña ${n}',
+			'core.menu.lastTab' => 'Última Pestaña',
+			'core.menu.zoomIn' => 'Acercar',
+			'core.menu.zoomOut' => 'Alejar',
+			'core.menu.actualSize' => 'Tamaño Real',
+			'core.menu.window' => 'Ventana',
+			'core.menu.quit' => 'Salir',
+			'core.menu.minimize' => 'Minimizar',
+			'core.menu.zoom' => 'Zoom',
 			'common.cancel' => 'Cancelar',
 			'common.confirm' => 'Confirmar',
 			'common.create' => 'Crear',
@@ -1877,7 +1945,7 @@ extension on TranslationsEs {
 			'settings.page.nav.general' => 'General',
 			'settings.page.nav.appearance' => 'Apariencia',
 			'settings.page.nav.terminal' => 'Terminal',
-			'settings.page.nav.language' => 'Idioma',
+			'settings.page.nav.language' => 'Lenguaje',
 			'settings.page.nav.shortcuts' => 'Atajos',
 			'settings.page.nav.notifications' => 'Notificaciones',
 			'settings.page.nav.connectivity' => 'Conectividad',
@@ -1902,6 +1970,8 @@ extension on TranslationsEs {
 			'settings.page.diagnostics.logFileTitle' => 'Archivo de registro',
 			'settings.page.diagnostics.logFileDesc' => ({required Object days, required Object path}) => 'Los errores y eventos de inicio se registran aquí, y se conservan durante ${days} días.\n${path}',
 			'settings.page.diagnostics.unavailable' => 'no disponible',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.diagnostics.reveal' => 'Mostrar',
 			'settings.page.diagnostics.reportTitle' => 'Reportar un problema',
 			'settings.page.diagnostics.reportDesc' => 'Abre un issue prellenado con tu versión, SO y registro reciente. Nada se envía automáticamente — lo revisas antes.',
@@ -1931,8 +2001,6 @@ extension on TranslationsEs {
 			'settings.page.terminal.sectionDefaultTerminal' => 'Terminal predeterminado',
 			'settings.page.terminal.engineTitle' => 'Motor',
 			'settings.page.terminal.engineDesc' => 'Usado por nuevas pestañas de terminal y buffers de salida de tasks. Las pestañas abiertas mantienen su motor actual.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.terminal.shellTitle' => 'Shell',
 			'settings.page.terminal.shellDesc' => 'Qué shell abren las nuevas pestañas de terminal. La flecha junto al + sigue abriendo cualquier otro, solo para esa pestaña.',
 			'settings.page.terminal.noWslMessage' => 'No se encontraron distros de WSL. Instala una (wsl.exe --install) y reinicia Cockpit para verla listada aquí.',
