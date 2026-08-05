@@ -5,6 +5,7 @@ import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 // DEBUG temporário: marcadores síncronos pra localizar o segfault no Windows ARM.
@@ -106,6 +107,30 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
     _trace('save:after-pop');
   }
 
+  /// Pasta em que o seletor abre: a da imagem atual (se ainda existir) ou a
+  /// raiz do workspace. `null` quando nenhuma das duas serve (ex.: workspace de
+  /// sistema, que tem path vazio) — aí o SO decide.
+  String? get _pickerInitialDirectory {
+    final current = _imagePath;
+    if (current != null && current.isNotEmpty) {
+      final dir = _nativeDirIfExists(p.dirname(current));
+      if (dir != null) return dir;
+    }
+    return _nativeDirIfExists(widget.path);
+  }
+
+  /// Normaliza para o separador nativo e confirma que a pasta existe. O diálogo
+  /// nativo do Windows ignora `initialDirectory` silenciosamente se o caminho
+  /// vier com `/` (nossos paths circulam com barra normal em layouts `.ckp`,
+  /// CLI e estado JSON) — então `\` é obrigatório lá.
+  String? _nativeDirIfExists(String dir) {
+    if (dir.isEmpty) return null;
+    final normalized = p.normalize(
+      Platform.isWindows ? dir.replaceAll('/', r'\') : dir,
+    );
+    return Directory(normalized).existsSync() ? normalized : null;
+  }
+
   /// Escolhe um PNG/JPG para o avatar do workspace. Guarda só o caminho — se o
   /// arquivo sumir depois, o `WorkspaceAvatar` mostra o placeholder de erro.
   Future<void> _pickImage() async {
@@ -113,6 +138,7 @@ class _WorkspaceSettingsDialogState extends State<_WorkspaceSettingsDialog> {
       type: FileType.custom,
       allowedExtensions: const ['png', 'jpg', 'jpeg', 'svg'],
       dialogTitle: context.t.cockpit.workspaceSettingsDialog.choosePhotoTitle,
+      initialDirectory: _pickerInitialDirectory,
     );
     if (!mounted || result == null) return;
     final path = result.files.single.path;
