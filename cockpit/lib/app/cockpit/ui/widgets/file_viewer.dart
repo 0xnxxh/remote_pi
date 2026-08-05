@@ -1201,13 +1201,55 @@ class _Breadcrumb extends StatelessWidget {
   }
 }
 
-class _ImageView extends StatelessWidget {
+class _ImageView extends StatefulWidget {
   const _ImageView({required this.path});
   final String path;
 
   @override
+  State<_ImageView> createState() => _ImageViewState();
+}
+
+class _ImageViewState extends State<_ImageView> {
+  @override
+  void initState() {
+    super.initState();
+    _evictCaches();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ImageView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) _evictCaches();
+  }
+
+  /// Despeja a imagem dos caches **globais** antes de montar a view.
+  ///
+  /// O `ImageCache` do Flutter chaveia `FileImage` por `(path, scale)`: o
+  /// conteúdo do arquivo não entra na chave. Regravar a imagem no disco não
+  /// invalida nada, e como o cache é global (vive no `PaintingBinding`, não na
+  /// aba) fechar e reabrir a aba continuava mostrando a versão antiga — só
+  /// reiniciar o app resolvia. O `flutter_svg` tem cache próprio, com o mesmo
+  /// problema.
+  ///
+  /// Despejar ao montar custa uma releitura do disco por abertura de aba, que
+  /// é irrelevante para um visualizador e garante que o que está na tela é o
+  /// que está no arquivo.
+  void _evictCaches() {
+    final path = widget.path;
+    if (path.toLowerCase().endsWith('.svg')) {
+      // O `Cache` do flutter_svg é chaveado pelo loader, não expõe a chave que
+      // o `SvgPicture.file` monta — então limpamos tudo. São poucos SVGs e o
+      // custo é um reparse.
+      svg.cache.clear();
+      return;
+    }
+    unawaited(FileImage(File(path)).evict());
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final path = widget.path;
     final file = File(path);
     final isSvg = path.toLowerCase().endsWith('.svg');
     return InteractiveViewer(
