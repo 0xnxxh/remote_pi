@@ -2239,7 +2239,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// Gera uma mensagem para o commit isolado de [absPath]. O contexto enviado
   /// ao harness contém só o diff desse arquivo (mais os últimos subjects), não
   /// o restante do working tree.
-  Future<Result<String, String>> generateCommitMessageForFile(
+  Future<Result<GeneratedCommitMessage, String>> generateCommitMessageForFile(
     String absPath,
   ) async {
     final pid = _selectedProjectId;
@@ -2284,7 +2284,8 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Gera uma mensagem para o composer principal do Source Control usando
   /// exatamente o index que [commitStaged] vai comitar.
-  Future<Result<String, String>> generateStagedCommitMessage() async {
+  Future<Result<GeneratedCommitMessage, String>>
+  generateStagedCommitMessage() async {
     final pid = _selectedProjectId;
     if (pid == null) return const Failure('No workspace selected.');
     final roots = rootsOf(
@@ -2308,7 +2309,7 @@ class CockpitViewModel extends ChangeNotifier {
     return _generateCommitMessage(root, captured.$2);
   }
 
-  Future<Result<String, String>> _generateCommitMessage(
+  Future<Result<GeneratedCommitMessage, String>> _generateCommitMessage(
     String root,
     String diff,
   ) async {
@@ -2334,7 +2335,7 @@ class CockpitViewModel extends ChangeNotifier {
         prompt: CommitMessagePrompt.build(diff, subjects),
       ),
     );
-    return generated.fold<Result<String, String>>(
+    return generated.fold<Result<GeneratedCommitMessage, String>>(
       Success.new,
       (error) => Failure(error.message),
     );

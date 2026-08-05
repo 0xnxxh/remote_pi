@@ -1,3 +1,4 @@
+import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -18,13 +19,13 @@ Future<void> showCommitMessageDialog(
   required String fileName,
   required bool staged,
   required Future<String?> Function(String message) onCommit,
-  Future<Result<String, String>> Function()? onGenerate,
+  Future<Result<GeneratedCommitMessage, String>> Function()? onGenerate,
   Future<void> Function()? onCancelGenerate,
   String? generatorLabel,
 }) {
   return showDialog<void>(
     context: context,
-    barrierDismissible: false,
+    barrierDismissible: true,
     barrierColor: const Color(0x99000000),
     builder: (context) => _CommitMessageDialog(
       fileName: fileName,
@@ -50,7 +51,7 @@ class _CommitMessageDialog extends StatefulWidget {
   final String fileName;
   final bool staged;
   final Future<String?> Function(String message) onCommit;
-  final Future<Result<String, String>> Function()? onGenerate;
+  final Future<Result<GeneratedCommitMessage, String>> Function()? onGenerate;
   final Future<void> Function()? onCancelGenerate;
   final String? generatorLabel;
 
@@ -111,6 +112,8 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
       !_submitting &&
       !_generating;
 
+  bool get _busy => _generating || _submitting;
+
   Future<void> _generate() async {
     final generate = widget.onGenerate;
     if (generate == null || _generating || _submitting) return;
@@ -122,12 +125,15 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
     final result = await generate();
     if (!mounted) return;
     result.fold<void>(
-      (message) {
+      (draft) {
         _message.value = TextEditingValue(
-          text: message,
-          selection: TextSelection.collapsed(offset: message.length),
+          text: draft.message,
+          selection: TextSelection.collapsed(offset: draft.message.length),
         );
-        setState(() => _generating = false);
+        setState(() {
+          _generating = false;
+          _generationError = draft.warning;
+        });
       },
       (error) => setState(() {
         _generating = false;
@@ -171,109 +177,112 @@ class _CommitMessageDialogState extends State<_CommitMessageDialog> {
     final showError = reason != null;
     final count = _subject.length;
 
-    return AlertDialog(
-      title: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.staged ? 'Commit' : 'Stage and Commit',
-            style: context.typo.title.copyWith(
-              fontSize: 15,
-              color: colors.text,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Commit "${widget.fileName}" only.',
-            style: context.typo.label.copyWith(color: colors.text3),
-          ),
-        ],
-      ),
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Column(
+    return PopScope(
+      canPop: !_busy,
+      child: AlertDialog(
+        title: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _message,
-              autofocus: true,
-              enabled: !_submitting && !_generating,
-              maxLines: 4,
-              onChanged: (_) => setState(() {
-                _gitError = null;
-                _generationError = null;
-              }),
-              placeholder: const Text('fix: short summary of the change'),
-              style: context.typo.mono.copyWith(
-                fontSize: 13,
+            Text(
+              widget.staged ? 'Commit' : 'Stage and Commit',
+              style: context.typo.title.copyWith(
+                fontSize: 15,
                 color: colors.text,
               ),
-              borderRadius: BorderRadius.circular(7),
-              border: showError ? Border.all(color: colors.error) : null,
             ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                if (showError)
-                  Expanded(
-                    child: Text(
-                      reason,
-                      style: context.typo.label.copyWith(color: colors.error),
-                    ),
-                  )
-                else
-                  const Spacer(),
-                Text(
-                  '$count/$_subjectMax',
-                  style: context.typo.label.copyWith(
-                    fontSize: 11,
-                    color: count > _subjectMax ? colors.error : colors.text4,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 4),
+            Text(
+              'Commit "${widget.fileName}" only.',
+              style: context.typo.label.copyWith(color: colors.text3),
             ),
           ],
         ),
-      ),
-      actions: [
-        AppTooltip(
-          message: widget.generatorLabel == null
-              ? 'Generate commit message'
-              : 'Generate with ${widget.generatorLabel}',
-          child: OutlineButton(
-            onPressed: widget.onGenerate == null ? null : _generate,
-            child: _generating
-                ? const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(size: 14),
-                      SizedBox(width: 8),
-                      Text('Generating…'),
-                    ],
-                  )
-                : const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.auto_awesome, size: 15),
-                      SizedBox(width: 7),
-                      Text('Generate commit message'),
-                    ],
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _message,
+                autofocus: true,
+                enabled: !_submitting && !_generating,
+                maxLines: 4,
+                onChanged: (_) => setState(() {
+                  _gitError = null;
+                  _generationError = null;
+                }),
+                placeholder: const Text('fix: short summary of the change'),
+                style: context.typo.mono.copyWith(
+                  fontSize: 13,
+                  color: colors.text,
+                ),
+                borderRadius: BorderRadius.circular(7),
+                border: showError ? Border.all(color: colors.error) : null,
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  if (showError)
+                    Expanded(
+                      child: Text(
+                        reason,
+                        style: context.typo.label.copyWith(color: colors.error),
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  Text(
+                    '$count/$_subjectMax',
+                    style: context.typo.label.copyWith(
+                      fontSize: 11,
+                      color: count > _subjectMax ? colors.error : colors.text4,
+                    ),
                   ),
+                ],
+              ),
+            ],
           ),
         ),
-        OutlineButton(
-          onPressed: _submitting ? null : _cancel,
-          child: Text(_generating ? 'Cancel generation' : 'Cancel'),
-        ),
-        PrimaryButton(
-          onPressed: _canCommit ? _submit : null,
-          child: _submitting
-              ? const CircularProgressIndicator(size: 16, color: Colors.white)
-              : const Text('Commit'),
-        ),
-      ],
+        actions: [
+          AppTooltip(
+            message: widget.generatorLabel == null
+                ? 'Generate commit message'
+                : 'Generate with ${widget.generatorLabel}',
+            child: OutlineButton(
+              onPressed: widget.onGenerate == null || _busy ? null : _generate,
+              child: _generating
+                  ? const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(size: 14),
+                        SizedBox(width: 8),
+                        Text('Generating…'),
+                      ],
+                    )
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome, size: 15),
+                        SizedBox(width: 7),
+                        Text('Generate commit message'),
+                      ],
+                    ),
+            ),
+          ),
+          OutlineButton(
+            onPressed: _submitting ? null : _cancel,
+            child: Text(_generating ? 'Cancel generation' : 'Cancel'),
+          ),
+          PrimaryButton(
+            onPressed: _canCommit ? _submit : null,
+            child: _submitting
+                ? const CircularProgressIndicator(size: 16, color: Colors.white)
+                : const Text('Commit'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -8,17 +8,25 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _Gateway implements AutomationGateway {
   List<AutomationHarness> discovered = const <AutomationHarness>[];
-  Completer<String>? generation;
+  Completer<GeneratedCommitMessage>? generation;
+  int discoverCalls = 0;
   bool cancelled = false;
 
   @override
-  Future<List<AutomationHarness>> discover() async => discovered;
+  Future<List<AutomationHarness>> discover() async {
+    discoverCalls++;
+    return discovered;
+  }
 
   @override
-  Future<String> generate({
+  Future<GeneratedCommitMessage> generate({
     required AutomationSelection selection,
     required AutomationRequest request,
-  }) => generation?.future ?? Future.value('fix: generated message');
+  }) =>
+      generation?.future ??
+      Future.value(
+        const GeneratedCommitMessage(message: 'fix: generated message'),
+      );
 
   @override
   Future<void> cancel() async {
@@ -33,6 +41,10 @@ void main() {
   const harness = AutomationHarness(
     id: AutomationHarnessId.codex,
     executablePath: '/usr/bin/codex',
+    models: [
+      AutomationModel(id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra'),
+      AutomationModel(id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol'),
+    ],
   );
   const selection = AutomationSelection(harnessId: AutomationHarnessId.codex);
   const request = AutomationRequest(prompt: 'prompt', repositoryPath: '/repo');
@@ -46,6 +58,23 @@ void main() {
     expect(controller.initialized, isTrue);
     expect(controller.harnessFor(AutomationHarnessId.codex), harness);
     expect(controller.discovering, isFalse);
+    controller.dispose();
+  });
+
+  test('ensureInitialized discovers once and generate awaits it', () async {
+    final gateway = _Gateway()..discovered = const [harness];
+    final controller = AutomationController(gateway);
+
+    await controller.ensureInitialized();
+    await controller.ensureInitialized();
+    expect(gateway.discoverCalls, 1);
+
+    final result = await controller.generate(
+      selection: selection,
+      request: request,
+    );
+    expect(result.isSuccess, isTrue);
+    expect(gateway.discoverCalls, 1);
     controller.dispose();
   });
 
@@ -64,10 +93,50 @@ void main() {
     controller.dispose();
   });
 
+  test('rejects stale model ids before spawning the CLI', () async {
+    final gateway = _Gateway()..discovered = const [harness];
+    final controller = AutomationController(gateway);
+    await controller.refresh();
+
+    final result = await controller.generate(
+      selection: const AutomationSelection(
+        harnessId: AutomationHarnessId.codex,
+        modelId: 'retired-model',
+      ),
+      request: request,
+    );
+
+    expect(result.isFailure, isTrue);
+    result.fold<void>((_) => fail('expected failure'), (error) {
+      expect(error.kind, AutomationErrorKind.unavailable);
+      expect(error.message, contains('retired-model'));
+      expect(error.message, contains('Settings'));
+    });
+    controller.dispose();
+  });
+
+  test('reconcileStaleModel clears unavailable selections', () async {
+    final gateway = _Gateway()..discovered = const [harness];
+    final controller = AutomationController(gateway);
+    await controller.refresh();
+    var cleared = false;
+
+    final warning = controller.reconcileStaleModel(
+      harnessId: AutomationHarnessId.codex,
+      modelId: 'retired-model',
+      clearToCliDefault: () => cleared = true,
+    );
+
+    expect(cleared, isTrue);
+    expect(warning, contains('retired-model'));
+    expect(controller.errorMessage, contains('CLI default'));
+    controller.dispose();
+  });
+
   test('prevents concurrent generations and forwards cancellation', () async {
     final gateway = _Gateway()
       ..discovered = const [harness]
-      ..generation = Completer<String>();
+      ..generation = Completer<GeneratedCommitMessage>();
     final controller = AutomationController(gateway);
     await controller.refresh();
 
@@ -81,7 +150,9 @@ void main() {
 
     await controller.cancelGeneration();
     expect(gateway.cancelled, isTrue);
-    gateway.generation!.complete('fix: generated message');
+    gateway.generation!.complete(
+      const GeneratedCommitMessage(message: 'fix: generated message'),
+    );
     expect((await first).isSuccess, isTrue);
     controller.dispose();
   });

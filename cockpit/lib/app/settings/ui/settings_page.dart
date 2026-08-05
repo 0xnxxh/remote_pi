@@ -533,9 +533,24 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final controller = context.read<AutomationController>();
-      if (!controller.initialized) unawaited(controller.refresh());
+      unawaited(_discoverAndReconcile());
     });
+  }
+
+  Future<void> _discoverAndReconcile({bool force = false}) async {
+    final automation = context.read<AutomationController>();
+    final settings = context.read<SettingsController>();
+    if (force) {
+      await automation.refresh();
+    } else {
+      await automation.ensureInitialized();
+    }
+    if (!mounted) return;
+    automation.reconcileStaleModel(
+      harnessId: settings.settings.automationHarnessId,
+      modelId: settings.settings.selectedAutomationModelId,
+      clearToCliDefault: () => settings.setAutomationModel(null),
+    );
   }
 
   @override
@@ -586,7 +601,9 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                             child: IconButton.outline(
                               onPressed: automation.discovering
                                   ? null
-                                  : () => unawaited(automation.refresh()),
+                                  : () => unawaited(
+                                      _discoverAndReconcile(force: true),
+                                    ),
                               icon: automation.discovering
                                   ? const CircularProgressIndicator(size: 14)
                                   : const Icon(Icons.refresh, size: 16),

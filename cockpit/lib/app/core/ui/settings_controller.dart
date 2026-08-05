@@ -54,9 +54,10 @@ class SettingsController extends ChangeNotifier {
       _settings.copyWith(
         automationHarnessId: id,
         clearAutomationHarnessId: id == null,
-        automationModelId: id?.recommendedModelId,
         clearAutomationModelId: id == null,
-        useDefaultAutomationModel: id != null && id.recommendedModelId == null,
+        // Não persiste aliases recomendados (sonnet/flash/…): o default do CLI
+        // sobrevive a renomeações; o usuário escolhe um modelId explicitamente.
+        useDefaultAutomationModel: id != null,
       ),
     );
   }

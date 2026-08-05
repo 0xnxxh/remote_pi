@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:cockpit/app/cockpit/domain/entities/file_node.dart';
+import 'package:cockpit/app/cockpit/domain/entities/git_commit.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_file_status.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_tree_panel.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -271,7 +274,8 @@ void main() {
       'staged automation action follows amend picker and shows loading',
       (tester) async {
         const changedPath = '/workspace/lib/app/main.dart';
-        final generation = Completer<Result<String, String>>();
+        final generation =
+            Completer<Result<GeneratedCommitMessage, String>>();
 
         await tester.pumpWidget(
           ShadcnApp(
@@ -338,12 +342,145 @@ void main() {
           findsOneWidget,
         );
 
-        generation.complete(const Success('feat: generated message'));
+        generation.complete(
+          const Success(
+            GeneratedCommitMessage(message: 'feat: generated message'),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(
           find.descendant(
             of: generate,
             matching: find.byIcon(Icons.auto_awesome),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'amend disables generate and explains why in the tooltip',
+      (tester) async {
+        const changedPath = '/workspace/lib/app/main.dart';
+
+        await tester.pumpWidget(
+          ShadcnApp(
+            theme: buildTheme(brightness: Brightness.dark),
+            home: Scaffold(
+              child: FileTreePanel(
+                rootPath: '/workspace',
+                revision: 1,
+                listChildren: (_) async => const [],
+                gitStatusOf: (_) => GitFileStatus.staged,
+                onOpenFile: (_) {},
+                onOpenDiff: (_) {},
+                isGitRepo: true,
+                changedPaths: const [changedPath],
+                stagedPaths: const [changedPath],
+                commitMessageGeneratorLabel: 'Claude Code',
+                onGenerateStagedCommitMessage: () async => const Success(
+                  GeneratedCommitMessage(message: 'feat: unused'),
+                ),
+                onLoadCommits: () async => const [
+                  GitCommit(
+                    hash: 'abc1234',
+                    subject: 'feat: prior',
+                    message: 'feat: prior',
+                  ),
+                ],
+                onOpenWith: (_) {},
+                onCreateInFolder: (_, _) {},
+                onCreate: (_, _, _) async => const Success(null),
+                onRename: (_, _) async => const Success(null),
+                onDelete: (_) async => const Success(null),
+                onMove: (_, _) async => const Success(null),
+                onCopy: (_) {},
+                onCut: (_) {},
+                onPaste: (_) async => const Success(null),
+                canPaste: false,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('source-control-tab')));
+        await tester.pumpAndSettle();
+
+        final generate = find.byKey(
+          const ValueKey('generate-staged-commit-message'),
+        );
+        final tooltipBefore = tester.widget<AppTooltip>(
+          find.ancestor(of: generate, matching: find.byType(AppTooltip)),
+        );
+        expect(tooltipBefore.message, 'Generate with Claude Code');
+
+        await tester.tap(find.byType(Checkbox).first);
+        await tester.pumpAndSettle();
+
+        final tooltipAfter = tester.widget<AppTooltip>(
+          find.ancestor(of: generate, matching: find.byType(AppTooltip)),
+        );
+        expect(tooltipAfter.message, 'Unavailable while amending a commit');
+        expect(
+          tester.widget<IconButton>(generate).onPressed,
+          isNull,
+        );
+      },
+    );
+
+    testWidgets(
+      'soft validation warning fills the draft instead of failing hard',
+      (tester) async {
+        const changedPath = '/workspace/lib/app/main.dart';
+
+        await tester.pumpWidget(
+          ShadcnApp(
+            theme: buildTheme(brightness: Brightness.dark),
+            home: Scaffold(
+              child: FileTreePanel(
+                rootPath: '/workspace',
+                revision: 1,
+                listChildren: (_) async => const [],
+                gitStatusOf: (_) => GitFileStatus.staged,
+                onOpenFile: (_) {},
+                onOpenDiff: (_) {},
+                isGitRepo: true,
+                changedPaths: const [changedPath],
+                stagedPaths: const [changedPath],
+                onGenerateStagedCommitMessage: () async => const Success(
+                  GeneratedCommitMessage(
+                    message: 'fix: ends with a period.',
+                    warning:
+                        'The generated commit subject must not end with a period.',
+                  ),
+                ),
+                onOpenWith: (_) {},
+                onCreateInFolder: (_, _) {},
+                onCreate: (_, _, _) async => const Success(null),
+                onRename: (_, _) async => const Success(null),
+                onDelete: (_) async => const Success(null),
+                onMove: (_, _) async => const Success(null),
+                onCopy: (_) {},
+                onCut: (_) {},
+                onPaste: (_) async => const Success(null),
+                canPaste: false,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('source-control-tab')));
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byKey(const ValueKey('generate-staged-commit-message')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('fix: ends with a period.'), findsOneWidget);
+        expect(
+          find.text(
+            'The generated commit subject must not end with a period.',
           ),
           findsOneWidget,
         );

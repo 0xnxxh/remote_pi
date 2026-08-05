@@ -85,3 +85,12 @@ class AutomationRequest {
   final String prompt;
   final String repositoryPath;
 }
+
+/// Mensagem gerada pelo harness. [warning] é um aviso de convenção (subject
+/// longo, ponto final, etc.) — a mensagem ainda é um rascunho editável.
+class GeneratedCommitMessage {
+  const GeneratedCommitMessage({required this.message, this.warning});
+
+  final String message;
+  final String? warning;
+}

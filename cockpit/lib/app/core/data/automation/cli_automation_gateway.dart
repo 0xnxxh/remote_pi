@@ -51,9 +51,8 @@ class CliAutomationGateway implements AutomationGateway {
         AutomationHarnessId.opencode => parseOpenCodeModels(
           await _runForDiscovery(executable, const ['models']),
         ),
-        AutomationHarnessId.copilot => parseCopilotModels(
-          await _runForDiscovery(executable, const ['help']),
-        ),
+        // Copilot help is prose, not a model catalog — use the CLI default.
+        AutomationHarnessId.copilot ||
         AutomationHarnessId.claude ||
         AutomationHarnessId.gemini => const <AutomationModel>[],
       };
@@ -145,7 +144,7 @@ class CliAutomationGateway implements AutomationGateway {
   }
 
   @override
-  Future<String> generate({
+  Future<GeneratedCommitMessage> generate({
     required AutomationSelection selection,
     required AutomationRequest request,
   }) async {
@@ -220,11 +219,18 @@ class CliAutomationGateway implements AutomationGateway {
       }
       if (exitCode != 0) throw _processError(selection.harnessId, stderr);
       final message = parseOutput(selection.harnessId, stdout);
-      final validation = CommitMessagePrompt.validate(message);
-      if (validation != null) {
-        throw AutomationError(AutomationErrorKind.invalidResponse, validation);
+      if (message.isEmpty) {
+        throw const AutomationError(
+          AutomationErrorKind.invalidResponse,
+          'The automation returned an empty commit message.',
+        );
       }
-      return message;
+      // Convenções (72 chars, ponto final, …) viram aviso — o rascunho fica
+      // editável. Só mensagem vazia é hard-fail acima.
+      return GeneratedCommitMessage(
+        message: message,
+        warning: CommitMessagePrompt.validate(message),
+      );
     } on TimeoutException catch (error) {
       process.kill();
       throw AutomationError(
@@ -451,15 +457,10 @@ class CliAutomationGateway implements AutomationGateway {
     ]);
   }
 
+  /// Copilot CLI não expõe um catálogo machine-readable estável. O scrape de
+  /// `copilot help` capturava palavras da prosa — preferimos o default do CLI.
   static List<AutomationModel> parseCopilotModels(String output) {
-    final matches = RegExp(
-      r'\b(?:claude|gemini|gpt|o[1-9])[-\w.]*\b',
-      caseSensitive: false,
-    ).allMatches(output);
-    return _uniqueModels([
-      for (final match in matches)
-        AutomationModel(id: match.group(0)!, label: match.group(0)!),
-    ]);
+    return const <AutomationModel>[];
   }
 
   static List<AutomationModel> _uniqueModels(List<AutomationModel> values) {

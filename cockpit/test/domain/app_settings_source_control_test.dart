@@ -67,12 +67,15 @@ void main() {
       final migratedClaude = AppSettings.fromJson(const <String, dynamic>{
         'automation.harnessId': 'claude',
       });
+      // Legacy installs without modelId still resolve the recommended alias.
       expect(migratedClaude.selectedAutomationModelId, 'sonnet');
 
       final store = _Store()..value = settings;
       final controller = SettingsController(store);
+      // Nova seleção de harness usa o default do CLI (sem bake de alias).
       controller.setAutomationHarness(AutomationHarnessId.codex);
-      expect(controller.settings.selectedAutomationModelId, 'gpt-5.6-terra');
+      expect(controller.settings.selectedAutomationModelId, isNull);
+      expect(controller.settings.automationModelId, '');
 
       controller.setAutomationHarness(AutomationHarnessId.pi);
       expect(controller.settings.automationHarnessId, AutomationHarnessId.pi);

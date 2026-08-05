@@ -157,12 +157,10 @@ class UpdateViewModel extends ChangeNotifier {
   Future<void> _runCheck({bool force = false}) async {
     if (_disposed) return;
 
-    final freq =
-        _settingsController?.settings.updateCheckFrequency ??
-        UpdateCheckFrequency.never;
+    final freq = _settingsController?.settings.updateCheckFrequency ?? UpdateCheckFrequency.never;
     if (!force) {
       if (freq == UpdateCheckFrequency.never) return;
-
+      
       final lastCheck = _settingsController?.settings.lastUpdateCheckTime;
       if (lastCheck != null) {
         final now = DateTime.now();

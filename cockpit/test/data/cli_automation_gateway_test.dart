@@ -111,6 +111,12 @@ void main() {
     expect(pi.single.id, 'openai/gpt-5');
     expect(openCode.single.id, 'anthropic/claude-sonnet-4');
     expect(
+      CliAutomationGateway.parseCopilotModels(
+        'Use claude, gemini, gpt-4o or o3 with Copilot.',
+      ),
+      isEmpty,
+    );
+    expect(
       AutomationHarnessId.claude.builtInModels.map((model) => model.id),
       containsAll(<String>['sonnet', 'opus']),
     );
@@ -134,5 +140,9 @@ void main() {
     expect(CommitMessagePrompt.systemPrompt, contains('1–3 lines'));
     expect(CommitMessagePrompt.validate('fix: safe subject'), isNull);
     expect(CommitMessagePrompt.validate('fix: invalid.'), isNotNull);
+    expect(
+      CommitMessagePrompt.validate('fix: invalid.'),
+      contains('period'),
+    );
   });
 }

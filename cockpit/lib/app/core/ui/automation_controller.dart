@@ -30,6 +30,12 @@ class AutomationController extends ChangeNotifier {
     return null;
   }
 
+  /// Descobre harnesses na primeira necessidade (Settings ou geração).
+  Future<void> ensureInitialized() async {
+    if (_initialized || _discovering) return;
+    await refresh();
+  }
+
   Future<void> refresh() async {
     if (_discovering) return;
     _discovering = true;
@@ -47,7 +53,29 @@ class AutomationController extends ChangeNotifier {
     }
   }
 
-  Future<Result<String, AutomationError>> generate({
+  /// Limpa um modelId que sumiu da lista descoberta e avisa o usuário.
+  /// Retorna a mensagem de aviso, ou `null` se nada mudou.
+  String? reconcileStaleModel({
+    required AutomationHarnessId? harnessId,
+    required String? modelId,
+    required void Function() clearToCliDefault,
+  }) {
+    if (harnessId == null) return null;
+    final trimmed = modelId?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    final harness = harnessFor(harnessId);
+    if (harness == null || harness.models.isEmpty) return null;
+    if (harness.models.any((model) => model.id == trimmed)) return null;
+    clearToCliDefault();
+    final warning =
+        'Model "$trimmed" is no longer available for ${harness.label}. '
+        'Using the CLI default — pick another model in Settings if needed.';
+    _errorMessage = warning;
+    notifyListeners();
+    return warning;
+  }
+
+  Future<Result<GeneratedCommitMessage, AutomationError>> generate({
     required AutomationSelection selection,
     required AutomationRequest request,
   }) async {
@@ -59,11 +87,26 @@ class AutomationController extends ChangeNotifier {
         ),
       );
     }
-    if (harnessFor(selection.harnessId) == null) {
+    await ensureInitialized();
+    final harness = harnessFor(selection.harnessId);
+    if (harness == null) {
       return Failure(
         AutomationError(
           AutomationErrorKind.unavailable,
           '${selection.harnessId.label} is not installed or is no longer available.',
+        ),
+      );
+    }
+    final modelId = selection.modelId?.trim();
+    if (modelId != null &&
+        modelId.isNotEmpty &&
+        harness.models.isNotEmpty &&
+        !harness.models.any((model) => model.id == modelId)) {
+      return Failure(
+        AutomationError(
+          AutomationErrorKind.unavailable,
+          'Model "$modelId" is not available for ${harness.label}. '
+          'Choose another model in Settings.',
         ),
       );
     }

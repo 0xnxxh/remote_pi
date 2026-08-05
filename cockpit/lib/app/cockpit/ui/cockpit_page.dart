@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:cockpit/app/core/app_intents.dart';
 import 'package:cockpit/app/cockpit/domain/entities/project.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/routes.dart';
-import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
@@ -69,8 +69,8 @@ class _CockpitPageState extends State<CockpitPage> {
   @override
   void initState() {
     super.initState();
-    // Descobre os harnesses instalados sem bloquear a montagem do workspace.
-    unawaited(context.read<AutomationController>().refresh());
+    // Discovery de harnesses é lazy (Settings ou primeira geração) — evita
+    // spawnar 6 CLIs a cada montagem de workspace.
     // Registra a ponte do ⌘L global (handler em main.dart) → foca o input do
     // agente focado, mesmo quando o foco caiu num espaço vazio do shell.
     requestFocusActiveComposer = _focusActiveComposer;
@@ -736,9 +736,8 @@ class _CockpitPageState extends State<CockpitPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<CockpitViewModel>();
-    final automation = context.watch<AutomationController>();
     final settings = context.watch<SettingsController>().settings;
-    final selectedHarness = automation.harnessFor(settings.automationHarnessId);
+    final configuredHarnessId = settings.automationHarnessId;
     final colors = context.colors;
 
     if (!vm.ready) {
@@ -898,12 +897,13 @@ class _CockpitPageState extends State<CockpitPage> {
                               onLoadCommits: vm.recentCommits,
                               onLoadCommitMessage: vm.commitMessage,
                               commitMessageGeneratorLabel:
-                                  selectedHarness?.label,
-                              onGenerateCommitMessage: selectedHarness != null
+                                  configuredHarnessId?.label,
+                              onGenerateCommitMessage:
+                                  configuredHarnessId != null
                                   ? vm.generateCommitMessageForFile
                                   : null,
                               onGenerateStagedCommitMessage:
-                                  selectedHarness != null
+                                  configuredHarnessId != null
                                   ? vm.generateStagedCommitMessage
                                   : null,
                               onCancelCommitMessageGeneration:

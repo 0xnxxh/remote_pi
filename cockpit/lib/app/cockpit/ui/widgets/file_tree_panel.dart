@@ -8,6 +8,7 @@ import 'package:cockpit/app/cockpit/ui/widgets/commit_message_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/panel_resize_handle.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -20,8 +21,9 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 typedef GenerateCommitMessage =
-    Future<Result<String, String>> Function(String absPath);
-typedef GenerateStagedCommitMessage = Future<Result<String, String>> Function();
+    Future<Result<GeneratedCommitMessage, String>> Function(String absPath);
+typedef GenerateStagedCommitMessage =
+    Future<Result<GeneratedCommitMessage, String>> Function();
 
 /// Root git de um workspace **multi-root** (multirepo) — alimenta o cabeçalho
 /// de seção na aba Files e no Source Control. Derivada em runtime pela VM
@@ -532,12 +534,15 @@ class _FileTreePanelState extends State<FileTreePanel> {
     final result = await generate();
     if (!mounted) return;
     result.fold<void>(
-      (message) {
+      (draft) {
         _commitMessage.value = TextEditingValue(
-          text: message,
-          selection: TextSelection.collapsed(offset: message.length),
+          text: draft.message,
+          selection: TextSelection.collapsed(offset: draft.message.length),
         );
-        setState(() => _generatingCommit = false);
+        setState(() {
+          _generatingCommit = false;
+          _commitError = draft.warning;
+        });
       },
       (error) => setState(() {
         _generatingCommit = false;
@@ -1309,7 +1314,9 @@ class _CommitComposer extends StatelessWidget {
                             ],
                           ),
                           AppTooltip(
-                            message: generating
+                            message: amend
+                                ? 'Unavailable while amending a commit'
+                                : generating
                                 ? 'Cancel generation'
                                 : generatorLabel == null
                                 ? 'Generate commit message'

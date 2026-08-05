@@ -40,6 +40,8 @@ class CommitMessagePrompt {
   /// as part of their user prompt.
   static String withSystemPrompt(String prompt) => '$systemPrompt\n\n$prompt';
 
+  /// Avisos de convenção para o rascunho gerado. Mensagem vazia é hard-fail no
+  /// gateway; o restante preenche o campo e aparece como aviso editável.
   static String? validate(String message) {
     if (message.isEmpty) {
       return 'The automation returned an empty commit message.';
