@@ -24,6 +24,35 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.22.0] - 2026-08-05
+
+A focus overhaul for the terminal, plus a rescue for workspaces whose folder is
+gone.
+
+### Fixed
+
+- **The terminal would stop taking the keyboard mid-session.** Typing went
+  nowhere, the cursor stopped blinking, and the only way back was clicking the
+  tab header. Two separate gaps caused it: clicking inside a terminal that had
+  lost focus could not restore it, and switching realm or workspace left the
+  keyboard behind on the previous pane while the new tab already looked
+  selected. Both paths now hand the keyboard over.
+- **Deleting a workspace folder no longer bricks the app.** Cockpit used to
+  hang on the loading screen forever, with nothing on screen to explain it,
+  because restoring a terminal in a folder that no longer exists failed the
+  whole boot. Now the terminal opens in the nearest folder that does exist and
+  says so, and a workspace that fails to restore no longer stops the rest.
+- Images in the viewer kept showing the previous version after the file changed
+  on disk, even after closing and reopening the tab.
+- Duplicate scrollbars in the code editor. Thanks, @pretodev.
+
+### Added
+
+- **Creating a worktree now shows git's output live**, including anything your
+  post-checkout hook prints, instead of freezing the dialog until it finishes.
+  The dialog also warns beforehand when the repository has such a hook. Thanks,
+  @pretodev.
+
 ## [1.21.0] - 2026-08-05
 
 Cockpit now speaks your language, and can write your commit messages for you.
