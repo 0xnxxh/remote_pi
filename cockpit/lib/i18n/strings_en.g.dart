@@ -59,6 +59,8 @@ class Translations$core$en {
 	late final Translations$core$macosNotifications$en macosNotifications = Translations$core$macosNotifications$en.internal(_root);
 	late final Translations$core$appErrorView$en appErrorView = Translations$core$appErrorView$en.internal(_root);
 	late final Translations$core$errorReportDialog$en errorReportDialog = Translations$core$errorReportDialog$en.internal(_root);
+	late final Translations$core$windowControls$en windowControls = Translations$core$windowControls$en.internal(_root);
+	late final Translations$core$crash$en crash = Translations$core$crash$en.internal(_root);
 }
 
 // Path: common
@@ -113,6 +115,30 @@ class Translations$common$en {
 
 	/// en: 'Restart'
 	String get restart => 'Restart';
+
+	/// en: 'Settings'
+	String get settings => 'Settings';
+
+	/// en: 'Send'
+	String get send => 'Send';
+
+	/// en: 'Open'
+	String get open => 'Open';
+
+	/// en: 'Dismiss'
+	String get dismiss => 'Dismiss';
+
+	/// en: 'Report'
+	String get report => 'Report';
+
+	/// en: 'Copy code'
+	String get copyCode => 'Copy code';
+
+	/// en: 'Search'
+	String get search => 'Search';
+
+	/// en: 'No results'
+	String get noResults => 'No results';
 }
 
 // Path: cockpit
@@ -145,6 +171,14 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$dbMongoView$en dbMongoView = Translations$cockpit$dbMongoView$en.internal(_root);
 	late final Translations$cockpit$dbConnectionDialog$en dbConnectionDialog = Translations$cockpit$dbConnectionDialog$en.internal(_root);
 	late final Translations$cockpit$sshPrompts$en sshPrompts = Translations$cockpit$sshPrompts$en.internal(_root);
+	late final Translations$cockpit$projectsRail$en projectsRail = Translations$cockpit$projectsRail$en.internal(_root);
+	late final Translations$cockpit$findBar$en findBar = Translations$cockpit$findBar$en.internal(_root);
+	late final Translations$cockpit$contentSearch$en contentSearch = Translations$cockpit$contentSearch$en.internal(_root);
+	late final Translations$cockpit$emptyPane$en emptyPane = Translations$cockpit$emptyPane$en.internal(_root);
+	late final Translations$cockpit$topbar$en topbar = Translations$cockpit$topbar$en.internal(_root);
+	late final Translations$cockpit$transcript$en transcript = Translations$cockpit$transcript$en.internal(_root);
+	late final Translations$cockpit$tasks$en tasks = Translations$cockpit$tasks$en.internal(_root);
+	late final Translations$cockpit$notifications$en notifications = Translations$cockpit$notifications$en.internal(_root);
 }
 
 // Path: settings
@@ -262,6 +296,54 @@ class Translations$core$errorReportDialog$en {
 
 	/// en: 'Report issue'
 	String get reportIssue => 'Report issue';
+}
+
+// Path: core.windowControls
+class Translations$core$windowControls$en {
+	Translations$core$windowControls$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Minimize'
+	String get minimize => 'Minimize';
+
+	/// en: 'Maximize'
+	String get maximize => 'Maximize';
+
+	/// en: 'Close'
+	String get close => 'Close';
+}
+
+// Path: core.crash
+class Translations$core$crash$en {
+	Translations$core$crash$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Unexpected shutdown'
+	String get title => 'Unexpected shutdown';
+
+	/// en: 'Cockpit closed unexpectedly'
+	String get bannerTitle => 'Cockpit closed unexpectedly';
+
+	/// en: 'Report'
+	String get report => 'Report';
+
+	/// en: 'Dismiss'
+	String get dismiss => 'Dismiss';
+
+	/// en: 'The previous session (version ${version}) ended without shutting down cleanly. Want to report it? The log is included and you can review everything before sending.'
+	String crashMessage({required Object version}) => 'The previous session (version ${version}) ended without shutting down cleanly. Want to report it? The log is included and you can review everything before sending.';
+
+	/// en: 'Session started at ${startedAt} (pid ${pid}) ended without a clean shutdown.'
+	String crashError({required Object startedAt, required Object pid}) => 'Session started at ${startedAt} (pid ${pid}) ended without a clean shutdown.';
+
+	/// en: 'No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part.'
+	String get crashDescription => 'No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part.';
 }
 
 // Path: cockpit.confirmDialog
@@ -1464,6 +1546,243 @@ class Translations$cockpit$sshPrompts$en {
 	String get unlock => 'Unlock';
 }
 
+// Path: cockpit.projectsRail
+class Translations$cockpit$projectsRail$en {
+	Translations$cockpit$projectsRail$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Workspaces'
+	String get workspaces => 'Workspaces';
+
+	/// en: 'New workspace'
+	String get newWorkspace => 'New workspace';
+
+	/// en: 'Settings'
+	String get settings => 'Settings';
+
+	/// en: 'Merge to Parent'
+	String get mergeToParent => 'Merge to Parent';
+
+	/// en: 'Update from Parent'
+	String get updateFromParent => 'Update from Parent';
+
+	/// en: 'Fork Worktree'
+	String get forkWorktree => 'Fork Worktree';
+
+	/// en: 'Copy branch'
+	String get copyBranch => 'Copy branch';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Move to realm'
+	String get moveToRealm => 'Move to realm';
+
+	/// en: 'Copy workspace id'
+	String get copyWorkspaceId => 'Copy workspace id';
+
+	/// en: 'Close'
+	String get close => 'Close';
+
+	/// en: 'New realm…'
+	String get newRealm => 'New realm…';
+
+	/// en: 'Manage realms…'
+	String get manageRealms => 'Manage realms…';
+
+	/// en: 'No workspaces yet.'
+	String get noWorkspaces => 'No workspaces yet.';
+
+	/// en: 'Sync'
+	String get sync => 'Sync';
+
+	/// en: 'Pull'
+	String get pull => 'Pull';
+
+	/// en: 'Push'
+	String get push => 'Push';
+
+	/// en: 'Create worktree'
+	String get createWorktree => 'Create worktree';
+}
+
+// Path: cockpit.findBar
+class Translations$cockpit$findBar$en {
+	Translations$cockpit$findBar$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Find'
+	String get find => 'Find';
+
+	/// en: 'Match case'
+	String get matchCase => 'Match case';
+
+	/// en: 'Whole word'
+	String get wholeWord => 'Whole word';
+
+	/// en: 'Use regular expression'
+	String get useRegex => 'Use regular expression';
+
+	/// en: 'Previous (⇧⏎)'
+	String get previous => 'Previous (⇧⏎)';
+
+	/// en: 'Next (⏎)'
+	String get next => 'Next (⏎)';
+
+	/// en: 'Close (Esc)'
+	String get close => 'Close (Esc)';
+
+	/// en: 'Bad pattern'
+	String get badPattern => 'Bad pattern';
+
+	/// en: 'No results'
+	String get noResults => 'No results';
+}
+
+// Path: cockpit.contentSearch
+class Translations$cockpit$contentSearch$en {
+	Translations$cockpit$contentSearch$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'SEARCH'
+	String get sectionSearch => 'SEARCH';
+
+	/// en: 'Search in files'
+	String get searchInFiles => 'Search in files';
+
+	/// en: 'Match case'
+	String get matchCase => 'Match case';
+
+	/// en: 'Whole word'
+	String get wholeWord => 'Whole word';
+
+	/// en: 'Use regular expression'
+	String get useRegex => 'Use regular expression';
+
+	/// en: 'Invalid regular expression.'
+	String get invalidRegex => 'Invalid regular expression.';
+
+	/// en: 'Type to search across files.'
+	String get typeToSearch => 'Type to search across files.';
+
+	/// en: 'Searching…'
+	String get searching => 'Searching…';
+
+	/// en: 'No results.'
+	String get noResults => 'No results.';
+}
+
+// Path: cockpit.emptyPane
+class Translations$cockpit$emptyPane$en {
+	Translations$cockpit$emptyPane$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'New agent'
+	String get newAgent => 'New agent';
+
+	/// en: 'Runs a pi in the folder you choose'
+	String get newAgentDescription => 'Runs a pi in the folder you choose';
+
+	/// en: 'New terminal'
+	String get newTerminal => 'New terminal';
+
+	/// en: 'Opens a shell in the folder you choose'
+	String get newTerminalDescription => 'Opens a shell in the folder you choose';
+}
+
+// Path: cockpit.topbar
+class Translations$cockpit$topbar$en {
+	Translations$cockpit$topbar$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Collapse sidebar'
+	String get collapseSidebar => 'Collapse sidebar';
+
+	/// en: 'Show/hide files'
+	String get toggleFiles => 'Show/hide files';
+
+	/// en: 'Files unavailable in Cockpit'
+	String get filesUnavailable => 'Files unavailable in Cockpit';
+}
+
+// Path: cockpit.transcript
+class Translations$cockpit$transcript$en {
+	Translations$cockpit$transcript$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Cancel'
+	String get cancel => 'Cancel';
+
+	/// en: 'Send'
+	String get send => 'Send';
+
+	/// en: 'Type your answer'
+	String get typeYourAnswer => 'Type your answer';
+
+	/// en: 'Send a prompt to get the agent started.'
+	String get startHint => 'Send a prompt to get the agent started.';
+
+	/// en: 'Worked for ${duration}'
+	String workedFor({required Object duration}) => 'Worked for ${duration}';
+}
+
+// Path: cockpit.tasks
+class Translations$cockpit$tasks$en {
+	Translations$cockpit$tasks$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Hot reload'
+	String get hotReload => 'Hot reload';
+
+	/// en: 'Hot restart'
+	String get hotRestart => 'Hot restart';
+
+	/// en: 'Toggle debug paint'
+	String get toggleDebugPaint => 'Toggle debug paint';
+
+	/// en: 'Toggle platform'
+	String get togglePlatform => 'Toggle platform';
+
+	/// en: 'Quit'
+	String get quit => 'Quit';
+}
+
+// Path: cockpit.notifications
+class Translations$cockpit$notifications$en {
+	Translations$cockpit$notifications$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Agent finished'
+	String get agentFinished => 'Agent finished';
+
+	/// en: 'Open'
+	String get open => 'Open';
+}
+
 // Path: settings.language
 class Translations$settings$language$en {
 	Translations$settings$language$en.internal(this._root);
@@ -2484,6 +2803,9 @@ class Translations$settings$page$automations$en {
 
 	/// en: 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.'
 	String staleModel({required Object model, required Object harness}) => 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.';
+
+	/// en: 'Recommended'
+	String get recommendedSuffix => 'Recommended';
 }
 
 // Path: settings.page.general.updateFrequency
@@ -2531,6 +2853,16 @@ extension on Translations {
 			'core.errorReportDialog.defaultDescription' => 'Something went wrong. The details below were saved to the log — you can report them so it gets fixed.',
 			'core.errorReportDialog.copyDetails' => 'Copy details',
 			'core.errorReportDialog.reportIssue' => 'Report issue',
+			'core.windowControls.minimize' => 'Minimize',
+			'core.windowControls.maximize' => 'Maximize',
+			'core.windowControls.close' => 'Close',
+			'core.crash.title' => 'Unexpected shutdown',
+			'core.crash.bannerTitle' => 'Cockpit closed unexpectedly',
+			'core.crash.report' => 'Report',
+			'core.crash.dismiss' => 'Dismiss',
+			'core.crash.crashMessage' => ({required Object version}) => 'The previous session (version ${version}) ended without shutting down cleanly. Want to report it? The log is included and you can review everything before sending.',
+			'core.crash.crashError' => ({required Object startedAt, required Object pid}) => 'Session started at ${startedAt} (pid ${pid}) ended without a clean shutdown.',
+			'core.crash.crashDescription' => 'No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part.',
 			'common.cancel' => 'Cancel',
 			'common.confirm' => 'Confirm',
 			'common.create' => 'Create',
@@ -2546,6 +2878,14 @@ extension on Translations {
 			'common.checking' => 'Checking…',
 			'common.remove' => 'Remove',
 			'common.restart' => 'Restart',
+			'common.settings' => 'Settings',
+			'common.send' => 'Send',
+			'common.open' => 'Open',
+			'common.dismiss' => 'Dismiss',
+			'common.report' => 'Report',
+			'common.copyCode' => 'Copy code',
+			'common.search' => 'Search',
+			'common.noResults' => 'No results',
 			'cockpit.confirmDialog.unsavedChangesTitle' => 'Unsaved changes',
 			'cockpit.confirmDialog.unsavedChangesMessage' => ({required Object fileName}) => '“${fileName}” has unsaved changes. Save them before closing?',
 			'cockpit.confirmDialog.dontSave' => 'Don\'t save',
@@ -2873,6 +3213,61 @@ extension on Translations {
 			'cockpit.sshPrompts.unlockMessage' => ({required Object keyPath, required Object connectionName}) => 'Unlock ${keyPath} to connect "${connectionName}".',
 			'cockpit.sshPrompts.keptInMemoryHint' => 'Kept in memory until Cockpit quits. To let agents use this connection, enable "Save passphrase" in the connection.',
 			'cockpit.sshPrompts.unlock' => 'Unlock',
+			'cockpit.projectsRail.workspaces' => 'Workspaces',
+			'cockpit.projectsRail.newWorkspace' => 'New workspace',
+			'cockpit.projectsRail.settings' => 'Settings',
+			'cockpit.projectsRail.mergeToParent' => 'Merge to Parent',
+			'cockpit.projectsRail.updateFromParent' => 'Update from Parent',
+			'cockpit.projectsRail.forkWorktree' => 'Fork Worktree',
+			'cockpit.projectsRail.copyBranch' => 'Copy branch',
+			'cockpit.projectsRail.remove' => 'Remove',
+			'cockpit.projectsRail.moveToRealm' => 'Move to realm',
+			'cockpit.projectsRail.copyWorkspaceId' => 'Copy workspace id',
+			'cockpit.projectsRail.close' => 'Close',
+			'cockpit.projectsRail.newRealm' => 'New realm…',
+			'cockpit.projectsRail.manageRealms' => 'Manage realms…',
+			'cockpit.projectsRail.noWorkspaces' => 'No workspaces yet.',
+			'cockpit.projectsRail.sync' => 'Sync',
+			'cockpit.projectsRail.pull' => 'Pull',
+			'cockpit.projectsRail.push' => 'Push',
+			'cockpit.projectsRail.createWorktree' => 'Create worktree',
+			'cockpit.findBar.find' => 'Find',
+			'cockpit.findBar.matchCase' => 'Match case',
+			'cockpit.findBar.wholeWord' => 'Whole word',
+			'cockpit.findBar.useRegex' => 'Use regular expression',
+			'cockpit.findBar.previous' => 'Previous (⇧⏎)',
+			'cockpit.findBar.next' => 'Next (⏎)',
+			'cockpit.findBar.close' => 'Close (Esc)',
+			'cockpit.findBar.badPattern' => 'Bad pattern',
+			'cockpit.findBar.noResults' => 'No results',
+			'cockpit.contentSearch.sectionSearch' => 'SEARCH',
+			'cockpit.contentSearch.searchInFiles' => 'Search in files',
+			'cockpit.contentSearch.matchCase' => 'Match case',
+			'cockpit.contentSearch.wholeWord' => 'Whole word',
+			'cockpit.contentSearch.useRegex' => 'Use regular expression',
+			'cockpit.contentSearch.invalidRegex' => 'Invalid regular expression.',
+			'cockpit.contentSearch.typeToSearch' => 'Type to search across files.',
+			'cockpit.contentSearch.searching' => 'Searching…',
+			'cockpit.contentSearch.noResults' => 'No results.',
+			'cockpit.emptyPane.newAgent' => 'New agent',
+			'cockpit.emptyPane.newAgentDescription' => 'Runs a pi in the folder you choose',
+			'cockpit.emptyPane.newTerminal' => 'New terminal',
+			'cockpit.emptyPane.newTerminalDescription' => 'Opens a shell in the folder you choose',
+			'cockpit.topbar.collapseSidebar' => 'Collapse sidebar',
+			'cockpit.topbar.toggleFiles' => 'Show/hide files',
+			'cockpit.topbar.filesUnavailable' => 'Files unavailable in Cockpit',
+			'cockpit.transcript.cancel' => 'Cancel',
+			'cockpit.transcript.send' => 'Send',
+			'cockpit.transcript.typeYourAnswer' => 'Type your answer',
+			'cockpit.transcript.startHint' => 'Send a prompt to get the agent started.',
+			'cockpit.transcript.workedFor' => ({required Object duration}) => 'Worked for ${duration}',
+			'cockpit.tasks.hotReload' => 'Hot reload',
+			'cockpit.tasks.hotRestart' => 'Hot restart',
+			'cockpit.tasks.toggleDebugPaint' => 'Toggle debug paint',
+			'cockpit.tasks.togglePlatform' => 'Toggle platform',
+			'cockpit.tasks.quit' => 'Quit',
+			'cockpit.notifications.agentFinished' => 'Agent finished',
+			'cockpit.notifications.open' => 'Open',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
@@ -2954,6 +3349,8 @@ extension on Translations {
 			'settings.page.terminal.sectionDefaultTerminal' => 'Default terminal',
 			'settings.page.terminal.engineTitle' => 'Engine',
 			'settings.page.terminal.engineDesc' => 'Used by new terminal tabs and task output buffers. Open tabs keep their current engine.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.terminal.shellTitle' => 'Shell',
 			'settings.page.terminal.shellDesc' => 'Which shell new terminal tabs open. The arrow next to + still opens any other one, just for that tab.',
 			'settings.page.terminal.noWslMessage' => 'No WSL distros found. Install one (wsl.exe --install) and restart Cockpit to see it listed here.',
@@ -3027,8 +3424,6 @@ extension on Translations {
 			'settings.page.schedules.disabled' => 'disabled',
 			'settings.page.schedules.nextRun' => ({required Object when}) => 'next ${when}',
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'last: ${label}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.schedules.removeScheduleDialogTitle' => 'Remove schedule?',
 			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'The job "${schedule}" for ${daemon} is deleted. Its runs stop.',
 			'settings.page.schedules.newScheduleTitle' => 'New schedule',
@@ -3115,6 +3510,7 @@ extension on Translations {
 			'settings.page.automations.generateFromSourceControlDescription' => 'Cockpit sends only the selected diff and recent commit subjects. Common credential patterns and sensitive files are redacted before the harness runs.',
 			'settings.page.automations.discoveryFailed' => 'Could not discover installed automation harnesses.',
 			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.',
+			'settings.page.automations.recommendedSuffix' => 'Recommended',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} is not installed or is not on PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'Model "${model}" is not available for ${harness}. Choose another model in Settings.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

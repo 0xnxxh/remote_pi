@@ -5,6 +5,7 @@ import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/update_card.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/workspace_avatar.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -190,7 +191,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 Icon(Icons.layers_outlined, size: 16, color: colors.text2),
                 const SizedBox(width: 9),
                 Text(
-                  'Workspaces',
+                  context.t.cockpit.projectsRail.workspaces,
                   style: context.typo.title.copyWith(color: colors.text),
                 ),
                 const Spacer(),
@@ -198,7 +199,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 // fica realmente vazio, e criar workspace precisa estar à mão.
                 _SmallIcon(
                   icon: Icons.add,
-                  tooltip: 'New workspace',
+                  tooltip: context.t.cockpit.projectsRail.newWorkspace,
                   onTap: () => onAdd(),
                 ),
               ],
@@ -295,7 +296,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 ),
                 _SmallIcon(
                   icon: Icons.settings_outlined,
-                  tooltip: 'Settings',
+                  tooltip: context.t.cockpit.projectsRail.settings,
                   onTap: widget.onOpenSettings,
                 ),
               ],
@@ -625,34 +626,34 @@ class _ForkMenuButton extends StatelessWidget {
   Future<void> _show(BuildContext context) async {
     final pick = await showAppMenu<String>(
       context,
-      items: const [
+      items: [
         AppMenuItem(
           value: 'merge',
-          label: 'Merge to Parent',
+          label: context.t.cockpit.projectsRail.mergeToParent,
           icon: Icons.merge_type,
         ),
         // Inverso do Merge to Parent: traz a branch do pai pro worktree
         // ("Update branch" do GitHub). Conflito fica no worktree.
         AppMenuItem(
           value: 'update',
-          label: 'Update from Parent',
+          label: context.t.cockpit.projectsRail.updateFromParent,
           icon: Icons.download_outlined,
         ),
         // Nova worktree ramificada da branch DESTE fork (não do HEAD do
         // pai) — vira irmão na lista, herdando o layout deste fork.
         AppMenuItem(
           value: 'fork',
-          label: 'Fork Worktree',
+          label: context.t.cockpit.projectsRail.forkWorktree,
           icon: Icons.call_split,
         ),
         AppMenuItem(
           value: 'copy',
-          label: 'Copy branch',
+          label: context.t.cockpit.projectsRail.copyBranch,
           icon: Icons.content_copy,
         ),
         AppMenuItem(
           value: 'remove',
-          label: 'Remove',
+          label: context.t.cockpit.projectsRail.remove,
           icon: Icons.delete_outline,
           danger: true,
         ),
@@ -1115,15 +1116,27 @@ class _MenuButton extends StatelessWidget {
       items: [
         // Ações de sincronização só quando há git (single ou multi-root).
         if (canCreateWorktree) ...[
-          _gitItem('sync', 'Sync', Icons.sync),
-          _gitItem('pull', 'Pull', Icons.arrow_downward),
-          _gitItem('push', 'Push', Icons.arrow_upward),
-          _gitItem('worktree', 'Create worktree', Icons.call_split),
+          _gitItem('sync', context.t.cockpit.projectsRail.sync, Icons.sync),
+          _gitItem(
+            'pull',
+            context.t.cockpit.projectsRail.pull,
+            Icons.arrow_downward,
+          ),
+          _gitItem(
+            'push',
+            context.t.cockpit.projectsRail.push,
+            Icons.arrow_upward,
+          ),
+          _gitItem(
+            'worktree',
+            context.t.cockpit.projectsRail.createWorktree,
+            Icons.call_split,
+          ),
         ],
         if (moveTargets.isNotEmpty)
           AppMenuItem(
             value: 'realm', // nunca devolvido — só os filhos
-            label: 'Move to realm',
+            label: context.t.cockpit.projectsRail.moveToRealm,
             icon: Icons.public,
             children: [
               for (final t in moveTargets)
@@ -1134,19 +1147,19 @@ class _MenuButton extends StatelessWidget {
                 ),
             ],
           ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'copy-id',
-          label: 'Copy workspace id',
+          label: context.t.cockpit.projectsRail.copyWorkspaceId,
           icon: Icons.content_copy,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'config',
-          label: 'Settings',
+          label: context.t.cockpit.projectsRail.settings,
           icon: Icons.settings_outlined,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: 'delete',
-          label: 'Close',
+          label: context.t.cockpit.projectsRail.close,
           icon: Icons.close,
           danger: true,
         ),
@@ -1199,7 +1212,7 @@ class _EmptyRail extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Text(
-          'No workspaces yet.',
+          context.t.cockpit.projectsRail.noWorkspaces,
           textAlign: TextAlign.center,
           style: context.typo.label.copyWith(color: colors.text3),
         ),
@@ -1269,14 +1282,14 @@ class _RealmSelector extends StatelessWidget {
             selected: realm.id == active.id,
           ),
         const AppMenuItem.divider(),
-        const AppMenuItem(
+        AppMenuItem(
           value: '__new__',
-          label: 'New realm…',
+          label: context.t.cockpit.projectsRail.newRealm,
           icon: Icons.add,
         ),
-        const AppMenuItem(
+        AppMenuItem(
           value: '__manage__',
-          label: 'Manage realms…',
+          label: context.t.cockpit.projectsRail.manageRealms,
           icon: Icons.tune,
         ),
       ],

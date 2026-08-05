@@ -636,6 +636,7 @@ class _AutomationsPanelState extends State<_AutomationsPanel> {
                         trailing: _AutomationModelDropdown(
                           value: modelId,
                           models: selected?.models ?? const <AutomationModel>[],
+                          recommended: selectedId.recommendedModelId,
                           onChanged: settings.setAutomationModel,
                         ),
                       ),
@@ -678,7 +679,8 @@ class _AutomationHarnessDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _DropdownChip(
-      label: selected?.label ?? 'Not configured',
+      label:
+          selected?.label ?? context.t.settings.page.automations.notConfigured,
       onTap: () async {
         final picked = await showAppMenu<Object>(
           context,
@@ -686,7 +688,7 @@ class _AutomationHarnessDropdown extends StatelessWidget {
           items: <AppMenuItem<Object>>[
             AppMenuItem<Object>(
               value: 'disabled',
-              label: 'Not configured',
+              label: context.t.settings.page.automations.notConfigured,
               selected: selected == null,
             ),
             for (final harness in harnesses)
@@ -709,17 +711,24 @@ class _AutomationModelDropdown extends StatelessWidget {
     required this.value,
     required this.models,
     required this.onChanged,
+    this.recommended,
   });
 
   final String? value;
   final List<AutomationModel> models;
   final ValueChanged<String?> onChanged;
 
+  /// Id recomendado do harness — recebe o sufixo traduzido no menu.
+  final String? recommended;
+
   @override
   Widget build(BuildContext context) {
     final known = models.where((model) => model.id == value).firstOrNull;
     return _DropdownChip(
-      label: known?.label ?? value ?? 'CLI default',
+      label:
+          known?.label ??
+          value ??
+          context.t.settings.page.automations.modelCliDefault,
       onTap: () async {
         final picked = await showAppMenu<String>(
           context,
@@ -727,13 +736,18 @@ class _AutomationModelDropdown extends StatelessWidget {
           items: [
             AppMenuItem<String>(
               value: '',
-              label: 'CLI default',
+              label: context.t.settings.page.automations.modelCliDefault,
               selected: value == null,
             ),
             for (final model in models)
               AppMenuItem<String>(
                 value: model.id,
-                label: model.label,
+                // O "· Recomendado" é texto de UI, não faz parte do nome do
+                // modelo — por isso mora aqui e não no label da entidade.
+                label: model.id == recommended
+                    ? '${model.label} · '
+                          '${context.t.settings.page.automations.recommendedSuffix}'
+                    : model.label,
                 selected: value == model.id,
               ),
           ],
@@ -756,8 +770,10 @@ class _SourceControlViewModeDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String label(SourceControlViewMode mode) => switch (mode) {
-      SourceControlViewMode.list => 'List',
-      SourceControlViewMode.tree => 'Tree',
+      SourceControlViewMode.list =>
+        context.t.settings.page.sourceControl.viewModeList,
+      SourceControlViewMode.tree =>
+        context.t.settings.page.sourceControl.viewModeTree,
     };
     IconData icon(SourceControlViewMode mode) => switch (mode) {
       SourceControlViewMode.list => Icons.view_list_outlined,

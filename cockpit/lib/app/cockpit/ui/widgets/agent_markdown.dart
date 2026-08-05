@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 // `gpt_markdown` é um pacote Material: estiliza headings/links/code via
 // `Theme.of(context)` Material + uma `GptMarkdownThemeData` (ThemeExtension do
@@ -206,7 +207,7 @@ class _CopyButtonState extends State<_CopyButton> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return AppTooltip(
-      message: 'Copy code',
+      message: context.t.common.copyCode,
       child: HoverTap(
         onTap: _copy,
         borderRadius: BorderRadius.circular(5),

@@ -180,10 +180,16 @@ Text(tr.commit)
 Text(tr.generateWith(harness: label))   // interpolação é parâmetro nomeado
 ```
 
-> **Nunca use o `t` global** (`t.foo.bar`). Ele resolve, compila e passa no
-> analyze, mas o widget **não** reconstrói quando o usuário troca de idioma —
-> a tela fica congelada no locale do primeiro build. `context.t` lê o
-> `TranslationProvider` e é o único acesso correto na UI.
+> **Nunca use o `t` global dentro de widget** (`t.foo.bar`). Ele resolve,
+> compila e passa no analyze, mas o widget **não** reconstrói quando o usuário
+> troca de idioma — a tela fica congelada no locale do primeiro build.
+> `context.t` lê o `TranslationProvider` e é o único acesso correto na UI.
+>
+> **Exceção**: fora da árvore de widgets não existe `context` nem rebuild a
+> preservar, então o `t` global é o acesso certo — notificação do SO
+> (`local_notifier`) e labels montados em `data/` que a UI só consome
+> (`flutter_adapter`). São strings de uma tacada; se o idioma mudar, valem a
+> partir da próxima vez que forem geradas.
 
 ### Strings sem `BuildContext` (`data/`, ViewModels, contratos)
 

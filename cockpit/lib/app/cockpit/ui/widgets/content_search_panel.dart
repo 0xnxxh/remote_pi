@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cockpit/app/cockpit/domain/entities/content_search.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -217,7 +218,7 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
       child: Row(
         children: [
           Text(
-            'SEARCH',
+            context.t.cockpit.contentSearch.sectionSearch,
             style: typo.label.copyWith(
               fontSize: 10,
               letterSpacing: 1.1,
@@ -267,7 +268,7 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
                 controller: _ctrl,
                 focusNode: _focus,
                 placeholder: Text(
-                  'Search in files',
+                  context.t.cockpit.contentSearch.searchInFiles,
                   style: context.typo.body.copyWith(
                     fontSize: 13,
                     color: colors.text4,
@@ -289,20 +290,20 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
           const SizedBox(width: 6),
           _OptionToggle(
             label: 'Aa',
-            tooltip: 'Match case',
+            tooltip: context.t.cockpit.contentSearch.matchCase,
             active: _caseSensitive,
             onTap: () => _toggle(() => _caseSensitive = !_caseSensitive),
           ),
           _OptionToggle(
             label: 'ab',
-            tooltip: 'Whole word',
+            tooltip: context.t.cockpit.contentSearch.wholeWord,
             active: _wholeWord,
             underline: true,
             onTap: () => _toggle(() => _wholeWord = !_wholeWord),
           ),
           _OptionToggle(
             label: '.*',
-            tooltip: 'Use regular expression',
+            tooltip: context.t.cockpit.contentSearch.useRegex,
             active: _regex,
             onTap: () => _toggle(() => _regex = !_regex),
           ),
@@ -317,13 +318,13 @@ class _ContentSearchPanelState extends State<ContentSearchPanel> {
       final hasQuery = _ctrl.text.trim().isNotEmpty;
       final String message;
       if (_invalidRegex) {
-        message = 'Invalid regular expression.';
+        message = context.t.cockpit.contentSearch.invalidRegex;
       } else if (!hasQuery) {
-        message = 'Type to search across files.';
+        message = context.t.cockpit.contentSearch.typeToSearch;
       } else if (_searching) {
-        message = 'Searching…';
+        message = context.t.cockpit.contentSearch.searching;
       } else {
-        message = 'No results.';
+        message = context.t.cockpit.contentSearch.noResults;
       }
       return Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),

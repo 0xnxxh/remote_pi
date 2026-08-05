@@ -1,4 +1,5 @@
 import 'package:cockpit/app/cockpit/domain/contracts/notifier.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -27,7 +28,7 @@ class LocalNotifier implements Notifier {
   @override
   Future<void> init() async {
     _chime = Player();
-    const settings = InitializationSettings(
+    final settings = InitializationSettings(
       macOS: DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -38,7 +39,9 @@ class LocalNotifier implements Notifier {
         defaultPresentBadge: true,
         defaultPresentSound: true,
       ),
-      linux: LinuxInitializationSettings(defaultActionName: 'Open'),
+      linux: LinuxInitializationSettings(
+        defaultActionName: t.cockpit.notifications.open,
+      ),
       // Sem este bloco a plataforma Windows nunca é inicializada e todo
       // `show()` lança LateInitializationError (issue #91).
       windows: WindowsInitializationSettings(
@@ -58,7 +61,7 @@ class LocalNotifier implements Notifier {
     final subtitle = workspace.isEmpty ? agentName : '$agentName · $workspace';
     await _plugin.show(
       id: _id++,
-      title: 'Agent finished',
+      title: t.cockpit.notifications.agentFinished,
       body: subtitle,
       notificationDetails: const NotificationDetails(
         macOS: DarwinNotificationDetails(

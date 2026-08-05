@@ -23,6 +23,20 @@
       "defaultDescription": "Something went wrong. The details below were saved to the log — you can report them so it gets fixed.",
       "copyDetails": "Copy details",
       "reportIssue": "Report issue"
+    },
+    "windowControls": {
+      "minimize": "Minimize",
+      "maximize": "Maximize",
+      "close": "Close"
+    },
+    "crash": {
+      "title": "Unexpected shutdown",
+      "bannerTitle": "Cockpit closed unexpectedly",
+      "report": "Report",
+      "dismiss": "Dismiss",
+      "crashMessage": "The previous session (version ${version}) ended without shutting down cleanly. Want to report it? The log is included and you can review everything before sending.",
+      "crashError": "Session started at ${startedAt} (pid ${pid}) ended without a clean shutdown.",
+      "crashDescription": "No error was captured — the app was terminated by the system. The log below is from that session and is the most useful part."
     }
   },
   "common": {
@@ -40,7 +54,15 @@
     "loading": "Loading…",
     "checking": "Checking…",
     "remove": "Remove",
-    "restart": "Restart"
+    "restart": "Restart",
+    "settings": "Settings",
+    "send": "Send",
+    "open": "Open",
+    "dismiss": "Dismiss",
+    "report": "Report",
+    "copyCode": "Copy code",
+    "search": "Search",
+    "noResults": "No results"
   },
   "cockpit": {
     "confirmDialog": {
@@ -427,6 +449,77 @@
       "unlockMessage": "Unlock ${keyPath} to connect \"${connectionName}\".",
       "keptInMemoryHint": "Kept in memory until Cockpit quits. To let agents use this connection, enable \"Save passphrase\" in the connection.",
       "unlock": "Unlock"
+    },
+    "projectsRail": {
+      "workspaces": "Workspaces",
+      "newWorkspace": "New workspace",
+      "settings": "Settings",
+      "mergeToParent": "Merge to Parent",
+      "updateFromParent": "Update from Parent",
+      "forkWorktree": "Fork Worktree",
+      "copyBranch": "Copy branch",
+      "remove": "Remove",
+      "moveToRealm": "Move to realm",
+      "copyWorkspaceId": "Copy workspace id",
+      "close": "Close",
+      "newRealm": "New realm…",
+      "manageRealms": "Manage realms…",
+      "noWorkspaces": "No workspaces yet.",
+      "sync": "Sync",
+      "pull": "Pull",
+      "push": "Push",
+      "createWorktree": "Create worktree"
+    },
+    "findBar": {
+      "find": "Find",
+      "matchCase": "Match case",
+      "wholeWord": "Whole word",
+      "useRegex": "Use regular expression",
+      "previous": "Previous (⇧⏎)",
+      "next": "Next (⏎)",
+      "close": "Close (Esc)",
+      "badPattern": "Bad pattern",
+      "noResults": "No results"
+    },
+    "contentSearch": {
+      "sectionSearch": "SEARCH",
+      "searchInFiles": "Search in files",
+      "matchCase": "Match case",
+      "wholeWord": "Whole word",
+      "useRegex": "Use regular expression",
+      "invalidRegex": "Invalid regular expression.",
+      "typeToSearch": "Type to search across files.",
+      "searching": "Searching…",
+      "noResults": "No results."
+    },
+    "emptyPane": {
+      "newAgent": "New agent",
+      "newAgentDescription": "Runs a pi in the folder you choose",
+      "newTerminal": "New terminal",
+      "newTerminalDescription": "Opens a shell in the folder you choose"
+    },
+    "topbar": {
+      "collapseSidebar": "Collapse sidebar",
+      "toggleFiles": "Show/hide files",
+      "filesUnavailable": "Files unavailable in Cockpit"
+    },
+    "transcript": {
+      "cancel": "Cancel",
+      "send": "Send",
+      "typeYourAnswer": "Type your answer",
+      "startHint": "Send a prompt to get the agent started.",
+      "workedFor": "Worked for ${duration}"
+    },
+    "tasks": {
+      "hotReload": "Hot reload",
+      "hotRestart": "Hot restart",
+      "toggleDebugPaint": "Toggle debug paint",
+      "togglePlatform": "Toggle platform",
+      "quit": "Quit"
+    },
+    "notifications": {
+      "agentFinished": "Agent finished",
+      "open": "Open"
     }
   },
   "settings": {
@@ -707,7 +800,8 @@
         "generateFromSourceControl": "Generate from Source Control",
         "generateFromSourceControlDescription": "Cockpit sends only the selected diff and recent commit subjects. Common credential patterns and sensitive files are redacted before the harness runs.",
         "discoveryFailed": "Could not discover installed automation harnesses.",
-        "staleModel": "Model \"${model}\" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed."
+        "staleModel": "Model \"${model}\" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.",
+        "recommendedSuffix": "Recommended"
       }
     }
   },

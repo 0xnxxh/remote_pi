@@ -58,6 +58,8 @@ class _Translations$core$es extends Translations$core$en {
 	@override late final _Translations$core$macosNotifications$es macosNotifications = _Translations$core$macosNotifications$es._(_root);
 	@override late final _Translations$core$appErrorView$es appErrorView = _Translations$core$appErrorView$es._(_root);
 	@override late final _Translations$core$errorReportDialog$es errorReportDialog = _Translations$core$errorReportDialog$es._(_root);
+	@override late final _Translations$core$windowControls$es windowControls = _Translations$core$windowControls$es._(_root);
+	@override late final _Translations$core$crash$es crash = _Translations$core$crash$es._(_root);
 }
 
 // Path: common
@@ -82,6 +84,14 @@ class _Translations$common$es extends Translations$common$en {
 	@override String get checking => 'Comprobando…';
 	@override String get remove => 'Quitar';
 	@override String get restart => 'Reiniciar';
+	@override String get settings => 'Configuración';
+	@override String get send => 'Enviar';
+	@override String get open => 'Abrir';
+	@override String get dismiss => 'Descartar';
+	@override String get report => 'Reportar';
+	@override String get copyCode => 'Copiar código';
+	@override String get search => 'Buscar';
+	@override String get noResults => 'Sin resultados';
 }
 
 // Path: cockpit
@@ -114,6 +124,14 @@ class _Translations$cockpit$es extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$dbMongoView$es dbMongoView = _Translations$cockpit$dbMongoView$es._(_root);
 	@override late final _Translations$cockpit$dbConnectionDialog$es dbConnectionDialog = _Translations$cockpit$dbConnectionDialog$es._(_root);
 	@override late final _Translations$cockpit$sshPrompts$es sshPrompts = _Translations$cockpit$sshPrompts$es._(_root);
+	@override late final _Translations$cockpit$projectsRail$es projectsRail = _Translations$cockpit$projectsRail$es._(_root);
+	@override late final _Translations$cockpit$findBar$es findBar = _Translations$cockpit$findBar$es._(_root);
+	@override late final _Translations$cockpit$contentSearch$es contentSearch = _Translations$cockpit$contentSearch$es._(_root);
+	@override late final _Translations$cockpit$emptyPane$es emptyPane = _Translations$cockpit$emptyPane$es._(_root);
+	@override late final _Translations$cockpit$topbar$es topbar = _Translations$cockpit$topbar$es._(_root);
+	@override late final _Translations$cockpit$transcript$es transcript = _Translations$cockpit$transcript$es._(_root);
+	@override late final _Translations$cockpit$tasks$es tasks = _Translations$cockpit$tasks$es._(_root);
+	@override late final _Translations$cockpit$notifications$es notifications = _Translations$cockpit$notifications$es._(_root);
 }
 
 // Path: settings
@@ -199,6 +217,34 @@ class _Translations$core$errorReportDialog$es extends Translations$core$errorRep
 	@override String get defaultDescription => 'Algo salió mal. Los detalles a continuación se guardaron en el registro — puedes reportarlos para que se solucione.';
 	@override String get copyDetails => 'Copiar detalles';
 	@override String get reportIssue => 'Reportar problema';
+}
+
+// Path: core.windowControls
+class _Translations$core$windowControls$es extends Translations$core$windowControls$en {
+	_Translations$core$windowControls$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get minimize => 'Minimizar';
+	@override String get maximize => 'Maximizar';
+	@override String get close => 'Cerrar';
+}
+
+// Path: core.crash
+class _Translations$core$crash$es extends Translations$core$crash$en {
+	_Translations$core$crash$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Cierre inesperado';
+	@override String get bannerTitle => 'Cockpit se cerró inesperadamente';
+	@override String get report => 'Reportar';
+	@override String get dismiss => 'Descartar';
+	@override String crashMessage({required Object version}) => 'La sesión anterior (versión ${version}) terminó sin cerrarse correctamente. ¿Quieres reportarlo? El log se incluye y puedes revisar todo antes de enviar.';
+	@override String crashError({required Object startedAt, required Object pid}) => 'La sesión iniciada el ${startedAt} (pid ${pid}) terminó sin un cierre limpio.';
+	@override String get crashDescription => 'No se capturó ningún error: el sistema terminó la app. El log de abajo es de esa sesión y es la parte más útil.';
 }
 
 // Path: cockpit.confirmDialog
@@ -747,6 +793,133 @@ class _Translations$cockpit$sshPrompts$es extends Translations$cockpit$sshPrompt
 	@override String get unlock => 'Desbloquear';
 }
 
+// Path: cockpit.projectsRail
+class _Translations$cockpit$projectsRail$es extends Translations$cockpit$projectsRail$en {
+	_Translations$cockpit$projectsRail$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get workspaces => 'Workspaces';
+	@override String get newWorkspace => 'Nuevo workspace';
+	@override String get settings => 'Configuración';
+	@override String get mergeToParent => 'Fusionar en el padre';
+	@override String get updateFromParent => 'Actualizar desde el padre';
+	@override String get forkWorktree => 'Crear worktree derivada';
+	@override String get copyBranch => 'Copiar branch';
+	@override String get remove => 'Quitar';
+	@override String get moveToRealm => 'Mover a realm';
+	@override String get copyWorkspaceId => 'Copiar id del workspace';
+	@override String get close => 'Cerrar';
+	@override String get newRealm => 'Nuevo realm…';
+	@override String get manageRealms => 'Gestionar realms…';
+	@override String get noWorkspaces => 'Aún no hay workspaces.';
+	@override String get sync => 'Sincronizar';
+	@override String get pull => 'Pull';
+	@override String get push => 'Push';
+	@override String get createWorktree => 'Crear worktree';
+}
+
+// Path: cockpit.findBar
+class _Translations$cockpit$findBar$es extends Translations$cockpit$findBar$en {
+	_Translations$cockpit$findBar$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get find => 'Buscar';
+	@override String get matchCase => 'Coincidir mayúsculas';
+	@override String get wholeWord => 'Palabra completa';
+	@override String get useRegex => 'Usar expresión regular';
+	@override String get previous => 'Anterior (⇧⏎)';
+	@override String get next => 'Siguiente (⏎)';
+	@override String get close => 'Cerrar (Esc)';
+	@override String get badPattern => 'Patrón inválido';
+	@override String get noResults => 'Sin resultados';
+}
+
+// Path: cockpit.contentSearch
+class _Translations$cockpit$contentSearch$es extends Translations$cockpit$contentSearch$en {
+	_Translations$cockpit$contentSearch$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get sectionSearch => 'BÚSQUEDA';
+	@override String get searchInFiles => 'Buscar en los archivos';
+	@override String get matchCase => 'Coincidir mayúsculas';
+	@override String get wholeWord => 'Palabra completa';
+	@override String get useRegex => 'Usar expresión regular';
+	@override String get invalidRegex => 'Expresión regular inválida.';
+	@override String get typeToSearch => 'Escribe para buscar en todos los archivos.';
+	@override String get searching => 'Buscando…';
+	@override String get noResults => 'Sin resultados.';
+}
+
+// Path: cockpit.emptyPane
+class _Translations$cockpit$emptyPane$es extends Translations$cockpit$emptyPane$en {
+	_Translations$cockpit$emptyPane$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get newAgent => 'Nuevo agente';
+	@override String get newAgentDescription => 'Ejecuta un pi en la carpeta que elijas';
+	@override String get newTerminal => 'Nueva terminal';
+	@override String get newTerminalDescription => 'Abre un shell en la carpeta que elijas';
+}
+
+// Path: cockpit.topbar
+class _Translations$cockpit$topbar$es extends Translations$cockpit$topbar$en {
+	_Translations$cockpit$topbar$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get collapseSidebar => 'Contraer barra lateral';
+	@override String get toggleFiles => 'Mostrar/ocultar archivos';
+	@override String get filesUnavailable => 'Archivos no disponibles en Cockpit';
+}
+
+// Path: cockpit.transcript
+class _Translations$cockpit$transcript$es extends Translations$cockpit$transcript$en {
+	_Translations$cockpit$transcript$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get cancel => 'Cancelar';
+	@override String get send => 'Enviar';
+	@override String get typeYourAnswer => 'Escribe tu respuesta';
+	@override String get startHint => 'Envía un prompt para que el agente empiece.';
+	@override String workedFor({required Object duration}) => 'Trabajó ${duration}';
+}
+
+// Path: cockpit.tasks
+class _Translations$cockpit$tasks$es extends Translations$cockpit$tasks$en {
+	_Translations$cockpit$tasks$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get hotReload => 'Hot reload';
+	@override String get hotRestart => 'Hot restart';
+	@override String get toggleDebugPaint => 'Alternar debug paint';
+	@override String get togglePlatform => 'Alternar plataforma';
+	@override String get quit => 'Salir';
+}
+
+// Path: cockpit.notifications
+class _Translations$cockpit$notifications$es extends Translations$cockpit$notifications$en {
+	_Translations$cockpit$notifications$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get agentFinished => 'El agente terminó';
+	@override String get open => 'Abrir';
+}
+
 // Path: settings.language
 class _Translations$settings$language$es extends Translations$settings$language$en {
 	_Translations$settings$language$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1222,6 +1395,7 @@ class _Translations$settings$page$automations$es extends Translations$settings$p
 	@override String get generateFromSourceControlDescription => 'Cockpit envía solo el diff seleccionado y los asuntos de los commits recientes. Los patrones habituales de credenciales y los archivos sensibles se redactan antes de ejecutar el harness.';
 	@override String get discoveryFailed => 'No se pudieron descubrir los harnesses de automatización instalados.';
 	@override String staleModel({required Object model, required Object harness}) => 'El modelo "${model}" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas.';
+	@override String get recommendedSuffix => 'Recomendado';
 }
 
 // Path: settings.page.general.updateFrequency
@@ -1261,6 +1435,16 @@ extension on TranslationsEs {
 			'core.errorReportDialog.defaultDescription' => 'Algo salió mal. Los detalles a continuación se guardaron en el registro — puedes reportarlos para que se solucione.',
 			'core.errorReportDialog.copyDetails' => 'Copiar detalles',
 			'core.errorReportDialog.reportIssue' => 'Reportar problema',
+			'core.windowControls.minimize' => 'Minimizar',
+			'core.windowControls.maximize' => 'Maximizar',
+			'core.windowControls.close' => 'Cerrar',
+			'core.crash.title' => 'Cierre inesperado',
+			'core.crash.bannerTitle' => 'Cockpit se cerró inesperadamente',
+			'core.crash.report' => 'Reportar',
+			'core.crash.dismiss' => 'Descartar',
+			'core.crash.crashMessage' => ({required Object version}) => 'La sesión anterior (versión ${version}) terminó sin cerrarse correctamente. ¿Quieres reportarlo? El log se incluye y puedes revisar todo antes de enviar.',
+			'core.crash.crashError' => ({required Object startedAt, required Object pid}) => 'La sesión iniciada el ${startedAt} (pid ${pid}) terminó sin un cierre limpio.',
+			'core.crash.crashDescription' => 'No se capturó ningún error: el sistema terminó la app. El log de abajo es de esa sesión y es la parte más útil.',
 			'common.cancel' => 'Cancelar',
 			'common.confirm' => 'Confirmar',
 			'common.create' => 'Crear',
@@ -1276,6 +1460,14 @@ extension on TranslationsEs {
 			'common.checking' => 'Comprobando…',
 			'common.remove' => 'Quitar',
 			'common.restart' => 'Reiniciar',
+			'common.settings' => 'Configuración',
+			'common.send' => 'Enviar',
+			'common.open' => 'Abrir',
+			'common.dismiss' => 'Descartar',
+			'common.report' => 'Reportar',
+			'common.copyCode' => 'Copiar código',
+			'common.search' => 'Buscar',
+			'common.noResults' => 'Sin resultados',
 			'cockpit.confirmDialog.unsavedChangesTitle' => 'Cambios sin guardar',
 			'cockpit.confirmDialog.unsavedChangesMessage' => ({required Object fileName}) => '“${fileName}” tiene cambios sin guardar. ¿Guardarlos antes de cerrar?',
 			'cockpit.confirmDialog.dontSave' => 'No guardar',
@@ -1603,6 +1795,61 @@ extension on TranslationsEs {
 			'cockpit.sshPrompts.unlockMessage' => ({required Object keyPath, required Object connectionName}) => 'Desbloquea ${keyPath} para conectar "${connectionName}".',
 			'cockpit.sshPrompts.keptInMemoryHint' => 'Se mantiene en memoria hasta que Cockpit se cierre. Para que los agentes usen esta conexión, activa "Guardar frase de contraseña" en la conexión.',
 			'cockpit.sshPrompts.unlock' => 'Desbloquear',
+			'cockpit.projectsRail.workspaces' => 'Workspaces',
+			'cockpit.projectsRail.newWorkspace' => 'Nuevo workspace',
+			'cockpit.projectsRail.settings' => 'Configuración',
+			'cockpit.projectsRail.mergeToParent' => 'Fusionar en el padre',
+			'cockpit.projectsRail.updateFromParent' => 'Actualizar desde el padre',
+			'cockpit.projectsRail.forkWorktree' => 'Crear worktree derivada',
+			'cockpit.projectsRail.copyBranch' => 'Copiar branch',
+			'cockpit.projectsRail.remove' => 'Quitar',
+			'cockpit.projectsRail.moveToRealm' => 'Mover a realm',
+			'cockpit.projectsRail.copyWorkspaceId' => 'Copiar id del workspace',
+			'cockpit.projectsRail.close' => 'Cerrar',
+			'cockpit.projectsRail.newRealm' => 'Nuevo realm…',
+			'cockpit.projectsRail.manageRealms' => 'Gestionar realms…',
+			'cockpit.projectsRail.noWorkspaces' => 'Aún no hay workspaces.',
+			'cockpit.projectsRail.sync' => 'Sincronizar',
+			'cockpit.projectsRail.pull' => 'Pull',
+			'cockpit.projectsRail.push' => 'Push',
+			'cockpit.projectsRail.createWorktree' => 'Crear worktree',
+			'cockpit.findBar.find' => 'Buscar',
+			'cockpit.findBar.matchCase' => 'Coincidir mayúsculas',
+			'cockpit.findBar.wholeWord' => 'Palabra completa',
+			'cockpit.findBar.useRegex' => 'Usar expresión regular',
+			'cockpit.findBar.previous' => 'Anterior (⇧⏎)',
+			'cockpit.findBar.next' => 'Siguiente (⏎)',
+			'cockpit.findBar.close' => 'Cerrar (Esc)',
+			'cockpit.findBar.badPattern' => 'Patrón inválido',
+			'cockpit.findBar.noResults' => 'Sin resultados',
+			'cockpit.contentSearch.sectionSearch' => 'BÚSQUEDA',
+			'cockpit.contentSearch.searchInFiles' => 'Buscar en los archivos',
+			'cockpit.contentSearch.matchCase' => 'Coincidir mayúsculas',
+			'cockpit.contentSearch.wholeWord' => 'Palabra completa',
+			'cockpit.contentSearch.useRegex' => 'Usar expresión regular',
+			'cockpit.contentSearch.invalidRegex' => 'Expresión regular inválida.',
+			'cockpit.contentSearch.typeToSearch' => 'Escribe para buscar en todos los archivos.',
+			'cockpit.contentSearch.searching' => 'Buscando…',
+			'cockpit.contentSearch.noResults' => 'Sin resultados.',
+			'cockpit.emptyPane.newAgent' => 'Nuevo agente',
+			'cockpit.emptyPane.newAgentDescription' => 'Ejecuta un pi en la carpeta que elijas',
+			'cockpit.emptyPane.newTerminal' => 'Nueva terminal',
+			'cockpit.emptyPane.newTerminalDescription' => 'Abre un shell en la carpeta que elijas',
+			'cockpit.topbar.collapseSidebar' => 'Contraer barra lateral',
+			'cockpit.topbar.toggleFiles' => 'Mostrar/ocultar archivos',
+			'cockpit.topbar.filesUnavailable' => 'Archivos no disponibles en Cockpit',
+			'cockpit.transcript.cancel' => 'Cancelar',
+			'cockpit.transcript.send' => 'Enviar',
+			'cockpit.transcript.typeYourAnswer' => 'Escribe tu respuesta',
+			'cockpit.transcript.startHint' => 'Envía un prompt para que el agente empiece.',
+			'cockpit.transcript.workedFor' => ({required Object duration}) => 'Trabajó ${duration}',
+			'cockpit.tasks.hotReload' => 'Hot reload',
+			'cockpit.tasks.hotRestart' => 'Hot restart',
+			'cockpit.tasks.toggleDebugPaint' => 'Alternar debug paint',
+			'cockpit.tasks.togglePlatform' => 'Alternar plataforma',
+			'cockpit.tasks.quit' => 'Salir',
+			'cockpit.notifications.agentFinished' => 'El agente terminó',
+			'cockpit.notifications.open' => 'Abrir',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',
@@ -1684,6 +1931,8 @@ extension on TranslationsEs {
 			'settings.page.terminal.sectionDefaultTerminal' => 'Terminal predeterminado',
 			'settings.page.terminal.engineTitle' => 'Motor',
 			'settings.page.terminal.engineDesc' => 'Usado por nuevas pestañas de terminal y buffers de salida de tasks. Las pestañas abiertas mantienen su motor actual.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.page.terminal.shellTitle' => 'Shell',
 			'settings.page.terminal.shellDesc' => 'Qué shell abren las nuevas pestañas de terminal. La flecha junto al + sigue abriendo cualquier otro, solo para esa pestaña.',
 			'settings.page.terminal.noWslMessage' => 'No se encontraron distros de WSL. Instala una (wsl.exe --install) y reinicia Cockpit para verla listada aquí.',
@@ -1757,8 +2006,6 @@ extension on TranslationsEs {
 			'settings.page.schedules.disabled' => 'desactivado',
 			'settings.page.schedules.nextRun' => ({required Object when}) => 'próximo ${when}',
 			'settings.page.schedules.lastRun' => ({required Object label}) => 'último: ${label}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.page.schedules.removeScheduleDialogTitle' => '¿Quitar programación?',
 			'settings.page.schedules.removeScheduleDialogContent' => ({required Object schedule, required Object daemon}) => 'El job "${schedule}" de ${daemon} se elimina. Sus ejecuciones se detienen.',
 			'settings.page.schedules.newScheduleTitle' => 'Nueva programación',
@@ -1845,6 +2092,7 @@ extension on TranslationsEs {
 			'settings.page.automations.generateFromSourceControlDescription' => 'Cockpit envía solo el diff seleccionado y los asuntos de los commits recientes. Los patrones habituales de credenciales y los archivos sensibles se redactan antes de ejecutar el harness.',
 			'settings.page.automations.discoveryFailed' => 'No se pudieron descubrir los harnesses de automatización instalados.',
 			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'El modelo "${model}" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas.',
+			'settings.page.automations.recommendedSuffix' => 'Recomendado',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} no está instalado o no está en el PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'El modelo "${model}" no está disponible para ${harness}. Elige otro modelo en Configuración.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

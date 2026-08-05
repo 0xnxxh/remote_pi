@@ -30,19 +30,16 @@ extension AutomationHarnessIdLabel on AutomationHarnessId {
 
   List<AutomationModel> get builtInModels => switch (this) {
     AutomationHarnessId.claude => const <AutomationModel>[
-      AutomationModel(id: 'sonnet', label: 'Sonnet · Recommended'),
+      AutomationModel(id: 'sonnet', label: 'Sonnet'),
       AutomationModel(id: 'opus', label: 'Opus'),
     ],
     AutomationHarnessId.codex => const <AutomationModel>[
-      AutomationModel(
-        id: 'gpt-5.6-terra',
-        label: 'GPT-5.6 Terra · Recommended',
-      ),
+      AutomationModel(id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra'),
       AutomationModel(id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol'),
       AutomationModel(id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna'),
     ],
     AutomationHarnessId.gemini => const <AutomationModel>[
-      AutomationModel(id: 'flash', label: 'Flash · Recommended'),
+      AutomationModel(id: 'flash', label: 'Flash'),
       AutomationModel(id: 'auto', label: 'Auto'),
       AutomationModel(id: 'pro', label: 'Pro'),
       AutomationModel(id: 'flash-lite', label: 'Flash Lite'),

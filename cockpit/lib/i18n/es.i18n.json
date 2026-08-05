@@ -23,6 +23,20 @@
       "defaultDescription": "Algo salió mal. Los detalles a continuación se guardaron en el registro — puedes reportarlos para que se solucione.",
       "copyDetails": "Copiar detalles",
       "reportIssue": "Reportar problema"
+    },
+    "windowControls": {
+      "minimize": "Minimizar",
+      "maximize": "Maximizar",
+      "close": "Cerrar"
+    },
+    "crash": {
+      "title": "Cierre inesperado",
+      "bannerTitle": "Cockpit se cerró inesperadamente",
+      "report": "Reportar",
+      "dismiss": "Descartar",
+      "crashMessage": "La sesión anterior (versión ${version}) terminó sin cerrarse correctamente. ¿Quieres reportarlo? El log se incluye y puedes revisar todo antes de enviar.",
+      "crashError": "La sesión iniciada el ${startedAt} (pid ${pid}) terminó sin un cierre limpio.",
+      "crashDescription": "No se capturó ningún error: el sistema terminó la app. El log de abajo es de esa sesión y es la parte más útil."
     }
   },
   "common": {
@@ -40,7 +54,15 @@
     "loading": "Cargando…",
     "checking": "Comprobando…",
     "remove": "Quitar",
-    "restart": "Reiniciar"
+    "restart": "Reiniciar",
+    "settings": "Configuración",
+    "send": "Enviar",
+    "open": "Abrir",
+    "dismiss": "Descartar",
+    "report": "Reportar",
+    "copyCode": "Copiar código",
+    "search": "Buscar",
+    "noResults": "Sin resultados"
   },
   "cockpit": {
     "confirmDialog": {
@@ -427,6 +449,77 @@
       "unlockMessage": "Desbloquea ${keyPath} para conectar \"${connectionName}\".",
       "keptInMemoryHint": "Se mantiene en memoria hasta que Cockpit se cierre. Para que los agentes usen esta conexión, activa \"Guardar frase de contraseña\" en la conexión.",
       "unlock": "Desbloquear"
+    },
+    "projectsRail": {
+      "workspaces": "Workspaces",
+      "newWorkspace": "Nuevo workspace",
+      "settings": "Configuración",
+      "mergeToParent": "Fusionar en el padre",
+      "updateFromParent": "Actualizar desde el padre",
+      "forkWorktree": "Crear worktree derivada",
+      "copyBranch": "Copiar branch",
+      "remove": "Quitar",
+      "moveToRealm": "Mover a realm",
+      "copyWorkspaceId": "Copiar id del workspace",
+      "close": "Cerrar",
+      "newRealm": "Nuevo realm…",
+      "manageRealms": "Gestionar realms…",
+      "noWorkspaces": "Aún no hay workspaces.",
+      "sync": "Sincronizar",
+      "pull": "Pull",
+      "push": "Push",
+      "createWorktree": "Crear worktree"
+    },
+    "findBar": {
+      "find": "Buscar",
+      "matchCase": "Coincidir mayúsculas",
+      "wholeWord": "Palabra completa",
+      "useRegex": "Usar expresión regular",
+      "previous": "Anterior (⇧⏎)",
+      "next": "Siguiente (⏎)",
+      "close": "Cerrar (Esc)",
+      "badPattern": "Patrón inválido",
+      "noResults": "Sin resultados"
+    },
+    "contentSearch": {
+      "sectionSearch": "BÚSQUEDA",
+      "searchInFiles": "Buscar en los archivos",
+      "matchCase": "Coincidir mayúsculas",
+      "wholeWord": "Palabra completa",
+      "useRegex": "Usar expresión regular",
+      "invalidRegex": "Expresión regular inválida.",
+      "typeToSearch": "Escribe para buscar en todos los archivos.",
+      "searching": "Buscando…",
+      "noResults": "Sin resultados."
+    },
+    "emptyPane": {
+      "newAgent": "Nuevo agente",
+      "newAgentDescription": "Ejecuta un pi en la carpeta que elijas",
+      "newTerminal": "Nueva terminal",
+      "newTerminalDescription": "Abre un shell en la carpeta que elijas"
+    },
+    "topbar": {
+      "collapseSidebar": "Contraer barra lateral",
+      "toggleFiles": "Mostrar/ocultar archivos",
+      "filesUnavailable": "Archivos no disponibles en Cockpit"
+    },
+    "transcript": {
+      "cancel": "Cancelar",
+      "send": "Enviar",
+      "typeYourAnswer": "Escribe tu respuesta",
+      "startHint": "Envía un prompt para que el agente empiece.",
+      "workedFor": "Trabajó ${duration}"
+    },
+    "tasks": {
+      "hotReload": "Hot reload",
+      "hotRestart": "Hot restart",
+      "toggleDebugPaint": "Alternar debug paint",
+      "togglePlatform": "Alternar plataforma",
+      "quit": "Salir"
+    },
+    "notifications": {
+      "agentFinished": "El agente terminó",
+      "open": "Abrir"
     }
   },
   "settings": {
@@ -707,7 +800,8 @@
         "generateFromSourceControl": "Generar desde Control de versiones",
         "generateFromSourceControlDescription": "Cockpit envía solo el diff seleccionado y los asuntos de los commits recientes. Los patrones habituales de credenciales y los archivos sensibles se redactan antes de ejecutar el harness.",
         "discoveryFailed": "No se pudieron descubrir los harnesses de automatización instalados.",
-        "staleModel": "El modelo \"${model}\" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas."
+        "staleModel": "El modelo \"${model}\" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas.",
+        "recommendedSuffix": "Recomendado"
       }
     }
   },

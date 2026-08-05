@@ -19,6 +19,7 @@ import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
+import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/bootstrap_error_view.dart';
 import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
@@ -237,26 +238,23 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
     BuildContext context,
     DirtySession crash,
   ) async {
+    final tr = context.t.core.crash;
     final ok = await showConfirmDialog(
       context,
-      title: 'Cockpit closed unexpectedly',
-      message:
-          'The previous session (version ${crash.appVersion}) ended without '
-          'shutting down cleanly. Want to report it? The log is included and '
-          'you can review everything before sending.',
-      confirmLabel: 'Report',
-      cancelLabel: 'Dismiss',
+      title: tr.bannerTitle,
+      message: tr.crashMessage(version: crash.appVersion),
+      confirmLabel: tr.report,
+      cancelLabel: tr.dismiss,
     );
     if (!ok || !context.mounted) return;
     await showErrorReportDialog(
       context,
-      title: 'Unexpected shutdown',
-      error:
-          'Session started at ${crash.startedAt.toIso8601String()} '
-          '(pid ${crash.pid}) ended without a clean shutdown.',
-      description:
-          'No error was captured — the app was terminated by the system. The '
-          'log below is from that session and is the most useful part.',
+      title: tr.title,
+      error: tr.crashError(
+        startedAt: crash.startedAt.toIso8601String(),
+        pid: crash.pid,
+      ),
+      description: tr.crashDescription,
     );
   }
 
