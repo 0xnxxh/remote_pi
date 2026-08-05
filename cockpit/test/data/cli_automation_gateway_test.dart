@@ -124,6 +124,30 @@ void main() {
     expect(AutomationHarnessId.gemini.recommendedModelId, 'flash');
   });
 
+  test('discovered catalog replaces built-ins so retired ids go stale', () {
+    const retired = AutomationModel(id: 'gpt-5.6-terra', label: 'Retired');
+    const live = AutomationModel(id: 'gpt-6-atlas', label: 'GPT-6 Atlas');
+
+    // Descoberta bem-sucedida manda: o built-in aposentado some do catálogo,
+    // que é o que faz a validação de stale model voltar a disparar.
+    final withDiscovery = CliAutomationGateway.resolveModels(
+      const [live],
+      const [retired],
+    );
+    expect(withDiscovery.map((model) => model.id), ['gpt-6-atlas']);
+
+    // Sem catálogo machine-readable (claude/gemini/copilot) os built-ins seguem
+    // sendo a única lista disponível.
+    final withoutDiscovery = CliAutomationGateway.resolveModels(
+      const [],
+      AutomationHarnessId.claude.builtInModels,
+    );
+    expect(
+      withoutDiscovery.map((model) => model.id),
+      containsAll(<String>['sonnet', 'opus']),
+    );
+  });
+
   test('redacts credentials and validates generated messages', () {
     final prompt = CommitMessagePrompt.build(
       'diff --git a/app.dart b/app.dart\n+api_key=secret-value',
@@ -140,9 +164,6 @@ void main() {
     expect(CommitMessagePrompt.systemPrompt, contains('1–3 lines'));
     expect(CommitMessagePrompt.validate('fix: safe subject'), isNull);
     expect(CommitMessagePrompt.validate('fix: invalid.'), isNotNull);
-    expect(
-      CommitMessagePrompt.validate('fix: invalid.'),
-      contains('period'),
-    );
+    expect(CommitMessagePrompt.validate('fix: invalid.'), contains('period'));
   });
 }

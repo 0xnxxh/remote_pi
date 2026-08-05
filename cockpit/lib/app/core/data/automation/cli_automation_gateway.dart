@@ -56,7 +56,7 @@ class CliAutomationGateway implements AutomationGateway {
         AutomationHarnessId.claude ||
         AutomationHarnessId.gemini => const <AutomationModel>[],
       };
-      return _uniqueModels([...discovered, ...id.builtInModels]);
+      return resolveModels(discovered, id.builtInModels);
     } catch (_) {
       // Descoberta de modelos é best-effort. O default do próprio CLI continua
       // disponível mesmo se uma versão antiga não oferecer listagem.
@@ -154,6 +154,11 @@ class CliAutomationGateway implements AutomationGateway {
         'Another commit message is already being generated.',
       );
     }
+    // Zerado **antes** do primeiro await: resolver o executável e escrever o
+    // system prompt do codex leva tempo suficiente para o usuário cancelar, e
+    // reciclar a flag depois desses awaits descartava esse cancel — o CLI
+    // acabava spawnado mesmo com a UI já de volta ao estado ocioso.
+    _cancelRequested = false;
     final executable = await resolveExecutable(
       selection.harnessId.executableName,
     );
@@ -182,7 +187,13 @@ class CliAutomationGateway implements AutomationGateway {
       request.prompt,
       codexSystemPromptPath: codexSystemPromptPath,
     );
-    _cancelRequested = false;
+    if (_cancelRequested) {
+      await _deleteTemporaryDirectory(systemPromptDirectory);
+      throw const AutomationError(
+        AutomationErrorKind.cancelled,
+        'Commit message generation was cancelled.',
+      );
+    }
     Process process;
     try {
       process = await Process.start(
@@ -462,6 +473,18 @@ class CliAutomationGateway implements AutomationGateway {
   static List<AutomationModel> parseCopilotModels(String output) {
     return const <AutomationModel>[];
   }
+
+  /// Catálogo efetivo de um harness. O que a descoberta traz **substitui** os
+  /// built-ins em vez de somar: fundindo os dois, um id curado que o vendor
+  /// aposentou ficaria em `harness.models` para sempre e passaria batido pela
+  /// validação de stale model (`reconcileStaleModel` e a checagem pré-spawn do
+  /// `AutomationController`), que existe justamente para pegar esse caso.
+  /// Built-ins seguem valendo para harnesses sem catálogo machine-readable
+  /// (claude/gemini/copilot) e quando a descoberta falha.
+  static List<AutomationModel> resolveModels(
+    List<AutomationModel> discovered,
+    List<AutomationModel> builtIns,
+  ) => _uniqueModels(discovered.isNotEmpty ? discovered : builtIns);
 
   static List<AutomationModel> _uniqueModels(List<AutomationModel> values) {
     final byId = <String, AutomationModel>{};
