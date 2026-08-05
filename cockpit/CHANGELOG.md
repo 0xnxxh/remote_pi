@@ -24,6 +24,35 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.21.0] - 2026-08-05
+
+Cockpit now speaks your language, and can write your commit messages for you.
+
+### Added
+
+- **Interface in English, Português (BR) and Español.** Cockpit follows your
+  system language on first launch and falls back to English when the system
+  language isn't supported. You can pin one in **Settings → General →
+  Language**; the whole window, including the menu bar, switches immediately.
+  Thanks, @tecrodrigocastro.
+- **Commit messages written by a coding agent.** Pick a CLI you already have
+  installed in **Settings → Automations** (Pi, Claude Code, Codex CLI, Gemini
+  CLI, OpenCode or Copilot CLI), optionally pick a model, and a **Generate**
+  button shows up in Source Control and in the per-file commit dialog. Only the
+  diff you're committing and your recent commit subjects are sent, common
+  credential patterns and sensitive files are stripped first, and nothing is
+  committed until you review the message. Thanks, @pretodev.
+- The Source Control list/tree toggle now sticks across sessions and
+  workspaces.
+
+### Fixed
+
+- The window no longer freezes when a terminal produces a burst of output, such
+  as a busy TUI redrawing. Thanks, @pretodev.
+- Language servers that failed to start are no longer left running in the
+  background.
+- Choosing a workspace photo now opens the file picker in the workspace folder.
+
 ## [1.20.0] - 2026-08-04
 
 The internal CLI was rewritten in Rust. It now works on Intel Macs, can be
