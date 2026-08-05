@@ -102,7 +102,13 @@ class LspClientImpl implements LspClient {
       await _handshake();
       return const Success(null);
     } catch (error, stackTrace) {
+      final failed = _process;
       _process = null;
+      _initialized = false;
+      if (failed != null) {
+        failed.kill(ProcessSignal.sigterm);
+        unawaited(LspProcessRegistry.unregister(failed.pid));
+      }
       return Failure(
         LspError(
           'Failed to start "${spec.executable}": $error',

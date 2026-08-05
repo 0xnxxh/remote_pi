@@ -1,7 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io'
-    show Directory, File, FileSystemEntity, FileSystemEntityType, Platform;
+    show
+        Directory,
+        File,
+        FileSystemEntity,
+        FileSystemEntityType,
+        FileSystemException,
+        Platform;
 import 'dart:math' show max;
 
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
@@ -25,6 +31,8 @@ import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway_factory.da
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/services/commit_message_prompt.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/workspace_layout_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
@@ -47,6 +55,7 @@ import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_semantic_tokens.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/utils/path_utils.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
@@ -102,6 +111,7 @@ class CockpitViewModel extends ChangeNotifier {
     this._scrollback,
     this._gitRunner,
     this._gitDiff,
+    this._automation,
     this.realmCtrl,
     this._taskDiscovery,
     this._taskRunner,
@@ -171,6 +181,12 @@ class CockpitViewModel extends ChangeNotifier {
   final TerminalScrollbackStore _scrollback;
   final GitCommandRunner _gitRunner;
   final GitDiffReader _gitDiff;
+  final AutomationController _automation;
+  AutomationSelection? _automationSelection;
+
+  void setAutomationSelection(AutomationSelection? selection) {
+    _automationSelection = selection;
+  }
 
   List<LaunchableApp> _availableApps = const [];
 
@@ -2237,6 +2253,114 @@ class CockpitViewModel extends ChangeNotifier {
     notifyListeners();
     return err;
   }
+
+  /// Gera uma mensagem para o commit isolado de [absPath]. O contexto enviado
+  /// ao harness contém só o diff desse arquivo (mais os últimos subjects), não
+  /// o restante do working tree.
+  Future<Result<GeneratedCommitMessage, String>> generateCommitMessageForFile(
+    String absPath,
+  ) async {
+    final pid = _selectedProjectId;
+    if (pid == null) return const Failure('No workspace selected.');
+    final root = rootContaining(pid, absPath);
+    if (root == null) {
+      return const Failure('File is outside the workspace roots.');
+    }
+    final rel = _subOf(absPath, root);
+    String diff;
+    if (gitStatusForPath(absPath) == GitFileStatus.untracked) {
+      try {
+        final content = await File(absPath).readAsString();
+        diff =
+            'diff --git a/$rel b/$rel\n'
+            'new file mode 100644\n'
+            '--- /dev/null\n'
+            '+++ b/$rel\n'
+            '${content.split('\n').map((line) => '+$line').join('\n')}';
+      } on FileSystemException catch (error) {
+        return Failure('Could not read the file: ${error.message}');
+      } on FormatException {
+        return const Failure(
+          'A commit message cannot be generated for a binary file.',
+        );
+      }
+    } else {
+      final captured = await git.output(root, ['diff', 'HEAD', '--', rel]);
+      if (captured.$1 != 0) {
+        return Failure(
+          captured.$2.isEmpty ? 'Could not read the file diff.' : captured.$2,
+        );
+      }
+      diff = captured.$2;
+    }
+    if (diff.trim().isEmpty) {
+      return const Failure('There are no changes to describe for this file.');
+    }
+
+    return _generateCommitMessage(root, diff);
+  }
+
+  /// Gera uma mensagem para o composer principal do Source Control usando
+  /// exatamente o index que [commitStaged] vai comitar.
+  Future<Result<GeneratedCommitMessage, String>>
+  generateStagedCommitMessage() async {
+    final pid = _selectedProjectId;
+    if (pid == null) return const Failure('No workspace selected.');
+    final roots = rootsOf(
+      pid,
+    ).where((root) => stagedFilesOfRoot(root).isNotEmpty).toList();
+    if (roots.isEmpty) {
+      return const Failure('There are no staged changes to describe.');
+    }
+    if (roots.length > 1) {
+      return const Failure(
+        'Staged changes belong to multiple repositories. Generate them separately.',
+      );
+    }
+    final root = roots.single;
+    final captured = await git.output(root, const ['diff', '--cached']);
+    if (captured.$1 != 0 || captured.$2.trim().isEmpty) {
+      return Failure(
+        captured.$2.isEmpty ? 'Could not read the staged diff.' : captured.$2,
+      );
+    }
+    return _generateCommitMessage(root, captured.$2);
+  }
+
+  Future<Result<GeneratedCommitMessage, String>> _generateCommitMessage(
+    String root,
+    String diff,
+  ) async {
+    final selection = _automationSelection;
+    if (selection == null) {
+      return const Failure('Configure a commit message harness in Settings.');
+    }
+    final history = await git.output(root, const [
+      'log',
+      '-8',
+      '--pretty=format:%s',
+    ]);
+    final subjects = history.$1 == 0
+        ? history.$2
+              .split('\n')
+              .where((line) => line.trim().isNotEmpty)
+              .toList()
+        : const <String>[];
+    final generated = await _automation.generate(
+      selection: selection,
+      request: AutomationRequest(
+        repositoryPath: root,
+        prompt: CommitMessagePrompt.build(diff, subjects),
+      ),
+    );
+    return generated.fold<Result<GeneratedCommitMessage, String>>(
+      Success.new,
+      (error) => Failure(error.message),
+    );
+  }
+
+  Future<void> cancelCommitMessageGeneration() =>
+      _automation.cancelGeneration();
 
   /// Commit (Source Control): comita **só** [absPath] com [message], na root
   /// dona do caminho. Untracked precisa de `git add` antes (pathspec de commit
