@@ -45,6 +45,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$es settings = _Translations$settings$es._(_root);
 	@override late final _Translations$automation$es automation = _Translations$automation$es._(_root);
 	@override late final _Translations$fileOperation$es fileOperation = _Translations$fileOperation$es._(_root);
+	@override late final _Translations$theme$es theme = _Translations$theme$es._(_root);
 }
 
 // Path: core
@@ -167,6 +168,16 @@ class _Translations$fileOperation$es extends Translations$fileOperation$en {
 
 	// Translations
 	@override late final _Translations$fileOperation$error$es error = _Translations$fileOperation$error$es._(_root);
+}
+
+// Path: theme
+class _Translations$theme$es extends Translations$theme$en {
+	_Translations$theme$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override late final _Translations$theme$error$es error = _Translations$theme$error$es._(_root);
 }
 
 // Path: core.bootstrapError
@@ -1104,6 +1115,25 @@ class _Translations$fileOperation$error$es extends Translations$fileOperation$er
 	@override String get invalidName => 'Nombre inválido.';
 }
 
+// Path: theme.error
+class _Translations$theme$error$es extends Translations$theme$error$en {
+	_Translations$theme$error$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get io => 'No se pudo leer o escribir el archivo del tema.';
+	@override String ioDetail({required Object detail}) => 'No se pudo leer o escribir el archivo del tema: ${detail}';
+	@override String malformedJson({required Object detail}) => 'Este archivo no es JSON válido: ${detail}';
+	@override String get invalidTheme => 'Este archivo no es un tema válido.';
+	@override String get reservedId => 'Este tema usa el id de un tema nativo. Cambia el "id" en el archivo e impórtalo de nuevo.';
+	@override String notAnObject({required Object field}) => 'Se esperaba un objeto en "${field}".';
+	@override String missingField({required Object field}) => 'Falta el campo obligatorio "${field}".';
+	@override String badColor({required Object value, required Object field}) => '"${value}" en "${field}" no es un color. Usa #RGB, #RRGGBB o #RRGGBBAA.';
+	@override String unknownBase({required Object value}) => 'Tema base "${value}" desconocido en "extends".';
+	@override String get noVariants => 'El tema no declara ningún variant. Añade "dark", "light" o ambos en "variants".';
+}
+
 // Path: settings.page.header
 class _Translations$settings$page$header$es extends Translations$settings$page$header$en {
 	_Translations$settings$page$header$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1224,6 +1254,16 @@ class _Translations$settings$page$appearance$es extends Translations$settings$pa
 
 	// Translations
 	@override String get sectionTheme => 'Tema';
+	@override String get themeTitle => 'Tema';
+	@override String get themeDesc => 'Colores de la app, resaltado de código y paleta del terminal.';
+	@override String get modeTitle => 'Modo';
+	@override String get modeDesc => 'Qué variante del tema usar.';
+	@override String modeOnlyDark({required Object theme}) => '"${theme}" solo trae la variante oscura, así que esto no tiene efecto.';
+	@override String modeOnlyLight({required Object theme}) => '"${theme}" solo trae la variante clara, así que esto no tiene efecto.';
+	@override String get themeFileTitle => 'Archivo de tema';
+	@override String get themeFileDesc => 'Importa un tema desde un archivo JSON, o exporta el activo.';
+	@override String get previewCode => 'Código';
+	@override String get previewTerminal => 'Terminal';
 	@override String get themeSystem => 'Sistema';
 	@override String get themeLight => 'Claro';
 	@override String get themeDark => 'Oscuro';
@@ -1236,12 +1276,17 @@ class _Translations$settings$page$appearance$es extends Translations$settings$pa
 	@override String get codeSizeTitle => 'Tamaño del código';
 	@override String get terminalFontTitle => 'Fuente del terminal';
 	@override String get terminalFontDesc => 'Usa el tamaño del código. Vacío = predeterminado del sistema.';
-	@override String get sectionSyntax => 'Sintaxis';
-	@override String get highlightThemeTitle => 'Tema de resaltado';
-	@override String get highlightThemeDesc => 'Colores del código, independientes del tema de la aplicación.';
 	@override String get sectionConversation => 'Conversación';
 	@override String get pinUserMessageTitle => 'Fijar mensaje del usuario';
 	@override String get pinUserMessageDesc => 'La pregunta permanece fija arriba mientras la respuesta se desplaza.';
+	@override String get importTheme => 'Importar…';
+	@override String get exportTheme => 'Exportar…';
+	@override String get deleteTheme => 'Eliminar';
+	@override String get importThemeDialog => 'Elige un archivo de tema';
+	@override String get exportThemeDialog => 'Guardar tema como';
+	@override String themeImported({required Object name}) => 'Tema "${name}" importado.';
+	@override String get themeExported => 'Tema guardado.';
+	@override String get themeDeleted => 'Tema eliminado.';
 }
 
 // Path: settings.page.notifications
@@ -2016,6 +2061,16 @@ extension on TranslationsEs {
 			'settings.page.terminal.shellDesc' => 'Qué shell abren las nuevas pestañas de terminal. La flecha junto al + sigue abriendo cualquier otro, solo para esa pestaña.',
 			'settings.page.terminal.noWslMessage' => 'No se encontraron distros de WSL. Instala una (wsl.exe --install) y reinicia Cockpit para verla listada aquí.',
 			'settings.page.appearance.sectionTheme' => 'Tema',
+			'settings.page.appearance.themeTitle' => 'Tema',
+			'settings.page.appearance.themeDesc' => 'Colores de la app, resaltado de código y paleta del terminal.',
+			'settings.page.appearance.modeTitle' => 'Modo',
+			'settings.page.appearance.modeDesc' => 'Qué variante del tema usar.',
+			'settings.page.appearance.modeOnlyDark' => ({required Object theme}) => '"${theme}" solo trae la variante oscura, así que esto no tiene efecto.',
+			'settings.page.appearance.modeOnlyLight' => ({required Object theme}) => '"${theme}" solo trae la variante clara, así que esto no tiene efecto.',
+			'settings.page.appearance.themeFileTitle' => 'Archivo de tema',
+			'settings.page.appearance.themeFileDesc' => 'Importa un tema desde un archivo JSON, o exporta el activo.',
+			'settings.page.appearance.previewCode' => 'Código',
+			'settings.page.appearance.previewTerminal' => 'Terminal',
 			'settings.page.appearance.themeSystem' => 'Sistema',
 			'settings.page.appearance.themeLight' => 'Claro',
 			'settings.page.appearance.themeDark' => 'Oscuro',
@@ -2028,12 +2083,17 @@ extension on TranslationsEs {
 			'settings.page.appearance.codeSizeTitle' => 'Tamaño del código',
 			'settings.page.appearance.terminalFontTitle' => 'Fuente del terminal',
 			'settings.page.appearance.terminalFontDesc' => 'Usa el tamaño del código. Vacío = predeterminado del sistema.',
-			'settings.page.appearance.sectionSyntax' => 'Sintaxis',
-			'settings.page.appearance.highlightThemeTitle' => 'Tema de resaltado',
-			'settings.page.appearance.highlightThemeDesc' => 'Colores del código, independientes del tema de la aplicación.',
 			'settings.page.appearance.sectionConversation' => 'Conversación',
 			'settings.page.appearance.pinUserMessageTitle' => 'Fijar mensaje del usuario',
 			'settings.page.appearance.pinUserMessageDesc' => 'La pregunta permanece fija arriba mientras la respuesta se desplaza.',
+			'settings.page.appearance.importTheme' => 'Importar…',
+			'settings.page.appearance.exportTheme' => 'Exportar…',
+			'settings.page.appearance.deleteTheme' => 'Eliminar',
+			'settings.page.appearance.importThemeDialog' => 'Elige un archivo de tema',
+			'settings.page.appearance.exportThemeDialog' => 'Guardar tema como',
+			'settings.page.appearance.themeImported' => ({required Object name}) => 'Tema "${name}" importado.',
+			'settings.page.appearance.themeExported' => 'Tema guardado.',
+			'settings.page.appearance.themeDeleted' => 'Tema eliminado.',
 			'settings.page.notifications.sectionTitle' => 'Notificaciones',
 			'settings.page.notifications.enableTitle' => 'Activar notificaciones',
 			'settings.page.notifications.enableDesc' => 'Avisarme cuando un agente termine un turno y la ventana no esté enfocada.',
@@ -2203,6 +2263,16 @@ extension on TranslationsEs {
 			'fileOperation.error.osFailure' => ({required Object detail}) => '${detail}',
 			'fileOperation.error.nameHasSlash' => 'El nombre no puede contener “/”.',
 			'fileOperation.error.invalidName' => 'Nombre inválido.',
+			'theme.error.io' => 'No se pudo leer o escribir el archivo del tema.',
+			'theme.error.ioDetail' => ({required Object detail}) => 'No se pudo leer o escribir el archivo del tema: ${detail}',
+			'theme.error.malformedJson' => ({required Object detail}) => 'Este archivo no es JSON válido: ${detail}',
+			'theme.error.invalidTheme' => 'Este archivo no es un tema válido.',
+			'theme.error.reservedId' => 'Este tema usa el id de un tema nativo. Cambia el "id" en el archivo e impórtalo de nuevo.',
+			'theme.error.notAnObject' => ({required Object field}) => 'Se esperaba un objeto en "${field}".',
+			'theme.error.missingField' => ({required Object field}) => 'Falta el campo obligatorio "${field}".',
+			'theme.error.badColor' => ({required Object value, required Object field}) => '"${value}" en "${field}" no es un color. Usa #RGB, #RRGGBB o #RRGGBBAA.',
+			'theme.error.unknownBase' => ({required Object value}) => 'Tema base "${value}" desconocido en "extends".',
+			'theme.error.noVariants' => 'El tema no declara ningún variant. Añade "dark", "light" o ambos en "variants".',
 			_ => null,
 		};
 	}

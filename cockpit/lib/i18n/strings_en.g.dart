@@ -46,6 +46,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$automation$en automation = Translations$automation$en.internal(_root);
 	late final Translations$fileOperation$en fileOperation = Translations$fileOperation$en.internal(_root);
+	late final Translations$theme$en theme = Translations$theme$en.internal(_root);
 }
 
 // Path: core
@@ -214,6 +215,16 @@ class Translations$fileOperation$en {
 
 	// Translations
 	late final Translations$fileOperation$error$en error = Translations$fileOperation$error$en.internal(_root);
+}
+
+// Path: theme
+class Translations$theme$en {
+	Translations$theme$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+	late final Translations$theme$error$en error = Translations$theme$error$en.internal(_root);
 }
 
 // Path: core.bootstrapError
@@ -2159,6 +2170,45 @@ class Translations$fileOperation$error$en {
 	String get invalidName => 'Invalid name.';
 }
 
+// Path: theme.error
+class Translations$theme$error$en {
+	Translations$theme$error$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Could not read or write the theme file.'
+	String get io => 'Could not read or write the theme file.';
+
+	/// en: 'Could not read or write the theme file: ${detail}'
+	String ioDetail({required Object detail}) => 'Could not read or write the theme file: ${detail}';
+
+	/// en: 'This file is not valid JSON: ${detail}'
+	String malformedJson({required Object detail}) => 'This file is not valid JSON: ${detail}';
+
+	/// en: 'This file is not a valid theme.'
+	String get invalidTheme => 'This file is not a valid theme.';
+
+	/// en: 'This theme uses the id of a built-in theme. Change "id" in the file and import again.'
+	String get reservedId => 'This theme uses the id of a built-in theme. Change "id" in the file and import again.';
+
+	/// en: 'Expected an object at "${field}".'
+	String notAnObject({required Object field}) => 'Expected an object at "${field}".';
+
+	/// en: 'Missing required field "${field}".'
+	String missingField({required Object field}) => 'Missing required field "${field}".';
+
+	/// en: '"${value}" at "${field}" is not a color. Use #RGB, #RRGGBB or #RRGGBBAA.'
+	String badColor({required Object value, required Object field}) => '"${value}" at "${field}" is not a color. Use #RGB, #RRGGBB or #RRGGBBAA.';
+
+	/// en: 'Unknown base theme "${value}" in "extends".'
+	String unknownBase({required Object value}) => 'Unknown base theme "${value}" in "extends".';
+
+	/// en: 'The theme declares no variant. Add "dark", "light" or both under "variants".'
+	String get noVariants => 'The theme declares no variant. Add "dark", "light" or both under "variants".';
+}
+
 // Path: settings.page.header
 class Translations$settings$page$header$en {
 	Translations$settings$page$header$en.internal(this._root);
@@ -2397,6 +2447,36 @@ class Translations$settings$page$appearance$en {
 	/// en: 'Theme'
 	String get sectionTheme => 'Theme';
 
+	/// en: 'Theme'
+	String get themeTitle => 'Theme';
+
+	/// en: 'App colors, code highlighting and terminal palette.'
+	String get themeDesc => 'App colors, code highlighting and terminal palette.';
+
+	/// en: 'Mode'
+	String get modeTitle => 'Mode';
+
+	/// en: 'Which variant of the theme to use.'
+	String get modeDesc => 'Which variant of the theme to use.';
+
+	/// en: '"${theme}" only ships a dark variant, so this has no effect.'
+	String modeOnlyDark({required Object theme}) => '"${theme}" only ships a dark variant, so this has no effect.';
+
+	/// en: '"${theme}" only ships a light variant, so this has no effect.'
+	String modeOnlyLight({required Object theme}) => '"${theme}" only ships a light variant, so this has no effect.';
+
+	/// en: 'Theme file'
+	String get themeFileTitle => 'Theme file';
+
+	/// en: 'Import a theme from a JSON file, or export the active one.'
+	String get themeFileDesc => 'Import a theme from a JSON file, or export the active one.';
+
+	/// en: 'Code'
+	String get previewCode => 'Code';
+
+	/// en: 'Terminal'
+	String get previewTerminal => 'Terminal';
+
 	/// en: 'System'
 	String get themeSystem => 'System';
 
@@ -2433,15 +2513,6 @@ class Translations$settings$page$appearance$en {
 	/// en: 'Uses the code size. Empty = system default.'
 	String get terminalFontDesc => 'Uses the code size. Empty = system default.';
 
-	/// en: 'Syntax'
-	String get sectionSyntax => 'Syntax';
-
-	/// en: 'Highlight theme'
-	String get highlightThemeTitle => 'Highlight theme';
-
-	/// en: 'Code colors, independent of the app theme.'
-	String get highlightThemeDesc => 'Code colors, independent of the app theme.';
-
 	/// en: 'Conversation'
 	String get sectionConversation => 'Conversation';
 
@@ -2450,6 +2521,30 @@ class Translations$settings$page$appearance$en {
 
 	/// en: 'The question stays fixed at the top while the answer scrolls.'
 	String get pinUserMessageDesc => 'The question stays fixed at the top while the answer scrolls.';
+
+	/// en: 'Import…'
+	String get importTheme => 'Import…';
+
+	/// en: 'Export…'
+	String get exportTheme => 'Export…';
+
+	/// en: 'Remove'
+	String get deleteTheme => 'Remove';
+
+	/// en: 'Pick a theme file'
+	String get importThemeDialog => 'Pick a theme file';
+
+	/// en: 'Save theme as'
+	String get exportThemeDialog => 'Save theme as';
+
+	/// en: 'Theme "${name}" imported.'
+	String themeImported({required Object name}) => 'Theme "${name}" imported.';
+
+	/// en: 'Theme saved.'
+	String get themeExported => 'Theme saved.';
+
+	/// en: 'Theme removed.'
+	String get themeDeleted => 'Theme removed.';
 }
 
 // Path: settings.page.notifications
@@ -3498,6 +3593,16 @@ extension on Translations {
 			'settings.page.terminal.shellDesc' => 'Which shell new terminal tabs open. The arrow next to + still opens any other one, just for that tab.',
 			'settings.page.terminal.noWslMessage' => 'No WSL distros found. Install one (wsl.exe --install) and restart Cockpit to see it listed here.',
 			'settings.page.appearance.sectionTheme' => 'Theme',
+			'settings.page.appearance.themeTitle' => 'Theme',
+			'settings.page.appearance.themeDesc' => 'App colors, code highlighting and terminal palette.',
+			'settings.page.appearance.modeTitle' => 'Mode',
+			'settings.page.appearance.modeDesc' => 'Which variant of the theme to use.',
+			'settings.page.appearance.modeOnlyDark' => ({required Object theme}) => '"${theme}" only ships a dark variant, so this has no effect.',
+			'settings.page.appearance.modeOnlyLight' => ({required Object theme}) => '"${theme}" only ships a light variant, so this has no effect.',
+			'settings.page.appearance.themeFileTitle' => 'Theme file',
+			'settings.page.appearance.themeFileDesc' => 'Import a theme from a JSON file, or export the active one.',
+			'settings.page.appearance.previewCode' => 'Code',
+			'settings.page.appearance.previewTerminal' => 'Terminal',
 			'settings.page.appearance.themeSystem' => 'System',
 			'settings.page.appearance.themeLight' => 'Light',
 			'settings.page.appearance.themeDark' => 'Dark',
@@ -3510,12 +3615,17 @@ extension on Translations {
 			'settings.page.appearance.codeSizeTitle' => 'Code size',
 			'settings.page.appearance.terminalFontTitle' => 'Terminal font',
 			'settings.page.appearance.terminalFontDesc' => 'Uses the code size. Empty = system default.',
-			'settings.page.appearance.sectionSyntax' => 'Syntax',
-			'settings.page.appearance.highlightThemeTitle' => 'Highlight theme',
-			'settings.page.appearance.highlightThemeDesc' => 'Code colors, independent of the app theme.',
 			'settings.page.appearance.sectionConversation' => 'Conversation',
 			'settings.page.appearance.pinUserMessageTitle' => 'Pin user message',
 			'settings.page.appearance.pinUserMessageDesc' => 'The question stays fixed at the top while the answer scrolls.',
+			'settings.page.appearance.importTheme' => 'Import…',
+			'settings.page.appearance.exportTheme' => 'Export…',
+			'settings.page.appearance.deleteTheme' => 'Remove',
+			'settings.page.appearance.importThemeDialog' => 'Pick a theme file',
+			'settings.page.appearance.exportThemeDialog' => 'Save theme as',
+			'settings.page.appearance.themeImported' => ({required Object name}) => 'Theme "${name}" imported.',
+			'settings.page.appearance.themeExported' => 'Theme saved.',
+			'settings.page.appearance.themeDeleted' => 'Theme removed.',
 			'settings.page.notifications.sectionTitle' => 'Notifications',
 			'settings.page.notifications.enableTitle' => 'Enable notifications',
 			'settings.page.notifications.enableDesc' => 'Alert me when an agent finishes a turn and the window is not focused.',
@@ -3685,6 +3795,16 @@ extension on Translations {
 			'fileOperation.error.osFailure' => ({required Object detail}) => '${detail}',
 			'fileOperation.error.nameHasSlash' => 'Name cannot contain “/”.',
 			'fileOperation.error.invalidName' => 'Invalid name.',
+			'theme.error.io' => 'Could not read or write the theme file.',
+			'theme.error.ioDetail' => ({required Object detail}) => 'Could not read or write the theme file: ${detail}',
+			'theme.error.malformedJson' => ({required Object detail}) => 'This file is not valid JSON: ${detail}',
+			'theme.error.invalidTheme' => 'This file is not a valid theme.',
+			'theme.error.reservedId' => 'This theme uses the id of a built-in theme. Change "id" in the file and import again.',
+			'theme.error.notAnObject' => ({required Object field}) => 'Expected an object at "${field}".',
+			'theme.error.missingField' => ({required Object field}) => 'Missing required field "${field}".',
+			'theme.error.badColor' => ({required Object value, required Object field}) => '"${value}" at "${field}" is not a color. Use #RGB, #RRGGBB or #RRGGBBAA.',
+			'theme.error.unknownBase' => ({required Object value}) => 'Unknown base theme "${value}" in "extends".',
+			'theme.error.noVariants' => 'The theme declares no variant. Add "dark", "light" or both under "variants".',
 			_ => null,
 		};
 	}

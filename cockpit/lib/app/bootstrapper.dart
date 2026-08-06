@@ -13,6 +13,7 @@ import 'package:cockpit/app/core/data/repositories/json_settings_store.dart';
 import 'package:cockpit/app/core/data/setup/hive_migration.dart';
 import 'package:cockpit/app/core/data/setup/json_state_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
+import 'package:cockpit/app/core/data/theme_store.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/env.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
@@ -119,7 +120,10 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
         stateDir,
         JsonSettingsStore.storeName,
       );
-      final settings = SettingsController(JsonSettingsStore(settingsStore));
+      final settings = SettingsController(
+        JsonSettingsStore(settingsStore),
+        const ThemeStore(),
+      );
       await settings.load();
 
       final winStore = await JsonStateStore.open(stateDir, 'window_state');
@@ -311,6 +315,7 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
           colors: tokens.colors,
           typo: tokens.typo,
           syntax: tokens.syntax,
+          terminal: tokens.terminal,
           child: DevToolsInspector(child: child ?? const SizedBox()),
         );
       },

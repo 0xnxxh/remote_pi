@@ -464,7 +464,7 @@ class _ProjectItem extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: context.typo.mono.copyWith(
                     fontSize: 11,
-                    color: Colors.white,
+                    color: onColor(colors.accent),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1465,12 +1465,8 @@ class _WorkspaceDragChip extends StatelessWidget {
         color: colors.panel2,
         borderRadius: BorderRadius.circular(7),
         border: Border.all(color: colors.accent),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
+        boxShadow: [
+          BoxShadow(color: colors.shadow, blurRadius: 12, offset: Offset(0, 4)),
         ],
       ),
       child: Row(

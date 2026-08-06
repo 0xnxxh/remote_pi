@@ -671,6 +671,16 @@
       },
       "appearance": {
         "sectionTheme": "Theme",
+        "themeTitle": "Theme",
+        "themeDesc": "App colors, code highlighting and terminal palette.",
+        "modeTitle": "Mode",
+        "modeDesc": "Which variant of the theme to use.",
+        "modeOnlyDark": "\"${theme}\" only ships a dark variant, so this has no effect.",
+        "modeOnlyLight": "\"${theme}\" only ships a light variant, so this has no effect.",
+        "themeFileTitle": "Theme file",
+        "themeFileDesc": "Import a theme from a JSON file, or export the active one.",
+        "previewCode": "Code",
+        "previewTerminal": "Terminal",
         "themeSystem": "System",
         "themeLight": "Light",
         "themeDark": "Dark",
@@ -683,12 +693,17 @@
         "codeSizeTitle": "Code size",
         "terminalFontTitle": "Terminal font",
         "terminalFontDesc": "Uses the code size. Empty = system default.",
-        "sectionSyntax": "Syntax",
-        "highlightThemeTitle": "Highlight theme",
-        "highlightThemeDesc": "Code colors, independent of the app theme.",
         "sectionConversation": "Conversation",
         "pinUserMessageTitle": "Pin user message",
-        "pinUserMessageDesc": "The question stays fixed at the top while the answer scrolls."
+        "pinUserMessageDesc": "The question stays fixed at the top while the answer scrolls.",
+        "importTheme": "Import…",
+        "exportTheme": "Export…",
+        "deleteTheme": "Remove",
+        "importThemeDialog": "Pick a theme file",
+        "exportThemeDialog": "Save theme as",
+        "themeImported": "Theme \"${name}\" imported.",
+        "themeExported": "Theme saved.",
+        "themeDeleted": "Theme removed."
       },
       "notifications": {
         "sectionTitle": "Notifications",
@@ -881,6 +896,20 @@
       "osFailure": "${detail}",
       "nameHasSlash": "Name cannot contain “/”.",
       "invalidName": "Invalid name."
+    }
+  },
+  "theme": {
+    "error": {
+      "io": "Could not read or write the theme file.",
+      "ioDetail": "Could not read or write the theme file: ${detail}",
+      "malformedJson": "This file is not valid JSON: ${detail}",
+      "invalidTheme": "This file is not a valid theme.",
+      "reservedId": "This theme uses the id of a built-in theme. Change \"id\" in the file and import again.",
+      "notAnObject": "Expected an object at \"${field}\".",
+      "missingField": "Missing required field \"${field}\".",
+      "badColor": "\"${value}\" at \"${field}\" is not a color. Use #RGB, #RRGGBB or #RRGGBBAA.",
+      "unknownBase": "Unknown base theme \"${value}\" in \"extends\".",
+      "noVariants": "The theme declares no variant. Add \"dark\", \"light\" or both under \"variants\"."
     }
   }
 }

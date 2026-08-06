@@ -28,7 +28,6 @@ import 'package:cockpit/app/cockpit/ui/widgets/db_redis_table.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_viewer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/adaptive_terminal_pane.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
-import 'package:cockpit/app/core/ui/themes/terminal_theme.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -1372,7 +1371,7 @@ class _PaneBodyState extends State<_PaneBody> {
               focusNode: _terminalFocus,
               onKeyEvent: (_) => KeyEventResult.ignored,
               readOnly: true,
-              theme: cockpitTerminalThemeFor(Theme.of(context).brightness),
+              theme: context.terminalTheme,
               textStyle: termStyle,
             ),
           ),
@@ -1411,7 +1410,7 @@ class _PaneBodyState extends State<_PaneBody> {
                       cwd: item.currentDirectory,
                       line: line,
                     ),
-                theme: cockpitTerminalThemeFor(Theme.of(context).brightness),
+                theme: context.terminalTheme,
                 textStyle: termStyle,
               ),
             ),
@@ -1721,12 +1720,8 @@ class _DragFeedback extends StatelessWidget {
         color: colors.panel2,
         borderRadius: BorderRadius.circular(7),
         border: Border.all(color: colors.accent),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
+        boxShadow: [
+          BoxShadow(color: colors.shadow, blurRadius: 12, offset: Offset(0, 4)),
         ],
       ),
       child: Row(

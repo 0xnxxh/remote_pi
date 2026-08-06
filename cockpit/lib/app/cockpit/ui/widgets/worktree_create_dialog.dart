@@ -25,7 +25,7 @@ Future<void> showWorktreeCreateDialog(
 }) {
   return showDialog<void>(
     context: context,
-    barrierColor: const Color(0x99000000),
+    barrierColor: context.colors.scrim,
     builder: (context) => _WorktreeCreateDialog(
       rootName: rootName,
       namespace: namespace,
@@ -259,7 +259,10 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
         PrimaryButton(
           onPressed: _canCreate ? _submit : null,
           child: _submitting
-              ? const CircularProgressIndicator(size: 16, color: Colors.white)
+              ? CircularProgressIndicator(
+                  size: 16,
+                  color: onColor(context.colors.accent),
+                )
               : Text(widget.fork ? tr.fork : context.t.common.create),
         ),
       ],

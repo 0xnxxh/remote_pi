@@ -1448,9 +1448,9 @@ class _CommitComposer extends StatelessWidget {
                         PrimaryButton(
                           onPressed: submitting || generating ? null : onCommit,
                           child: submitting
-                              ? const CircularProgressIndicator(
+                              ? CircularProgressIndicator(
                                   size: 16,
-                                  color: Colors.white,
+                                  color: onColor(context.colors.accent),
                                 )
                               : Text(amend ? tr.amendCommit : tr.commit),
                         ),
@@ -3136,12 +3136,8 @@ class _FileChip extends StatelessWidget {
         color: colors.panel2,
         borderRadius: BorderRadius.circular(7),
         border: Border.all(color: colors.accent),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
+        boxShadow: [
+          BoxShadow(color: colors.shadow, blurRadius: 12, offset: Offset(0, 4)),
         ],
       ),
       child: Row(

@@ -671,6 +671,16 @@
       },
       "appearance": {
         "sectionTheme": "Tema",
+        "themeTitle": "Tema",
+        "themeDesc": "Colores de la app, resaltado de código y paleta del terminal.",
+        "modeTitle": "Modo",
+        "modeDesc": "Qué variante del tema usar.",
+        "modeOnlyDark": "\"${theme}\" solo trae la variante oscura, así que esto no tiene efecto.",
+        "modeOnlyLight": "\"${theme}\" solo trae la variante clara, así que esto no tiene efecto.",
+        "themeFileTitle": "Archivo de tema",
+        "themeFileDesc": "Importa un tema desde un archivo JSON, o exporta el activo.",
+        "previewCode": "Código",
+        "previewTerminal": "Terminal",
         "themeSystem": "Sistema",
         "themeLight": "Claro",
         "themeDark": "Oscuro",
@@ -683,12 +693,17 @@
         "codeSizeTitle": "Tamaño del código",
         "terminalFontTitle": "Fuente del terminal",
         "terminalFontDesc": "Usa el tamaño del código. Vacío = predeterminado del sistema.",
-        "sectionSyntax": "Sintaxis",
-        "highlightThemeTitle": "Tema de resaltado",
-        "highlightThemeDesc": "Colores del código, independientes del tema de la aplicación.",
         "sectionConversation": "Conversación",
         "pinUserMessageTitle": "Fijar mensaje del usuario",
-        "pinUserMessageDesc": "La pregunta permanece fija arriba mientras la respuesta se desplaza."
+        "pinUserMessageDesc": "La pregunta permanece fija arriba mientras la respuesta se desplaza.",
+        "importTheme": "Importar…",
+        "exportTheme": "Exportar…",
+        "deleteTheme": "Eliminar",
+        "importThemeDialog": "Elige un archivo de tema",
+        "exportThemeDialog": "Guardar tema como",
+        "themeImported": "Tema \"${name}\" importado.",
+        "themeExported": "Tema guardado.",
+        "themeDeleted": "Tema eliminado."
       },
       "notifications": {
         "sectionTitle": "Notificaciones",
@@ -881,6 +896,20 @@
       "osFailure": "${detail}",
       "nameHasSlash": "El nombre no puede contener “/”.",
       "invalidName": "Nombre inválido."
+    }
+  },
+  "theme": {
+    "error": {
+      "io": "No se pudo leer o escribir el archivo del tema.",
+      "ioDetail": "No se pudo leer o escribir el archivo del tema: ${detail}",
+      "malformedJson": "Este archivo no es JSON válido: ${detail}",
+      "invalidTheme": "Este archivo no es un tema válido.",
+      "reservedId": "Este tema usa el id de un tema nativo. Cambia el \"id\" en el archivo e impórtalo de nuevo.",
+      "notAnObject": "Se esperaba un objeto en \"${field}\".",
+      "missingField": "Falta el campo obligatorio \"${field}\".",
+      "badColor": "\"${value}\" en \"${field}\" no es un color. Usa #RGB, #RRGGBB o #RRGGBBAA.",
+      "unknownBase": "Tema base \"${value}\" desconocido en \"extends\".",
+      "noVariants": "El tema no declara ningún variant. Añade \"dark\", \"light\" o ambos en \"variants\"."
     }
   }
 }

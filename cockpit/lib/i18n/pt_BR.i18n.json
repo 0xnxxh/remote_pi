@@ -671,6 +671,16 @@
       },
       "appearance": {
         "sectionTheme": "Tema",
+        "themeTitle": "Tema",
+        "themeDesc": "Cores do app, realce de código e paleta do terminal.",
+        "modeTitle": "Modo",
+        "modeDesc": "Qual variante do tema usar.",
+        "modeOnlyDark": "\"${theme}\" só traz a variante escura, então isto não tem efeito.",
+        "modeOnlyLight": "\"${theme}\" só traz a variante clara, então isto não tem efeito.",
+        "themeFileTitle": "Arquivo de tema",
+        "themeFileDesc": "Importe um tema de um arquivo JSON, ou exporte o tema ativo.",
+        "previewCode": "Código",
+        "previewTerminal": "Terminal",
         "themeSystem": "Sistema",
         "themeLight": "Claro",
         "themeDark": "Escuro",
@@ -683,12 +693,17 @@
         "codeSizeTitle": "Tamanho do código",
         "terminalFontTitle": "Fonte do terminal",
         "terminalFontDesc": "Usa o tamanho do código. Vazio = padrão do sistema.",
-        "sectionSyntax": "Sintaxe",
-        "highlightThemeTitle": "Tema de destaque",
-        "highlightThemeDesc": "Cores do código, independentes do tema do aplicativo.",
         "sectionConversation": "Conversa",
         "pinUserMessageTitle": "Fixar mensagem do usuário",
-        "pinUserMessageDesc": "A pergunta fica fixa no topo enquanto a resposta rola."
+        "pinUserMessageDesc": "A pergunta fica fixa no topo enquanto a resposta rola.",
+        "importTheme": "Importar…",
+        "exportTheme": "Exportar…",
+        "deleteTheme": "Remover",
+        "importThemeDialog": "Escolha um arquivo de tema",
+        "exportThemeDialog": "Salvar tema como",
+        "themeImported": "Tema \"${name}\" importado.",
+        "themeExported": "Tema salvo.",
+        "themeDeleted": "Tema removido."
       },
       "notifications": {
         "sectionTitle": "Notificações",
@@ -881,6 +896,20 @@
       "osFailure": "${detail}",
       "nameHasSlash": "O nome não pode conter “/”.",
       "invalidName": "Nome inválido."
+    }
+  },
+  "theme": {
+    "error": {
+      "io": "Não foi possível ler ou gravar o arquivo do tema.",
+      "ioDetail": "Não foi possível ler ou gravar o arquivo do tema: ${detail}",
+      "malformedJson": "Este arquivo não é um JSON válido: ${detail}",
+      "invalidTheme": "Este arquivo não é um tema válido.",
+      "reservedId": "Este tema usa o id de um tema nativo. Mude o \"id\" no arquivo e importe de novo.",
+      "notAnObject": "Esperava um objeto em \"${field}\".",
+      "missingField": "Falta o campo obrigatório \"${field}\".",
+      "badColor": "\"${value}\" em \"${field}\" não é uma cor. Use #RGB, #RRGGBB ou #RRGGBBAA.",
+      "unknownBase": "Tema base \"${value}\" desconhecido em \"extends\".",
+      "noVariants": "O tema não declara nenhum variant. Adicione \"dark\", \"light\" ou os dois em \"variants\"."
     }
   }
 }

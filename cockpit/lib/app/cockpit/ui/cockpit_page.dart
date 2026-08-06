@@ -1219,9 +1219,7 @@ class _LspStatusBarState extends State<_LspStatusBar> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: status.running
-                        ? const Color(0xFF22C55E)
-                        : colors.text4,
+                    color: status.running ? colors.online : colors.text4,
                     shape: BoxShape.circle,
                   ),
                 ),
