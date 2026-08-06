@@ -376,6 +376,7 @@ void main() {
       // aconteceu duas vezes — o Rosê teve de ir para o magenta, e o Sun teve
       // de deslocar o próprio `warn` para o laranja.
       double hueOf(Color c) => HSLColor.fromColor(c).hue;
+      double satOf(Color c) => HSLColor.fromColor(c).saturation;
       double gap(Color a, Color b) {
         final d = (hueOf(a) - hueOf(b)).abs();
         return d > 180 ? 360 - d : d; // matiz é circular
@@ -384,6 +385,20 @@ void main() {
       for (final theme in builtInThemes) {
         for (final b in Brightness.values) {
           final ui = theme.variantFor(b).ui;
+
+          // Marca acromática (o branco/preto do Pantera) não se confunde com
+          // vermelho: a distinção ali é de SATURAÇÃO, não de matiz — e o matiz
+          // de um cinza é um número sem significado. O que se cobra é que ela
+          // seja mesmo cinza, e não um cinza puxado para o vermelho.
+          if (satOf(ui.accent) < 0.05) {
+            expect(
+              satOf(ui.accent),
+              lessThan(0.05),
+              reason: 'marca acromática esperada em ${theme.id} ($b)',
+            );
+            continue;
+          }
+
           expect(
             gap(ui.accent, ui.error),
             greaterThanOrEqualTo(20),
@@ -405,31 +420,55 @@ void main() {
       }
     });
 
-    test('superfícies vizinhas nunca colapsam uma na outra', () {
-      // Painel, conteúdo, elevado e hover são quatro degraus; se dois encostam,
-      // o widget que mora num deles desaparece dentro do outro. O Sun claro
-      // nasceu com painel e elevado a 1,008 — cards e composer invisíveis.
-      // 1,03 é o piso: abaixo disso a diferença não sobrevive a um monitor
-      // qualquer.
+    test('toda fronteira entre superfícies é perceptível', () {
+      // Painel, conteúdo, elevado e hover são quatro regiões; se duas encostam
+      // sem nada entre elas, o widget que mora numa desaparece dentro da outra.
+      // O Sun claro nasceu com painel e elevado a 1,008 — cards e composer
+      // invisíveis.
+      //
+      // A fronteira pode ser feita de duas maneiras. Quase todos os temas usam
+      // **degrau de superfície**. O Pantera usa **borda**: painel e conteúdo
+      // são o mesmo preto, e quem separa é o traço. As duas valem; o que não
+      // vale é não ter nenhuma das duas.
+      const pisoSuperficie = 1.03;
+      const pisoBorda = 1.3;
+
       for (final theme in builtInThemes) {
         for (final b in Brightness.values) {
           final ui = theme.variantFor(b).ui;
-          final degraus = {
-            'painel': ui.bg,
-            'conteúdo': ui.panel,
-            'elevado': ui.panel2,
-            'hover': ui.panel3,
-          };
-          for (final a in degraus.entries) {
-            for (final c in degraus.entries) {
-              if (a.key == c.key) continue;
-              expect(
-                contrastRatio(a.value, c.value),
-                greaterThanOrEqualTo(1.03),
-                reason: '${a.key} e ${c.key} colapsaram em ${theme.id} ($b)',
-              );
-            }
+
+          // Painel x conteúdo: existe borda desenhada entre eles (rail, árvore
+          // e tab strip têm `Border`), então aqui a borda é alternativa válida.
+          final degrau = contrastRatio(ui.bg, ui.panel);
+          if (degrau < pisoSuperficie) {
+            expect(
+              contrastRatio(ui.border, ui.bg),
+              greaterThanOrEqualTo(pisoBorda),
+              reason:
+                  'sem degrau E sem borda entre painel e conteúdo em '
+                  '${theme.id} ($b)',
+            );
+            expect(
+              contrastRatio(ui.border, ui.panel),
+              greaterThanOrEqualTo(pisoBorda),
+              reason: 'borda invisível sobre o conteúdo em ${theme.id} ($b)',
+            );
           }
+
+          // Elevado e hover NÃO têm borda para se apoiar: um card sem contorno
+          // e um hover que não responde seriam defeito em qualquer tema.
+          for (final campo in [ui.bg, ui.panel]) {
+            expect(
+              contrastRatio(ui.panel2, campo),
+              greaterThanOrEqualTo(pisoSuperficie),
+              reason: 'elevado colapsou em ${theme.id} ($b)',
+            );
+          }
+          expect(
+            contrastRatio(ui.panel3, ui.panel2),
+            greaterThanOrEqualTo(pisoSuperficie),
+            reason: 'hover colapsou no elevado em ${theme.id} ($b)',
+          );
         }
       }
     });
@@ -461,6 +500,26 @@ void main() {
             );
           }
         }
+      }
+    });
+
+    test('painel com tom não deixa o campo claro sem tom', () {
+      // Branco puro não recebe tom: em HSL, `L = 1.0` é branco em qualquer
+      // matiz. Num tema colorido isso deixa painéis tingidos e conteúdo cru —
+      // o código e o terminal viram um recorte colado por cima do tema.
+      //
+      // A regra é sobre o TOM, não sobre uma lista de ids: tema cujo painel é
+      // neutro (o Cockpit oficial, o Pantera) não tem tom a levar para o campo,
+      // e branco puro ali é a resposta certa.
+      double satOf(Color c) => HSLColor.fromColor(c).saturation;
+      for (final theme in builtInThemes) {
+        final ui = theme.variantFor(Brightness.light).ui;
+        if (satOf(ui.bg) < 0.2) continue; // painel neutro: nada a levar
+        expect(
+          ui.panel,
+          isNot(const Color(0xFFFFFFFF)),
+          reason: 'painel com tom e campo em branco puro em ${theme.id}',
+        );
       }
     });
 

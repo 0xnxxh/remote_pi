@@ -88,17 +88,23 @@ final CockpitThemeSpec cockpit2Theme = CockpitThemeSpec(
     // sobraria nenhum tom acima dele para `panel2` (composer, cards, seleção
     // do rail) ler como camada elevada. Deixando o chrome um passo abaixo do
     // branco, o branco fica reservado para o que de fato flutua.
+    //
+    // Com o chrome preso ao teto, o quanto o conteúdo afunda é a única
+    // liberdade real — e ele afunda **pouco**: o corpo da aba é onde moram o
+    // código e o terminal, e um cinza fechado ali pesa o dia inteiro. Em
+    // `#F0F0F5` a inversão vale 1,09, a mesma separação painel/conteúdo do
+    // Cockpit 1 — tão legível quanto o arranjo clássico, só invertida.
     ui: AppColors.light.copyWith(
       bg: const Color(0xFFFAFAFC), // chrome — quase branco, mas não o teto
-      panel: const Color(0xFFE9E9EF), // corpo da aba afunda
+      panel: const Color(0xFFF0F0F5), // corpo da aba afunda (de leve)
       panel2: const Color(0xFFFFFFFF), // elevado = o branco reservado
       panel3: const Color(0xFFDFDFE7), // hover (no claro, escurece)
       border: const Color(0xFFE0E0E7),
       border2: const Color(0xFFCACAD4),
-      // O conteúdo afundado é cinza (não branco), então o texto fraco perde
-      // contraste ali: com o valor do tema oficial, `text3` (placeholder,
-      // metadado) ficava a 2,8:1 dentro da aba. Simétrico ao ajuste que o
-      // variant escuro já precisou.
+      // O conteúdo afundado não é branco, então o texto fraco perde contraste
+      // ali: com o valor do tema oficial, `text3` (placeholder, metadado)
+      // ficava a 2,8:1 dentro da aba. Simétrico ao ajuste que o variant escuro
+      // já precisou.
       text3: const Color(0xFF7A7A85),
       text4: const Color(0xFFA2A2AC),
     ),
@@ -135,6 +141,73 @@ ThemeVariant _variant({
   }, base: terminal),
 );
 
+/// **Pantera** — preto absoluto no escuro, branco absoluto no claro.
+///
+/// É o único tema em que **painel e conteúdo têm a mesma cor**: os dois são
+/// `#000000` (ou `#FFFFFF`). A hierarquia que os outros temas fazem com
+/// degraus de superfície, este faz com **borda** — o traço entre o rail e a
+/// aba é a fronteira, não a diferença de tom.
+///
+/// Isso é uma escolha, não um descuido, e custa alguma coisa: sem degrau de
+/// superfície, uma borda que suma leva junto a leitura de onde termina um
+/// painel e começa o outro. Por isso as bordas aqui são **mais fortes** que as
+/// de qualquer outro tema (1,59 de razão contra o preto, ante ~1,1 do
+/// Cockpit).
+///
+/// O que **não** colapsa: `panel2` (composer, cards) e `panel3` (hover)
+/// continuam separados. Eles não têm borda para se apoiar — um card invisível
+/// e um hover que não responde seriam defeito, não estilo.
+///
+/// A marca é acromática (branco no escuro, preto no claro): num tema sem cor,
+/// um accent colorido seria a única cor da tela e roubaria a ideia. As cores
+/// de **estado** (erro, aviso, git) ficam: elas carregam informação, e um tema
+/// monocromático que esconde um erro cobra caro pela estética.
+final CockpitThemeSpec panteraTheme = CockpitThemeSpec(
+  id: 'pantera',
+  name: 'Pantera',
+  author: 'Remote Pi',
+  dark: _variant(
+    ui: AppColors.dark.copyWith(
+      bg: const Color(0xFF000000), // painéis
+      panel: const Color(0xFF000000), // conteúdo — a MESMA cor, de propósito
+      panel2: const Color(0xFF101010), // elevado (sem borda para se apoiar)
+      panel3: const Color(0xFF1E1E1E), // hover
+      border: const Color(0xFF303030), // a borda é a estrutura aqui
+      border2: const Color(0xFF454545),
+      text: const Color(0xFFF5F5F5),
+      text2: const Color(0xFFA3A3A3),
+      text3: const Color(0xFF737373),
+      text4: const Color(0xFF4D4D4D),
+      accent: const Color(0xFFFFFFFF),
+      accentText: const Color(0xFFE5E5E5),
+      accentSoft: const Color(0x33FFFFFF),
+    ),
+    syntax: SyntaxColors.githubDark,
+    terminal: cockpitTerminalThemeDark,
+    terminalOverrides: {'cursor': '#FFFFFF', 'selection': '#FFFFFF33'},
+  ),
+  light: _variant(
+    ui: AppColors.light.copyWith(
+      bg: const Color(0xFFFFFFFF),
+      panel: const Color(0xFFFFFFFF),
+      panel2: const Color(0xFFF4F4F4),
+      panel3: const Color(0xFFE8E8E8),
+      border: const Color(0xFFD0D0D0),
+      border2: const Color(0xFFB8B8B8),
+      text: const Color(0xFF0A0A0A),
+      text2: const Color(0xFF525252),
+      text3: const Color(0xFF6E6E6E),
+      text4: const Color(0xFF9E9E9E),
+      accent: const Color(0xFF000000),
+      accentText: const Color(0xFF171717),
+      accentSoft: const Color(0x14000000),
+    ),
+    syntax: SyntaxColors.githubLight,
+    terminal: cockpitTerminalThemeLight,
+    terminalOverrides: {'cursor': '#000000', 'selection': '#00000014'},
+  ),
+);
+
 // ---------------------------------------------------------------------------
 // Famílias de tom
 // ---------------------------------------------------------------------------
@@ -155,7 +228,15 @@ ThemeVariant _variant({
 /// ficam intactos de propósito: vermelho tem de continuar lendo como vermelho,
 /// senão o tema custa informação em vez de custar só gosto.
 ///
-/// [warn] é a única exceção, e existe por causa do Sun: quando a **marca** é
+/// [panel] escapa da tintura por um limite da própria conversão: em HSL, a
+/// saturação **não rende cor perto do branco** — em `L = 1.0` não rende nada
+/// (branco é branco em qualquer matiz) e em `L ≈ 0.98` rende um ponto de
+/// diferença. O campo claro dos temas de cor é justamente essa faixa, então
+/// ele chega pronto em vez de derivado. Compensar por fórmula (subir a
+/// saturação conforme a luminosidade sobe) contaminaria as superfícies médias
+/// dos outros temas, que estão calibradas.
+///
+/// [warn] é a outra exceção, e existe por causa do Sun: quando a **marca** é
 /// dourada, o âmbar de aviso vira a cor do app e para de avisar. Aí o `warn`
 /// se desloca para o laranja — continua significando cuidado, mas volta a se
 /// distinguir. Preservar o significado é a regra; preservar o hex era só o
@@ -168,6 +249,7 @@ AppColors _tinted(
   required Color accentText,
   required Color accentSoft,
   Color? warn,
+  Color? panel,
 }) {
   Color tint(Color c, double saturation) =>
       HSLColor.fromColor(c).withHue(hue).withSaturation(saturation).toColor();
@@ -178,7 +260,7 @@ AppColors _tinted(
 
   return base.copyWith(
     bg: tint(base.bg, surfaceSaturation),
-    panel: tint(base.panel, surfaceSaturation),
+    panel: panel ?? tint(base.panel, surfaceSaturation),
     panel2: tint(base.panel2, surfaceSaturation),
     panel3: tint(base.panel3, surfaceSaturation),
     border: tint(base.border, surfaceSaturation),
@@ -294,12 +376,23 @@ const _Hue _midnight = _Hue(
 /// [darkFrom]/[lightFrom] são independentes de propósito: um arranjo que
 /// funciona no escuro pode não funcionar no claro. A inversão do Cockpit 2 é
 /// justamente esse caso — ver [midnightTheme].
+/// [lightContent] é o campo claro (código, terminal, corpo da aba) **já
+/// tingido** — ver o parâmetro `panel` de [_tinted] para o porquê de não ser
+/// derivado. Fica aqui, e não no [_Hue], porque depende do **arranjo**: só faz
+/// sentido onde o campo claro é quase-branco. O Violet prova a diferença —
+/// mesmo matiz, dois arranjos: o Violet 1 tem campo branco (e precisa de tom),
+/// o Violet 2 tem campo cinza (e não precisa).
+///
+/// `null` = o campo da base. Branco puro é o que os temas de cor tinham, e é o
+/// que destoava: painéis com tom e conteúdo sem nenhum, como um recorte branco
+/// colado por cima do tema.
 CockpitThemeSpec _tintedThemeOf(
   _Hue tone, {
   required String id,
   required String name,
   required ThemeVariant darkFrom,
   required ThemeVariant lightFrom,
+  Color? lightContent,
 }) => CockpitThemeSpec(
   id: id,
   name: name,
@@ -332,6 +425,7 @@ CockpitThemeSpec _tintedThemeOf(
     accentSoft: tone.lightAccent.withValues(alpha: 0.13),
     syntax: SyntaxColors.githubLight,
     warn: tone.lightWarn,
+    panel: lightContent,
   ),
 );
 
@@ -344,6 +438,7 @@ ThemeVariant _tintedVariant(
   required Color accentSoft,
   required SyntaxColors syntax,
   Color? warn,
+  Color? panel,
 }) {
   final ui = _tinted(
     base.ui,
@@ -353,6 +448,7 @@ ThemeVariant _tintedVariant(
     accentText: accentText,
     accentSoft: accentSoft,
     warn: warn,
+    panel: panel,
   );
   return _variant(
     ui: ui,
@@ -375,6 +471,7 @@ final CockpitThemeSpec violet1Theme = _tintedThemeOf(
   name: 'Violet 1',
   darkFrom: cockpitDefaultTheme.dark!,
   lightFrom: cockpitDefaultTheme.light!,
+  lightContent: const Color(0xFFFCFAFF),
 );
 
 /// **Violet 2** — o arranjo invertido do Cockpit 2 em roxo: chrome acima,
@@ -431,6 +528,7 @@ final CockpitThemeSpec midnightTheme = _tintedThemeOf(
   name: 'Midnight',
   darkFrom: cockpit2Theme.dark!,
   lightFrom: _deepChromeLightBase,
+  lightContent: const Color(0xFFF7FAFF),
 );
 
 /// Rosê — rosa de vinho: quente, saturado no ponto de virar identidade sem
@@ -505,6 +603,7 @@ final CockpitThemeSpec sunTheme = _tintedThemeOf(
   name: 'Sun',
   darkFrom: cockpit2Theme.dark!,
   lightFrom: _deepChromeLightBase,
+  lightContent: const Color(0xFFFFFDF7),
 );
 
 /// **Rosê** — mesmo arranjo por brilho do Midnight (ver [midnightTheme]):
@@ -515,6 +614,7 @@ final CockpitThemeSpec roseTheme = _tintedThemeOf(
   name: 'Rosê',
   darkFrom: cockpit2Theme.dark!,
   lightFrom: _deepChromeLightBase,
+  lightContent: const Color(0xFFFFF9FB),
 );
 
 /// Todos os temas que vêm no app, na ordem em que aparecem no seletor.
@@ -526,6 +626,7 @@ final List<CockpitThemeSpec> builtInThemes = [
   midnightTheme,
   roseTheme,
   sunTheme,
+  panteraTheme,
 ];
 
 /// Resolve um built-in por id (`null` se não existe). É o `resolveBase` usado
