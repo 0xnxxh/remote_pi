@@ -1375,6 +1375,17 @@ class _PaneBodyState extends State<_PaneBody> {
               focusNode: _terminalFocus,
               onKeyEvent: (_) => KeyEventResult.ignored,
               readOnly: true,
+              // Read-only não quer dizer sem link: a saída de uma task é
+              // justamente onde `dart analyze` e `flutter test` imprimem
+              // `lib/x.dart:12:3`. Sem isto, clicar num erro aqui não fazia
+              // nada. A task não tem shell (logo, não tem OSC 7), então o cwd é
+              // sempre o de execução dela.
+              onOpenFile: (path, {line}) =>
+                  context.read<CockpitViewModel>().openTerminalPath(
+                    path,
+                    cwd: item.workingDirectory,
+                    line: line,
+                  ),
               theme: context.terminalTheme,
               textStyle: termStyle,
             ),
@@ -1406,12 +1417,25 @@ class _PaneBodyState extends State<_PaneBody> {
                 // (o paste padrão do xterm só cola texto). Ver `_onTerminalKey`.
                 onKeyEvent: (event) => _onTerminalKey(event, item),
                 onPaste: item.pasteFromClipboard,
-                // Cmd+clique num caminho de arquivo do buffer → abre no FileViewer,
-                // resolvido contra o cwd vivo do shell (OSC 7).
+                // Cmd+clique num caminho de arquivo do buffer → abre no
+                // FileViewer, resolvido contra o cwd vivo do shell (OSC 7).
+                //
+                // O fallback pro cwd de spawn não é zelo: **OSC 7 é opcional**.
+                // O zsh do macOS só o emite quando `$TERM_PROGRAM` é
+                // `Apple_Terminal`, então numa aba do Cockpit ele não vem, e
+                // `currentDirectory` fica `null` até nunca. Com `null`, o
+                // resolver desiste de todo caminho **relativo** e o clique não
+                // faz nada — sem erro, sem aviso. Absoluto abria, relativo não,
+                // e relativo é justamente o que `dart analyze` e `flutter test`
+                // imprimem.
+                //
+                // O cwd de spawn erra depois de um `cd` sem OSC 7, mas acerta o
+                // caso comum (rodar o comando na raiz da aba). Errar às vezes é
+                // melhor que não abrir nunca.
                 onOpenFile: (path, {line}) =>
                     context.read<CockpitViewModel>().openTerminalPath(
                       path,
-                      cwd: item.currentDirectory,
+                      cwd: item.currentDirectory ?? item.workingDirectory,
                       line: line,
                     ),
                 theme: context.terminalTheme,
