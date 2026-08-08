@@ -1297,7 +1297,17 @@ class _Translations$settings$page$appearance$es extends Translations$settings$pa
 	@override String get codeFontDesc => 'Código y diffs. Vacío = predeterminado del sistema.';
 	@override String get codeSizeTitle => 'Tamaño del código';
 	@override String get terminalFontTitle => 'Fuente del terminal';
-	@override String get terminalFontDesc => 'Usa el tamaño del código. Vacío = predeterminado del sistema.';
+	@override String get terminalFontDesc => 'Solo la terminal. Vacío = predeterminado del sistema.';
+	@override String get terminalSizeTitle => 'Tamaño de la terminal';
+	@override String get terminalSizeDesc => 'Apagado = sigue el tamaño del código.';
+	@override String get terminalSizeInherit => 'Seguir el código';
+	@override String get terminalWeightTitle => 'Grosor de la terminal';
+	@override String get terminalWeightDesc => 'Las pantallas de baja densidad engrosan los trazos. El automático los afina solo ahí y no toca la Retina.';
+	@override String get terminalWeightAuto => 'Automático (según la pantalla)';
+	@override String get terminalWeightLight => 'Fino';
+	@override String get terminalWeightNormal => 'Normal';
+	@override String get terminalWeightMedium => 'Medio';
+	@override String get terminalWeightSemiBold => 'Seminegrita';
 	@override String get sectionConversation => 'Conversación';
 	@override String get pinUserMessageTitle => 'Fijar mensaje del usuario';
 	@override String get pinUserMessageDesc => 'La pregunta permanece fija arriba mientras la respuesta se desplaza.';
@@ -1309,6 +1319,15 @@ class _Translations$settings$page$appearance$es extends Translations$settings$pa
 	@override String themeImported({required Object name}) => 'Tema "${name}" importado.';
 	@override String get themeExported => 'Tema guardado.';
 	@override String get themeDeleted => 'Tema eliminado.';
+	@override String get fontPickerTitle => 'Elegir una fuente';
+	@override String get fontPickerSearch => 'Buscar fuentes';
+	@override String get fontPickerEmpty => 'No hay ninguna fuente coincidente en esta máquina.';
+	@override String get fontPickerBundled => 'incluida';
+	@override String get fontPickerCustom => '¿No está en la lista? Escribe el nombre exacto de la familia.';
+	@override String get fontPickerCustomHint => 'Nombre de la familia';
+	@override String get fontPickerUse => 'Usar';
+	@override String get fontPickerDefault => 'Predeterminada';
+	@override String get fontMissing => 'No se encontró en esta máquina — usando el respaldo.';
 }
 
 // Path: settings.page.notifications
@@ -2126,7 +2145,17 @@ extension on TranslationsEs {
 			'settings.page.appearance.codeFontDesc' => 'Código y diffs. Vacío = predeterminado del sistema.',
 			'settings.page.appearance.codeSizeTitle' => 'Tamaño del código',
 			'settings.page.appearance.terminalFontTitle' => 'Fuente del terminal',
-			'settings.page.appearance.terminalFontDesc' => 'Usa el tamaño del código. Vacío = predeterminado del sistema.',
+			'settings.page.appearance.terminalFontDesc' => 'Solo la terminal. Vacío = predeterminado del sistema.',
+			'settings.page.appearance.terminalSizeTitle' => 'Tamaño de la terminal',
+			'settings.page.appearance.terminalSizeDesc' => 'Apagado = sigue el tamaño del código.',
+			'settings.page.appearance.terminalSizeInherit' => 'Seguir el código',
+			'settings.page.appearance.terminalWeightTitle' => 'Grosor de la terminal',
+			'settings.page.appearance.terminalWeightDesc' => 'Las pantallas de baja densidad engrosan los trazos. El automático los afina solo ahí y no toca la Retina.',
+			'settings.page.appearance.terminalWeightAuto' => 'Automático (según la pantalla)',
+			'settings.page.appearance.terminalWeightLight' => 'Fino',
+			'settings.page.appearance.terminalWeightNormal' => 'Normal',
+			'settings.page.appearance.terminalWeightMedium' => 'Medio',
+			'settings.page.appearance.terminalWeightSemiBold' => 'Seminegrita',
 			'settings.page.appearance.sectionConversation' => 'Conversación',
 			'settings.page.appearance.pinUserMessageTitle' => 'Fijar mensaje del usuario',
 			'settings.page.appearance.pinUserMessageDesc' => 'La pregunta permanece fija arriba mientras la respuesta se desplaza.',
@@ -2138,6 +2167,15 @@ extension on TranslationsEs {
 			'settings.page.appearance.themeImported' => ({required Object name}) => 'Tema "${name}" importado.',
 			'settings.page.appearance.themeExported' => 'Tema guardado.',
 			'settings.page.appearance.themeDeleted' => 'Tema eliminado.',
+			'settings.page.appearance.fontPickerTitle' => 'Elegir una fuente',
+			'settings.page.appearance.fontPickerSearch' => 'Buscar fuentes',
+			'settings.page.appearance.fontPickerEmpty' => 'No hay ninguna fuente coincidente en esta máquina.',
+			'settings.page.appearance.fontPickerBundled' => 'incluida',
+			'settings.page.appearance.fontPickerCustom' => '¿No está en la lista? Escribe el nombre exacto de la familia.',
+			'settings.page.appearance.fontPickerCustomHint' => 'Nombre de la familia',
+			'settings.page.appearance.fontPickerUse' => 'Usar',
+			'settings.page.appearance.fontPickerDefault' => 'Predeterminada',
+			'settings.page.appearance.fontMissing' => 'No se encontró en esta máquina — usando el respaldo.',
 			'settings.page.notifications.sectionTitle' => 'Notificaciones',
 			'settings.page.notifications.enableTitle' => 'Activar notificaciones',
 			'settings.page.notifications.enableDesc' => 'Avisarme cuando un agente termine un turno y la ventana no esté enfocada.',

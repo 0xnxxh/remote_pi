@@ -2576,8 +2576,38 @@ class Translations$settings$page$appearance$en {
 	/// en: 'Terminal font'
 	String get terminalFontTitle => 'Terminal font';
 
-	/// en: 'Uses the code size. Empty = system default.'
-	String get terminalFontDesc => 'Uses the code size. Empty = system default.';
+	/// en: 'Terminal only. Empty = system default.'
+	String get terminalFontDesc => 'Terminal only. Empty = system default.';
+
+	/// en: 'Terminal size'
+	String get terminalSizeTitle => 'Terminal size';
+
+	/// en: 'Off = follows the code size.'
+	String get terminalSizeDesc => 'Off = follows the code size.';
+
+	/// en: 'Follow code size'
+	String get terminalSizeInherit => 'Follow code size';
+
+	/// en: 'Terminal weight'
+	String get terminalWeightTitle => 'Terminal weight';
+
+	/// en: 'Low-density screens render strokes heavier. Auto lightens them there and leaves Retina untouched.'
+	String get terminalWeightDesc => 'Low-density screens render strokes heavier. Auto lightens them there and leaves Retina untouched.';
+
+	/// en: 'Auto (by screen)'
+	String get terminalWeightAuto => 'Auto (by screen)';
+
+	/// en: 'Light'
+	String get terminalWeightLight => 'Light';
+
+	/// en: 'Normal'
+	String get terminalWeightNormal => 'Normal';
+
+	/// en: 'Medium'
+	String get terminalWeightMedium => 'Medium';
+
+	/// en: 'Semibold'
+	String get terminalWeightSemiBold => 'Semibold';
 
 	/// en: 'Conversation'
 	String get sectionConversation => 'Conversation';
@@ -2611,6 +2641,33 @@ class Translations$settings$page$appearance$en {
 
 	/// en: 'Theme removed.'
 	String get themeDeleted => 'Theme removed.';
+
+	/// en: 'Choose a font'
+	String get fontPickerTitle => 'Choose a font';
+
+	/// en: 'Search fonts'
+	String get fontPickerSearch => 'Search fonts';
+
+	/// en: 'No matching font found on this machine.'
+	String get fontPickerEmpty => 'No matching font found on this machine.';
+
+	/// en: 'included'
+	String get fontPickerBundled => 'included';
+
+	/// en: 'Not listed? Type the exact family name.'
+	String get fontPickerCustom => 'Not listed? Type the exact family name.';
+
+	/// en: 'Family name'
+	String get fontPickerCustomHint => 'Family name';
+
+	/// en: 'Use'
+	String get fontPickerUse => 'Use';
+
+	/// en: 'Default'
+	String get fontPickerDefault => 'Default';
+
+	/// en: 'Not found on this machine — falling back.'
+	String get fontMissing => 'Not found on this machine — falling back.';
 }
 
 // Path: settings.page.notifications
@@ -3702,7 +3759,17 @@ extension on Translations {
 			'settings.page.appearance.codeFontDesc' => 'Code and diffs. Empty = system default.',
 			'settings.page.appearance.codeSizeTitle' => 'Code size',
 			'settings.page.appearance.terminalFontTitle' => 'Terminal font',
-			'settings.page.appearance.terminalFontDesc' => 'Uses the code size. Empty = system default.',
+			'settings.page.appearance.terminalFontDesc' => 'Terminal only. Empty = system default.',
+			'settings.page.appearance.terminalSizeTitle' => 'Terminal size',
+			'settings.page.appearance.terminalSizeDesc' => 'Off = follows the code size.',
+			'settings.page.appearance.terminalSizeInherit' => 'Follow code size',
+			'settings.page.appearance.terminalWeightTitle' => 'Terminal weight',
+			'settings.page.appearance.terminalWeightDesc' => 'Low-density screens render strokes heavier. Auto lightens them there and leaves Retina untouched.',
+			'settings.page.appearance.terminalWeightAuto' => 'Auto (by screen)',
+			'settings.page.appearance.terminalWeightLight' => 'Light',
+			'settings.page.appearance.terminalWeightNormal' => 'Normal',
+			'settings.page.appearance.terminalWeightMedium' => 'Medium',
+			'settings.page.appearance.terminalWeightSemiBold' => 'Semibold',
 			'settings.page.appearance.sectionConversation' => 'Conversation',
 			'settings.page.appearance.pinUserMessageTitle' => 'Pin user message',
 			'settings.page.appearance.pinUserMessageDesc' => 'The question stays fixed at the top while the answer scrolls.',
@@ -3714,6 +3781,15 @@ extension on Translations {
 			'settings.page.appearance.themeImported' => ({required Object name}) => 'Theme "${name}" imported.',
 			'settings.page.appearance.themeExported' => 'Theme saved.',
 			'settings.page.appearance.themeDeleted' => 'Theme removed.',
+			'settings.page.appearance.fontPickerTitle' => 'Choose a font',
+			'settings.page.appearance.fontPickerSearch' => 'Search fonts',
+			'settings.page.appearance.fontPickerEmpty' => 'No matching font found on this machine.',
+			'settings.page.appearance.fontPickerBundled' => 'included',
+			'settings.page.appearance.fontPickerCustom' => 'Not listed? Type the exact family name.',
+			'settings.page.appearance.fontPickerCustomHint' => 'Family name',
+			'settings.page.appearance.fontPickerUse' => 'Use',
+			'settings.page.appearance.fontPickerDefault' => 'Default',
+			'settings.page.appearance.fontMissing' => 'Not found on this machine — falling back.',
 			'settings.page.notifications.sectionTitle' => 'Notifications',
 			'settings.page.notifications.enableTitle' => 'Enable notifications',
 			'settings.page.notifications.enableDesc' => 'Alert me when an agent finishes a turn and the window is not focused.',

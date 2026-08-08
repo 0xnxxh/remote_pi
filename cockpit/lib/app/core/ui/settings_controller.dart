@@ -58,6 +58,14 @@ class SettingsController extends ChangeNotifier {
     _apply(_settings.copyWith(terminalFont: font, clearTerminalFont: empty));
   }
 
+  /// `null` volta a herdar o tamanho do código.
+  void setTerminalSize(double? size) => _apply(
+    _settings.copyWith(terminalSize: size, clearTerminalSize: size == null),
+  );
+
+  void setTerminalFontWeight(TerminalFontWeight weight) =>
+      _apply(_settings.copyWith(terminalFontWeight: weight));
+
   void setTerminalEngine(TerminalEngine engine) =>
       _apply(_settings.copyWith(terminalEngine: engine));
 

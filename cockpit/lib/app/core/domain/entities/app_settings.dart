@@ -7,6 +7,16 @@ enum AppThemeMode { system, light, dark }
 /// Motor VT usado por terminais criados daqui pra frente.
 enum TerminalEngine { ghostty, xterm }
 
+/// Peso do traço da fonte do terminal.
+///
+/// Existe porque a **mesma** fonte, no mesmo tamanho, tem peso aparente
+/// diferente conforme a densidade da tela: o Flutter/Skia no macOS rasteriza
+/// sem hinting e com antialiasing em cinza, o que engorda os traços verticais
+/// quando há poucos pixels por traço. Num monitor de DPR 1 o texto lê como
+/// negrito; no Retina, não. Como a preferência é uma só para todos os monitores,
+/// [auto] resolve por densidade em tempo de render (ver `resolveFor`).
+enum TerminalFontWeight { auto, light, normal, medium, semiBold }
+
 /// Layout inicial das mudanças no painel Source Control.
 enum SourceControlViewMode { list, tree }
 
@@ -22,6 +32,8 @@ class AppSettings {
     this.codeFont,
     this.codeSize = 13,
     this.terminalFont,
+    this.terminalSize,
+    this.terminalFontWeight = TerminalFontWeight.auto,
     this.themeId = 'cockpit',
     this.pinUserMessage = true,
     this.lastOpenAppId,
@@ -60,9 +72,18 @@ class AppSettings {
   /// Tamanho da fonte de código (px) — viewer/diff/terminal.
   final double codeSize;
 
-  /// Família da fonte do **terminal** (`null`/vazio = mono padrão do xterm). O
-  /// tamanho segue [codeSize].
+  /// Família da fonte do **terminal** (`null`/vazio = mono padrão do xterm).
   final String? terminalFont;
+
+  /// Tamanho da fonte do terminal (px). `null` = herda [codeSize].
+  ///
+  /// Separado do código porque a densidade da tela muda o que é confortável: o
+  /// mesmo valor que fica bom num Retina fica pequeno num monitor de DPR 1, e
+  /// o terminal é onde isso mais pesa.
+  final double? terminalSize;
+
+  /// Peso do traço no terminal. Ver [TerminalFontWeight].
+  final TerminalFontWeight terminalFontWeight;
 
   /// Id do tema ativo (UI + syntax + terminal num bundle só). Os built-in e os
   /// importados dividem o mesmo espaço de ids, por isso é `String` e não enum:
@@ -183,6 +204,9 @@ class AppSettings {
     double? codeSize,
     String? terminalFont,
     bool clearTerminalFont = false,
+    double? terminalSize,
+    bool clearTerminalSize = false,
+    TerminalFontWeight? terminalFontWeight,
     String? themeId,
     bool? pinUserMessage,
     String? lastOpenAppId,
@@ -222,6 +246,10 @@ class AppSettings {
       terminalFont: clearTerminalFont
           ? null
           : (terminalFont ?? this.terminalFont),
+      terminalSize: clearTerminalSize
+          ? null
+          : (terminalSize ?? this.terminalSize),
+      terminalFontWeight: terminalFontWeight ?? this.terminalFontWeight,
       themeId: themeId ?? this.themeId,
       pinUserMessage: pinUserMessage ?? this.pinUserMessage,
       lastOpenAppId: lastOpenAppId ?? this.lastOpenAppId,
@@ -263,6 +291,8 @@ class AppSettings {
     'codeFont': codeFont,
     'codeSize': codeSize,
     'terminalFont': terminalFont,
+    'terminalSize': terminalSize,
+    'terminalFontWeight': terminalFontWeight.name,
     'themeId': themeId,
     'pinUserMessage': pinUserMessage,
     if (lastOpenAppId != null) 'lastOpenAppId': lastOpenAppId,
@@ -327,6 +357,14 @@ class AppSettings {
       codeFont: str(json['codeFont']),
       codeSize: (json['codeSize'] as num?)?.toDouble() ?? 13,
       terminalFont: str(json['terminalFont']),
+      // Ausente = herda o tamanho do código, que é o que valia antes deste
+      // campo existir.
+      terminalSize: (json['terminalSize'] as num?)?.toDouble(),
+      terminalFontWeight: _enumByName(
+        TerminalFontWeight.values,
+        json['terminalFontWeight'],
+        TerminalFontWeight.auto,
+      ),
       themeId: _themeIdFrom(json),
       pinUserMessage: json['pinUserMessage'] as bool? ?? true,
       lastOpenAppId: str(json['lastOpenAppId']),

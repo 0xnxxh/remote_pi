@@ -1362,9 +1362,11 @@ class _PaneBodyState extends State<_PaneBody> {
       // ligar teclado/onOutput. Fechar a aba não toca no buffer nem na task.
       final settings = context.watch<SettingsController>().settings;
       final termFont = settings.terminalFont;
+      // Tamanho próprio do terminal; ausente = herda o do código.
+      final termSize = settings.terminalSize ?? settings.codeSize;
       final termStyle = (termFont == null || termFont.isEmpty)
-          ? TerminalStyle(fontSize: settings.codeSize)
-          : TerminalStyle(fontSize: settings.codeSize, fontFamily: termFont);
+          ? TerminalStyle(fontSize: termSize)
+          : TerminalStyle(fontSize: termSize, fontFamily: termFont);
       return _grantsKeyboardOnPointerDown(
         ColoredBox(
           color: context.colors.panel,
@@ -1398,11 +1400,14 @@ class _PaneBodyState extends State<_PaneBody> {
       final settings = context.watch<SettingsController>().settings;
       final termFont = settings.terminalFont;
       // Fonte exclusiva do terminal (vazia = mono padrão do xterm); tamanho =
-      // "tamanho do código". O zoom da interface é global (Transform em
-      // `_AppZoom`), então não precisa escalar aqui.
+      // "tamanho do código". O zoom da interface NÃO entra aqui de propósito:
+      // o pane do terminal desfaz o zoom geométrico e o reaplica como tamanho
+      // de fonte (ver `_UnzoomBox` em adaptive_terminal_pane.dart), senão o
+      // atlas de glifos do flterm seria ampliado como bitmap.
+      final termSize = settings.terminalSize ?? settings.codeSize;
       final termStyle = (termFont == null || termFont.isEmpty)
-          ? TerminalStyle(fontSize: settings.codeSize)
-          : TerminalStyle(fontSize: settings.codeSize, fontFamily: termFont);
+          ? TerminalStyle(fontSize: termSize)
+          : TerminalStyle(fontSize: termSize, fontFamily: termFont);
       return _grantsKeyboardOnPointerDown(
         _TerminalDropTarget(
           session: item,
