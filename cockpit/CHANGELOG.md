@@ -24,6 +24,32 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.25.0] - 2026-08-09
+
+Sounds you can tell apart, worktrees you can configure, and one less crash.
+
+### Added
+
+- **A sound per event.** Turn completed, action required and agent error each
+  get their own sound, with a volume control, a preview button, and the option
+  to play even when the tab is already active. Any of them can be swapped for
+  an audio file of your own, or reset back to the default.
+- **Advanced settings when creating a worktree** (thanks, @pretodev). A
+  collapsed section adds: pick the **base branch** instead of always branching
+  from the current HEAD, **fetch the remote** first so that base is up to date,
+  and copy **ignored** (`.env`, local keys) or **untracked** files into the new
+  worktree.
+- **Flexoki theme** (thanks, @pretodev), the first built-in that brings its own
+  syntax palette rather than reusing GitHub's.
+
+### Fixed
+
+- **Closing the selected workspace could take the app down with it** (thanks,
+  @jamesldr). The terminal was freed while its view was still on screen, and
+  the next frame touched memory that was already gone. Being a native crash, it
+  left nothing behind in the logs. Teardown now waits for the views to leave
+  before releasing anything.
+
 ## [1.24.0] - 2026-08-07
 
 Git history, a real font picker, and clickable paths that actually click.
