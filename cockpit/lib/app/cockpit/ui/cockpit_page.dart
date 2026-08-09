@@ -501,7 +501,20 @@ class _CockpitPageState extends State<CockpitPage> {
       namespace: namespace,
       fork: true,
       hasPostCheckout: hasHook,
-      onCreate: (name) => vm.forkWorktree(base.id, name),
+      onCreate:
+          (
+            name, {
+            baseRef,
+            copyIgnored = false,
+            copyUntracked = false,
+            fetchRemote = true,
+          }) => vm.forkWorktree(
+            base.id,
+            name,
+            copyIgnored: copyIgnored,
+            copyUntracked: copyUntracked,
+            fetchRemote: fetchRemote,
+          ),
     );
   }
 
@@ -548,7 +561,22 @@ class _CockpitPageState extends State<CockpitPage> {
       rootName: _gitOpLabel(root, rootPath),
       namespace: namespace,
       hasPostCheckout: hasHook,
-      onCreate: (name) => vm.createWorktree(root.id, name, rootPath: rootPath),
+      onCreate:
+          (
+            name, {
+            baseRef,
+            copyIgnored = false,
+            copyUntracked = false,
+            fetchRemote = true,
+          }) => vm.createWorktree(
+            root.id,
+            name,
+            rootPath: rootPath,
+            baseRef: baseRef,
+            copyIgnored: copyIgnored,
+            copyUntracked: copyUntracked,
+            fetchRemote: fetchRemote,
+          ),
     );
   }
 

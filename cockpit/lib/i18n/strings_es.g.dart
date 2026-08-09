@@ -346,9 +346,22 @@ class _Translations$cockpit$worktreeCreateDialog$es extends Translations$cockpit
 	@override String get errorReserved => 'Posición reservada (no empieces con "-"/"." ni termines con ".lock").';
 	@override String get errorDuplicateBranch => 'Ya existe una branch con ese nombre.';
 	@override String get errorDuplicateWorktree => 'Ya existe un worktree con ese nombre.';
+	@override String errorBranchHierarchyConflict({required Object target, required Object existing}) => 'No se puede crear la branch \'${target}\' porque entra en conflicto con la branch \'${existing}\' ya existente.';
+	@override String get errorBranchHierarchicalConflictGeneral => 'Ya existe una branch con una jerarquía conflictiva.';
 	@override String get fork => 'Fork';
 	@override String get postCheckoutHint => 'Este repositorio tiene un hook post-checkout.';
 	@override String get running => 'Ejecutando…';
+	@override String get advancedSettings => 'Configuración Avanzada';
+	@override String get copyIgnored => 'Copiar archivos ignorados (.gitignore)';
+	@override String get copyIgnoredDesc => 'Copia los archivos ignorados por .gitignore (ej. .env, claves locales) al nuevo worktree.';
+	@override String get copyUntracked => 'Copiar archivos no rastreados';
+	@override String get copyUntrackedDesc => 'Copia los archivos nuevos o modificados que aún no se han agregado al stage.';
+	@override String get baseBranch => 'Branch base';
+	@override String get baseBranchDesc => 'La branch desde la cual se creará el nuevo worktree y branch.';
+	@override String get fetchRemote => 'Sincronizar branch remota (fetch)';
+	@override String get fetchRemoteDesc => 'Ejecuta git fetch para garantizar que la branch base esté confirmada antes de crear el worktree.';
+	@override String get searchBranch => 'Buscar branch...';
+	@override String get back => 'Atrás';
 }
 
 // Path: cockpit.subfolderDialog
@@ -1648,9 +1661,22 @@ extension on TranslationsEs {
 			'cockpit.worktreeCreateDialog.errorReserved' => 'Posición reservada (no empieces con "-"/"." ni termines con ".lock").',
 			'cockpit.worktreeCreateDialog.errorDuplicateBranch' => 'Ya existe una branch con ese nombre.',
 			'cockpit.worktreeCreateDialog.errorDuplicateWorktree' => 'Ya existe un worktree con ese nombre.',
+			'cockpit.worktreeCreateDialog.errorBranchHierarchyConflict' => ({required Object target, required Object existing}) => 'No se puede crear la branch \'${target}\' porque entra en conflicto con la branch \'${existing}\' ya existente.',
+			'cockpit.worktreeCreateDialog.errorBranchHierarchicalConflictGeneral' => 'Ya existe una branch con una jerarquía conflictiva.',
 			'cockpit.worktreeCreateDialog.fork' => 'Fork',
 			'cockpit.worktreeCreateDialog.postCheckoutHint' => 'Este repositorio tiene un hook post-checkout.',
 			'cockpit.worktreeCreateDialog.running' => 'Ejecutando…',
+			'cockpit.worktreeCreateDialog.advancedSettings' => 'Configuración Avanzada',
+			'cockpit.worktreeCreateDialog.copyIgnored' => 'Copiar archivos ignorados (.gitignore)',
+			'cockpit.worktreeCreateDialog.copyIgnoredDesc' => 'Copia los archivos ignorados por .gitignore (ej. .env, claves locales) al nuevo worktree.',
+			'cockpit.worktreeCreateDialog.copyUntracked' => 'Copiar archivos no rastreados',
+			'cockpit.worktreeCreateDialog.copyUntrackedDesc' => 'Copia los archivos nuevos o modificados que aún no se han agregado al stage.',
+			'cockpit.worktreeCreateDialog.baseBranch' => 'Branch base',
+			'cockpit.worktreeCreateDialog.baseBranchDesc' => 'La branch desde la cual se creará el nuevo worktree y branch.',
+			'cockpit.worktreeCreateDialog.fetchRemote' => 'Sincronizar branch remota (fetch)',
+			'cockpit.worktreeCreateDialog.fetchRemoteDesc' => 'Ejecuta git fetch para garantizar que la branch base esté confirmada antes de crear el worktree.',
+			'cockpit.worktreeCreateDialog.searchBranch' => 'Buscar branch...',
+			'cockpit.worktreeCreateDialog.back' => 'Atrás',
 			'cockpit.subfolderDialog.title' => '¿Dónde trabajar?',
 			'cockpit.subfolderDialog.empty' => 'No hay subcarpetas aquí.',
 			'cockpit.subfolderDialog.useRoot' => ({required Object project}) => 'Usar la raíz de ${project}',
@@ -2046,6 +2072,8 @@ extension on TranslationsEs {
 			'settings.revokeDialog.deviceRemoved' => 'Dispositivo eliminado.',
 			'settings.revokeDialog.failedToRevoke' => 'No se pudo revocar el dispositivo.',
 			'settings.revokeDialog.revoking' => 'Revocando…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revocando ${name}…',
 			'settings.revokeDialog.connectingMessage' => 'Conectando al relay y quitando el acceso.',
 			'settings.revokeDialog.ok' => 'Ok',
@@ -2059,8 +2087,6 @@ extension on TranslationsEs {
 			'settings.pairingDialog.pairingFailed' => 'Fallo en la vinculación.',
 			'settings.pairingDialog.tryAgain' => 'Intentar de nuevo',
 			'settings.pairingDialog.copied' => '¡Copiado!',
-			_ => null,
-		} ?? switch (path) {
 			'settings.pairingDialog.copyData' => 'Copiar datos',
 			'settings.page.header.back' => 'Atrás',
 			'settings.page.header.title' => 'Configuración',
