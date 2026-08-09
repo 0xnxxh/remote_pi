@@ -1980,6 +1980,12 @@ class Translations$cockpit$notifications$en {
 
 	/// en: 'Open'
 	String get open => 'Open';
+
+	/// en: 'Agent needs your input'
+	String get agentNeedsAction => 'Agent needs your input';
+
+	/// en: 'Agent stopped unexpectedly'
+	String get agentCrashed => 'Agent stopped unexpectedly';
 }
 
 // Path: cockpit.terminal
@@ -2702,11 +2708,47 @@ class Translations$settings$page$notifications$en {
 	/// en: 'Request permission'
 	String get requestPermission => 'Request permission';
 
-	/// en: 'Play sound on finish'
-	String get playSoundTitle => 'Play sound on finish';
+	/// en: 'Sounds'
+	String get soundsTitle => 'Sounds';
 
-	/// en: 'Play a short chime when a turn finishes and the window is focused (on any tab or workspace).'
-	String get playSoundDesc => 'Play a short chime when a turn finishes and the window is focused (on any tab or workspace).';
+	/// en: 'Volume'
+	String get soundVolumeTitle => 'Volume';
+
+	/// en: 'Turn completed'
+	String get soundTurnDone => 'Turn completed';
+
+	/// en: 'An agent finished its turn.'
+	String get soundTurnDoneDesc => 'An agent finished its turn.';
+
+	/// en: 'Action required'
+	String get soundActionRequired => 'Action required';
+
+	/// en: 'An agent is waiting for your approval or answer.'
+	String get soundActionRequiredDesc => 'An agent is waiting for your approval or answer.';
+
+	/// en: 'Agent error'
+	String get soundAgentError => 'Agent error';
+
+	/// en: 'An agent process stopped unexpectedly.'
+	String get soundAgentErrorDesc => 'An agent process stopped unexpectedly.';
+
+	/// en: 'Default'
+	String get soundDefault => 'Default';
+
+	/// en: 'Custom: ${name}'
+	String soundCustom({required Object name}) => 'Custom: ${name}';
+
+	/// en: 'Choose file'
+	String get soundChooseFile => 'Choose file';
+
+	/// en: 'Reset to default'
+	String get soundReset => 'Reset to default';
+
+	/// en: 'Also play when this tab is active'
+	String get soundOnActiveTab => 'Also play when this tab is active';
+
+	/// en: 'Preview'
+	String get soundPreview => 'Preview';
 }
 
 // Path: settings.page.shortcuts
@@ -3651,6 +3693,8 @@ extension on Translations {
 			'cockpit.tasks.quit' => 'Quit',
 			'cockpit.notifications.agentFinished' => 'Agent finished',
 			'cockpit.notifications.open' => 'Open',
+			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
+			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
@@ -3671,10 +3715,10 @@ extension on Translations {
 			'settings.pairingDialog.qrGenerationFailed' => 'Could not generate the QR.',
 			'settings.pairingDialog.autoRefreshHint' => 'The code refreshes on its own. Keep this window open.',
 			'settings.pairingDialog.pairingFailed' => 'Pairing failed.',
-			'settings.pairingDialog.tryAgain' => 'Try again',
-			'settings.pairingDialog.copied' => 'Copied!',
 			_ => null,
 		} ?? switch (path) {
+			'settings.pairingDialog.tryAgain' => 'Try again',
+			'settings.pairingDialog.copied' => 'Copied!',
 			'settings.pairingDialog.copyData' => 'Copy data',
 			'settings.page.header.back' => 'Back',
 			'settings.page.header.title' => 'Settings',
@@ -3798,8 +3842,20 @@ extension on Translations {
 			'settings.page.notifications.notGrantedDesc' => 'macOS has not granted notification access yet.',
 			'settings.page.notifications.granted' => 'Granted',
 			'settings.page.notifications.requestPermission' => 'Request permission',
-			'settings.page.notifications.playSoundTitle' => 'Play sound on finish',
-			'settings.page.notifications.playSoundDesc' => 'Play a short chime when a turn finishes and the window is focused (on any tab or workspace).',
+			'settings.page.notifications.soundsTitle' => 'Sounds',
+			'settings.page.notifications.soundVolumeTitle' => 'Volume',
+			'settings.page.notifications.soundTurnDone' => 'Turn completed',
+			'settings.page.notifications.soundTurnDoneDesc' => 'An agent finished its turn.',
+			'settings.page.notifications.soundActionRequired' => 'Action required',
+			'settings.page.notifications.soundActionRequiredDesc' => 'An agent is waiting for your approval or answer.',
+			'settings.page.notifications.soundAgentError' => 'Agent error',
+			'settings.page.notifications.soundAgentErrorDesc' => 'An agent process stopped unexpectedly.',
+			'settings.page.notifications.soundDefault' => 'Default',
+			'settings.page.notifications.soundCustom' => ({required Object name}) => 'Custom: ${name}',
+			'settings.page.notifications.soundChooseFile' => 'Choose file',
+			'settings.page.notifications.soundReset' => 'Reset to default',
+			'settings.page.notifications.soundOnActiveTab' => 'Also play when this tab is active',
+			'settings.page.notifications.soundPreview' => 'Preview',
 			'settings.page.shortcuts.notCustomizable' => 'Keyboard shortcuts are not customizable yet.',
 			'settings.page.languages.sectionFormatting' => 'FORMATTING',
 			'settings.page.languages.formatOnSaveTitle' => 'Format on save',

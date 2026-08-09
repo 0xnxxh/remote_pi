@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:cockpit/app/core/data/setup/sound_library.dart';
 import 'package:cockpit/app/core/data/theme_store.dart';
 import 'package:cockpit/app/core/domain/contracts/settings_store.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
+import 'package:cockpit/app/core/domain/entities/sound_event.dart';
 import 'package:cockpit/app/core/ui/themes/theme_registry.dart';
 import 'package:cockpit/app/core/ui/themes/theme_spec.dart';
 import 'package:cockpit/i18n/strings.g.dart';
@@ -211,8 +213,45 @@ class SettingsController extends ChangeNotifier {
   void setNotificationsEnabled(bool value) =>
       _apply(_settings.copyWith(notificationsEnabled: value));
 
-  void setSoundEnabled(bool value) =>
-      _apply(_settings.copyWith(soundEnabled: value));
+  void setSoundVolume(double value) =>
+      _apply(_settings.copyWith(soundVolume: value.clamp(0, 100)));
+
+  void setSoundEventEnabled(SoundEvent event, bool value) {
+    final next = Map<SoundEvent, bool>.from(_settings.soundEvents);
+    next[event] = value;
+    _apply(_settings.copyWith(soundEvents: next));
+  }
+
+  void setSoundOnActiveTab(SoundEvent event, bool value) {
+    final next = Map<SoundEvent, bool>.from(_settings.soundOnActiveTab);
+    next[event] = value;
+    _apply(_settings.copyWith(soundOnActiveTab: next));
+  }
+
+  /// Importa [sourcePath] como o áudio custom de [event]: copia pro storage do
+  /// app (o original pode sumir) e persiste o caminho da cópia.
+  Future<void> importSoundOverride(SoundEvent event, String sourcePath) async {
+    final copy = await SoundLibrary.import(event, sourcePath);
+    setSoundOverride(event, copy);
+  }
+
+  /// Volta [event] ao som embarcado: apaga a cópia custom e limpa o override.
+  Future<void> clearSoundOverride(SoundEvent event) async {
+    await SoundLibrary.clear(event);
+    setSoundOverride(event, null);
+  }
+
+  /// Define (ou limpa, com `null`) o áudio custom de um evento. O chamador é
+  /// responsável por já ter copiado o arquivo pro storage do app.
+  void setSoundOverride(SoundEvent event, String? path) {
+    final next = Map<SoundEvent, String>.from(_settings.soundOverrides);
+    if (path == null || path.trim().isEmpty) {
+      next.remove(event);
+    } else {
+      next[event] = path;
+    }
+    _apply(_settings.copyWith(soundOverrides: next));
+  }
 
   void setSearchPanelHeight(double value) =>
       _apply(_settings.copyWith(searchPanelHeight: value));

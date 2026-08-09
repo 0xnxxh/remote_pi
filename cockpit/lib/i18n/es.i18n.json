@@ -580,7 +580,9 @@
     },
     "notifications": {
       "agentFinished": "El agente terminó",
-      "open": "Abrir"
+      "open": "Abrir",
+      "agentNeedsAction": "El agente necesita tu acción",
+      "agentCrashed": "El agente se detuvo inesperadamente"
     },
     "terminal": {
       "cwdFallbackWarning": "Aviso: la carpeta \"${requested}\" no existe. Esta terminal se abrió en \"${path}\"."
@@ -755,8 +757,20 @@
         "notGrantedDesc": "macOS aún no ha concedido acceso a las notificaciones.",
         "granted": "Concedido",
         "requestPermission": "Solicitar permiso",
-        "playSoundTitle": "Reproducir sonido al finalizar",
-        "playSoundDesc": "Reproduce un sonido breve cuando un turno termina y la ventana está enfocada (en cualquier pestaña o workspace)."
+        "soundsTitle": "Sonidos",
+        "soundVolumeTitle": "Volumen",
+        "soundTurnDone": "Turno completado",
+        "soundTurnDoneDesc": "Un agente terminó su turno.",
+        "soundActionRequired": "Acción requerida",
+        "soundActionRequiredDesc": "Un agente está esperando tu aprobación o respuesta.",
+        "soundAgentError": "Error del agente",
+        "soundAgentErrorDesc": "El proceso de un agente se detuvo inesperadamente.",
+        "soundDefault": "Predeterminado",
+        "soundCustom": "Personalizado: ${name}",
+        "soundChooseFile": "Elegir archivo",
+        "soundReset": "Volver al predeterminado",
+        "soundOnActiveTab": "Reproducir también con la pestaña activa",
+        "soundPreview": "Escuchar"
       },
       "shortcuts": {
         "notCustomizable": "Los atajos de teclado aún no se pueden personalizar."

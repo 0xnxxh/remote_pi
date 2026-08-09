@@ -999,6 +999,8 @@ class _Translations$cockpit$notifications$es extends Translations$cockpit$notifi
 	// Translations
 	@override String get agentFinished => 'El agente terminó';
 	@override String get open => 'Abrir';
+	@override String get agentNeedsAction => 'El agente necesita tu acción';
+	@override String get agentCrashed => 'El agente se detuvo inesperadamente';
 }
 
 // Path: cockpit.terminal
@@ -1345,8 +1347,20 @@ class _Translations$settings$page$notifications$es extends Translations$settings
 	@override String get notGrantedDesc => 'macOS aún no ha concedido acceso a las notificaciones.';
 	@override String get granted => 'Concedido';
 	@override String get requestPermission => 'Solicitar permiso';
-	@override String get playSoundTitle => 'Reproducir sonido al finalizar';
-	@override String get playSoundDesc => 'Reproduce un sonido breve cuando un turno termina y la ventana está enfocada (en cualquier pestaña o workspace).';
+	@override String get soundsTitle => 'Sonidos';
+	@override String get soundVolumeTitle => 'Volumen';
+	@override String get soundTurnDone => 'Turno completado';
+	@override String get soundTurnDoneDesc => 'Un agente terminó su turno.';
+	@override String get soundActionRequired => 'Acción requerida';
+	@override String get soundActionRequiredDesc => 'Un agente está esperando tu aprobación o respuesta.';
+	@override String get soundAgentError => 'Error del agente';
+	@override String get soundAgentErrorDesc => 'El proceso de un agente se detuvo inesperadamente.';
+	@override String get soundDefault => 'Predeterminado';
+	@override String soundCustom({required Object name}) => 'Personalizado: ${name}';
+	@override String get soundChooseFile => 'Elegir archivo';
+	@override String get soundReset => 'Volver al predeterminado';
+	@override String get soundOnActiveTab => 'Reproducir también con la pestaña activa';
+	@override String get soundPreview => 'Escuchar';
 }
 
 // Path: settings.page.shortcuts
@@ -2037,6 +2051,8 @@ extension on TranslationsEs {
 			'cockpit.tasks.quit' => 'Salir',
 			'cockpit.notifications.agentFinished' => 'El agente terminó',
 			'cockpit.notifications.open' => 'Abrir',
+			'cockpit.notifications.agentNeedsAction' => 'El agente necesita tu acción',
+			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
@@ -2057,10 +2073,10 @@ extension on TranslationsEs {
 			'settings.pairingDialog.qrGenerationFailed' => 'No se pudo generar el QR.',
 			'settings.pairingDialog.autoRefreshHint' => 'El código se actualiza automáticamente. Mantén esta ventana abierta.',
 			'settings.pairingDialog.pairingFailed' => 'Fallo en la vinculación.',
-			'settings.pairingDialog.tryAgain' => 'Intentar de nuevo',
-			'settings.pairingDialog.copied' => '¡Copiado!',
 			_ => null,
 		} ?? switch (path) {
+			'settings.pairingDialog.tryAgain' => 'Intentar de nuevo',
+			'settings.pairingDialog.copied' => '¡Copiado!',
 			'settings.pairingDialog.copyData' => 'Copiar datos',
 			'settings.page.header.back' => 'Atrás',
 			'settings.page.header.title' => 'Configuración',
@@ -2184,8 +2200,20 @@ extension on TranslationsEs {
 			'settings.page.notifications.notGrantedDesc' => 'macOS aún no ha concedido acceso a las notificaciones.',
 			'settings.page.notifications.granted' => 'Concedido',
 			'settings.page.notifications.requestPermission' => 'Solicitar permiso',
-			'settings.page.notifications.playSoundTitle' => 'Reproducir sonido al finalizar',
-			'settings.page.notifications.playSoundDesc' => 'Reproduce un sonido breve cuando un turno termina y la ventana está enfocada (en cualquier pestaña o workspace).',
+			'settings.page.notifications.soundsTitle' => 'Sonidos',
+			'settings.page.notifications.soundVolumeTitle' => 'Volumen',
+			'settings.page.notifications.soundTurnDone' => 'Turno completado',
+			'settings.page.notifications.soundTurnDoneDesc' => 'Un agente terminó su turno.',
+			'settings.page.notifications.soundActionRequired' => 'Acción requerida',
+			'settings.page.notifications.soundActionRequiredDesc' => 'Un agente está esperando tu aprobación o respuesta.',
+			'settings.page.notifications.soundAgentError' => 'Error del agente',
+			'settings.page.notifications.soundAgentErrorDesc' => 'El proceso de un agente se detuvo inesperadamente.',
+			'settings.page.notifications.soundDefault' => 'Predeterminado',
+			'settings.page.notifications.soundCustom' => ({required Object name}) => 'Personalizado: ${name}',
+			'settings.page.notifications.soundChooseFile' => 'Elegir archivo',
+			'settings.page.notifications.soundReset' => 'Volver al predeterminado',
+			'settings.page.notifications.soundOnActiveTab' => 'Reproducir también con la pestaña activa',
+			'settings.page.notifications.soundPreview' => 'Escuchar',
 			'settings.page.shortcuts.notCustomizable' => 'Los atajos de teclado aún no se pueden personalizar.',
 			'settings.page.languages.sectionFormatting' => 'FORMATO',
 			'settings.page.languages.formatOnSaveTitle' => 'Formatear al guardar',

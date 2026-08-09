@@ -580,7 +580,9 @@
     },
     "notifications": {
       "agentFinished": "Agent finished",
-      "open": "Open"
+      "open": "Open",
+      "agentNeedsAction": "Agent needs your input",
+      "agentCrashed": "Agent stopped unexpectedly"
     },
     "terminal": {
       "cwdFallbackWarning": "Warning: the folder \"${requested}\" does not exist. This terminal opened in \"${path}\"."
@@ -755,8 +757,20 @@
         "notGrantedDesc": "macOS has not granted notification access yet.",
         "granted": "Granted",
         "requestPermission": "Request permission",
-        "playSoundTitle": "Play sound on finish",
-        "playSoundDesc": "Play a short chime when a turn finishes and the window is focused (on any tab or workspace)."
+        "soundsTitle": "Sounds",
+        "soundVolumeTitle": "Volume",
+        "soundTurnDone": "Turn completed",
+        "soundTurnDoneDesc": "An agent finished its turn.",
+        "soundActionRequired": "Action required",
+        "soundActionRequiredDesc": "An agent is waiting for your approval or answer.",
+        "soundAgentError": "Agent error",
+        "soundAgentErrorDesc": "An agent process stopped unexpectedly.",
+        "soundDefault": "Default",
+        "soundCustom": "Custom: ${name}",
+        "soundChooseFile": "Choose file",
+        "soundReset": "Reset to default",
+        "soundOnActiveTab": "Also play when this tab is active",
+        "soundPreview": "Preview"
       },
       "shortcuts": {
         "notCustomizable": "Keyboard shortcuts are not customizable yet."

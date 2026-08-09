@@ -580,7 +580,9 @@
     },
     "notifications": {
       "agentFinished": "Agente terminou",
-      "open": "Abrir"
+      "open": "Abrir",
+      "agentNeedsAction": "Agente precisa de você",
+      "agentCrashed": "Agente parou inesperadamente"
     },
     "terminal": {
       "cwdFallbackWarning": "Aviso: a pasta \"${requested}\" não existe. Este terminal abriu em \"${path}\"."
@@ -755,8 +757,20 @@
         "notGrantedDesc": "O macOS ainda não concedeu acesso a notificações.",
         "granted": "Concedido",
         "requestPermission": "Solicitar permissão",
-        "playSoundTitle": "Tocar som ao concluir",
-        "playSoundDesc": "Toca um som curto quando uma resposta termina e a janela está em foco (em qualquer aba ou workspace)."
+        "soundsTitle": "Sons",
+        "soundVolumeTitle": "Volume",
+        "soundTurnDone": "Turno concluído",
+        "soundTurnDoneDesc": "Um agente terminou o turno.",
+        "soundActionRequired": "Ação necessária",
+        "soundActionRequiredDesc": "Um agente está esperando sua aprovação ou resposta.",
+        "soundAgentError": "Erro do agente",
+        "soundAgentErrorDesc": "O processo de um agente parou inesperadamente.",
+        "soundDefault": "Padrão",
+        "soundCustom": "Personalizado: ${name}",
+        "soundChooseFile": "Escolher arquivo",
+        "soundReset": "Voltar ao padrão",
+        "soundOnActiveTab": "Tocar também com a aba ativa",
+        "soundPreview": "Ouvir"
       },
       "shortcuts": {
         "notCustomizable": "Os atalhos de teclado ainda não são personalizáveis."

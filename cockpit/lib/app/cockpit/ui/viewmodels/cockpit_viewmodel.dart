@@ -33,6 +33,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway_factory.da
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/entities/sound_event.dart';
 import 'package:cockpit/app/core/domain/entities/automation.dart';
 import 'package:cockpit/app/core/domain/exceptions/automation_error.dart';
 import 'package:cockpit/app/core/domain/exceptions/file_operation_error.dart';
@@ -336,10 +337,25 @@ class CockpitViewModel extends ChangeNotifier {
   bool _notificationsEnabled = true;
   void setNotificationsEnabled(bool value) => _notificationsEnabled = value;
 
-  /// Espelha `AppSettings.soundEnabled`. Gateia o chime de fim de turno (tocado
-  /// com a janela focada). A `CockpitPage` empurra o valor do controller.
-  bool _soundEnabled = true;
-  void setSoundEnabled(bool value) => _soundEnabled = value;
+  /// Espelham `AppSettings.soundEvents`/`soundOverrides` (toggle e áudio custom
+  /// por [SoundEvent]). A `CockpitPage` empurra os valores do controller.
+  Map<SoundEvent, bool> _soundEvents = const <SoundEvent, bool>{};
+  Map<SoundEvent, String> _soundOverrides = const <SoundEvent, String>{};
+  Map<SoundEvent, bool> _soundOnActiveTab = const <SoundEvent, bool>{};
+  double _soundVolume = 50;
+  void setSoundPrefs({
+    required Map<SoundEvent, bool> events,
+    required Map<SoundEvent, String> overrides,
+    required Map<SoundEvent, bool> onActiveTab,
+    required double volume,
+  }) {
+    _soundEvents = events;
+    _soundOverrides = overrides;
+    _soundOnActiveTab = onActiveTab;
+    _soundVolume = volume;
+  }
+
+  bool _soundEnabledFor(SoundEvent event) => _soundEvents[event] ?? true;
 
   /// Espelha `AppSettings.defaultTerminalProfileId` (plano 50). A `CockpitPage`
   /// empurra o valor do controller app-scoped. `null` = sem escolha → o resolver
@@ -3661,6 +3677,7 @@ class CockpitViewModel extends ChangeNotifier {
           ..preferredModelId = preferredModelId
           ..preferredThinking = preferredThinking;
     s.onTurnEnd = () => _onAgentTurnEnd(s);
+    s.onCrashed = () => unawaited(_notifyAgentCrashed(s));
     s.onPreferenceChanged = () => _scheduleSave(project.id);
     _sessions[s.id] = s;
     unawaited(_bootAgent(s, cwd, project, restoreSessionPath));
@@ -3716,6 +3733,12 @@ class CockpitViewModel extends ChangeNotifier {
   void _onClaudeStatus(ClaudeStatusUpdate u) {
     final s = _sessions[u.paneId];
     if (s is! TerminalSession) return;
+    if (kDebugMode) {
+      debugPrint(
+        '[status] ${DateTime.now().toIso8601String().substring(11, 23)} '
+        'pane=${u.paneId} ev=${u.event} st=${u.status}',
+      );
+    }
     final hadSid = s.claudeSessionId;
     s.applyClaudeStatus(
       status: switch (u.status) {
@@ -3766,7 +3789,16 @@ class CockpitViewModel extends ChangeNotifier {
   /// OS notification → só se a janela não estiver focada.
   /// Separar as duas responsabilidades evita badge preso: se o usuário já está
   /// na aba, não há nada a marcar — ele verá a resposta ao olhar para a janela.
+  ///
+  /// Chega aqui tanto o fim de turno (`idle`) quanto o pedido de ação
+  /// (`waiting`: permissão/pergunta/plano) — o `onTurnFinished` do terminal
+  /// dispara nos dois. O status corrente da sessão decide qual [SoundEvent] é.
   Future<void> _notifyIfNeeded(PaneItem s) async {
+    final actionRequired =
+        s is TerminalSession && s.status == TerminalStatus.waiting;
+    final event = actionRequired
+        ? SoundEvent.actionRequired
+        : SoundEvent.turnDone;
     final isActiveTab = s.id == _focusedAgentId;
 
     if (!isActiveTab) {
@@ -3775,16 +3807,63 @@ class CockpitViewModel extends ChangeNotifier {
     }
 
     final windowFocused = await windowManager.isFocused();
+    if (kDebugMode) {
+      debugPrint(
+        '[sound] ${DateTime.now().toIso8601String().substring(11, 23)} '
+        'event=$event tab=${s.id} activeTab=$isActiveTab '
+        'focused=$windowFocused enabled=${_soundEnabledFor(event)}',
+      );
+    }
     if (!windowFocused) {
       // Janela em outro app → notificação do SO (tem som próprio).
       if (_notificationsEnabled) {
         final workspace = _projectById(s.projectId)?.name ?? '';
-        await _notifier.agentFinished(agentName: s.title, workspace: workspace);
+        if (actionRequired) {
+          await _notifier.agentNeedsAction(
+            agentName: s.title,
+            workspace: workspace,
+          );
+        } else {
+          await _notifier.agentFinished(
+            agentName: s.title,
+            workspace: workspace,
+          );
+        }
       }
-    } else if (_soundEnabled) {
-      // Janela focada → chime curto pra chamar atenção (inclusive na aba ativa).
-      // Nunca junto da notificação → não se confunde com o som dela.
-      await _notifier.playTurnChime();
+    } else if (_soundEnabledFor(event)) {
+      // Janela focada → som curto pra chamar atenção. Nunca junto da
+      // notificação → não se confunde com o som dela. Aba ativa não toca por
+      // padrão (o usuário está olhando a resposta/prompt), a menos que o
+      // usuário tenha ligado "tocar mesmo na aba ativa" pro evento.
+      if (isActiveTab && !(_soundOnActiveTab[event] ?? false)) return;
+      await _notifier.play(
+        event,
+        customPath: _soundOverrides[event],
+        volume: _soundVolume,
+      );
+    }
+  }
+
+  /// Processo do agente morreu sem ser pedido: badge fora da aba ativa,
+  /// notificação do SO desfocado, som de erro focado. Mesma matriz de foco do
+  /// [_notifyIfNeeded]; separado porque o gatilho não é fim de turno.
+  Future<void> _notifyAgentCrashed(AgentSession s) async {
+    if (s.id != _focusedAgentId) {
+      s.markUnseen();
+      notifyListeners();
+    }
+    final windowFocused = await windowManager.isFocused();
+    if (!windowFocused) {
+      if (_notificationsEnabled) {
+        final workspace = _projectById(s.projectId)?.name ?? '';
+        await _notifier.agentCrashed(agentName: s.title, workspace: workspace);
+      }
+    } else if (_soundEnabledFor(SoundEvent.agentError)) {
+      await _notifier.play(
+        SoundEvent.agentError,
+        customPath: _soundOverrides[SoundEvent.agentError],
+        volume: _soundVolume,
+      );
     }
   }
 

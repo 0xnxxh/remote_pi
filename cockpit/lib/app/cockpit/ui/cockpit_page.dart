@@ -225,7 +225,12 @@ class _CockpitPageState extends State<CockpitPage> {
   /// `SettingsController` app-scoped, então a página empurra o valor.
   void _syncNotifications() {
     _vm.setNotificationsEnabled(_settings!.settings.notificationsEnabled);
-    _vm.setSoundEnabled(_settings!.settings.soundEnabled);
+    _vm.setSoundPrefs(
+      events: _settings!.settings.soundEvents,
+      overrides: _settings!.settings.soundOverrides,
+      onActiveTab: _settings!.settings.soundOnActiveTab,
+      volume: _settings!.settings.soundVolume,
+    );
     // Plano 50: perfil de terminal padrão do `+` — mesmo motivo (app-scoped →
     // VM page-scoped). Vale pra abas criadas daqui pra frente.
     _vm.setDefaultTerminalProfileId(
