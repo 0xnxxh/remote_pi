@@ -83,6 +83,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/realm_controller.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Controlador do shell: projetos, árvore de splits **por projeto**, sessões de
@@ -1875,10 +1876,13 @@ class CockpitViewModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    // OFF: encerra runtime (mata PTYs/sessões/timers) e remove o sintético.
+    // OFF: remove o sintético e encerra o runtime (mata PTYs/sessões/timers)
+    // — nessa ordem, e o runtime só depois do frame que desmonta os panes:
+    // liberar o terminal nativo com a view montada é SIGSEGV no libghostty
+    // (ver [removeProject]).
     final wasSelected = _selectedProjectId == Project.cockpitId;
-    _disposeProjectRuntime(Project.cockpitId);
     _projectList.removeWhere((p) => p.isSystemTerminal);
+    unawaited(_disposeRuntimeAfterFrame(Project.cockpitId));
     if (wasSelected) {
       final roots = rootProjects;
       _selectedProjectId = roots.isEmpty ? null : roots.first.id;
@@ -2132,22 +2136,103 @@ class CockpitViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Pra onde a seleção vai quando o workspace [excluding] deixa de existir:
+  /// o primeiro workspace raiz do realm ativo que não seja ele, senão o
+  /// Cockpit (se ligado), senão `null` — rail vazio → `WelcomeView`.
+  String? _selectionAfterClosing(String excluding) {
+    for (final p in rootProjects) {
+      if (p.id != excluding) return p.id;
+    }
+    return cockpitWorkspace != null ? Project.cockpitId : null;
+  }
+
+  /// Espera o fim do frame em que a UI aplica a última notificação — ou seja,
+  /// o frame que **desmonta** os panes de um workspace que saiu da lista.
+  ///
+  /// O timeout evita travar o fechamento se não houver frame agendado (janela
+  /// minimizada, app sem listeners): pior caso é voltar ao comportamento antigo.
+  Future<void> _endOfFrame() async {
+    try {
+      await SchedulerBinding.instance.endOfFrame.timeout(
+        const Duration(milliseconds: 500),
+      );
+    } on TimeoutException {
+      // Sem frame: segue o fechamento mesmo assim.
+    }
+  }
+
+  /// [_disposeProjectRuntime] adiado pro fim do frame — para call-sites
+  /// síncronos que acabaram de tirar o projeto da lista. Ver [removeProject].
+  Future<void> _disposeRuntimeAfterFrame(String id) async {
+    await _endOfFrame();
+    _disposeProjectRuntime(id);
+  }
+
+  /// Fecha o workspace [id] (e as worktrees dele) — remove da lista local,
+  /// encerra os processos e apaga a persistência. **Não** deleta a pasta.
+  ///
+  /// Ordem obrigatória: **sai → desmonta → destrói**. Fechar o workspace atual
+  /// crashava o app com `SIGSEGV` dentro do `libghostty`
+  /// (`ghostty_terminal_get*` na thread `io.flutter.ui`) — use-after-free do
+  /// handle nativo do terminal. O runtime era encerrado primeiro
+  /// (`_disposeProjectRuntime` → `TerminalSession.dispose` →
+  /// `GhosttyTerminalController.dispose` → libera o terminal nativo) com as
+  /// `TerminalView` do workspace **ainda montadas**: o layout/`detach()` do
+  /// frame seguinte tocava um ponteiro liberado. Não é exceção Dart — é
+  /// segfault, por isso não havia stack trace no console.
+  ///
+  /// Por isso:
+  /// 1. troca a seleção e espera o destino subir (o usuário sai do workspace
+  ///    antes de ele deixar de existir; sem destino → `WelcomeView`);
+  /// 2. tira da lista, notifica e **espera o frame**, pra Flutter desmontar as
+  ///    views enquanto os controllers ainda estão vivos (ordem que o `flterm`
+  ///    espera: `view.dispose()` → `detach()` → só depois `controller.dispose()`);
+  /// 3. só então encerra o runtime (mata `pi`/PTY e libera o Ghostty);
+  /// 4. persistência por último.
   Future<void> removeProject(String id) async {
-    // Encerra as worktrees do workspace junto (não deixa fork órfão).
-    for (final fork in _worktrees.remove(id) ?? const <Project>[]) {
+    if (_projectById(id) == null) return;
+    final selected = _selectedProjectId;
+    final forks = List<Project>.of(_worktrees[id] ?? const <Project>[]);
+    final leaving = selected == id || forks.any((f) => f.id == selected);
+
+    // (1) Sai do workspace antes de destruí-lo.
+    if (leaving) {
+      final next = _selectionAfterClosing(id);
+      _selectedProjectId = next;
+      _clearFocusedNotification();
+      _requestPaneKeyboard();
+      git.watchProject(next);
+      notifyListeners();
+      if (next != null) {
+        await _activateProject(next); // reconstrói o destino (idempotente)
+        unawaited(git.refresh(next));
+        unawaited(_projects.saveLastSelected(realmCtrl.activeId, next));
+      }
+    }
+
+    // (2) Some da UI — e espera o frame que desmonta os panes.
+    _worktrees.remove(id);
+    _projectList.removeWhere((p) => p.id == id || p.parentId == id);
+    // Rede de segurança: seleção apontando pra algo que sumiu junto (ou que já
+    // não existia) cai no mesmo fallback.
+    if (_selectedProjectId != null &&
+        _projectById(_selectedProjectId) == null) {
+      _selectedProjectId = _selectionAfterClosing(id);
+      git.watchProject(_selectedProjectId);
+    }
+    notifyListeners();
+    await _endOfFrame();
+
+    // (3) Nenhuma view referencia mais estas sessões — agora é seguro liberar
+    // os terminais nativos.
+    for (final fork in forks) {
       _disposeProjectRuntime(fork.id);
-      _projectList.removeWhere((p) => p.id == fork.id);
     }
     _disposeProjectRuntime(id);
-    _projectList.removeWhere((p) => p.id == id);
-    if (_selectedProjectId == id || _projectById(_selectedProjectId) == null) {
-      _selectedProjectId = rootProjects.isEmpty ? null : rootProjects.first.id;
-    }
+
+    // (4) Persistência por último — não segura a troca de workspace.
     await _projects.remove(id);
     await _layoutStore.remove(id);
-    final next = _selectedProjectId;
-    if (next != null) await _activateProject(next);
-    notifyListeners();
   }
 
   /// Encerra o runtime de um projeto (árvore de panes + sessões + foco + caches),
@@ -2178,6 +2263,9 @@ class CockpitViewModel extends ChangeNotifier {
     String? rootPath,
     String? baseRef,
     String? layoutSourceId,
+    bool copyIgnored = false,
+    bool copyUntracked = false,
+    bool fetchRemote = true,
   }) {
     final root = _projectById(rootId);
     if (root == null) {
@@ -2191,7 +2279,14 @@ class CockpitViewModel extends ChangeNotifier {
     // Multi-root: o `git worktree add` parte da root escolhida, nao da mae.
     // [baseRef] ("Fork Worktree"): ramifica da branch de outro fork, mas a
     // pasta nasce sempre no repo de origem.
-    final run = _worktreeMgr.add(rootPath ?? root.path, name, baseRef: baseRef);
+    final run = _worktreeMgr.add(
+      rootPath ?? root.path,
+      name,
+      baseRef: baseRef,
+      copyIgnored: copyIgnored,
+      copyUntracked: copyUntracked,
+      fetchRemote: fetchRemote,
+    );
     final result = run.result.then<Result<Project, WorktreeOpError>>((
       res,
     ) async {
@@ -2235,7 +2330,13 @@ class CockpitViewModel extends ChangeNotifier {
   /// "Fork Worktree": cria uma worktree nova ramificada da **branch do fork**
   /// [forkId], materializada no repo de origem (nunca aninhada). O fork novo
   /// entra como irmao na lista (mesmo pai), herdando o layout do fork base.
-  WorktreeAddRun<Project> forkWorktree(String forkId, String name) {
+  WorktreeAddRun<Project> forkWorktree(
+    String forkId,
+    String name, {
+    bool copyIgnored = false,
+    bool copyUntracked = false,
+    bool fetchRemote = true,
+  }) {
     final fork = _projectById(forkId);
     if (fork == null || fork.parentId == null) {
       return WorktreeAddRun<Project>(
@@ -2260,6 +2361,9 @@ class CockpitViewModel extends ChangeNotifier {
       rootPath: origin,
       baseRef: fork.name,
       layoutSourceId: forkId,
+      copyIgnored: copyIgnored,
+      copyUntracked: copyUntracked,
+      fetchRemote: fetchRemote,
     );
   }
 
@@ -4499,15 +4603,25 @@ class CockpitViewModel extends ChangeNotifier {
     final newIds = forks.map((f) => f.id).toSet();
     final oldIds = old.map((f) => f.id).toSet();
 
-    // Forks que sumiram → encerra runtime e tira de _projectList.
+    // Forks que sumiram → tira de _projectList, espera o frame que desmonta os
+    // panes e SÓ ENTÃO encerra o runtime. Mesma ordem de [removeProject]:
+    // liberar o terminal nativo com a `TerminalView` ainda montada é SIGSEGV
+    // dentro do libghostty.
     var switched = false;
-    for (final gone in old.where((f) => !newIds.contains(f.id))) {
-      _disposeProjectRuntime(gone.id);
-      _forkOrigin.remove(gone.id);
-      _projectList.removeWhere((p) => p.id == gone.id);
-      if (_selectedProjectId == gone.id) {
-        _selectedProjectId = rootId; // pai assume
-        switched = true;
+    final vanished = old.where((f) => !newIds.contains(f.id)).toList();
+    if (vanished.isNotEmpty) {
+      for (final gone in vanished) {
+        _forkOrigin.remove(gone.id);
+        _projectList.removeWhere((p) => p.id == gone.id);
+        if (_selectedProjectId == gone.id) {
+          _selectedProjectId = rootId; // pai assume
+          switched = true;
+        }
+      }
+      notifyListeners();
+      await _endOfFrame();
+      for (final gone in vanished) {
+        _disposeProjectRuntime(gone.id);
       }
     }
     // Forks novos → entram em _projectList + carregam layout salvo (decisão 18).

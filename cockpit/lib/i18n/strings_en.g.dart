@@ -550,6 +550,12 @@ class Translations$cockpit$worktreeCreateDialog$en {
 	/// en: 'A worktree with that name already exists.'
 	String get errorDuplicateWorktree => 'A worktree with that name already exists.';
 
+	/// en: 'Cannot create branch '${target}' because it conflicts with the existing branch '${existing}'.'
+	String errorBranchHierarchyConflict({required Object target, required Object existing}) => 'Cannot create branch \'${target}\' because it conflicts with the existing branch \'${existing}\'.';
+
+	/// en: 'A branch with a conflicting hierarchy already exists.'
+	String get errorBranchHierarchicalConflictGeneral => 'A branch with a conflicting hierarchy already exists.';
+
 	/// en: 'Fork'
 	String get fork => 'Fork';
 
@@ -558,6 +564,39 @@ class Translations$cockpit$worktreeCreateDialog$en {
 
 	/// en: 'Running…'
 	String get running => 'Running…';
+
+	/// en: 'Advanced Settings'
+	String get advancedSettings => 'Advanced Settings';
+
+	/// en: 'Copy ignored files (.gitignore)'
+	String get copyIgnored => 'Copy ignored files (.gitignore)';
+
+	/// en: 'Copies files ignored by .gitignore (e.g. .env, local keys) to the new worktree.'
+	String get copyIgnoredDesc => 'Copies files ignored by .gitignore (e.g. .env, local keys) to the new worktree.';
+
+	/// en: 'Copy untracked files'
+	String get copyUntracked => 'Copy untracked files';
+
+	/// en: 'Copies new or modified files that haven't been staged yet.'
+	String get copyUntrackedDesc => 'Copies new or modified files that haven\'t been staged yet.';
+
+	/// en: 'Base branch'
+	String get baseBranch => 'Base branch';
+
+	/// en: 'The branch from which the new worktree and branch will be created.'
+	String get baseBranchDesc => 'The branch from which the new worktree and branch will be created.';
+
+	/// en: 'Fetch remote branch'
+	String get fetchRemote => 'Fetch remote branch';
+
+	/// en: 'Run git fetch to guarantee the base branch is confirmed before creating the worktree.'
+	String get fetchRemoteDesc => 'Run git fetch to guarantee the base branch is confirmed before creating the worktree.';
+
+	/// en: 'Search branch...'
+	String get searchBranch => 'Search branch...';
+
+	/// en: 'Back'
+	String get back => 'Back';
 }
 
 // Path: cockpit.subfolderDialog
@@ -3304,9 +3343,22 @@ extension on Translations {
 			'cockpit.worktreeCreateDialog.errorReserved' => 'Reserved position (do not start with "-"/"." or end with ".lock").',
 			'cockpit.worktreeCreateDialog.errorDuplicateBranch' => 'A branch with that name already exists.',
 			'cockpit.worktreeCreateDialog.errorDuplicateWorktree' => 'A worktree with that name already exists.',
+			'cockpit.worktreeCreateDialog.errorBranchHierarchyConflict' => ({required Object target, required Object existing}) => 'Cannot create branch \'${target}\' because it conflicts with the existing branch \'${existing}\'.',
+			'cockpit.worktreeCreateDialog.errorBranchHierarchicalConflictGeneral' => 'A branch with a conflicting hierarchy already exists.',
 			'cockpit.worktreeCreateDialog.fork' => 'Fork',
 			'cockpit.worktreeCreateDialog.postCheckoutHint' => 'This repository has a post-checkout hook.',
 			'cockpit.worktreeCreateDialog.running' => 'Running…',
+			'cockpit.worktreeCreateDialog.advancedSettings' => 'Advanced Settings',
+			'cockpit.worktreeCreateDialog.copyIgnored' => 'Copy ignored files (.gitignore)',
+			'cockpit.worktreeCreateDialog.copyIgnoredDesc' => 'Copies files ignored by .gitignore (e.g. .env, local keys) to the new worktree.',
+			'cockpit.worktreeCreateDialog.copyUntracked' => 'Copy untracked files',
+			'cockpit.worktreeCreateDialog.copyUntrackedDesc' => 'Copies new or modified files that haven\'t been staged yet.',
+			'cockpit.worktreeCreateDialog.baseBranch' => 'Base branch',
+			'cockpit.worktreeCreateDialog.baseBranchDesc' => 'The branch from which the new worktree and branch will be created.',
+			'cockpit.worktreeCreateDialog.fetchRemote' => 'Fetch remote branch',
+			'cockpit.worktreeCreateDialog.fetchRemoteDesc' => 'Run git fetch to guarantee the base branch is confirmed before creating the worktree.',
+			'cockpit.worktreeCreateDialog.searchBranch' => 'Search branch...',
+			'cockpit.worktreeCreateDialog.back' => 'Back',
 			'cockpit.subfolderDialog.title' => 'Where to work?',
 			'cockpit.subfolderDialog.empty' => 'No subfolders here.',
 			'cockpit.subfolderDialog.useRoot' => ({required Object project}) => 'Use the root of ${project}',
@@ -3702,6 +3754,8 @@ extension on Translations {
 			'settings.language.portugueseBr' => 'Português (BR)',
 			'settings.language.spanish' => 'Español',
 			'settings.revokeDialog.deviceRemoved' => 'Device removed.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'Failed to revoke the device.',
 			'settings.revokeDialog.revoking' => 'Revoking…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revoking ${name}…',
@@ -3715,8 +3769,6 @@ extension on Translations {
 			'settings.pairingDialog.qrGenerationFailed' => 'Could not generate the QR.',
 			'settings.pairingDialog.autoRefreshHint' => 'The code refreshes on its own. Keep this window open.',
 			'settings.pairingDialog.pairingFailed' => 'Pairing failed.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.pairingDialog.tryAgain' => 'Try again',
 			'settings.pairingDialog.copied' => 'Copied!',
 			'settings.pairingDialog.copyData' => 'Copy data',

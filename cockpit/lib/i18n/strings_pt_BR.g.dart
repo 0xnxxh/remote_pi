@@ -346,9 +346,22 @@ class _Translations$cockpit$worktreeCreateDialog$pt_BR extends Translations$cock
 	@override String get errorReserved => 'Posição reservada (não comece com "-"/"." nem termine com ".lock").';
 	@override String get errorDuplicateBranch => 'Já existe um branch com esse nome.';
 	@override String get errorDuplicateWorktree => 'Já existe uma worktree com esse nome.';
+	@override String errorBranchHierarchyConflict({required Object target, required Object existing}) => 'Não é possível criar o branch \'${target}\' porque ele conflita com o branch \'${existing}\' já existente.';
+	@override String get errorBranchHierarchicalConflictGeneral => 'Já existe um branch com uma hierarquia conflitante.';
 	@override String get fork => 'Fork';
 	@override String get postCheckoutHint => 'Este repositório tem um hook post-checkout.';
 	@override String get running => 'Executando…';
+	@override String get advancedSettings => 'Configurações Avançadas';
+	@override String get copyIgnored => 'Copiar arquivos ignorados (.gitignore)';
+	@override String get copyIgnoredDesc => 'Copia arquivos ignorados pelo .gitignore (ex: .env, chaves locais) para a nova pasta.';
+	@override String get copyUntracked => 'Copiar arquivos não rastreados';
+	@override String get copyUntrackedDesc => 'Copia arquivos novos ou modificados que ainda não foram adicionados ao stage.';
+	@override String get baseBranch => 'Branch base';
+	@override String get baseBranchDesc => 'O branch de onde a nova worktree e branch serão ramificados.';
+	@override String get fetchRemote => 'Sincronizar branch remota (fetch)';
+	@override String get fetchRemoteDesc => 'Roda git fetch para garantir que a branch base esteja confirmada antes de criar a worktree.';
+	@override String get searchBranch => 'Buscar branch...';
+	@override String get back => 'Voltar';
 }
 
 // Path: cockpit.subfolderDialog
@@ -1662,9 +1675,22 @@ extension on TranslationsPtBr {
 			'cockpit.worktreeCreateDialog.errorReserved' => 'Posição reservada (não comece com "-"/"." nem termine com ".lock").',
 			'cockpit.worktreeCreateDialog.errorDuplicateBranch' => 'Já existe um branch com esse nome.',
 			'cockpit.worktreeCreateDialog.errorDuplicateWorktree' => 'Já existe uma worktree com esse nome.',
+			'cockpit.worktreeCreateDialog.errorBranchHierarchyConflict' => ({required Object target, required Object existing}) => 'Não é possível criar o branch \'${target}\' porque ele conflita com o branch \'${existing}\' já existente.',
+			'cockpit.worktreeCreateDialog.errorBranchHierarchicalConflictGeneral' => 'Já existe um branch com uma hierarquia conflitante.',
 			'cockpit.worktreeCreateDialog.fork' => 'Fork',
 			'cockpit.worktreeCreateDialog.postCheckoutHint' => 'Este repositório tem um hook post-checkout.',
 			'cockpit.worktreeCreateDialog.running' => 'Executando…',
+			'cockpit.worktreeCreateDialog.advancedSettings' => 'Configurações Avançadas',
+			'cockpit.worktreeCreateDialog.copyIgnored' => 'Copiar arquivos ignorados (.gitignore)',
+			'cockpit.worktreeCreateDialog.copyIgnoredDesc' => 'Copia arquivos ignorados pelo .gitignore (ex: .env, chaves locais) para a nova pasta.',
+			'cockpit.worktreeCreateDialog.copyUntracked' => 'Copiar arquivos não rastreados',
+			'cockpit.worktreeCreateDialog.copyUntrackedDesc' => 'Copia arquivos novos ou modificados que ainda não foram adicionados ao stage.',
+			'cockpit.worktreeCreateDialog.baseBranch' => 'Branch base',
+			'cockpit.worktreeCreateDialog.baseBranchDesc' => 'O branch de onde a nova worktree e branch serão ramificados.',
+			'cockpit.worktreeCreateDialog.fetchRemote' => 'Sincronizar branch remota (fetch)',
+			'cockpit.worktreeCreateDialog.fetchRemoteDesc' => 'Roda git fetch para garantir que a branch base esteja confirmada antes de criar a worktree.',
+			'cockpit.worktreeCreateDialog.searchBranch' => 'Buscar branch...',
+			'cockpit.worktreeCreateDialog.back' => 'Voltar',
 			'cockpit.subfolderDialog.title' => 'Onde trabalhar?',
 			'cockpit.subfolderDialog.empty' => 'Nenhuma subpasta aqui.',
 			'cockpit.subfolderDialog.useRoot' => ({required Object project}) => 'Usar a raiz de ${project}',
@@ -2060,6 +2086,8 @@ extension on TranslationsPtBr {
 			'settings.language.portugueseBr' => 'Português (BR)',
 			'settings.language.spanish' => 'Espanhol',
 			'settings.revokeDialog.deviceRemoved' => 'Dispositivo removido.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'Falha ao revogar o dispositivo.',
 			'settings.revokeDialog.revoking' => 'Revogando…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revogando ${name}…',
@@ -2073,8 +2101,6 @@ extension on TranslationsPtBr {
 			'settings.pairingDialog.qrGenerationFailed' => 'Não foi possível gerar o QR.',
 			'settings.pairingDialog.autoRefreshHint' => 'O código se atualiza sozinho. Mantenha esta janela aberta.',
 			'settings.pairingDialog.pairingFailed' => 'Falha no pareamento.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.pairingDialog.tryAgain' => 'Tentar novamente',
 			'settings.pairingDialog.copied' => 'Copiado!',
 			'settings.pairingDialog.copyData' => 'Copiar dados',
