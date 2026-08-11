@@ -1,0 +1,15 @@
+name: cockpit_engine
+description: Implementações nativas do motor do Cockpit (plano 58). Só o cockpit-server importa; nunca o cliente.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  cockpit_core:
+    path: ../cockpit_core
+  ffi: ^2.1.0
+
+dev_dependencies:
+  test: ^1.25.0

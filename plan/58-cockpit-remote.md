@@ -211,24 +211,31 @@ classe dos dois lados do fio).
 
 ## Passos (waves)
 
-### Wave 0 — Spike: pacotes + servidor Dart mínimo (terminais)
-- [ ] Esqueleto dos pacotes `cockpit_core` / `cockpit_protocol` /
-      `cockpit_engine` / `cockpit_remote` (pub workspace); binário
-      `cockpit-server` (`dart compile exe`, sem Flutter) composto com
-      auto_injector puro; WebSocket/UDS listener + handshake com versão.
-- [ ] **Gate FFI**: cockpit_pty carregado por dylib manual fora do Flutter
-      (e prova de conceito do mesmo caminho pros anaki). Se afundar,
-      fallback Rust (decisão F) com a justificativa documentada.
-- [ ] `docs/remote-protocol.md` (rascunho dos 4 domínios); mensagens vivem em
-      `cockpit_protocol`, mesma classe dos dois lados.
-- [ ] Domínio Terminais ponta a ponta: abrir PTY, stream de bytes, resize,
-      kill, reattach com scrollback (decidir aqui: ring buffer vs emulador
-      headless).
-- [ ] Benchmark loopback vs FFI atual: orçamento < 1ms p50 de acréscimo no
-      eco de keystroke, sem regressão perceptível em despejo de output.
-- **Aceite**: cliente de teste (script) abre shell via servidor, digita, vê
-  saída, desconecta e reata sem perder scrollback; gate FFI e benchmark
-  aprovados.
+### Wave 0 — Spike: pacotes + servidor Dart mínimo (terminais) ✅ (2026-08-11)
+- [x] Pacotes `cockpit_core` / `cockpit_protocol` / `cockpit_engine` /
+      `cockpit_remote` / `cockpit_server` em `cockpit/packages/`; binário
+      `cockpit-server` (dart compile exe OK, sem Flutter) composto com
+      auto_injector puro; UDS listener + handshake com versão.
+- [x] **Gate FFI: PASSOU.** cockpit_pty compilado standalone com `cc` puro
+      (`tool/wave0/build_pty_dylib.sh`, sem CMake/Flutter), carregado via
+      `DynamicLibrary.open` + native ports em Dart puro. Bindings à mão em
+      `cockpit_engine` (a API são 6 funções). Anaki: mesmo caminho, provar
+      na Wave 4.
+- [x] `docs/remote-protocol.md` (handshake + Terminais; JSONL, envelope,
+      offsets, erros); mensagens em `cockpit_protocol`, mesma classe dos
+      dois lados.
+- [x] Terminais ponta a ponta: open/input/output/resize/kill/attach com
+      replay. **Decidido: ring buffer de bytes crus** (4 MiB/sessão,
+      offset absoluto; emulador fica no cliente). E2E
+      `tool/wave0/wave0_e2e.dart`: 8/8 PASS, incluindo detach da conexão +
+      reattach com scrollback completo + live após replay.
+- [x] Benchmark `tool/wave0/wave0_bench.dart`: eco FFI 0.016ms p50 vs
+      loopback 0.132ms p50 → **acréscimo 0.116ms (orçamento 1ms) PASS**.
+      Dump 32MiB: 105 vs 90 MiB/s (base64/JSONL custa ~14%; frame binário
+      fica anotado como otimização se precisar).
+- **Aceite**: CUMPRIDO (e2e 8/8 + gate FFI + benchmark). Lição aplicada:
+  dispatch do servidor serializado por conexão (listen não espera handler
+  async; sem isso pty.list ultrapassa pty.kill).
 
 ### Wave 1 — GUI vira cliente (sidecar loopback)
 - [ ] Proxies de terminal em `cockpit_remote`; GUI spawna o sidecar
