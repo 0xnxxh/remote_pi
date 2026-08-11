@@ -261,12 +261,15 @@ classe dos dois lados do fio).
       `test/data/sidecar_terminal_gateway_test.dart` (gateway real via
       sidecar: eco, fila de ops, resize, ack, kill), suíte 884 verde,
       `flutter build macos` ok, analyze sem issues novos.
-- [ ] **Pendente da wave**: E2E manual no app real (abrir GUI, conferir
-      claude/TUIs/scroll idênticos); empacotar `cockpit-server` + dylib no
-      bundle `.app` (Run Script macOS, como o `cli/`) — sem isso, app
-      instalado usa o fallback in-process; benchmark revalidado dentro do
-      app; registro de hosts + UI de pins (movido pro início da Wave 2, onde
-      há host de verdade pra listar).
+- [x] E2E manual no app real (2026-08-11, validado pelo Jacob): terminais
+      idênticos ao comportamento anterior; `ps` confirma o desenho — shell
+      `/bin/zsh -l` filho do `cockpit-server` (~17MB RSS), GUI conectada no
+      UDS, zero duplicados/órfãos.
+- [ ] **Pendente da wave**: empacotar `cockpit-server` + dylib no bundle
+      `.app` (Run Script macOS, como o `cli/`) — sem isso, app instalado usa
+      o fallback in-process; benchmark revalidado dentro do app; registro de
+      hosts + UI de pins (movido pro início da Wave 2, onde há host de
+      verdade pra listar).
 - **Aceite**: Cockpit local funciona igual a hoje com terminais servidos pelo
   sidecar; benchmark revalidado no app real; `flutter analyze` + testes
   verdes.
