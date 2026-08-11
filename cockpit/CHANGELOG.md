@@ -24,6 +24,22 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.25.1] - 2026-08-11
+
+A smoother terminal under heavy output, and realm switching that remembers where you were.
+
+### Fixed
+
+- The window no longer freezes when a command floods the terminal with output.
+  PTY output now shares a frame-time budget across every terminal, and hidden
+  terminals stop painting entirely instead of competing for the frame. Thanks,
+  @pretodev.
+- Switching realms (keyboard shortcut or the realm picker) now brings you back to the
+  worktree you were working in, not to its main workspace. If that worktree is
+  gone, focus falls back to the workspace it belonged to.
+- The tab bar scrolls horizontally with the mouse wheel again when there are
+  more tabs than fit the panel. Thanks, @pretodev.
+
 ## [1.25.0] - 2026-08-09
 
 Sounds you can tell apart, worktrees you can configure, and one less crash.
