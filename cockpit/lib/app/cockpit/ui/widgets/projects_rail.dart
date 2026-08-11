@@ -74,6 +74,10 @@ class ProjectsRail extends StatefulWidget {
     required this.onMoveToRealm,
     this.cockpit,
     required this.onSelectCockpit,
+    this.remoteHosts = const [],
+    required this.onSelectRemote,
+    required this.onAddRemoteHost,
+    required this.onRemoveRemoteHost,
     this.width = 252,
   });
 
@@ -89,6 +93,18 @@ class ProjectsRail extends StatefulWidget {
 
   /// Seleciona o workspace de sistema "Cockpit".
   final VoidCallback onSelectCockpit;
+
+  /// Workspaces de hosts remotos (plano 58), renderizados num slot próprio.
+  final List<Project> remoteHosts;
+
+  /// Seleciona um host remoto (pelo id do workspace).
+  final void Function(String workspaceId) onSelectRemote;
+
+  /// Abre o dialog "Add remote host".
+  final VoidCallback onAddRemoteHost;
+
+  /// Remove um host remoto (pelo hostId).
+  final void Function(String hostId) onRemoveRemoteHost;
 
   /// Worktrees (forks) de um workspace raiz, na ordem do git.
   final List<Project> Function(String rootId) worktreesOf;
@@ -233,6 +249,23 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 onTap: widget.onSelectCockpit,
               ),
             ),
+          // Hosts remotos (plano 58): slots próprios, terminal-only via SSH.
+          for (final host in widget.remoteHosts)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+              child: _RemoteSlot(
+                name: host.name,
+                colorValue: host.colorValue,
+                selected: host.id == widget.selectedId,
+                onTap: () => widget.onSelectRemote(host.id),
+                onRemove: () =>
+                    widget.onRemoveRemoteHost(host.remoteHostId ?? ''),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: _AddRemoteButton(onTap: widget.onAddRemoteHost),
+          ),
           Expanded(
             child: projects.isEmpty
                 ? const _EmptyRail()
@@ -365,6 +398,113 @@ class _CockpitSlot extends StatelessWidget {
                 color: colors.text,
                 fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slot de um host remoto: badge com o nome do host + glifo de nuvem/terminal.
+/// Botão-direito (long-press no menu) remove o pin. Terminal-only via SSH.
+class _RemoteSlot extends StatelessWidget {
+  const _RemoteSlot({
+    required this.name,
+    required this.colorValue,
+    required this.selected,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  final String name;
+  final int colorValue;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = Color(colorValue);
+    return GestureDetector(
+      // Botão-direito remove o pin (o registro do host sai; nada apagado no
+      // servidor). Tooltip via AppTooltip explica.
+      onSecondaryTap: onRemove,
+      child: HoverTap(
+        color: selected ? colors.panel2 : Colors.transparent,
+        borderRadius: BorderRadius.circular(7),
+        onTap: onTap,
+        padding: const EdgeInsets.fromLTRB(9, 7, 9, 7),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: accent.withValues(alpha: 0.5)),
+              ),
+              child: Icon(Icons.cloud_outlined, size: 17, color: accent),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                name,
+                overflow: TextOverflow.ellipsis,
+                style: context.typo.body.copyWith(
+                  fontSize: 13.5,
+                  color: colors.text,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'SSH',
+                style: context.typo.label.copyWith(
+                  fontSize: 9,
+                  color: accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Botão discreto "Add remote host" abaixo dos slots remotos.
+class _AddRemoteButton extends StatelessWidget {
+  const _AddRemoteButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return HoverTap(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(7),
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(9, 6, 9, 6),
+      child: Row(
+        children: [
+          Icon(Icons.add, size: 15, color: colors.text2),
+          const SizedBox(width: 12),
+          Text(
+            context.t.cockpit.remoteHost.addHost,
+            style: context.typo.body.copyWith(
+              fontSize: 12.5,
+              color: colors.text2,
             ),
           ),
         ],

@@ -80,6 +80,9 @@ import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.d
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
+import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/realm_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -127,11 +130,13 @@ class CockpitViewModel extends ChangeNotifier {
     this._taskRunner,
     this._dbService,
     this._layoutLoader,
+    this._remoteHosts,
   ) {
     // Contexto do shell que o GitController precisa (page-scoped, mesma vida).
     git
       ..resolvePath = ((id) => _projectById(id)?.path)
-      ..isSystemTerminal = isSystemTerminal
+      // Pathless (Cockpit + hosts remotos): git local não sobe (path vazio).
+      ..isSystemTerminal = isPathless
       ..selectedProjectId = (() => _selectedProjectId)
       ..pollTargets = _gitPollTargets
       ..onStructuralFsChange = _bumpFileTree
@@ -172,6 +177,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// (plano 51): mesma resolução de conexão/senha, mesma serialização.
   final DbQueryService _dbService;
   final LayoutLoader _layoutLoader;
+  final RemoteHostsController _remoteHosts;
   final RpcGatewayFactory _factory;
   final FolderLister _folders;
   final SessionHistory _history;
@@ -425,7 +431,7 @@ class CockpitViewModel extends ChangeNotifier {
         .where(
           (p) =>
               p.parentId == null &&
-              !p.isSystemTerminal &&
+              !p.isPathless &&
               p.realmId == realmCtrl.activeId,
         )
         .toList();
@@ -446,6 +452,15 @@ class CockpitViewModel extends ChangeNotifier {
   /// agente off).
   bool isSystemTerminal(String? id) =>
       _projectById(id)?.isSystemTerminal ?? false;
+
+  /// `true` se [id] é um workspace SEM pasta local (Cockpit ou host remoto):
+  /// os serviços de path locais (git/árvore/tasks/Files/agente) não sobem.
+  bool isPathless(String? id) => _projectById(id)?.isPathless ?? false;
+
+  /// Workspaces de hosts remotos injetados (plano 58). Renderizados num slot
+  /// próprio no rail, fora de realm/reorder/persist (são pins, não projetos).
+  List<Project> get remoteWorkspaces =>
+      _projectList.where((p) => p.isRemoteTerminal).toList(growable: false);
 
   /// Worktrees (forks) de um workspace raiz, na ordem do git (vazio se nenhuma).
   List<Project> worktreesOf(String rootId) =>
@@ -1792,6 +1807,7 @@ class CockpitViewModel extends ChangeNotifier {
     // Depois do carregamento de layouts (ele não tem layout salvo) e antes da
     // seleção inicial (que pode cair nele no 1º boot).
     if (_cockpitEnabled) _injectCockpit();
+    _syncRemoteWorkspaces();
     _selectedProjectId = await _initialSelection();
     // Só o projeto selecionado é ativado (sobe os processos) no boot.
     final selected = _selectedProjectId;
@@ -1850,7 +1866,7 @@ class CockpitViewModel extends ChangeNotifier {
   bool _visibleInActiveRealm(String id) {
     final p = _projectById(id);
     if (p == null) return false;
-    if (p.isSystemTerminal) return true;
+    if (p.isPathless) return true;
     final root = p.parentId == null ? p : _projectById(p.parentId!);
     return root != null && root.realmId == realmCtrl.activeId;
   }
@@ -1862,6 +1878,52 @@ class CockpitViewModel extends ChangeNotifier {
   void _injectCockpit() {
     if (_projectById(Project.cockpitId) != null) return;
     _projectList.add(Project.systemTerminal());
+  }
+
+  /// Reconcilia os workspaces sintéticos de hosts remotos com o registro do
+  /// [RemoteHostsController]: injeta os novos, remove os que sumiram. Runtime,
+  /// nunca persistido (o registro mora no RemoteHostsStore).
+  void _syncRemoteWorkspaces() {
+    final wanted = {for (final h in _remoteHosts.hosts) h.id};
+    // Remove pins de hosts deletados (encerra runtime se estava selecionado).
+    final stale = _projectList
+        .where((p) => p.isRemoteTerminal && !wanted.contains(p.remoteHostId))
+        .toList();
+    for (final p in stale) {
+      _projectList.remove(p);
+      unawaited(_disposeRuntimeAfterFrame(p.id));
+      if (_selectedProjectId == p.id) _selectedProjectId = null;
+    }
+    // Injeta pins novos.
+    for (final host in _remoteHosts.hosts) {
+      final id = '${Project.remotePrefix}${host.id}';
+      if (_projectById(id) != null) continue;
+      _projectList.add(
+        Project.remoteHost(
+          hostId: host.id,
+          name: host.name,
+          colorValue: 0xFF0C7F87,
+        ),
+      );
+    }
+  }
+
+  /// Adiciona um host remoto (rail → dialog "Add remote host") e injeta seu
+  /// workspace terminal-only.
+  Future<void> addRemoteHost({
+    required String name,
+    required String sshTarget,
+  }) async {
+    await _remoteHosts.addHost(name: name, sshTarget: sshTarget);
+    _syncRemoteWorkspaces();
+    notifyListeners();
+  }
+
+  /// Remove um host remoto (pelo id do host, não do workspace).
+  Future<void> removeRemoteHost(String hostId) async {
+    await _remoteHosts.removeHost(hostId);
+    _syncRemoteWorkspaces();
+    notifyListeners();
   }
 
   /// Liga/desliga o workspace de sistema "Cockpit" em runtime (empurrado pela
@@ -3714,12 +3776,38 @@ class CockpitViewModel extends ChangeNotifier {
     _focused[projectId] = leaf.id;
   }
 
+  /// Gateway de terminal do workspace: remoto (SSH, via RemoteHostsController)
+  /// para hosts remotos; a factory padrão (sidecar loopback) para o resto.
+  TerminalGateway _gatewayForProject(String projectId) {
+    final project = _projectById(projectId);
+    final hostId = project?.remoteHostId;
+    if (project != null && project.isRemoteTerminal && hostId != null) {
+      final host = _remoteHosts.hosts
+          .where((h) => h.id == hostId)
+          .cast<RemoteHost?>()
+          .firstWhere((h) => true, orElse: () => null);
+      if (host != null) return _remoteHosts.terminalGateway(host);
+    }
+    return _terminalFactory.create();
+  }
+
   PaneItem _spawn(
     String subRelative, {
     required bool terminal,
     TerminalProfile? profile,
   }) {
     final project = selectedProject!;
+    // Host remoto (terminal-only via SSH): PTY no cockpit-server do host, cwd
+    // vazio = HOME remota. Gateway roteado pro connector daquele host.
+    if (project.isRemoteTerminal) {
+      return _buildTerminal(
+        _nid('t'),
+        project.id,
+        '',
+        title: 'Terminal',
+        profile: profile,
+      );
+    }
     // Cockpit (terminal-only, sem pasta): shell sempre no HOME do usuário,
     // ignorando `subRelative`. Nunca spawna agente aqui (a UI força terminal).
     if (project.isSystemTerminal) {
@@ -3765,7 +3853,7 @@ class CockpitViewModel extends ChangeNotifier {
       id: id,
       projectId: projectId,
       workingDirectory: cwd,
-      gateway: _terminalFactory.create(),
+      gateway: _gatewayForProject(projectId),
       profile: profile ?? defaultTerminalProfile,
       engine: engine ?? _defaultTerminalEngine,
       title: title,

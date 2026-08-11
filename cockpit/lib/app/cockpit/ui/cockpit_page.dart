@@ -9,6 +9,7 @@ import 'package:cockpit/app/core/routes.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
+import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
@@ -185,7 +186,7 @@ class _CockpitPageState extends State<CockpitPage> {
       hasWorkspace: vm.selectedProject != null,
       agentTabsInUse: vm.hasAgentTabsInUse,
       // Cockpit é terminal-only → sem "New Agent" no menu File.
-      agentsAllowed: !vm.isSystemTerminal(vm.selectedProjectId),
+      agentsAllowed: !vm.isPathless(vm.selectedProjectId),
       // Agente pergunta a subpasta onde vai atuar (igual ao fluxo direto de
       // criar agente); terminal abre direto na raiz do workspace.
       onNewAgent: () => unawaited(
@@ -621,6 +622,14 @@ class _CockpitPageState extends State<CockpitPage> {
 
   Future<void> _manageRealms() => showRealmManagerDialog(context, vm: _vm);
 
+  /// "Add remote host" (plano 58): coleta user@host + nome e injeta o pin. A
+  /// conexão SSH acontece ao selecionar o pin (com loading/erro tipado).
+  Future<void> _addRemoteHost(CockpitViewModel vm) async {
+    final draft = await showAddRemoteHostDialog(context);
+    if (draft == null) return;
+    await vm.addRemoteHost(name: draft.name, sshTarget: draft.sshTarget);
+  }
+
   /// "Fechar" o workspace (confirma → remove da lista local + encerra agentes).
   /// **Não deleta** a pasta no disco — só sai do cockpit.
   Future<void> _deleteProject(Project project) async {
@@ -811,7 +820,7 @@ class _CockpitPageState extends State<CockpitPage> {
                   treeVisible: vm.treeVisible,
                   onToggleRail: vm.toggleRail,
                   onToggleTree: vm.toggleTree,
-                  filesEnabled: !vm.isSystemTerminal(vm.selectedProjectId),
+                  filesEnabled: !vm.isPathless(vm.selectedProjectId),
                 ),
                 Expanded(
                   child: Row(
@@ -870,6 +879,11 @@ class _CockpitPageState extends State<CockpitPage> {
                               cockpit: vm.cockpitWorkspace,
                               onSelectCockpit: () =>
                                   vm.selectProject(Project.cockpitId),
+                              remoteHosts: vm.remoteWorkspaces,
+                              onSelectRemote: vm.selectProject,
+                              onAddRemoteHost: () => _addRemoteHost(vm),
+                              onRemoveRemoteHost: (hostId) =>
+                                  unawaited(vm.removeRemoteHost(hostId)),
                             ),
                             // Alça de arraste na borda direita (direita = alarga).
                             Positioned(
@@ -916,7 +930,7 @@ class _CockpitPageState extends State<CockpitPage> {
                       // Cockpit (sem pasta) nunca mostra a árvore/tasks/busca,
                       // mesmo com `treeVisible` persistido de outro workspace.
                       if (vm.treeVisible &&
-                          !vm.isSystemTerminal(vm.selectedProjectId))
+                          !vm.isPathless(vm.selectedProjectId))
                         Stack(
                           children: [
                             FileTreePanel(

@@ -81,6 +81,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
 import 'package:cockpit/app/cockpit/domain/value_objects/update_target.dart';
 import 'package:cockpit/app/cockpit/ui/cockpit_page.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/realm_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
@@ -232,6 +233,11 @@ Future<Module> buildCockpitModule() async {
             // o VM o recebe no construtor e injeta o contexto de shell.
             ..addChangeNotifier<GitController>(GitController.new)
             ..addChangeNotifier<RealmController>(RealmController.new)
+            // Hosts remotos (plano 58): mesma vida da rota; o VM injeta os
+            // workspaces-pin e roteia os terminais SSH por aqui.
+            ..addChangeNotifier<RemoteHostsController>(
+              RemoteHostsController.new,
+            )
             ..addChangeNotifier<CockpitViewModel>(CockpitViewModel.new)
             ..addChangeNotifier<SetupViewModel>(SetupViewModel.new)
             ..addChangeNotifier<TasksViewModel>(TasksViewModel.new)

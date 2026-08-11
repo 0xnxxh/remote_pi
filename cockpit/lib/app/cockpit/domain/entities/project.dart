@@ -6,7 +6,11 @@ import 'realm.dart';
 /// - [systemTerminal]: o workspace sintético "Cockpit" — sem pasta, terminal-only,
 ///   injetado em runtime (nunca persistido). Serviços de path (git, árvore, tasks,
 ///   worktrees) não sobem para ele; o terminal abre no `$HOME` do usuário.
-enum WorkspaceKind { project, systemTerminal }
+/// - [remoteTerminal]: um host remoto (plano 58, Wave 2) — sintético, injetado
+///   em runtime a partir do `RemoteHostsStore`; terminal-only por enquanto (o PTY
+///   roda no `cockpit-server` do host via SSH). Serviços de path LOCAIS não sobem
+///   (fs/git remotos são fiação futura); [remoteHostId] aponta o host.
+enum WorkspaceKind { project, systemTerminal, remoteTerminal }
 
 /// Uma pasta que o usuário salvou como projeto (workspace). Os workspaces raiz
 /// são persistidos via Hive; as **worktrees** (forks) são `Project`s de runtime
@@ -25,6 +29,7 @@ class Project {
     this.order = 0,
     this.imagePath,
     this.kind = WorkspaceKind.project,
+    this.remoteHostId,
   });
 
   /// Id sentinela do workspace de sistema "Cockpit". Não é um UUID, então nunca
@@ -40,6 +45,24 @@ class Project {
     colorValue: 0xFF6B7280,
     createdAt: DateTime.fromMillisecondsSinceEpoch(0),
     kind: WorkspaceKind.systemTerminal,
+  );
+
+  /// Prefixo do id de um workspace remoto sintético (`__remote__<hostId>`).
+  static const String remotePrefix = '__remote__';
+
+  /// Constrói o workspace sintético de um host remoto (terminal-only).
+  factory Project.remoteHost({
+    required String hostId,
+    required String name,
+    required int colorValue,
+  }) => Project(
+    id: '$remotePrefix$hostId',
+    name: name,
+    path: '',
+    colorValue: colorValue,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+    kind: WorkspaceKind.remoteTerminal,
+    remoteHostId: hostId,
   );
 
   /// Sentinela do [copyWith] para distinguir "não mexer em [imagePath]" de
@@ -82,11 +105,22 @@ class Project {
   /// projetos carregados do Hive caem no default [WorkspaceKind.project].
   final WorkspaceKind kind;
 
+  /// Id do host remoto quando [kind] == [WorkspaceKind.remoteTerminal]; senão
+  /// `null`. O registro do host vive no `RemoteHostsStore`.
+  final String? remoteHostId;
+
   /// `true` quando este `Project` é uma worktree de outro workspace.
   bool get isWorktree => parentId != null;
 
   /// `true` quando este é o workspace sintético "Cockpit" (terminal-only).
   bool get isSystemTerminal => kind == WorkspaceKind.systemTerminal;
+
+  /// `true` quando este é um workspace de host remoto (terminal-only via SSH).
+  bool get isRemoteTerminal => kind == WorkspaceKind.remoteTerminal;
+
+  /// `true` para qualquer workspace sem pasta local (Cockpit ou remoto): os
+  /// serviços de path locais (git/árvore/tasks/worktrees) não sobem.
+  bool get isPathless => isSystemTerminal || isRemoteTerminal;
 
   /// Inicial pro avatar da rail.
   String get initial => name.isNotEmpty ? name[0].toUpperCase() : '?';
@@ -108,6 +142,7 @@ class Project {
     order: order ?? this.order,
     imagePath: imagePath == unchanged ? this.imagePath : imagePath as String?,
     kind: kind,
+    remoteHostId: remoteHostId,
   );
 
   @override
