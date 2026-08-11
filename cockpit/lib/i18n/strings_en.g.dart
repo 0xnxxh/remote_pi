@@ -182,6 +182,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$tasks$en tasks = Translations$cockpit$tasks$en.internal(_root);
 	late final Translations$cockpit$notifications$en notifications = Translations$cockpit$notifications$en.internal(_root);
 	late final Translations$cockpit$terminal$en terminal = Translations$cockpit$terminal$en.internal(_root);
+	late final Translations$cockpit$remoteHost$en remoteHost = Translations$cockpit$remoteHost$en.internal(_root);
 }
 
 // Path: settings
@@ -2039,6 +2040,66 @@ class Translations$cockpit$terminal$en {
 	String cwdFallbackWarning({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".';
 }
 
+// Path: cockpit.remoteHost
+class Translations$cockpit$remoteHost$en {
+	Translations$cockpit$remoteHost$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Add remote host'
+	String get addHost => 'Add remote host';
+
+	/// en: 'Name'
+	String get hostName => 'Name';
+
+	/// en: 'SSH target (user@host)'
+	String get sshTarget => 'SSH target (user@host)';
+
+	/// en: 'Connecting to ${host}…'
+	String connecting({required Object host}) => 'Connecting to ${host}…';
+
+	/// en: 'SSH tunnel'
+	String get openingTunnel => 'SSH tunnel';
+
+	/// en: 'Installing server'
+	String get installingServer => 'Installing server';
+
+	/// en: 'Server ${version}'
+	String handshake({required Object version}) => 'Server ${version}';
+
+	/// en: 'Loading workspace…'
+	String get loadingWorkspace => 'Loading workspace…';
+
+	/// en: 'Reconnecting to ${host}…'
+	String reconnecting({required Object host}) => 'Reconnecting to ${host}…';
+
+	/// en: '${host} offline'
+	String offline({required Object host}) => '${host} offline';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Reconnect'
+	String get reconnect => 'Reconnect';
+
+	/// en: 'Install server'
+	String get installServer => 'Install server';
+
+	/// en: 'Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?'
+	String errSshUnreachable({required Object host}) => 'Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?';
+
+	/// en: 'Could not install the server on ${host}.'
+	String errInstallFailed({required Object host}) => 'Could not install the server on ${host}.';
+
+	/// en: 'Server version incompatible; update it.'
+	String get errVersionMismatch => 'Server version incompatible; update it.';
+
+	/// en: 'Details: ${detail}'
+	String errDetail({required Object detail}) => 'Details: ${detail}';
+}
+
 // Path: settings.language
 class Translations$settings$language$en {
 	Translations$settings$language$en.internal(this._root);
@@ -3748,14 +3809,31 @@ extension on Translations {
 			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
+			'cockpit.remoteHost.addHost' => 'Add remote host',
+			'cockpit.remoteHost.hostName' => 'Name',
+			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',
+			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Connecting to ${host}…',
+			'cockpit.remoteHost.openingTunnel' => 'SSH tunnel',
+			'cockpit.remoteHost.installingServer' => 'Installing server',
+			_ => null,
+		} ?? switch (path) {
+			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Server ${version}',
+			'cockpit.remoteHost.loadingWorkspace' => 'Loading workspace…',
+			'cockpit.remoteHost.reconnecting' => ({required Object host}) => 'Reconnecting to ${host}…',
+			'cockpit.remoteHost.offline' => ({required Object host}) => '${host} offline',
+			'cockpit.remoteHost.remove' => 'Remove',
+			'cockpit.remoteHost.reconnect' => 'Reconnect',
+			'cockpit.remoteHost.installServer' => 'Install server',
+			'cockpit.remoteHost.errSshUnreachable' => ({required Object host}) => 'Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?',
+			'cockpit.remoteHost.errInstallFailed' => ({required Object host}) => 'Could not install the server on ${host}.',
+			'cockpit.remoteHost.errVersionMismatch' => 'Server version incompatible; update it.',
+			'cockpit.remoteHost.errDetail' => ({required Object detail}) => 'Details: ${detail}',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
 			'settings.language.portugueseBr' => 'Português (BR)',
 			'settings.language.spanish' => 'Español',
 			'settings.revokeDialog.deviceRemoved' => 'Device removed.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'Failed to revoke the device.',
 			'settings.revokeDialog.revoking' => 'Revoking…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revoking ${name}…',

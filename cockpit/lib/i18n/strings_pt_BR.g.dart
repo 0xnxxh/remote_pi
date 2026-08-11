@@ -135,6 +135,7 @@ class _Translations$cockpit$pt_BR extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$tasks$pt_BR tasks = _Translations$cockpit$tasks$pt_BR._(_root);
 	@override late final _Translations$cockpit$notifications$pt_BR notifications = _Translations$cockpit$notifications$pt_BR._(_root);
 	@override late final _Translations$cockpit$terminal$pt_BR terminal = _Translations$cockpit$terminal$pt_BR._(_root);
+	@override late final _Translations$cockpit$remoteHost$pt_BR remoteHost = _Translations$cockpit$remoteHost$pt_BR._(_root);
 }
 
 // Path: settings
@@ -1024,6 +1025,32 @@ class _Translations$cockpit$terminal$pt_BR extends Translations$cockpit$terminal
 
 	// Translations
 	@override String cwdFallbackWarning({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".';
+}
+
+// Path: cockpit.remoteHost
+class _Translations$cockpit$remoteHost$pt_BR extends Translations$cockpit$remoteHost$en {
+	_Translations$cockpit$remoteHost$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
+
+	final TranslationsPtBr _root; // ignore: unused_field
+
+	// Translations
+	@override String get addHost => 'Adicionar host remoto';
+	@override String get hostName => 'Nome';
+	@override String get sshTarget => 'Destino SSH (usuário@host)';
+	@override String connecting({required Object host}) => 'Conectando a ${host}…';
+	@override String get openingTunnel => 'Túnel SSH';
+	@override String get installingServer => 'Instalando servidor';
+	@override String handshake({required Object version}) => 'Servidor ${version}';
+	@override String get loadingWorkspace => 'Carregando workspace…';
+	@override String reconnecting({required Object host}) => 'Reconectando a ${host}…';
+	@override String offline({required Object host}) => '${host} offline';
+	@override String get remove => 'Remover';
+	@override String get reconnect => 'Reconectar';
+	@override String get installServer => 'Instalar servidor';
+	@override String errSshUnreachable({required Object host}) => 'Não foi possível alcançar ${host} via SSH. Está ligado e com o Login Remoto ativado?';
+	@override String errInstallFailed({required Object host}) => 'Não foi possível instalar o servidor em ${host}.';
+	@override String get errVersionMismatch => 'Versão do servidor incompatível; atualize-o.';
+	@override String errDetail({required Object detail}) => 'Detalhes: ${detail}';
 }
 
 // Path: settings.language
@@ -2080,14 +2107,31 @@ extension on TranslationsPtBr {
 			'cockpit.notifications.agentNeedsAction' => 'Agente precisa de você',
 			'cockpit.notifications.agentCrashed' => 'Agente parou inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
+			'cockpit.remoteHost.addHost' => 'Adicionar host remoto',
+			'cockpit.remoteHost.hostName' => 'Nome',
+			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuário@host)',
+			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
+			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
+			'cockpit.remoteHost.installingServer' => 'Instalando servidor',
+			_ => null,
+		} ?? switch (path) {
+			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Servidor ${version}',
+			'cockpit.remoteHost.loadingWorkspace' => 'Carregando workspace…',
+			'cockpit.remoteHost.reconnecting' => ({required Object host}) => 'Reconectando a ${host}…',
+			'cockpit.remoteHost.offline' => ({required Object host}) => '${host} offline',
+			'cockpit.remoteHost.remove' => 'Remover',
+			'cockpit.remoteHost.reconnect' => 'Reconectar',
+			'cockpit.remoteHost.installServer' => 'Instalar servidor',
+			'cockpit.remoteHost.errSshUnreachable' => ({required Object host}) => 'Não foi possível alcançar ${host} via SSH. Está ligado e com o Login Remoto ativado?',
+			'cockpit.remoteHost.errInstallFailed' => ({required Object host}) => 'Não foi possível instalar o servidor em ${host}.',
+			'cockpit.remoteHost.errVersionMismatch' => 'Versão do servidor incompatível; atualize-o.',
+			'cockpit.remoteHost.errDetail' => ({required Object detail}) => 'Detalhes: ${detail}',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglês',
 			'settings.language.portugueseBr' => 'Português (BR)',
 			'settings.language.spanish' => 'Espanhol',
 			'settings.revokeDialog.deviceRemoved' => 'Dispositivo removido.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'Falha ao revogar o dispositivo.',
 			'settings.revokeDialog.revoking' => 'Revogando…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revogando ${name}…',

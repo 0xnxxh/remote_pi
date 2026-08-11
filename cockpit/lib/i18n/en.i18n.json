@@ -599,6 +599,25 @@
     },
     "terminal": {
       "cwdFallbackWarning": "Warning: the folder \"${requested}\" does not exist. This terminal opened in \"${path}\"."
+    },
+    "remoteHost": {
+      "addHost": "Add remote host",
+      "hostName": "Name",
+      "sshTarget": "SSH target (user@host)",
+      "connecting": "Connecting to ${host}…",
+      "openingTunnel": "SSH tunnel",
+      "installingServer": "Installing server",
+      "handshake": "Server ${version}",
+      "loadingWorkspace": "Loading workspace…",
+      "reconnecting": "Reconnecting to ${host}…",
+      "offline": "${host} offline",
+      "remove": "Remove",
+      "reconnect": "Reconnect",
+      "installServer": "Install server",
+      "errSshUnreachable": "Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?",
+      "errInstallFailed": "Could not install the server on ${host}.",
+      "errVersionMismatch": "Server version incompatible; update it.",
+      "errDetail": "Details: ${detail}"
     }
   },
   "settings": {

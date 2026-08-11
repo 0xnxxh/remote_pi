@@ -303,9 +303,21 @@ classe dos dois lados do fio).
       localhost via sshd real, 6/6): install via ssh, servidor remoto,
       handshake pelo túnel, shell remoto, **sessão sobrevive à queda do
       túnel**, reattach com scrollback.
-- [ ] **UI (próximo passo da wave)**: pin remoto no rail com badge de host +
-      estados (loading progressivo, erros tipados com ação, banner
-      reconnecting), "Add remote host/workspace", i18n nas 3 línguas.
+- [x] Bridge UI↔backend (2026-08-11): `RemoteHostTerminalGateway`
+      (`data/remote/`) adapta o `RemoteHostConnector` ao contrato
+      `TerminalGateway` — mesma maquinaria de sessão do app, flow control por
+      contador, SEM fallback in-process (host inalcançável = aba encerra, nunca
+      shell local na máquina errada). Bind do `RemoteHostsStore` no módulo.
+      i18n `cockpit.remoteHost.*` nas 3 línguas (slang gerado) + tradutores
+      `remoteHostErrorMessage`/`remoteHostPhaseLabel` no padrão do core.
+      Teste de integração `remote_host_terminal_gateway_test.dart` (gateway
+      remoto real via SSH: eco/ack/kill) verde; suíte 884, build macos ok.
+- [ ] **Último passo da wave (integração no rail, pra fechar)**: widget do pin
+      no `projects_rail` + workspace kind remoto no `CockpitViewModel`
+      (roteia `_terminalFactory` pro `RemoteHostTerminalGateway` do host) +
+      dialog "Add remote host". Deixado à parte por ser cirurgia no VM de
+      ~4000 linhas (alto risco sem muitas iterações na GUI); todas as peças
+      que ele consome já existem, testadas.
 - **Aceite**: MacBook abre pin do iMac, terminal remoto utilizável; queda de
   rede congela e reata sem perder a sessão; "Install server" funciona numa
   máquina virgem.

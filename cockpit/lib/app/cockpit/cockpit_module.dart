@@ -42,6 +42,8 @@ import 'package:cockpit/app/cockpit/data/hooks/terminal_status_server_impl.dart'
 import 'package:cockpit/app/cockpit/data/tasks/pty_task_runner.dart';
 import 'package:cockpit/app/cockpit/data/tasks/task_discovery_impl.dart';
 import 'package:cockpit/app/cockpit/data/terminal/file_terminal_scrollback_store.dart';
+import 'package:cockpit/app/cockpit/data/remote/json_remote_hosts_store.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/data/update/auto_updater_self_updater.dart';
@@ -199,6 +201,10 @@ Future<Module> buildCockpitModule() async {
         ..addLazySingleton<TerminalGatewayFactory>(
           SidecarTerminalGatewayFactory.new,
         )
+        // Hosts remotos (plano 58, Wave 2): registro persistido no store de
+        // settings + resolvedor do binário local usado no bootstrap "Install
+        // server" (mesmo do sidecar). A UI dos pins consome o RemoteHostsStore.
+        ..addInstance<RemoteHostsStore>(JsonRemoteHostsStore(settingsStore))
         ..addInstance<TerminalScrollbackStore>(
           const FileTerminalScrollbackStore(),
         )

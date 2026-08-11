@@ -599,6 +599,25 @@
     },
     "terminal": {
       "cwdFallbackWarning": "Aviso: la carpeta \"${requested}\" no existe. Esta terminal se abrió en \"${path}\"."
+    },
+    "remoteHost": {
+      "addHost": "Añadir host remoto",
+      "hostName": "Nombre",
+      "sshTarget": "Destino SSH (usuario@host)",
+      "connecting": "Conectando a ${host}…",
+      "openingTunnel": "Túnel SSH",
+      "installingServer": "Instalando servidor",
+      "handshake": "Servidor ${version}",
+      "loadingWorkspace": "Cargando workspace…",
+      "reconnecting": "Reconectando a ${host}…",
+      "offline": "${host} sin conexión",
+      "remove": "Quitar",
+      "reconnect": "Reconectar",
+      "installServer": "Instalar servidor",
+      "errSshUnreachable": "No se puede llegar a ${host} por SSH. ¿Está encendido y con Inicio de sesión remoto activado?",
+      "errInstallFailed": "No se pudo instalar el servidor en ${host}.",
+      "errVersionMismatch": "Versión del servidor incompatible; actualízalo.",
+      "errDetail": "Detalles: ${detail}"
     }
   },
   "settings": {
