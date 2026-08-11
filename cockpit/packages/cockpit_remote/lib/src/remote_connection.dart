@@ -35,6 +35,10 @@ class RemoteConnection {
       InternetAddress(socketPath, type: InternetAddressType.unix),
       0,
     );
+    // Erros de escrita chegam async pelo done do socket (ex.: EPIPE quando um
+    // forward SSH aceita localmente mas o lado remoto recusa) — sem este
+    // guard, derrubam o processo por fora de qualquer try/catch.
+    unawaited(socket.done.catchError((Object _) {}));
 
     // Uma única subscription do socket, alimentando um broadcast; o
     // handshake é apenas a primeira mensagem desse stream.

@@ -249,6 +249,7 @@
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				AA00BB11CC22DD33EE44FF55 /* Build cockpit-hook helper */,
 				AA00BB11CC22DD33EE44FF56 /* Build cockpit CLI */,
+				AA00BB11CC22DD33EE44FF57 /* Build cockpit-server */,
 				9C0C19829D5D7BCE8BC49018 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
@@ -410,6 +411,22 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"$PROJECT_DIR\"/build_cli.sh\n";
+		};
+		AA00BB11CC22DD33EE44FF57 /* Build cockpit-server */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Build cockpit-server";
+			alwaysOutOfDate = 1;
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/cockpit-server",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$PROJECT_DIR\"/build_server.sh\n";
 		};
 		3399D490228B24CF009A79C7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;

@@ -100,11 +100,16 @@ class SidecarTerminalConnector {
     return '${dir.path}/cockpit-server.sock';
   }
 
-  /// Ordem: env de override → binário app-managed (`~/.cockpit/bin`, mesmo
+  /// Ordem: env de override → Resources do bundle (empacotado pelo
+  /// `macos/build_server.sh`) → binário app-managed (`~/.cockpit/bin`, mesmo
   /// lar da CLI interna) → build de dev no cwd (fluxo `flutter run` no repo).
   String? _resolveServerBinary() {
     final candidates = <String?>[
       Platform.environment['COCKPIT_SERVER_BIN'],
+      if (Platform.isMacOS)
+        // .app/Contents/MacOS/<exe> → ../Resources/cockpit-server
+        '${File(Platform.resolvedExecutable).parent.parent.path}'
+            '/Resources/cockpit-server',
       () {
         final home = userHome();
         return home == null ? null : '$home/.cockpit/bin/cockpit-server';

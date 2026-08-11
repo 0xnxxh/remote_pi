@@ -265,11 +265,15 @@ classe dos dois lados do fio).
       idênticos ao comportamento anterior; `ps` confirma o desenho — shell
       `/bin/zsh -l` filho do `cockpit-server` (~17MB RSS), GUI conectada no
       UDS, zero duplicados/órfãos.
-- [ ] **Pendente da wave**: empacotar `cockpit-server` + dylib no bundle
-      `.app` (Run Script macOS, como o `cli/`) — sem isso, app instalado usa
-      o fallback in-process; benchmark revalidado dentro do app; registro de
-      hosts + UI de pins (movido pro início da Wave 2, onde há host de
-      verdade pra listar).
+- [x] Empacotamento no bundle `.app` (2026-08-11): `macos/build_server.sh` +
+      fase Run Script no Xcode (padrão do `build_cli.sh`); Resources ganha
+      `cockpit-server` (AOT, FATIA ÚNICA do host — AOT Dart não sobrevive ao
+      lipo, mesma razão que levou a CLI pra Rust; Mac Intel com build arm64
+      cai no fallback in-process, pendência: fatia x64 por runner no CI) +
+      `libcockpit_pty.dylib` universal; connector resolve Resources antes de
+      `~/.cockpit/bin`. Verificação do binário por probe socket (NUNCA rodar
+      sem --socket: vira servidor órfão — bug real corrigido).
+- [ ] **Pendente da wave**: benchmark revalidado dentro do app real.
 - **Aceite**: Cockpit local funciona igual a hoje com terminais servidos pelo
   sidecar; benchmark revalidado no app real; `flutter analyze` + testes
   verdes.
@@ -278,11 +282,30 @@ classe dos dois lados do fio).
   em wave futura.
 
 ### Wave 2 — Transporte SSH + primeiro workspace remoto (terminais)
-- [ ] Túnel via binário `ssh` do sistema (forward de socket, auto-reconnect
-      com backoff); bootstrap pelo túnel (Install/Update server: binário +
-      launchd/systemd).
-- [ ] Pin remoto no rail com badge de host + estados (loading progressivo,
-      erros tipados com ação, banner reconnecting).
+**Backend feito 2026-08-11; UI pendente.**
+- [x] `SshTunnel` (`data/remote/`): binário `ssh` do sistema, forward
+      UDS→UDS, BatchMode (senha interativa falha alto), ServerAlive.
+      Aprendizados de implementação: forward streamlocal exige path remoto
+      ABSOLUTO (resolvemos `$HOME` via exec antes); EPIPE assíncrono do
+      forward derruba o processo sem guard no `socket.done`; `pkill -f` em
+      comando ssh precisa do padrão `[c]...` pra não matar o próprio shell.
+- [x] Bootstrap "Install server" (`RemoteHostConnector`): binário + dylib do
+      bundle local sobem por `cat > arquivo` via stdin do ssh (sem depender
+      de scp no host), servidor remoto inicia com `nohup --exit-on-idle 0`
+      (host servido não morre sozinho; launchd/systemd = Wave 3). Fases
+      observáveis (openingTunnel → installingServer → connecting →
+      connected/reconnecting/failed) + erros tipados (`RemoteHostErrorKind`)
+      prontos pro loading progressivo e telas de erro da UI.
+- [x] `RemoteHost` (entity) + `RemoteHostsStore` (contrato) +
+      `JsonRemoteHostsStore` (impl no JsonStateStore) — ainda sem bind (a UI
+      é quem passa a usar).
+- [x] E2E `tool/wave0/wave2_e2e.dart <user@host>` (validado contra
+      localhost via sshd real, 6/6): install via ssh, servidor remoto,
+      handshake pelo túnel, shell remoto, **sessão sobrevive à queda do
+      túnel**, reattach com scrollback.
+- [ ] **UI (próximo passo da wave)**: pin remoto no rail com badge de host +
+      estados (loading progressivo, erros tipados com ação, banner
+      reconnecting), "Add remote host/workspace", i18n nas 3 línguas.
 - **Aceite**: MacBook abre pin do iMac, terminal remoto utilizável; queda de
   rede congela e reata sem perder a sessão; "Install server" funciona numa
   máquina virgem.
