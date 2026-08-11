@@ -1,0 +1,299 @@
+# 58 — Cockpit Remote: cliente/servidor, hosts acima de realms
+
+> **Status**: RASCUNHO em discussão (2026-08-10). Nada aprovado para implementação.
+> Reabre formalmente a decisão B do plano 37 ("Cockpit é local-only"). Registrar
+> em `plan/00-decisions.md` quando este plano for aprovado.
+
+## Contexto
+
+O Cockpit hoje é 100% local: spawna PTY, roda git, LSP e drivers de DB na
+máquina onde a GUI está. Queremos três cenários novos, em ordem de prioridade:
+
+1. **MacBook → iMac**: o iMac roda o Cockpit (ou só o servidor) e o MacBook
+   conecta remotamente, vendo e operando tudo que está lá (estilo tmux attach).
+2. **VPS headless**: uma máquina SEM Cockpit instalado, só com o **servidor**
+   standalone (binário leve), à qual qualquer cliente Cockpit conecta.
+3. **iPad**: build Flutter do cliente Cockpit para iPadOS, obrigatoriamente
+   sem engines nativos locais (iOS não permite spawn de processo). O iPad é a
+   prova de que o split cliente/servidor está correto: se o cliente compilar
+   para iPadOS, a separação está limpa.
+
+Referência de mercado: **Orca ADE** (stablyai/orca, MIT). Desktop hospeda um
+servidor WebSocket RPC (porta 6768), app mobile pareia por código/QR + token de
+dispositivo, transportes LAN direto e relay próprio, modo `orca serve` headless.
+Valida o desenho; nosso diferencial é a camada de databases (anaki), que eles
+não têm.
+
+## Decisões deste plano
+
+| # | Decisão |
+|---|---|
+| **A** | **Sem agente RPC.** O harness `pi --mode rpc` fica FORA do escopo remoto e entra em rota de deprecação. Agentes (pi, claude, codex) rodam como processos dentro de terminais, alinhado ao flag `enableAgent` terminal-first. A fatia `cockpit/data/rpc/` vira legado. |
+| **B** | **Escopo remoto = 4 domínios**: Terminais (PTY), Arquivos (árvore/viewer/ops), Git (source control) e Databases (anaki + túneis, executando no servidor). LSP, tasks e o resto ficam para depois. |
+| **C** | **Host é a entidade nova do cliente.** O cliente persiste só o registro de hosts (id, nome, transporte, endpoint, token) + pins. Realms/workspaces/layouts/estado de sessão vivem no host dono; realms de host remoto são organização interna DELE (o cliente pina workspaces, endereçados por `(hostId, workspaceId)`, sem importar a estrutura de realms remota pro rail local). Host "Local" é implícito. |
+| **D** | **Workspace remoto por pin, misto no mesmo rail** (revisado 2026-08-10; substitui o modelo "janela assume o host"). O cliente pina workspaces remotos como ponteiros `(hostId, workspaceId)` ao lado dos locais; abrir um pin conecta ao host e roteia os serviços DAQUELE workspace pra lá. N conexões simultâneas, roteamento por workspace (a base multi-root já resolve serviço por root). Motivos: não depende de multi-window (incompleto no Flutter) e é o modelo certo pra iPadOS/Android tablet. Badge de host sempre visível no workspace remoto. Dentro de um workspace, o espelhamento segue literal (semântica tmux: mesmo scrollback, N clientes veem o mesmo, last-write-wins no servidor). |
+| **E** | **Servidor é a única fonte de verdade** do seu estado: workspaces, layouts, scrollback, worktrees, conexões e senhas de DB (Keychain de lá). O pin no cliente é atalho, nunca dono: se o alvo sumir no servidor, o pin quebra como atalho quebra, sem merge. Cliente guarda apenas preferências de exibição (tema, fonte, idioma) + registro de hosts/pins + cache read-only para exibição offline. Regra geral: preferência de exibição é do cliente; estado de trabalho é do dono. |
+| **F** | **Um único servidor, em Dart** (`cockpit-server`, binário `dart compile exe` headless, sem Flutter engine), usado em TODOS os cenários: no desktop como serviço local (transporte loopback), na VPS standalone. Decidido 2026-08-10 (era Rust): o domínio já existe em Dart em `data/` (extração, não reescrita) e cliente+servidor compartilham os tipos do protocolo (mesma classe dos dois lados do fio, zero codegen/drift). Risco único a validar no spike da Wave 0: empacotar as dylibs FFI (cockpit_pty, anaki_*) fora do build do Flutter. **Fallback documentado: Rust**, se o empacotamento FFI afundar o spike. Nunca duas implementações de servidor. |
+| **G** | **Transportes plugáveis, SEM relay no primeiro momento** (revisado 2026-08-10): (1) loopback (sidecar local, prova o protocolo), (2) SSH (túnel para o canal do servidor; auth/cifragem/chaves de graça, sem crypto manual). Loopback+SSH cobrem os cenários MacBook→iMac e VPS. **O relay do Remote Pi NÃO será usado**; se um dia o cenário fora-de-casa (tablet em rede celular) exigir relay, será um relay PRÓPRIO do Cockpit, novo, com E2E obrigatório desde o dia 1 — decisão adiada, fora do escopo atual. |
+| **H** | **Pareamento estilo Orca**: servidor gera código curto/QR, cliente troca por token de dispositivo persistente (Keychain no cliente). Válido para SSH? Não: SSH usa as chaves SSH do usuário; pareamento por código é pro futuro relay próprio (e eventual LAN direto sem SSH). No escopo atual (loopback+SSH), pareamento nem entra. |
+| **I** | **Ciclo de vida: o servidor sobrevive à GUI** (nas máquinas com modo servidor ligado; ver "Arquitetura de pacotes"). `cockpit-server` roda como serviço de usuário (launchd/systemd) que o app instala e garante de pé; a GUI local é só mais um cliente que faz attach/detach. Fechar a GUI do host servido não mata shells nem agentes. Pré-requisito físico: host servidor não pode dormir (avisar/configurar "prevent sleep when display off" ao habilitar o modo servidor). Habilitar o modo servidor exige UI de dispositivos pareados com revogação (é acesso shell completo à máquina; parte do MVP, não polimento). |
+| **J** | **Sem allowlist de pastas no servidor (MVP).** Dispositivo pareado = full-trust, modelo SSH: com terminal aberto, restrição de pasta é teatro de segurança (`cd` fura tudo). A segurança mora no pareamento + revogação (decisão I). Config de conveniência permitida: raiz de navegação do picker/árvore (default `~`), sem pretensão de conter ninguém. Escopo de pastas REAL só fará sentido com perfis de capacidade por dispositivo (ex.: "view-only, sem terminal"), evolução futura no espírito dos guardrails de DB (access/agents por conexão). |
+| **K** | **Targets mobile via feature flags de compilação** (anotado 2026-08-10, detalhar depois): iPadOS/Android tablet consomem o MESMO cliente com capacidades desligadas em build time (sem PTY local, sem anaki local, sem auto_updater etc.). Complementa os guardrails do iPad abaixo; pensamento a desenvolver em plano próprio. |
+
+## Desenho
+
+```
+┌─ MacBook (cliente Flutter) ─┐        ┌─ iMac / VPS ──────────────────┐
+│ UI (rail, tabs, ghostty,    │  ws/   │ cockpit-server (Dart AOT)     │
+│ viewer, db grid)            │◄──────►│ ├ PTY (cockpit_pty extraído)  │
+│ data/ = proxies remotos     │ loop/  │ ├ fs walker + file ops        │
+│ hosts.json + pins + tokens  │ ssh/   │ ├ git (binário + parse)       │
+│ prefs de exibição           │        │ ├ anaki + túneis SSH de DB    │
+└─────────────────────────────┘        │ └ estado: workspaces/layouts  │
+                                       └───────────────────────────────┘
+```
+
+- No desktop local, o app garante o `cockpit-server` de pé (serviço de
+  usuário) e conecta via loopback: workspace local e remoto viram o mesmo
+  código de cliente com endpoints diferentes. Espelhamento sai de graça.
+- Rail de workspaces mistura locais e **pins remotos** (decisão D), cada pin
+  com badge/cor do host (nunca commitar na máquina errada). Host offline =
+  pin acinzentado; abrir tenta conectar. N conexões simultâneas, serviços
+  roteados por workspace (base multi-root).
+- "Add remote workspace" conecta ao host, abre o picker do filesystem REMOTO
+  e manda o servidor criar/registrar; o cliente só guarda o pin. Zero
+  dualidade de dono.
+- **UI do pin no rail** (definido 2026-08-10): badge com o NOME do host (não
+  um "REMOTE" genérico — com N hosts no rail, o acidente a evitar é agir na
+  máquina errada) + cor do host, carregando também o estado da conexão:
+  conectado (quieto) / reconectando (âmbar, panes congelam sem fechar) /
+  offline (acinzentado, pin permanece, clicar reconecta). Context menu do
+  workspace mostra detalhes: host/endpoint/transporte, estado + latência
+  (heartbeat do protocolo), versão do servidor remoto; ações Reconnect,
+  Disconnect, Remove pin (só desfaz o atalho, nada apagado no servidor) e
+  atalho pras Settings do host. Estados chegam como enum tipado de `data/`;
+  frases nascem na UI via `context.t` (padrão dos tradutores de erro).
+- **Abertura do pin — estados na área central** (não modal; rail e demais
+  workspaces seguem utilizáveis): (1) loading progressivo por etapa do
+  protocolo (SSH tunnel → handshake/versão → snapshot), mostrando ONDE travou;
+  (2) tela de erro tipada com ação: ssh unreachable (Retry + dica Remote
+  Login/macOS), auth recusada (Retry), servidor ausente (**Install server** =
+  bootstrap pelo túnel), versão incompatível (**Update server**); (3) queda
+  DURANTE o uso NUNCA volta pra tela de erro — vira o estado "reconnecting" do
+  badge (banner, panes congelados, auto-retry com backoff). Erros =
+  `RemoteConnectError` enum de `data/`, frase via `context.t`, stderr do ssh
+  em `detail` cru.
+- VPS: nada a instalar manualmente — só precisa de `sshd`. Na primeira
+  conexão o cliente faz bootstrap pelo túnel (sobe o binário + unit systemd,
+  botão "Install server"); o mesmo caminho atualiza em versão incompatível.
+  Script standalone de provisionamento (CI/Ansible) é conveniência futura,
+  não requisito.
+
+## Identidade e conexão: sem contas, identidade é criptográfica
+
+(Definido 2026-08-10.) Não existe conta, cadastro nem backend que saiba quem o
+usuário é. A lista de hosts vive só no cliente; não há diretório central.
+
+| Transporte | Autenticação | Cerimônia |
+|---|---|---|
+| Loopback | permissão de SO (UDS; Windows: TCP local + token, como o status-hook) | nenhuma |
+| SSH | as chaves SSH do usuário; servidor escuta só localhost, canal tunelado | a de dar `ssh` na máquina (sem pareamento Cockpit por cima — seria autenticar 2x) |
+| Relay próprio (futuro, fora do escopo atual; NÃO é o relay do Remote Pi) | pareamento código/QR → Ed25519 + token de dispositivo (Keychain do cliente); relay roteia por chave pública e, com E2E desde o dia 1, não lê nada | uma vez por dispositivo; lição do app: retry de Keychain + falha alta, NUNCA regenerar chave silenciosa |
+
+"Mesma conta nos dois lados?" dissolve: o vínculo é o par de chaves do
+pareamento (ou a relação SSH pré-existente); desvincular = revogar o
+dispositivo na lista do servidor (decisão I). Futuro consciente: relay
+hospedado para terceiros pode um dia exigir conta/API key por controle de
+abuso/custo (modelo Orca), decisão de negócio fora deste plano; self-host
+segue sem conta sempre.
+
+## Arquitetura de pacotes: Data compartilhado, composição via Modular
+
+(Definido 2026-08-10; DI refinada 2026-08-11.) O motor sai de
+`cockpit/lib/app/**/data/` para pacotes Dart puros. **Os pacotes são
+agnósticos de DI** (classes com injeção por construtor, sem depender de
+auto_injector nem Modular): flutter_modular v7 é Flutter-only, então cada
+executável compõe com a própria ferramenta — e como a GUI nunca compõe
+`native()`, não há grafo nativo pra "portar" pro Modular:
+
+```
+packages/
+├── cockpit_core/      contratos domain, Result, erros tipados (zero deps pesadas)
+├── cockpit_protocol/  mensagens do fio (depende só de core)
+├── cockpit_engine/    impls nativas: pty/dylib, fs, git, anaki, catálogo
+│                      (dart:io + dart:ffi — SÓ o servidor importa)
+└── cockpit_remote/    proxies dos contratos falando protocol (cliente importa)
+
+cockpit-server  → core + protocol + engine  (compõe com auto_injector puro,
+                  mesmas convenções do app: .new, factory-interface, value
+                  object p/ primitivos — mesmo parser regex)
+GUI Flutter     → core + protocol + remote  (flutter_modular como hoje:
+                  proxies e ViewModels nos binds das features)
+```
+
+- Enforcement por pubspec, não disciplina: o target tablet simplesmente NÃO
+  importa `cockpit_engine` — o guardrail do iPad vira erro de compilação
+  (reduz a decisão K a quase nada).
+- Ciclo de vida no servidor: markers `Service`/`Disposable` do core; o `main`
+  do servidor percorre e dá `dispose()` no shutdown (papel que o Modular faz
+  por rota na GUI).
+- Pins/N conexões: proxies do cliente recebem a `Connection` do host certo
+  via factory-interface injetável (regra existente do auto_injector).
+
+**Política de composição** (revisada 2026-08-10): a GUI é SEMPRE cliente;
+`native()` só é composto pelo `cockpit-server`. O que muda entre os modos é
+quem supervisiona o processo do servidor:
+
+| Máquina | Processo do servidor | GUI local |
+|---|---|---|
+| Modo servidor DESLIGADO (default) | **sidecar**: GUI faz `Process.start`, derruba ao fechar | `remote(loopback)` |
+| Modo servidor LIGADO (iMac, VPS) | serviço de usuário (launchd/systemd) | `remote(loopback)` |
+| Tablets (iPadOS/Android) | não existe | só `remote(...)` a hosts |
+
+Um único caminho de código na GUI; o toggle "Enable server mode" só troca o
+supervisor (sidecar → serviço), SEM migração de estado (o `state/` sempre foi
+do servidor). Gestão de processo do sidecar: descoberta pelo socket antes de
+spawnar (nunca dois servidores no mesmo `state/`), reconexão/respawn com
+backoff se o sidecar cair, auto-shutdown do sidecar quando o último cliente
+desconecta, handshake com versão (app embarca o binário como o `cli/`, em
+`~/.cockpit/bin`), guards conhecidos de spawn no macOS (SIG_IGN de SIGPIPE;
+reparent launchd). Composição `native()` in-process na GUI fica como
+**fallback documentado** apenas se o benchmark da Wave 0 reprovar o loopback.
+No modo desligado o comportamento visível é o de hoje (fechar a GUI encerra
+as sessões).
+
+## CLI interna e hooks no modo cliente/servidor
+
+O socket que atende o `cockpit` (CLI) e o `cockpit-hook` (status de turno)
+passa da GUI para o `cockpit-server` — mesmos binários, mesmo protocolo de
+linha (manter o gotcha: despacho por LINHA, não onDone), mesmo transporte
+(UDS/POSIX, TCP+token/Windows), env injetado por PTY pelo servidor
+(`COCKPIT_PANE_ID`, PATH escopado, endereço do socket).
+
+- Comandos de engine (`send`, `send-key`, `list-panes`, `list-workspaces`,
+  `orchestrate`/`.ckp`, `db`/`mongo`/`redis`, scrollback) são atendidos
+  integralmente pelo servidor → **CLI e orquestração entre agentes funcionam
+  sem GUI aberta** (VPS/24/7): dispatch, `[ORCH:]`, result files viram
+  infraestrutura da máquina.
+- Efeitos de UI (spinner/badge, chime, notificação do SO) viram **eventos
+  rebroadcastados** pelo protocolo aos clientes attached; quem apresenta é o
+  cliente (regra de foco atual). Sem cliente attached, o evento só atualiza o
+  estado do pane.
+- Escopo por host: o CLI enxerga apenas os panes da máquina onde roda; não há
+  `send` cross-host nesta fase (quem cruza máquinas é o cliente GUI via pins).
+
+## Ponto crítico: extração do motor local para o servidor
+
+Com o servidor em Dart (decisão F), o custo dominante deixou de ser reescrita
+e virou **extração**: mover o que hoje vive em `data/` (PTY, walker, parser de
+git, orquestração anaki, catálogo/migrator) para pacotes consumidos tanto pelo
+app quanto pelo binário `cockpit-server` (`dart compile exe`). O risco técnico
+concentrado, e gate do spike da Wave 0, é o **empacotamento das dylibs FFI
+fora do build do Flutter** (cockpit_pty, anaki_*): carregamento manual de
+dylib + bundling por plataforma no CI, e Keychain sem plugin Flutter (chamar
+`security`/libsecret direto). O protocolo (WebSocket + mensagens tipadas,
+documentado em `docs/remote-protocol.md`) nasce na Wave 0; as classes de
+mensagem são um pacote Dart compartilhado entre cliente e servidor (mesma
+classe dos dois lados do fio).
+
+## Guardrails para o iPad (valem desde a Wave 1)
+
+- Nenhum `Process.start`, `dart:ffi` de engine ou path de filesystem local no
+  código de cliente dos 4 domínios; tudo atrás dos contratos de `cockpit_core`.
+- Enforcement por pubspec: código nativo vive em `cockpit_engine`, que o
+  cliente NUNCA importa — o guardrail é erro de compilação, não disciplina.
+  Sobram poucas deps Flutter desktop-only (media_kit, auto_updater) para
+  flags/compilação condicional (decisão K).
+- Transporte no iPad: LAN direto e, no futuro, o relay próprio (decisão G).
+  SSH fica de fora do target mobile.
+- Teclado virtual + terminal é problema de UX próprio; fica para o plano do
+  cliente iPad, não deste.
+
+## Passos (waves)
+
+### Wave 0 — Spike: pacotes + servidor Dart mínimo (terminais)
+- [ ] Esqueleto dos pacotes `cockpit_core` / `cockpit_protocol` /
+      `cockpit_engine` / `cockpit_remote` (pub workspace); binário
+      `cockpit-server` (`dart compile exe`, sem Flutter) composto com
+      auto_injector puro; WebSocket/UDS listener + handshake com versão.
+- [ ] **Gate FFI**: cockpit_pty carregado por dylib manual fora do Flutter
+      (e prova de conceito do mesmo caminho pros anaki). Se afundar,
+      fallback Rust (decisão F) com a justificativa documentada.
+- [ ] `docs/remote-protocol.md` (rascunho dos 4 domínios); mensagens vivem em
+      `cockpit_protocol`, mesma classe dos dois lados.
+- [ ] Domínio Terminais ponta a ponta: abrir PTY, stream de bytes, resize,
+      kill, reattach com scrollback (decidir aqui: ring buffer vs emulador
+      headless).
+- [ ] Benchmark loopback vs FFI atual: orçamento < 1ms p50 de acréscimo no
+      eco de keystroke, sem regressão perceptível em despejo de output.
+- **Aceite**: cliente de teste (script) abre shell via servidor, digita, vê
+  saída, desconecta e reata sem perder scrollback; gate FFI e benchmark
+  aprovados.
+
+### Wave 1 — GUI vira cliente (sidecar loopback)
+- [ ] Proxies de terminal em `cockpit_remote`; GUI spawna o sidecar
+      (descoberta pelo socket antes do spawn; guards SIGPIPE/launchd) e serve
+      os terminais por loopback. Extração progressiva de `data/` → pacotes.
+- [ ] Registro de hosts (`hosts.json`, endpoint SSH) + host "Local"
+      implícito; UI de hosts + pins no rail (só Local funcional).
+- **Aceite**: Cockpit local funciona igual a hoje com terminais servidos pelo
+  sidecar; benchmark revalidado no app real; `flutter analyze` + testes
+  verdes.
+
+### Wave 2 — Transporte SSH + primeiro workspace remoto (terminais)
+- [ ] Túnel via binário `ssh` do sistema (forward de socket, auto-reconnect
+      com backoff); bootstrap pelo túnel (Install/Update server: binário +
+      launchd/systemd).
+- [ ] Pin remoto no rail com badge de host + estados (loading progressivo,
+      erros tipados com ação, banner reconnecting).
+- **Aceite**: MacBook abre pin do iMac, terminal remoto utilizável; queda de
+  rede congela e reata sem perder a sessão; "Install server" funciona numa
+  máquina virgem.
+
+### Wave 3 — Arquivos + Git + catálogo remotos
+- [ ] Walker/ops de arquivos e git (parse no servidor, modelo tipado no fio);
+      workspaces/layouts servidos pelo servidor (fonte de verdade, decisão E);
+      "Add remote workspace" com picker remoto.
+- [ ] Sockets da CLI/`cockpit-hook` atendidos pelo servidor; eventos de UI
+      rebroadcastados aos clientes attached.
+- **Aceite**: do MacBook, navegar árvore, abrir arquivo, stage/commit no
+  iMac; GUI do iMac aberta ao mesmo tempo espelha (decisão D); `cockpit send`
+  funciona com GUI fechada.
+
+### Wave 4 — Databases remotos + VPS de ponta a ponta
+- [ ] Anaki + túneis de DB executando no servidor; grid/.dbq no cliente
+      recebem só resultados paginados.
+- **Aceite**: workspace numa VPS sem GUI (terminal + arquivos + git +
+  commit) e query num Postgres acessível só pela VPS, tudo do MacBook.
+
+### Wave 5 — Relay próprio + E2E (pré-requisito do tablet fora de casa)
+> **Wave condicional, fora do escopo atual** (decisão G): só entra se o
+> cenário fora-de-casa justificar; relay PRÓPRIO do Cockpit, não o do
+> Remote Pi.
+
+- [ ] Pareamento código/QR (Ed25519 + token de dispositivo) + revogação.
+- [ ] E2E sobre o pareamento (Noise ou equivalente; NUNCA plaintext).
+- [ ] Relay próprio + transporte no cliente e no servidor.
+- **Aceite**: MacBook em rede celular (hotspot) opera o iMac via relay; captura
+  de tráfego no relay não revela conteúdo.
+
+## Definition of Done (do plano inteiro)
+
+- [ ] Os 3 cenários do Contexto funcionam (iMac attach, VPS, base pronta p/ iPad)
+- [ ] `plan/00-decisions.md` atualizado (local-only reaberto; pi RPC deprecado)
+- [ ] `docs/remote-protocol.md` completo e versionado
+- [ ] Guardrails iPad verificados: cliente compila sem os plugins desktop
+- [ ] Zero crypto manual (SSH ou E2E de biblioteca auditada)
+
+## Fora de escopo (explícito)
+
+- Attach de host inteiro ("a janela vira o iMac") e multi-janela por host
+  (futuros; o modelo v1 é pin por workspace)
+- LSP, tasks, self-update remotos
+- Views independentes por cliente attached (v1 é espelho puro)
+- Cliente iPad em si (plano próprio quando Wave 5 fechar)
+
+## Próximos planos
+
+- `59-cockpit-ipad.md` (cliente iPadOS)
+- Deprecação formal de `cockpit/data/rpc/` (pi --mode rpc)
