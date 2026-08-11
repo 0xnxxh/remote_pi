@@ -167,6 +167,12 @@ dependencies:
   package_info_plus: ^8.0.0
   url_launcher: ^6.3.0
 
+  # Plano 58 — navegador embutido + preview de markdown/HTML via webview.
+  # WKWebView (macOS) / WebView2 (Windows) inline na árvore de widgets. Sem
+  # implementação Linux: lá o BrowserCapability degrada pra url_launcher
+  # (browser do SO) e o preview de .md segue no gpt_markdown.
+  flutter_inappwebview: ^6.1.5
+
   # Plano 47 — self-update nativo: Sparkle (macOS) + WinSparkle (Windows) via o
   # plugin federado auto_updater. No Linux é no-op (NoopSelfUpdater) e o caminho
   # de notify+download manual (UpdateChecker/UpdateCard) assume. O macOS embarca
@@ -247,6 +253,10 @@ flutter:
     - assets/db_icons/
     - assets/sounds/
     - assets/branding/
+    # Plano 58 — pipeline local do preview de markdown (markdown-it +
+    # sanitizador + diff de DOM + CSS por variáveis de tema). Sem rede: a
+    # webview carrega só estes assets, sob CSP restritiva.
+    - assets/md_preview/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

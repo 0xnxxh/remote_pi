@@ -163,6 +163,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
+	late final Translations$cockpit$browserPane$en browserPane = Translations$cockpit$browserPane$en.internal(_root);
 	late final Translations$cockpit$fileTreePanel$en fileTreePanel = Translations$cockpit$fileTreePanel$en.internal(_root);
 	late final Translations$cockpit$fileViewer$en fileViewer = Translations$cockpit$fileViewer$en.internal(_root);
 	late final Translations$cockpit$workspaceSettingsDialog$en workspaceSettingsDialog = Translations$cockpit$workspaceSettingsDialog$en.internal(_root);
@@ -1039,6 +1040,9 @@ class Translations$cockpit$paneView$en {
 	/// en: 'Split down'
 	String get splitDown => 'Split down';
 
+	/// en: 'Open browser'
+	String get openBrowser => 'Open browser';
+
 	/// en: 'Close pane'
 	String get closePane => 'Close pane';
 
@@ -1047,6 +1051,27 @@ class Translations$cockpit$paneView$en {
 
 	/// en: 'Dock as tab'
 	String get dockAsTab => 'Dock as tab';
+}
+
+// Path: cockpit.browserPane
+class Translations$cockpit$browserPane$en {
+	Translations$cockpit$browserPane$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Forward'
+	String get forward => 'Forward';
+
+	/// en: 'Reload'
+	String get reload => 'Reload';
+
+	/// en: 'Enter URL or address'
+	String get urlHint => 'Enter URL or address';
 }
 
 // Path: cockpit.fileTreePanel
@@ -3476,9 +3501,14 @@ extension on Translations {
 			'cockpit.paneView.newTerminal' => 'New terminal…',
 			'cockpit.paneView.splitRight' => 'Split right',
 			'cockpit.paneView.splitDown' => 'Split down',
+			'cockpit.paneView.openBrowser' => 'Open browser',
 			'cockpit.paneView.closePane' => 'Close pane',
 			'cockpit.paneView.dropHereToMove' => 'Drop here to move the tab',
 			'cockpit.paneView.dockAsTab' => 'Dock as tab',
+			'cockpit.browserPane.back' => 'Back',
+			'cockpit.browserPane.forward' => 'Forward',
+			'cockpit.browserPane.reload' => 'Reload',
+			'cockpit.browserPane.urlHint' => 'Enter URL or address',
 			'cockpit.fileTreePanel.viewDiff' => 'View Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage and Commit',
@@ -3749,13 +3779,13 @@ extension on Translations {
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'settings.language.title' => 'Language',
+			_ => null,
+		} ?? switch (path) {
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
 			'settings.language.portugueseBr' => 'Português (BR)',
 			'settings.language.spanish' => 'Español',
 			'settings.revokeDialog.deviceRemoved' => 'Device removed.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'Failed to revoke the device.',
 			'settings.revokeDialog.revoking' => 'Revoking…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revoking ${name}…',

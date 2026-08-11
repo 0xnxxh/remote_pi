@@ -111,6 +111,8 @@ class TaskDefinition {
     this.interactiveKeys = const [],
     this.watch,
     this.progressPatterns = const [],
+    this.previewEnabled = true,
+    this.previewUrl,
   });
 
   /// Identidade estável dentro de um projeto (ex.: `"npm:dev"`, `"flutter:run"`).
@@ -143,6 +145,13 @@ class TaskDefinition {
 
   /// Padrões begin/end pro badge building→running (vazio = sem oscilação).
   final List<ProgressPattern> progressPatterns;
+
+  /// Auto-open do navegador (plano 58). `"preview": false` no tasks.json
+  /// desliga a detecção de URL local no output desta task.
+  final bool previewEnabled;
+
+  /// `"preview": "<url>"` — URL fixa aberta no start, sem depender do output.
+  final String? previewUrl;
 
   /// Linha de comando final (preview na UI e execução): base + args do profile.
   List<String> resolveArgs(TaskProfile? profile) => [

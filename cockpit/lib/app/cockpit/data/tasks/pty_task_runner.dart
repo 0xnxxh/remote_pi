@@ -18,6 +18,7 @@ import 'package:cockpit_pty/cockpit_pty.dart';
 /// Mesma razão e mesmas vars (`TERM`/`COLORTERM`) do terminal embutido.
 class PtyTaskRunner implements TaskRunnerGateway {
   final _runs = StreamController<TaskRun>.broadcast();
+  final _previews = StreamController<TaskPreviewUrl>.broadcast();
   final _running = <String, _RunningTask>{};
   final _starting = <String>{};
   final _lastState = <String, TaskRun>{};
@@ -26,6 +27,9 @@ class PtyTaskRunner implements TaskRunnerGateway {
 
   @override
   Stream<TaskRun> runs() => _runs.stream;
+
+  @override
+  Stream<TaskPreviewUrl> previewUrls() => _previews.stream;
 
   @override
   TaskRun runOf(String taskId) =>
@@ -106,11 +110,19 @@ class PtyTaskRunner implements TaskRunnerGateway {
     _running[def.id] = task;
     _emit(initial);
 
+    // `preview` fixo no tasks.json: abre já no start, sem esperar output.
+    final forced = def.previewUrl;
+    if (def.previewEnabled && forced != null && forced.isNotEmpty) {
+      task.previewNotified = true;
+      if (!_previews.isClosed) _previews.add(TaskPreviewUrl(def.id, forced));
+    }
+
     // Fan-out do output: alimenta o terminal e o detector de progresso.
     // `ackRead` libera o próximo chunk só depois do fan-out (backpressure).
     task.outSub = pty.output.listen((bytes) {
       task.out.add(bytes);
       _detectProgress(task, bytes);
+      _detectPreviewUrl(task, bytes);
       pty.ackRead();
     });
 
@@ -244,6 +256,7 @@ class PtyTaskRunner implements TaskRunnerGateway {
     }
     _running.clear();
     await _runs.close();
+    await _previews.close();
   }
 
   // --- internals ---------------------------------------------------------
@@ -297,6 +310,43 @@ class PtyTaskRunner implements TaskRunnerGateway {
       if (RegExp(p.end).hasMatch(text)) {
         _transition(task, TaskRunStatus.running);
       }
+    }
+  }
+
+  /// Sequências ANSI (cores/cursor) — removidas antes de casar a URL.
+  static final _ansiRe = RegExp(r'\x1b\[[0-9;?]*[a-zA-Z]');
+
+  /// URL de dev server no output (`http://localhost:5173/`, `127.0.0.1`,
+  /// `0.0.0.0`). Path sem espaços/aspas/fechamentos.
+  static final _localUrlRe = RegExp(
+    r'''https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?(?:/[^\s"'`)\]]*)?''',
+  );
+
+  /// Primeira URL local do run → emite pro shell abrir o navegador (plano 58).
+  /// Mantém uma cauda curta do texto limpo pra URL partida entre chunks.
+  void _detectPreviewUrl(_RunningTask task, List<int> bytes) {
+    if (task.previewNotified || !task.def.previewEnabled) return;
+    final text = utf8
+        .decode(bytes, allowMalformed: true)
+        .replaceAll(_ansiRe, '');
+    final haystack = task.previewTail + text;
+    final match = _localUrlRe.firstMatch(haystack);
+    if (match == null) {
+      task.previewTail = haystack.length > 256
+          ? haystack.substring(haystack.length - 256)
+          : haystack;
+      return;
+    }
+    // URL no fim do chunk pode estar incompleta (porta/path cortados) — espera
+    // o próximo chunk fechar a fronteira antes de emitir.
+    if (match.end == haystack.length) {
+      task.previewTail = haystack.substring(match.start);
+      return;
+    }
+    task.previewNotified = true;
+    task.previewTail = '';
+    if (!_previews.isClosed) {
+      _previews.add(TaskPreviewUrl(task.def.id, match.group(0)!));
     }
   }
 
@@ -391,4 +441,10 @@ class _RunningTask {
   StreamSubscription<List<int>>? outSub;
   TaskRun state;
   bool stopping = false;
+
+  /// Auto-open do navegador (plano 58): no máximo uma emissão por run.
+  bool previewNotified = false;
+
+  /// Cauda do output decodificado (sem ANSI) — cobre URL partida entre chunks.
+  String previewTail = '';
 }

@@ -204,6 +204,60 @@ pub fn new_tab(args: &[String]) -> ! {
     std::process::exit(0)
 }
 
+// ---- browse -----------------------------------------------------------------
+
+const BROWSE_HELP: &str = "cockpit browse <url> [--json]
+  Opens the built-in browser tab at <url> (reuses a browser tab already
+  open on the same host:port). On platforms without an inline webview
+  (Linux) the app opens the URL in the system browser instead.
+  --tab-id <id>  route to another tab's workspace (default: this tab)";
+
+pub fn browse_url(args: &[String]) -> ! {
+    let mut url: Option<String> = None;
+    let mut tab_id: Option<String> = None;
+    let mut as_json = false;
+
+    let mut i = 0usize;
+    while i < args.len() {
+        let a = args[i].as_str();
+        if a == "--help" || a == "-h" {
+            println!("{BROWSE_HELP}");
+            std::process::exit(0);
+        }
+        if a == "--json" {
+            as_json = true;
+            i += 1;
+            continue;
+        }
+        if let Some((_, value)) = take(args, &mut i, &["--tab-id"]) {
+            tab_id = value;
+        } else if url.is_none() {
+            url = Some(a.to_string());
+        }
+        i += 1;
+    }
+
+    let Some(url) = url.filter(|u| !u.is_empty()) else {
+        die(&format!("cockpit browse: missing <url>\n\n{BROWSE_HELP}"), 2)
+    };
+
+    let mut cmd_args = Map::new();
+    cmd_args.insert("url".into(), json!(url));
+    let mut req = json!({"cmd": "browse", "args": Value::Object(cmd_args)});
+    with_tab_id(&mut req, tab_id.or_else(self_tab_id));
+    let resp = transport::request(req, DEFAULT_TIMEOUT);
+    if !is_ok(&resp) {
+        fail_with(&resp);
+    }
+    let data = resp.get("data").cloned().unwrap_or_else(|| json!({}));
+    if as_json {
+        println!("{}", data);
+    } else {
+        println!("ok");
+    }
+    std::process::exit(0)
+}
+
 // ---- orchestrate ------------------------------------------------------------
 
 const ORCHESTRATE_HELP: &str = "cockpit orchestrate <file.ckp> [--json]

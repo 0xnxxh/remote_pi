@@ -116,6 +116,7 @@ class _Translations$cockpit$es extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$welcomeView$es welcomeView = _Translations$cockpit$welcomeView$es._(_root);
 	@override late final _Translations$cockpit$modelPicker$es modelPicker = _Translations$cockpit$modelPicker$es._(_root);
 	@override late final _Translations$cockpit$paneView$es paneView = _Translations$cockpit$paneView$es._(_root);
+	@override late final _Translations$cockpit$browserPane$es browserPane = _Translations$cockpit$browserPane$es._(_root);
 	@override late final _Translations$cockpit$fileTreePanel$es fileTreePanel = _Translations$cockpit$fileTreePanel$es._(_root);
 	@override late final _Translations$cockpit$fileViewer$es fileViewer = _Translations$cockpit$fileViewer$es._(_root);
 	@override late final _Translations$cockpit$workspaceSettingsDialog$es workspaceSettingsDialog = _Translations$cockpit$workspaceSettingsDialog$es._(_root);
@@ -569,9 +570,23 @@ class _Translations$cockpit$paneView$es extends Translations$cockpit$paneView$en
 	@override String get newTerminal => 'Nueva terminal…';
 	@override String get splitRight => 'Dividir a la derecha';
 	@override String get splitDown => 'Dividir abajo';
+	@override String get openBrowser => 'Abrir navegador';
 	@override String get closePane => 'Cerrar panel';
 	@override String get dropHereToMove => 'Suelta aquí para mover la pestaña';
 	@override String get dockAsTab => 'Acoplar como pestaña';
+}
+
+// Path: cockpit.browserPane
+class _Translations$cockpit$browserPane$es extends Translations$cockpit$browserPane$en {
+	_Translations$cockpit$browserPane$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get back => 'Atrás';
+	@override String get forward => 'Adelante';
+	@override String get reload => 'Recargar';
+	@override String get urlHint => 'Escribe la URL o dirección';
 }
 
 // Path: cockpit.fileTreePanel
@@ -1808,9 +1823,14 @@ extension on TranslationsEs {
 			'cockpit.paneView.newTerminal' => 'Nueva terminal…',
 			'cockpit.paneView.splitRight' => 'Dividir a la derecha',
 			'cockpit.paneView.splitDown' => 'Dividir abajo',
+			'cockpit.paneView.openBrowser' => 'Abrir navegador',
 			'cockpit.paneView.closePane' => 'Cerrar panel',
 			'cockpit.paneView.dropHereToMove' => 'Suelta aquí para mover la pestaña',
 			'cockpit.paneView.dockAsTab' => 'Acoplar como pestaña',
+			'cockpit.browserPane.back' => 'Atrás',
+			'cockpit.browserPane.forward' => 'Adelante',
+			'cockpit.browserPane.reload' => 'Recargar',
+			'cockpit.browserPane.urlHint' => 'Escribe la URL o dirección',
 			'cockpit.fileTreePanel.viewDiff' => 'Ver Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage y Commit',
@@ -2081,13 +2101,13 @@ extension on TranslationsEs {
 			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			'settings.language.title' => 'Idioma',
+			_ => null,
+		} ?? switch (path) {
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',
 			'settings.language.portugueseBr' => 'Portugués (BR)',
 			'settings.language.spanish' => 'Español',
 			'settings.revokeDialog.deviceRemoved' => 'Dispositivo eliminado.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'No se pudo revocar el dispositivo.',
 			'settings.revokeDialog.revoking' => 'Revocando…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revocando ${name}…',
