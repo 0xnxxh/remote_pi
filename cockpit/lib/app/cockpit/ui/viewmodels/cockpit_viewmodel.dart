@@ -158,6 +158,11 @@ class CockpitViewModel extends ChangeNotifier {
   /// o estado e mantém aqui só a orquestração de troca/exclusão.
   final RealmController realmCtrl;
 
+  /// Última seleção **desta sessão** por realm, incluindo worktrees (que são
+  /// runtime e não entram na preferência persistida). Usada pelo [switchRealm]
+  /// para devolver o foco exatamente onde o usuário estava naquele realm.
+  final Map<String, String> _sessionSelectionByRealm = <String, String>{};
+
   /// Descoberta e estado de tasks — usados só pelo comando `list-tasks` da CLI
   /// interna (mesmos binds do painel Tasks → mesma lista que a UI mostra).
   final TaskDiscovery _taskDiscovery;
@@ -1914,11 +1919,43 @@ class CockpitViewModel extends ChangeNotifier {
   /// lista exibida e a seleção mudam. Restaura a última seleção do realm novo
   /// (fallback: Cockpit → primeiro workspace → nenhum).
   Future<void> switchRealm(String id) async {
+    final from = realmCtrl.activeId;
     if (!realmCtrl.setActive(id)) return;
+    // Guarda a seleção **exata** do realm que está saindo (worktree inclusa):
+    // a preferência persistida só grava a raiz — forks são runtime e sumiriam
+    // do ponteiro, devolvendo o foco pro workspace normal na volta.
+    final leaving = _selectedProjectId;
+    if (leaving != null) {
+      _sessionSelectionByRealm[from] = leaving;
+    } else {
+      _sessionSelectionByRealm.remove(from);
+    }
     String? next;
+    final remembered = _sessionSelectionByRealm[id];
+    if (remembered != null) {
+      if (_visibleInActiveRealm(remembered)) {
+        next = remembered;
+      } else {
+        // Worktree lembrada não existe mais (removida por fora, `git worktree
+        // remove`, merge): cai pra raiz dela em vez de perder o realm inteiro.
+        // O fork já não está em [_projectList], então a raiz vem do próprio id
+        // (namespaced `rootId::path` — ver [_refreshWorktrees]).
+        final sep = remembered.indexOf('::');
+        final root = sep > 0
+            ? remembered.substring(0, sep)
+            : _rootOf(remembered);
+        if (root != remembered && _visibleInActiveRealm(root)) {
+          next = root;
+        } else {
+          _sessionSelectionByRealm.remove(id);
+        }
+      }
+    }
     try {
-      final last = await _projects.loadLastSelected(id);
-      if (last != null && _visibleInActiveRealm(last)) next = last;
+      if (next == null) {
+        final last = await _projects.loadLastSelected(id);
+        if (last != null && _visibleInActiveRealm(last)) next = last;
+      }
     } catch (_) {
       // preferência ilegível → fallback abaixo.
     }
@@ -1972,6 +2009,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (realmCtrl.activeId == id) await switchRealm(Realm.defaultId);
     await realmCtrl.remove(id);
     await _projects.saveLastSelected(id, null); // limpa ponteiro órfão
+    _sessionSelectionByRealm.remove(id);
     notifyListeners();
   }
 
@@ -2875,10 +2913,17 @@ class CockpitViewModel extends ChangeNotifier {
           ? target
           : _projectById(target.parentId!);
       if (root != null && root.realmId != realmCtrl.activeId) {
+        // Troca de realm por fora do [switchRealm]: guarda a seleção exata do
+        // realm que está saindo antes de virar a chave.
+        final leaving = _selectedProjectId;
+        if (leaving != null) {
+          _sessionSelectionByRealm[realmCtrl.activeId] = leaving;
+        }
         realmCtrl.setActive(root.realmId);
       }
     }
     _selectedProjectId = id;
+    _sessionSelectionByRealm[realmCtrl.activeId] = id;
     _requestPaneKeyboard();
     // Persiste o workspace (raiz) pra pré-selecionar na próxima abertura —
     // por realm: cada realm lembra a própria última seleção.
