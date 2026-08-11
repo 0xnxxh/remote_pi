@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
@@ -140,11 +141,15 @@ class TerminalSession extends PaneItem {
   /// em que ela nasceu.
   final TerminalProfile profile;
 
-  /// Session-id e transcript do `claude` rodando nesta aba, capturados do OSC.
-  /// Em memória nesta feature; servem à feature futura de persistir/retomar a
-  /// sessão (`claude --resume <sid>`, ler o `.jsonl`).
+  /// Session-id e transcript do agente rodando nesta aba, capturados dos hooks.
+  /// Servem pra retomar a sessão no restore da aba e pra ler o `.jsonl`.
   String? claudeSessionId;
   String? transcriptPath;
+
+  /// Qual harness emitiu o [claudeSessionId]. Sem isso o restore montaria
+  /// sempre `claude --resume <id>` — que falha com "No conversation found" se o
+  /// id veio do Codex.
+  AgentHarness agentHarness = AgentHarness.claude;
 
   bool _unseen = false;
   @override
@@ -180,15 +185,22 @@ class TerminalSession extends PaneItem {
   /// filtrado — então a janela não atrapalha follow-ups enfileirados.
   static const Duration _staleWorkingGuard = Duration(seconds: 5);
 
-  /// Aplica um status reportado pelo `cockpit-hook` (via [TerminalStatusServer]).
-  /// [sessionId]/[transcriptPath] são capturados pra futura persistência.
+  /// Aplica um status reportado pelo `cockpit hook` (via [TerminalStatusServer]).
+  /// [sessionId]/[transcriptPath]/[harness] são capturados pra persistência —
+  /// é o que permite retomar a aba no harness certo.
   /// [isTurnStart] = evento `UserPromptSubmit` (início de turno).
   void applyClaudeStatus({
     required TerminalStatus status,
     bool isTurnStart = false,
     String? sessionId,
     String? transcriptPath,
+    AgentHarness? harness,
   }) {
+    // O harness anda junto do id: trocar um sem o outro montaria um comando de
+    // resume com o id do harness errado.
+    if (sessionId != null && sessionId.isNotEmpty && harness != null) {
+      agentHarness = harness;
+    }
     if (sessionId != null && sessionId.isNotEmpty) claudeSessionId = sessionId;
     if (transcriptPath != null && transcriptPath.isNotEmpty) {
       this.transcriptPath = transcriptPath;

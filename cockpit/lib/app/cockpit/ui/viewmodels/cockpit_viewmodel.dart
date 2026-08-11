@@ -3902,10 +3902,11 @@ class CockpitViewModel extends ChangeNotifier {
       isTurnStart: u.event == 'UserPromptSubmit',
       sessionId: u.sessionId,
       transcriptPath: u.transcriptPath,
+      harness: AgentHarness.fromWire(u.harness),
     );
-    // O session-id do claude chega assíncrono pelo hook (não numa mutação de
+    // O session-id do agente chega assíncrono pelo hook (não numa mutação de
     // layout), então persiste o layout quando ele MUDA — senão `claude_sid`
-    // nunca chega ao disco e o restore não consegue dar `claude --resume`.
+    // nunca chega ao disco e o restore não consegue retomar a sessão.
     if (s.claudeSessionId != hadSid && s.claudeSessionId != null) {
       _scheduleSave(s.projectId);
     }
@@ -4192,10 +4193,13 @@ class CockpitViewModel extends ChangeNotifier {
           projectId: project.id,
           sessionId: id,
         );
-        // Se a aba rodava um `claude`, re-executa `claude --resume <sid>` no
+        // Se a aba rodava um agente, re-executa o comando de resume dele no
         // shell novo (reanexa a conversa). O replay mostra o histórico até o
-        // claude redesenhar; nas demais abas (shell puro) só há o replay.
+        // agente redesenhar; nas demais abas (shell puro) só há o replay.
+        // `harness` ausente = layout salvo antes desta distinção, quando só o
+        // Claude tinha hooks.
         final claudeSid = desc['claude_sid'] as String?;
+        final harness = AgentHarness.fromWire(desc['harness'] as String?);
         // cwd vivo salvo (OSC 7, absoluto) vence o `sub` — restaura onde o
         // usuário parou, mesmo fora do projeto.
         final termCwd = desc['cwd'] as String? ?? cwdOf();
@@ -4207,7 +4211,7 @@ class CockpitViewModel extends ChangeNotifier {
           replay: raw == null ? null : 'c$raw\r\n',
           startupCommand: claudeSid == null || claudeSid.isEmpty
               ? null
-              : 'claude --resume $claudeSid',
+              : harness.resumeCommand(claudeSid),
           // Re-arma a trava ANTES de o shell subir e re-emitir OSC-title: o nome
           // manual continua vencendo o título dinâmico após o reinício.
           manualLabel: desc['label'] as String?,
@@ -4434,6 +4438,7 @@ class CockpitViewModel extends ChangeNotifier {
       desc
         ..remove('sessionPath')
         ..remove('claude_sid')
+        ..remove('harness') // só faz sentido junto do claude_sid
         ..remove('cwd');
       final newId = _nid(desc['type'] == 'terminal' ? 't' : 'a');
       tabIdMap[entry.key as String] = newId;
@@ -4501,9 +4506,12 @@ class CockpitViewModel extends ChangeNotifier {
         // usuário pode ter dado `cd` pra fora do projeto). `sub` segue como
         // fallback pra abas que nunca emitiram OSC 7.
         if (s.currentDirectory != null) 'cwd': s.currentDirectory,
-        // Se um `claude` rodava nesta aba, guarda o session-id (capturado pelo
-        // hook) pra re-executar `claude --resume <sid>` no restore.
+        // Se um agente rodava nesta aba, guarda o session-id (capturado pelo
+        // hook) pra reatar a sessão no restore. `harness` diz de quem é o id —
+        // sem ele o restore assumiria Claude e o `codex` daria "No conversation
+        // found". Chave `claude_sid` mantida por compat com layouts antigos.
         if (s.claudeSessionId != null) 'claude_sid': s.claudeSessionId,
+        if (s.claudeSessionId != null) 'harness': s.agentHarness.wire,
       };
     }
     if (s is FileViewerSession) {
