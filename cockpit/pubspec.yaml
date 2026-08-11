@@ -47,6 +47,14 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Plano 58 (Cockpit Remote): contratos compartilhados + proxies do
+  # cockpit-server. O app NUNCA importa cockpit_engine (guardrail mobile:
+  # código nativo só existe no servidor).
+  cockpit_core:
+    path: packages/cockpit_core
+  cockpit_remote:
+    path: packages/cockpit_remote
+
   # Parse dos layouts `.ckp` (orquestração de panes) — YAML puro-Dart.
   yaml: ^3.1.2
 

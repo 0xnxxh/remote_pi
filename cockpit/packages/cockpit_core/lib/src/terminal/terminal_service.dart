@@ -10,6 +10,7 @@ class PtySpawnSpec {
     this.environment = const {},
     this.rows = 24,
     this.columns = 80,
+    this.flowControlled = false,
   });
 
   final String executable;
@@ -18,6 +19,11 @@ class PtySpawnSpec {
   final Map<String, String> environment;
   final int rows;
   final int columns;
+
+  /// Backpressure fim-a-fim (plano 57): a leitura nativa é gateada por uma
+  /// janela de créditos; o consumidor devolve [TerminalService.ack] por chunk
+  /// consumido. Sem consumidor anexado, a leitura corre livre (scrollback).
+  final bool flowControlled;
 }
 
 /// Metadados de uma sessão viva (ou finalizada e ainda anexável).
@@ -110,6 +116,10 @@ abstract interface class TerminalService {
   Future<void> write(String sessionId, Uint8List data);
 
   Future<void> resize(String sessionId, int rows, int columns);
+
+  /// Devolve crédito de flow control: [bytes] de output foram consumidos.
+  /// No-op em sessões abertas sem [PtySpawnSpec.flowControlled].
+  Future<void> ack(String sessionId, int bytes);
 
   /// Mata o processo e descarta a sessão (scrollback incluso).
   Future<void> kill(String sessionId);

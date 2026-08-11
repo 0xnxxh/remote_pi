@@ -42,7 +42,8 @@ import 'package:cockpit/app/cockpit/data/hooks/terminal_status_server_impl.dart'
 import 'package:cockpit/app/cockpit/data/tasks/pty_task_runner.dart';
 import 'package:cockpit/app/cockpit/data/tasks/task_discovery_impl.dart';
 import 'package:cockpit/app/cockpit/data/terminal/file_terminal_scrollback_store.dart';
-import 'package:cockpit/app/cockpit/data/terminal/pty_terminal_gateway_factory.dart';
+import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
+import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/data/update/auto_updater_self_updater.dart';
 import 'package:cockpit/app/cockpit/data/update/noop_self_updater.dart';
 import 'package:cockpit/app/cockpit/data/update/update_checker_impl.dart';
@@ -189,7 +190,15 @@ Future<Module> buildCockpitModule() async {
         ..addLazySingleton<GitDiffReader>(GitDiffReaderImpl.new)
         ..addLazySingleton<GitHistoryReader>(GitHistoryReaderImpl.new)
         ..addInstance<SessionHistory>(const SessionHistoryImpl())
-        ..addInstance<TerminalGatewayFactory>(const PtyTerminalGatewayFactory())
+        // Terminais servidos pelo cockpit-server sidecar via loopback (plano
+        // 58, Wave 1); sem sidecar disponível, o gateway cai pro PTY
+        // in-process sozinho — comportamento idêntico ao anterior.
+        ..addLazySingleton<SidecarTerminalConnector>(
+          SidecarTerminalConnector.new,
+        )
+        ..addLazySingleton<TerminalGatewayFactory>(
+          SidecarTerminalGatewayFactory.new,
+        )
         ..addInstance<TerminalScrollbackStore>(
           const FileTerminalScrollbackStore(),
         )

@@ -19,6 +19,21 @@ class RemoteServer {
   ServerSocket? _listener;
   final Set<_Connection> _connections = {};
 
+  /// Modo sidecar: quando > Duration.zero, o servidor se encerra sozinho se
+  /// ficar esse tempo sem NENHUM cliente conectado (evita órfão quando a GUI
+  /// morre sem conseguir matar o filho). Zero = nunca (modo serviço).
+  Duration exitOnIdle = Duration.zero;
+  Timer? _idleTimer;
+  void Function()? onIdleExit;
+
+  void _armIdleTimer() {
+    _idleTimer?.cancel();
+    if (exitOnIdle == Duration.zero || _connections.isNotEmpty) return;
+    _idleTimer = Timer(exitOnIdle, () {
+      if (_connections.isEmpty) onIdleExit?.call();
+    });
+  }
+
   Future<void> bind(String socketPath) async {
     final file = File(socketPath);
     if (file.existsSync()) file.deleteSync();
@@ -27,6 +42,7 @@ class RemoteServer {
       0,
     );
     _listener!.listen(_accept);
+    _armIdleTimer();
   }
 
   Future<void> close() async {
@@ -40,7 +56,11 @@ class RemoteServer {
   void _accept(Socket socket) {
     final connection = _Connection(socket, _terminals, serverVersion);
     _connections.add(connection);
-    connection.done.whenComplete(() => _connections.remove(connection));
+    _idleTimer?.cancel();
+    connection.done.whenComplete(() {
+      _connections.remove(connection);
+      _armIdleTimer();
+    });
   }
 }
 
@@ -154,6 +174,9 @@ class _Connection {
 
         case PtyInput():
           await _terminals.write(message.sessionId, message.bytes);
+
+        case PtyAck():
+          await _terminals.ack(message.sessionId, message.bytes);
 
         case PtyResize():
           await _terminals.resize(

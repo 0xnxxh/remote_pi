@@ -25,6 +25,7 @@ sealed class RemoteMessage {
       PtyAttach.kType => PtyAttach.fromJson(json),
       PtyDetach.kType => PtyDetach.fromJson(json),
       PtyInput.kType => PtyInput.fromJson(json),
+      PtyAck.kType => PtyAck.fromJson(json),
       PtyOutput.kType => PtyOutput.fromJson(json),
       PtyResize.kType => PtyResize.fromJson(json),
       PtyKill.kType => PtyKill.fromJson(json),
@@ -83,6 +84,7 @@ class PtyOpen extends RemoteMessage {
     this.environment = const {},
     this.rows = 24,
     this.columns = 80,
+    this.flowControlled = false,
   });
   static const kType = 'pty.open';
 
@@ -93,6 +95,10 @@ class PtyOpen extends RemoteMessage {
   final int rows;
   final int columns;
 
+  /// Backpressure fim-a-fim: o servidor abre o PTY com `ackRead` e gate por
+  /// janela de créditos; o cliente devolve `pty.ack` por chunk consumido.
+  final bool flowControlled;
+
   factory PtyOpen.fromJson(Map<String, Object?> j) => PtyOpen(
     executable: j['cmd'] as String,
     arguments: (j['args'] as List? ?? const []).cast<String>(),
@@ -100,6 +106,7 @@ class PtyOpen extends RemoteMessage {
     environment: (j['env'] as Map? ?? const {}).cast<String, String>(),
     rows: j['rows'] as int? ?? 24,
     columns: j['cols'] as int? ?? 80,
+    flowControlled: j['flow'] as bool? ?? false,
   );
 
   @override
@@ -113,7 +120,26 @@ class PtyOpen extends RemoteMessage {
     if (environment.isNotEmpty) 'env': environment,
     'rows': rows,
     'cols': columns,
+    if (flowControlled) 'flow': true,
   };
+}
+
+/// Crédito de flow control: o cliente consumiu [bytes] de `pty.output` da
+/// sessão. O servidor abate da janela pendente e libera a leitura nativa.
+class PtyAck extends RemoteMessage {
+  const PtyAck({required this.sessionId, required this.bytes});
+  static const kType = 'pty.ack';
+
+  final String sessionId;
+  final int bytes;
+
+  factory PtyAck.fromJson(Map<String, Object?> j) =>
+      PtyAck(sessionId: j['id'] as String, bytes: j['n'] as int);
+
+  @override
+  String get type => kType;
+  @override
+  Map<String, Object?> toJson() => {'t': kType, 'id': sessionId, 'n': bytes};
 }
 
 class PtyOpened extends RemoteMessage {

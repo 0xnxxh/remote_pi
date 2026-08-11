@@ -26,6 +26,7 @@ class RemoteTerminalService implements TerminalService {
         environment: spec.environment,
         rows: spec.rows,
         columns: spec.columns,
+        flowControlled: spec.flowControlled,
       ),
     );
     final message = await reply;
@@ -102,6 +103,10 @@ class RemoteTerminalService implements TerminalService {
       _connection.send(
         PtyResize(sessionId: sessionId, rows: rows, columns: columns),
       );
+
+  @override
+  Future<void> ack(String sessionId, int bytes) async =>
+      _connection.send(PtyAck(sessionId: sessionId, bytes: bytes));
 
   @override
   Future<void> kill(String sessionId) async =>

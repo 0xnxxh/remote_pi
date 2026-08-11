@@ -12,7 +12,7 @@ DynamicLibrary openPtyDylib() {
       : 'cockpit_pty.dll';
 
   final candidates = <String>[
-    if (Platform.environment['COCKPIT_PTY_DYLIB'] case final p?) p,
+    ?Platform.environment['COCKPIT_PTY_DYLIB'],
     '${File(Platform.resolvedExecutable).parent.path}/$name',
     'build/wave0/$name',
   ];

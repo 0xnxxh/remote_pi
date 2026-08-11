@@ -28,6 +28,18 @@ class _Session {
 
   /// Broadcast dos eventos live; attach = replay do scrollback + este stream.
   final StreamController<PtyEvent> live = StreamController.broadcast();
+
+  // --- flow control (sessões abertas com flowControlled) ---
+  bool flowControlled = false;
+
+  /// Bytes emitidos e ainda não confirmados via [TerminalService.ack].
+  int outstanding = 0;
+
+  /// A leitura nativa está travada esperando crédito.
+  bool nativeAckPending = false;
+
+  /// Consumidores anexados. Zero = leitura corre livre (só scrollback).
+  int consumers = 0;
 }
 
 /// Implementação nativa do [TerminalService] sobre a dylib do cockpit_pty.
@@ -38,6 +50,7 @@ class NativeTerminalService implements TerminalService {
   NativeTerminalService({
     DynamicLibrary? dylib,
     this.scrollbackCapacity = 4 * 1024 * 1024,
+    this.flowWindow = 256 * 1024,
   }) : _bindings = PtyBindings(dylib ?? openPtyDylib()) {
     final rc = _bindings.initializeApiDL(NativeApi.initializeApiDLData);
     if (rc != 0) {
@@ -50,6 +63,12 @@ class NativeTerminalService implements TerminalService {
 
   final PtyBindings _bindings;
   final int scrollbackCapacity;
+
+  /// Janela de créditos por sessão flow-controlled: quanto pode estar "no ar"
+  /// (emitido sem ack do consumidor) antes de pausar a leitura nativa. Grande
+  /// o bastante pra amortizar o RTT do loopback; pequena o bastante pra
+  /// backpressure real sob TUI busy (plano 57).
+  final int flowWindow;
   final Map<String, _Session> _sessions = {};
   int _nextId = 0;
 
@@ -80,7 +99,7 @@ class NativeTerminalService implements TerminalService {
             .cast()
         ..stdoutPort = stdoutPort.sendPort.nativePort
         ..exitPort = exitPort.sendPort.nativePort
-        ..ackRead = false;
+        ..ackRead = spec.flowControlled;
 
       handle = _bindings.create(options);
     } finally {
@@ -111,6 +130,7 @@ class NativeTerminalService implements TerminalService {
       exitPort: exitPort,
       scrollback: ScrollbackBuffer(capacity: scrollbackCapacity),
     );
+    session.flowControlled = spec.flowControlled;
     _sessions[id] = session;
 
     stdoutPort.listen((data) {
@@ -121,6 +141,17 @@ class NativeTerminalService implements TerminalService {
       session.live.add(
         PtyOutputEvent(PtyOutputChunk(offset: offset, bytes: bytes)),
       );
+      if (session.flowControlled) {
+        // Janela de créditos: libera a próxima leitura nativa enquanto houver
+        // orçamento; sem consumidor anexado a leitura corre livre (o
+        // scrollback é o destino, como uma sessão detached de tmux).
+        session.outstanding += bytes.length;
+        if (session.consumers == 0 || session.outstanding < flowWindow) {
+          _bindings.ackRead(session.handle);
+        } else {
+          session.nativeAckPending = true;
+        }
+      }
     });
 
     exitPort.listen((code) {
@@ -139,6 +170,17 @@ class NativeTerminalService implements TerminalService {
   ];
 
   @override
+  Future<void> ack(String sessionId, int bytes) async {
+    final session = _sessions[sessionId];
+    if (session == null || !session.flowControlled) return;
+    session.outstanding = (session.outstanding - bytes).clamp(0, 1 << 62);
+    if (session.nativeAckPending && session.outstanding < flowWindow) {
+      session.nativeAckPending = false;
+      _bindings.ackRead(session.handle);
+    }
+  }
+
+  @override
   Stream<PtyEvent> attach(String sessionId, {int fromOffset = 0}) {
     final session = _session(sessionId);
 
@@ -146,6 +188,7 @@ class NativeTerminalService implements TerminalService {
     StreamSubscription<PtyEvent>? liveSub;
     controller = StreamController<PtyEvent>(
       onListen: () {
+        session.consumers++;
         // Replay do scrollback retido; o live já está assinado ANTES da
         // leitura para não perder chunks entre replay e assinatura — o
         // filtro por offset descarta o que o replay já cobriu.
@@ -167,7 +210,22 @@ class NativeTerminalService implements TerminalService {
         final exit = session.info.exitCode;
         if (exit != null) controller.add(PtyExitEvent(exit));
       },
-      onCancel: () => liveSub?.cancel(),
+      onCancel: () {
+        final wasAttached = liveSub != null;
+        if (wasAttached) {
+          session.consumers--;
+          if (session.flowControlled && session.consumers == 0) {
+            // Último consumidor saiu: zera a contabilidade e destrava a
+            // leitura nativa (modo detached corre livre pro scrollback).
+            session.outstanding = 0;
+            if (session.nativeAckPending) {
+              session.nativeAckPending = false;
+              _bindings.ackRead(session.handle);
+            }
+          }
+        }
+        return liveSub?.cancel();
+      },
     );
     return controller.stream;
   }

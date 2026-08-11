@@ -31,32 +31,36 @@ final class PtyOptionsNative extends Struct {
   external bool ackRead;
 }
 
-typedef _InitC = IntPtr Function(Pointer<Void>);
-typedef _InitDart = int Function(Pointer<Void>);
-typedef _CreateC = Pointer<Void> Function(Pointer<PtyOptionsNative>);
-typedef _WriteC = Void Function(Pointer<Void>, Pointer<Char>, Int32);
-typedef _WriteDart = void Function(Pointer<Void>, Pointer<Char>, int);
-typedef _ResizeC = Int32 Function(Pointer<Void>, Int32, Int32);
-typedef _ResizeDart = int Function(Pointer<Void>, int, int);
-typedef _GetPidC = Int32 Function(Pointer<Void>);
-typedef _GetPidDart = int Function(Pointer<Void>);
-typedef _ErrorC = Pointer<Char> Function();
+typedef PtyInitC = IntPtr Function(Pointer<Void>);
+typedef PtyInitDart = int Function(Pointer<Void>);
+typedef PtyCreateC = Pointer<Void> Function(Pointer<PtyOptionsNative>);
+typedef PtyWriteC = Void Function(Pointer<Void>, Pointer<Char>, Int32);
+typedef PtyWriteDart = void Function(Pointer<Void>, Pointer<Char>, int);
+typedef PtyResizeC = Int32 Function(Pointer<Void>, Int32, Int32);
+typedef PtyResizeDart = int Function(Pointer<Void>, int, int);
+typedef PtyGetPidC = Int32 Function(Pointer<Void>);
+typedef PtyGetPidDart = int Function(Pointer<Void>);
+typedef PtyAckReadC = Void Function(Pointer<Void>);
+typedef PtyAckReadDart = void Function(Pointer<Void>);
+typedef PtyErrorC = Pointer<Char> Function();
 
 class PtyBindings {
   PtyBindings(DynamicLibrary lib)
-    : initializeApiDL = lib.lookupFunction<_InitC, _InitDart>(
+    : initializeApiDL = lib.lookupFunction<PtyInitC, PtyInitDart>(
         'Dart_InitializeApiDL',
       ),
-      create = lib.lookupFunction<_CreateC, _CreateC>('pty_create'),
-      write = lib.lookupFunction<_WriteC, _WriteDart>('pty_write'),
-      resize = lib.lookupFunction<_ResizeC, _ResizeDart>('pty_resize'),
-      getPid = lib.lookupFunction<_GetPidC, _GetPidDart>('pty_getpid'),
-      error = lib.lookupFunction<_ErrorC, _ErrorC>('pty_error');
+      create = lib.lookupFunction<PtyCreateC, PtyCreateC>('pty_create'),
+      write = lib.lookupFunction<PtyWriteC, PtyWriteDart>('pty_write'),
+      resize = lib.lookupFunction<PtyResizeC, PtyResizeDart>('pty_resize'),
+      getPid = lib.lookupFunction<PtyGetPidC, PtyGetPidDart>('pty_getpid'),
+      ackRead = lib.lookupFunction<PtyAckReadC, PtyAckReadDart>('pty_ack_read'),
+      error = lib.lookupFunction<PtyErrorC, PtyErrorC>('pty_error');
 
-  final _InitDart initializeApiDL;
-  final _CreateC create;
-  final _WriteDart write;
-  final _ResizeDart resize;
-  final _GetPidDart getPid;
-  final _ErrorC error;
+  final PtyInitDart initializeApiDL;
+  final PtyCreateC create;
+  final PtyWriteDart write;
+  final PtyResizeDart resize;
+  final PtyGetPidDart getPid;
+  final PtyAckReadDart ackRead;
+  final PtyErrorC error;
 }

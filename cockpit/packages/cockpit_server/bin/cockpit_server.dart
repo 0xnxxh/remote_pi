@@ -14,7 +14,7 @@ import 'package:cockpit_server/cockpit_server.dart';
 Future<void> main(List<String> args) async {
   final socketPath =
       _argValue(args, '--socket') ??
-      '${Directory.systemTemp.path}/cockpit-server-${pid}.sock';
+      '${Directory.systemTemp.path}/cockpit-server-$pid.sock';
 
   final injector = AutoInjector()
     ..addLazySingleton<TerminalService>(NativeTerminalService.new)
@@ -22,6 +22,20 @@ Future<void> main(List<String> args) async {
     ..commit();
 
   final server = injector.get<RemoteServer>();
+
+  // Modo sidecar (GUI): --exit-on-idle <segundos> encerra o servidor quando
+  // não resta cliente algum — o seguro contra órfão se a GUI morrer sem
+  // conseguir matar o filho. Ausente ou 0 = modo serviço (nunca sai sozinho).
+  final idleSeconds = int.tryParse(_argValue(args, '--exit-on-idle') ?? '0');
+  if (idleSeconds != null && idleSeconds > 0) {
+    server.exitOnIdle = Duration(seconds: idleSeconds);
+    server.onIdleExit = () async {
+      stdout.writeln('cockpit-server idle, exiting');
+      await server.close();
+      exit(0);
+    };
+  }
+
   await server.bind(socketPath);
 
   // Saída em inglês por decisão (CLI interna não se traduz).

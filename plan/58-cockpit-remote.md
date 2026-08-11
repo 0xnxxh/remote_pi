@@ -237,15 +237,42 @@ classe dos dois lados do fio).
   dispatch do servidor serializado por conexão (listen não espera handler
   async; sem isso pty.list ultrapassa pty.kill).
 
-### Wave 1 — GUI vira cliente (sidecar loopback)
-- [ ] Proxies de terminal em `cockpit_remote`; GUI spawna o sidecar
-      (descoberta pelo socket antes do spawn; guards SIGPIPE/launchd) e serve
-      os terminais por loopback. Extração progressiva de `data/` → pacotes.
-- [ ] Registro de hosts (`hosts.json`, endpoint SSH) + host "Local"
-      implícito; UI de hosts + pins no rail (só Local funcional).
+### Wave 1 — GUI vira cliente (sidecar loopback) — núcleo feito 2026-08-11
+- [x] `SidecarTerminalGateway` + `SidecarTerminalConnector` em
+      `data/terminal/sidecar/`: mesmo contrato `TerminalGateway`, PTY no
+      servidor, emulador no cliente. `start()` síncrono vira fila de
+      operações até o backend abrir; sem sidecar disponível, fallback
+      automático pro `PtyTerminalGateway` in-process (app se comporta como
+      antes por construção).
+- [x] Ciclo de vida do sidecar: descoberta pelo socket
+      (`~/.cockpit/cockpit-server.sock`) ANTES de spawnar; spawn com
+      `--exit-on-idle 15` (seguro contra órfão: servidor sem clientes se
+      encerra); reconexão via `ensure()` por gateway novo. Binário resolvido:
+      env `COCKPIT_SERVER_BIN` → `~/.cockpit/bin` → `build/wave0` (dev,
+      `tool/build-sidecar.sh [--install]`).
+- [x] **Flow control fim-a-fim** (integra o plano 57 ao protocolo):
+      `pty.open{flow:true}` + `pty.ack{n}`; servidor abre o PTY com ackRead
+      e gate por janela de créditos (256KiB, amortiza o RTT — ack por chunk
+      serializaria a ~8MiB/s); cliente devolve crédito por CONTADOR acumulado
+      (imune ao Utf8Decoder segurando sequência parcial + coalescer
+      suprimindo add vazio, que vazaria janela até stall). Sem consumidor
+      attached, leitura corre livre pro scrollback (semântica tmux).
+- [x] Verificação: e2e 9/9 (novo passo de flow control), teste de integração
+      `test/data/sidecar_terminal_gateway_test.dart` (gateway real via
+      sidecar: eco, fila de ops, resize, ack, kill), suíte 884 verde,
+      `flutter build macos` ok, analyze sem issues novos.
+- [ ] **Pendente da wave**: E2E manual no app real (abrir GUI, conferir
+      claude/TUIs/scroll idênticos); empacotar `cockpit-server` + dylib no
+      bundle `.app` (Run Script macOS, como o `cli/`) — sem isso, app
+      instalado usa o fallback in-process; benchmark revalidado dentro do
+      app; registro de hosts + UI de pins (movido pro início da Wave 2, onde
+      há host de verdade pra listar).
 - **Aceite**: Cockpit local funciona igual a hoje com terminais servidos pelo
   sidecar; benchmark revalidado no app real; `flutter analyze` + testes
   verdes.
+- **Fora do escopo da wave (decidido na implementação)**: tasks
+  (`PtyTaskRunner`) seguem in-process — migram junto com o domínio de tasks
+  em wave futura.
 
 ### Wave 2 — Transporte SSH + primeiro workspace remoto (terminais)
 - [ ] Túnel via binário `ssh` do sistema (forward de socket, auto-reconnect

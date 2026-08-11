@@ -18,9 +18,13 @@ class RemoteConnection {
   final String serverVersion;
 
   final StreamController<RemoteMessage> _messages;
+  bool _open = true;
 
   /// Stream broadcast de todas as mensagens do servidor.
   Stream<RemoteMessage> get messages => _messages.stream;
+
+  /// Falso após queda do socket ou [close].
+  bool get isOpen => _open;
 
   /// Conecta, faz o handshake e devolve a conexão pronta.
   static Future<RemoteConnection> connect(
@@ -67,13 +71,18 @@ class RemoteConnection {
         'unexpected handshake reply',
       );
     }
-    return RemoteConnection._(socket, ack.server, messages);
+    final connection = RemoteConnection._(socket, ack.server, messages);
+    unawaited(messages.done.then((_) => connection._open = false));
+    return connection;
   }
 
-  void send(RemoteMessage message) =>
-      _socket.add(utf8.encode(_codec.encode(message)));
+  void send(RemoteMessage message) {
+    if (!_open) return;
+    _socket.add(utf8.encode(_codec.encode(message)));
+  }
 
   Future<void> close() async {
+    _open = false;
     _socket.destroy();
   }
 }

@@ -201,6 +201,20 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.2"
+  cockpit_core:
+    dependency: "direct main"
+    description:
+      path: "packages/cockpit_core"
+      relative: true
+    source: path
+    version: "0.1.0"
+  cockpit_protocol:
+    dependency: transitive
+    description:
+      path: "packages/cockpit_protocol"
+      relative: true
+    source: path
+    version: "0.1.0"
   cockpit_pty:
     dependency: "direct main"
     description:
@@ -208,6 +222,13 @@ packages:
       relative: true
     source: path
     version: "1.0.6"
+  cockpit_remote:
+    dependency: "direct main"
+    description:
+      path: "packages/cockpit_remote"
+      relative: true
+    source: path
+    version: "0.1.0"
   code_assets:
     dependency: transitive
     description:

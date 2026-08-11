@@ -112,6 +112,38 @@ Future<void> main() async {
     final after = await terminals2.sessions();
     _check('kill remove a sessão', after.every((s) => s.id != info.id));
 
+    // 8. Flow control (Wave 1): sessão ackRead com janela de créditos; o
+    // cliente devolve pty.ack por chunk e o despejo completa sem stall.
+    const dumpBytes = 2 * 1024 * 1024;
+    final flowInfo = await terminals2.open(
+      const PtySpawnSpec(
+        executable: '/bin/sh',
+        arguments: ['-c', 'head -c $dumpBytes /dev/zero; echo FLOW-DONE'],
+        flowControlled: true,
+      ),
+    );
+    var flowReceived = 0;
+    var sawMarker = false;
+    final flowSub = terminals2.attach(flowInfo.id).listen((event) {
+      if (event is PtyOutputEvent) {
+        flowReceived += event.chunk.bytes.length;
+        if (utf8
+            .decode(event.chunk.bytes, allowMalformed: true)
+            .contains('FLOW-DONE')) {
+          sawMarker = true;
+        }
+        // Consumidor devolvendo crédito chunk a chunk (papel do coalescer).
+        terminals2.ack(flowInfo.id, event.chunk.bytes.length);
+      }
+    });
+    await _until(() => sawMarker);
+    _check(
+      'flow control: despejo completa com acks',
+      flowReceived >= dumpBytes,
+    );
+    await flowSub.cancel();
+    await terminals2.kill(flowInfo.id);
+
     await connection2.close();
     stdout.writeln('E2E OK');
   } catch (e, s) {
