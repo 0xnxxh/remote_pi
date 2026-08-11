@@ -30,6 +30,8 @@ sealed class RemoteMessage {
       PtyResize.kType => PtyResize.fromJson(json),
       PtyKill.kType => PtyKill.fromJson(json),
       PtyExited.kType => PtyExited.fromJson(json),
+      RpcRequest.kType => RpcRequest.fromJson(json),
+      RpcResponse.kType => RpcResponse.fromJson(json),
       RemoteError.kType => RemoteError.fromJson(json),
       _ => throw FormatException('unknown message type: $t'),
     };
@@ -339,6 +341,81 @@ class PtyExited extends RemoteMessage {
     't': kType,
     'id': sessionId,
     'code': exitCode,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// RPC request/response (domínios Arquivos e Git — plano 58, Wave 3)
+// ---------------------------------------------------------------------------
+
+/// Chamada request/response correlacionada por [rid]. Envelope genérico para
+/// os domínios não-streaming (fs.*, git.*): evita explosão de classes e dá
+/// correlação de graça. `method` é `<domínio>.<op>` (ex.: `fs.list`).
+class RpcRequest extends RemoteMessage {
+  const RpcRequest({
+    required this.rid,
+    required this.method,
+    this.params = const {},
+  });
+  static const kType = 'rpc';
+
+  final int rid;
+  final String method;
+  final Map<String, Object?> params;
+
+  factory RpcRequest.fromJson(Map<String, Object?> j) => RpcRequest(
+    rid: j['rid'] as int,
+    method: j['m'] as String,
+    params: (j['p'] as Map? ?? const {}).cast<String, Object?>(),
+  );
+
+  @override
+  String get type => kType;
+  @override
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'rid': rid,
+    'm': method,
+    'p': params,
+  };
+}
+
+/// Resposta de um [RpcRequest]. `ok=false` carrega `code`/`detail` tipados
+/// (a frase nasce na UI). `data` é o payload JSON-able quando `ok`.
+class RpcResponse extends RemoteMessage {
+  const RpcResponse({
+    required this.rid,
+    required this.ok,
+    this.data,
+    this.code,
+    this.detail,
+  });
+  static const kType = 'rpc.res';
+
+  final int rid;
+  final bool ok;
+  final Object? data;
+  final String? code;
+  final String? detail;
+
+  factory RpcResponse.fromJson(Map<String, Object?> j) => RpcResponse(
+    rid: j['rid'] as int,
+    ok: j['ok'] as bool,
+    data: j['data'],
+    code: j['code'] as String?,
+    detail: j['detail'] as String?,
+  );
+
+  @override
+  String get type => kType;
+  @override
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'rid': rid,
+    'ok': ok,
+    if (data != null) 'data': data,
+    if (code != null) 'code': code,
+    if (detail != null) 'detail': detail,
   };
 }
 

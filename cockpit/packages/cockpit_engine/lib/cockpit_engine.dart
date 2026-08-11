@@ -7,3 +7,5 @@ library;
 export 'src/pty/pty_dylib.dart';
 export 'src/pty/native_terminal_service.dart';
 export 'src/pty/scrollback_buffer.dart';
+export 'src/fs/native_file_service.dart';
+export 'src/git/native_git_service.dart';

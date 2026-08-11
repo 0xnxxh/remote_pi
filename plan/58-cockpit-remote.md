@@ -322,12 +322,30 @@ classe dos dois lados do fio).
   rede congela e reata sem perder a sessão; "Install server" funciona numa
   máquina virgem.
 
-### Wave 3 — Arquivos + Git + catálogo remotos
-- [ ] Walker/ops de arquivos e git (parse no servidor, modelo tipado no fio);
-      workspaces/layouts servidos pelo servidor (fonte de verdade, decisão E);
-      "Add remote workspace" com picker remoto.
-- [ ] Sockets da CLI/`cockpit-hook` atendidos pelo servidor; eventos de UI
-      rebroadcastados aos clientes attached.
+### Wave 3 — Arquivos + Git remotos — backend feito 2026-08-11
+- [x] Camada RPC no protocolo: `RpcRequest{rid,method,params}` /
+      `RpcResponse{rid,ok,data,code,detail}` — envelope genérico
+      request/response para domínios não-streaming, correlação por rid
+      (N chamadas concorrentes), erros tipados. O terminal (streaming) fica
+      com suas mensagens próprias.
+- [x] Domínio **Arquivos** (`FileService`): `fs.list`/`fs.read`/`fs.write`,
+      impl nativa `NativeFileService`, proxy `RemoteFileService`. Erros
+      tipados (`FileErrorKind`), bytes em base64.
+- [x] Domínio **Git** (`GitService`): `git.status`/`diff`/`stage`/`unstage`/
+      `commit`, impl nativa `NativeGitService` (roda `git -C` no host, parse
+      do porcelain=v1 -z), proxy `RemoteGitService`. Erros tipados
+      (`GitErrorKind`, stderr cru em `detail`). Mesmo modelo do
+      `data/filesystem/git_*` do app, agora do lado do servidor.
+- [x] Servidor injeta os dois serviços (auto_injector) e roteia RPC por
+      método; `RemoteConnection.call()` no cliente.
+- [x] Verificação: e2e estendido 14/14 (fs.write/read, fs.list, git
+      untracked→staged→commit na MESMA conexão dos terminais) + unit
+      `native_git_service_test`. Suíte 884, analyze limpo nos pacotes.
+- [ ] **Pendente da wave**: catálogo (workspaces/layouts) servido pelo
+      servidor (decisão E) + "Add remote workspace" com picker remoto;
+      sockets da CLI/`cockpit-hook` no servidor + rebroadcast; integração na
+      UI (file tree + source control consumindo os serviços remotos). Fiação
+      de UI/VM, à parte como nas waves anteriores.
 - **Aceite**: do MacBook, navegar árvore, abrir arquivo, stage/commit no
   iMac; GUI do iMac aberta ao mesmo tempo espelha (decisão D); `cockpit send`
   funciona com GUI fechada.

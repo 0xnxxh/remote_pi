@@ -18,6 +18,8 @@ Future<void> main(List<String> args) async {
 
   final injector = AutoInjector()
     ..addLazySingleton<TerminalService>(NativeTerminalService.new)
+    ..addInstance<FileService>(const NativeFileService())
+    ..addInstance<GitService>(const NativeGitService())
     ..addLazySingleton<RemoteServer>(RemoteServer.new)
     ..commit();
 

@@ -2,3 +2,5 @@
 library;
 
 export 'src/terminal/terminal_service.dart';
+export 'src/fs/file_service.dart';
+export 'src/git/git_service.dart';

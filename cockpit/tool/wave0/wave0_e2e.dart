@@ -144,6 +144,45 @@ Future<void> main() async {
     await flowSub.cancel();
     await terminals2.kill(flowInfo.id);
 
+    // 9. Arquivos + Git remotos (Wave 3) num repo git temporário.
+    final repo = await Directory.systemTemp.createTemp('wave3-repo-');
+    await Process.run('git', ['-C', repo.path, 'init', '-q']);
+    await Process.run('git', ['-C', repo.path, 'config', 'user.email', 't@t']);
+    await Process.run('git', ['-C', repo.path, 'config', 'user.name', 'T']);
+
+    final files = RemoteFileService(connection2);
+    final git = RemoteGitService(connection2);
+
+    // fs.write + fs.read roundtrip.
+    final filePath = '${repo.path}/hello.txt';
+    await files.write(filePath, Uint8List.fromList(utf8.encode('wave3-fs\n')));
+    final readBack = utf8.decode(await files.read(filePath));
+    _check('fs.write/read roundtrip', readBack.trim() == 'wave3-fs');
+
+    // fs.list mostra o arquivo novo.
+    final listing = await files.list(repo.path);
+    _check('fs.list vê o arquivo', listing.any((e) => e.name == 'hello.txt'));
+
+    // git.status = 1 arquivo untracked.
+    final st1 = await git.status(repo.path);
+    _check(
+      'git.status untracked',
+      st1.files.any((f) => f.path == 'hello.txt' && f.worktree == '?'),
+    );
+
+    // git.stage → aparece staged; git.commit → status limpo.
+    await git.stage(repo.path, ['hello.txt']);
+    final st2 = await git.status(repo.path);
+    _check(
+      'git.stage staged',
+      st2.files.any((f) => f.path == 'hello.txt' && f.staged == 'A'),
+    );
+    await git.commit(repo.path, 'wave3 commit');
+    final st3 = await git.status(repo.path);
+    _check('git.commit limpa o status', st3.files.isEmpty);
+
+    await repo.delete(recursive: true);
+
     await connection2.close();
     stdout.writeln('E2E OK');
   } catch (e, s) {
