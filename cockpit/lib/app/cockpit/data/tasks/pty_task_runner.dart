@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:cockpit/app/cockpit/data/tasks/task_process_registry.dart';
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
+import 'package:cockpit/app/core/terminal/pty_output_scheduler.dart';
 import 'package:cockpit/app/core/utils/login_shell.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/entities/task_definition.dart';
@@ -17,7 +18,10 @@ import 'package:cockpit_pty/cockpit_pty.dart';
 /// isso o app GUI não acharia `flutter`/`npm`/`go` (PATH mínimo do Finder).
 /// Mesma razão e mesmas vars (`TERM`/`COLORTERM`) do terminal embutido.
 class PtyTaskRunner implements TaskRunnerGateway {
-  final _runs = StreamController<TaskRun>.broadcast();
+  // Síncrono para o TaskTerminalStore assinar o stream de output antes que o
+  // primeiro byte do processo possa chegar. Evita perder o prólogo de builds
+  // muito rápidas e inclui o parse do terminal no orçamento do scheduler.
+  final _runs = StreamController<TaskRun>.broadcast(sync: true);
   final _previews = StreamController<TaskPreviewUrl>.broadcast();
   final _running = <String, _RunningTask>{};
   final _starting = <String>{};
@@ -36,8 +40,8 @@ class PtyTaskRunner implements TaskRunnerGateway {
       _running[taskId]?.state ?? _lastState[taskId] ?? TaskRun.idleFor(taskId);
 
   @override
-  Stream<List<int>> output(String taskId) =>
-      _running[taskId]?.out.stream ?? const Stream<List<int>>.empty();
+  Stream<String> output(String taskId) =>
+      _running[taskId]?.out.stream ?? const Stream<String>.empty();
 
   @override
   Future<void> start(
@@ -106,7 +110,17 @@ class PtyTaskRunner implements TaskRunnerGateway {
       profileName: profileName,
       pid: pty.pid,
     );
-    final task = _RunningTask(pty, def, initial);
+    late final _RunningTask task;
+    task = _RunningTask(
+      pty,
+      def,
+      initial,
+      onOutput: (data) {
+        if (!task.out.isClosed) task.out.add(data);
+        _detectProgress(task, data);
+        _detectPreviewUrl(task, data);
+      },
+    );
     _running[def.id] = task;
     _emit(initial);
 
@@ -117,14 +131,13 @@ class PtyTaskRunner implements TaskRunnerGateway {
       if (!_previews.isClosed) _previews.add(TaskPreviewUrl(def.id, forced));
     }
 
-    // Fan-out do output: alimenta o terminal e o detector de progresso.
-    // `ackRead` libera o próximo chunk só depois do fan-out (backpressure).
-    task.outSub = pty.output.listen((bytes) {
-      task.out.add(bytes);
-      _detectProgress(task, bytes);
-      _detectPreviewUrl(task, bytes);
-      pty.ackRead();
-    });
+    // Decoder incremental + scheduler GLOBAL. O callback de flush alimenta um
+    // stream síncrono: parse VT e progressPatterns contam dentro do budget de
+    // CPU antes que o scheduler reconheça o chunk e libere mais output nativo.
+    task.outSub = pty.output
+        .cast<List<int>>()
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .listen(task.coalescer.add);
 
     unawaited(pty.exitCode.then((code) => _onExit(def.id, code)));
   }
@@ -252,6 +265,7 @@ class PtyTaskRunner implements TaskRunnerGateway {
       } catch (_) {}
       await TaskProcessRegistry.unregister(task.pty.pid);
       await task.outSub?.cancel();
+      task.coalescer.dispose();
       await task.out.close();
     }
     _running.clear();
@@ -264,6 +278,7 @@ class PtyTaskRunner implements TaskRunnerGateway {
   void _onExit(String taskId, int code) {
     final task = _running.remove(taskId);
     if (task == null) return;
+    task.ended = true;
     stopWatch(taskId); // o processo morreu → nada pra recarregar
     unawaited(TaskProcessRegistry.unregister(task.pty.pid));
     final TaskRunStatus status;
@@ -286,23 +301,25 @@ class PtyTaskRunner implements TaskRunnerGateway {
       profileName: task.state.profileName,
       exitCode: code,
     );
-    unawaited(task.outSub?.cancel());
-    // Banner visual de fim no terminal do debug tab: pula uma linha e escreve
-    // "finished" pra sinalizar ao usuário que o processo encerrou (o PTY não
-    // emite mais nada depois do exit). Vai antes do close pra ser entregue ao
-    // terminal e persistido no scrollback junto do resto do output.
-    if (!task.out.isClosed) {
-      task.out.add(utf8.encode('\r\n\r\nfinished\r\n'));
-    }
-    unawaited(task.out.close());
+    unawaited(_finishOutput(task));
     _emit(ended);
   }
 
+  Future<void> _finishOutput(_RunningTask task) async {
+    await task.outSub?.cancel();
+    // Entra na mesma fila limitada do restante: encerrar uma task ruidosa não
+    // pode produzir um flush síncrono gigante no isolate da UI.
+    task.coalescer.add('\r\n\r\nfinished\r\n');
+    await task.coalescer.drained;
+    task.coalescer.dispose();
+    if (!task.out.isClosed) await task.out.close();
+  }
+
   /// Casa os [ProgressPattern]s da task no output pra oscilar building↔running.
-  void _detectProgress(_RunningTask task, List<int> bytes) {
+  void _detectProgress(_RunningTask task, String text) {
+    if (task.ended) return;
     final patterns = task.def.progressPatterns;
     if (patterns.isEmpty) return;
-    final text = utf8.decode(bytes, allowMalformed: true);
     for (final p in patterns) {
       if (RegExp(p.begin).hasMatch(text)) {
         _transition(task, TaskRunStatus.building);
@@ -324,12 +341,9 @@ class PtyTaskRunner implements TaskRunnerGateway {
 
   /// Primeira URL local do run → emite pro shell abrir o navegador (plano 58).
   /// Mantém uma cauda curta do texto limpo pra URL partida entre chunks.
-  void _detectPreviewUrl(_RunningTask task, List<int> bytes) {
+  void _detectPreviewUrl(_RunningTask task, String data) {
     if (task.previewNotified || !task.def.previewEnabled) return;
-    final text = utf8
-        .decode(bytes, allowMalformed: true)
-        .replaceAll(_ansiRe, '');
-    final haystack = task.previewTail + text;
+    final haystack = task.previewTail + data.replaceAll(_ansiRe, '');
     final match = _localUrlRe.firstMatch(haystack);
     if (match == null) {
       task.previewTail = haystack.length > 256
@@ -433,14 +447,26 @@ class PtyTaskRunner implements TaskRunnerGateway {
 }
 
 class _RunningTask {
-  _RunningTask(this.pty, this.def, this.state);
+  _RunningTask(
+    this.pty,
+    this.def,
+    this.state, {
+    required void Function(String data) onOutput,
+  }) : coalescer = PtyOutputCoalescer(
+         onFlush: onOutput,
+         onAcknowledge: pty.ackRead,
+       );
 
   final Pty pty;
   final TaskDefinition def;
-  final out = StreamController<List<int>>.broadcast();
-  StreamSubscription<List<int>>? outSub;
+  // Síncrono: o trabalho do consumidor acontece dentro do slice cronometrado
+  // pelo PtyOutputScheduler, não numa fila de eventos sem limite posterior.
+  final out = StreamController<String>.broadcast(sync: true);
+  final PtyOutputCoalescer coalescer;
+  StreamSubscription<String>? outSub;
   TaskRun state;
   bool stopping = false;
+  bool ended = false;
 
   /// Auto-open do navegador (plano 58): no máximo uma emissão por run.
   bool previewNotified = false;
