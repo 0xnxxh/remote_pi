@@ -1823,6 +1823,9 @@ class Translations$cockpit$projectsRail$en {
 	/// en: 'Copy workspace id'
 	String get copyWorkspaceId => 'Copy workspace id';
 
+	/// en: 'Rename'
+	String get rename => 'Rename';
+
 	/// en: 'Close'
 	String get close => 'Close';
 
@@ -3782,6 +3785,7 @@ extension on Translations {
 			'cockpit.projectsRail.remove' => 'Remove',
 			'cockpit.projectsRail.moveToRealm' => 'Move to realm',
 			'cockpit.projectsRail.copyWorkspaceId' => 'Copy workspace id',
+			'cockpit.projectsRail.rename' => 'Rename',
 			'cockpit.projectsRail.close' => 'Close',
 			'cockpit.projectsRail.newRealm' => 'New realm…',
 			'cockpit.projectsRail.manageRealms' => 'Manage realms…',
@@ -3835,9 +3839,9 @@ extension on Translations {
 			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Connecting to ${host}…',
 			'cockpit.remoteHost.openingTunnel' => 'SSH tunnel',
-			'cockpit.remoteHost.installingServer' => 'Installing server',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.installingServer' => 'Installing server',
 			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Server ${version}',
 			'cockpit.remoteHost.loadingWorkspace' => 'Loading workspace…',
 			'cockpit.remoteHost.reconnecting' => ({required Object host}) => 'Reconnecting to ${host}…',

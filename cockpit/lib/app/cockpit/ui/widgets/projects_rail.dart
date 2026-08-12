@@ -78,6 +78,8 @@ class ProjectsRail extends StatefulWidget {
     this.remoteHosts = const [],
     required this.onSelectRemote,
     required this.onRemoveRemoteWorkspace,
+    required this.remoteBranchOf,
+    required this.onRemoteWorkspaceAction,
     this.width = 252,
   });
 
@@ -105,6 +107,14 @@ class ProjectsRail extends StatefulWidget {
 
   /// Remove um workspace remoto (pin) pelo id do workspace.
   final void Function(String workspaceId) onRemoveRemoteWorkspace;
+
+  /// Branch do workspace remoto (pra habilitar/copiar no menu); `null` = sem git.
+  final String? Function(String workspaceId) remoteBranchOf;
+
+  /// Ação do menu do workspace remoto (Camada A): 'pull'|'push'|'sync'|'rename'|
+  /// 'close'. Copiar branch/id é resolvido no próprio slot.
+  final void Function(String workspaceId, String action)
+  onRemoteWorkspaceAction;
 
   /// Worktrees (forks) de um workspace raiz, na ordem do git.
   final List<Project> Function(String rootId) worktreesOf;
@@ -255,10 +265,14 @@ class _ProjectsRailState extends State<ProjectsRail> {
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
               child: _RemoteSlot(
+                workspaceId: ws.id,
                 name: ws.name,
                 colorValue: ws.colorValue,
                 selected: ws.id == widget.selectedId,
+                branch: widget.remoteBranchOf(ws.id),
                 onTap: () => widget.onSelectRemote(ws.id),
+                onAction: (action) =>
+                    widget.onRemoteWorkspaceAction(ws.id, action),
                 onRemove: () => widget.onRemoveRemoteWorkspace(ws.id),
               ),
             ),
@@ -406,18 +420,73 @@ class _CockpitSlot extends StatelessWidget {
 /// Botão-direito (long-press no menu) remove o pin. Terminal-only via SSH.
 class _RemoteSlot extends StatelessWidget {
   const _RemoteSlot({
+    required this.workspaceId,
     required this.name,
     required this.colorValue,
     required this.selected,
+    required this.branch,
     required this.onTap,
+    required this.onAction,
     required this.onRemove,
   });
 
+  final String workspaceId;
   final String name;
   final int colorValue;
   final bool selected;
+
+  /// Branch do workspace remoto (git já lido), ou `null` se sem git / não lido.
+  /// Gate das ações de git (pull/push/sync/copiar branch) no menu.
+  final String? branch;
   final VoidCallback onTap;
+
+  /// Ações roteadas pra página: 'pull' | 'push' | 'sync' | 'rename' | 'close'.
+  final void Function(String action) onAction;
   final VoidCallback onRemove;
+
+  Future<void> _showMenu(BuildContext context) async {
+    final tr = context.t.cockpit.projectsRail;
+    final hasGit = branch != null;
+    final pick = await showAppMenu<String>(
+      context,
+      items: [
+        if (hasGit) ...[
+          AppMenuItem(value: 'sync', label: tr.sync, icon: Icons.sync),
+          AppMenuItem(value: 'pull', label: tr.pull, icon: Icons.arrow_downward),
+          AppMenuItem(value: 'push', label: tr.push, icon: Icons.arrow_upward),
+          AppMenuItem(
+            value: 'copy-branch',
+            label: tr.copyBranch,
+            icon: Icons.content_copy,
+          ),
+        ],
+        AppMenuItem(
+          value: 'copy-id',
+          label: tr.copyWorkspaceId,
+          icon: Icons.content_copy,
+        ),
+        AppMenuItem(value: 'rename', label: tr.rename, icon: Icons.edit_outlined),
+        AppMenuItem(
+          value: 'close',
+          label: tr.close,
+          icon: Icons.close,
+          danger: true,
+        ),
+      ],
+    );
+    if (pick == null) return;
+    // Copiar resolve aqui (dado já em mãos); o resto vai pra página.
+    if (pick == 'copy-branch') {
+      final b = branch;
+      if (b != null) await Clipboard.setData(ClipboardData(text: b));
+      return;
+    }
+    if (pick == 'copy-id') {
+      await Clipboard.setData(ClipboardData(text: workspaceId));
+      return;
+    }
+    onAction(pick);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -468,6 +537,20 @@ class _RemoteSlot extends StatelessWidget {
                   fontSize: 9,
                   color: accent,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapUp: (_) => _showMenu(context),
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: Icon(
+                  Icons.more_vert,
+                  size: 14,
+                  color: context.colors.text3,
                 ),
               ),
             ),

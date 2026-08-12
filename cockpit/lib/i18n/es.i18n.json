@@ -535,6 +535,7 @@
       "remove": "Quitar",
       "moveToRealm": "Mover a realm",
       "copyWorkspaceId": "Copiar id del workspace",
+      "rename": "Renombrar",
       "close": "Cerrar",
       "newRealm": "Nuevo realm…",
       "manageRealms": "Gestionar realms…",

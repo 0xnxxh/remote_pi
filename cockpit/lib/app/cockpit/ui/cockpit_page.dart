@@ -1,4 +1,4 @@
-import 'dart:async' show StreamSubscription, unawaited;
+import 'dart:async' show StreamController, StreamSubscription, unawaited;
 import 'dart:io';
 
 import 'package:cockpit/app/core/app_intents.dart';
@@ -532,6 +532,97 @@ class _CockpitPageState extends State<CockpitPage> {
     await _vm.refreshGitProject(project.id);
   }
 
+  /// Menu de 3 pontinhos do workspace remoto (plano 58, Camada A): git ops via
+  /// `git.run` no host, renomear e fechar. Copiar branch/id já resolve no slot.
+  Future<void> _handleRemoteWorkspaceAction(String wsId, String action) async {
+    final vm = _vm;
+    final label = vm.remoteWorkspaces
+        .where((p) => p.id == wsId)
+        .map((p) => p.name)
+        .cast<String?>()
+        .firstWhere((_) => true, orElse: () => null) ??
+        wsId;
+    final page = context.t.cockpit.cockpitPage;
+    switch (action) {
+      case 'pull':
+        await _runRemoteGitDialog(
+          wsId,
+          const ['pull'],
+          title: page.pullTitle(label: label),
+        );
+      case 'push':
+        await _runRemoteGitDialog(
+          wsId,
+          const ['push'],
+          title: page.pushTitle(label: label),
+        );
+      case 'sync':
+        // pull e, se OK, push — mesma semântica do sync local, num só dialog.
+        await _runRemoteGitDialog(
+          wsId,
+          const ['pull'],
+          then: const ['push'],
+          title: page.syncTitle(label: label),
+        );
+      case 'rename':
+        final current = vm.remoteWorkspaces
+            .where((p) => p.id == wsId)
+            .map((p) => p.name)
+            .cast<String?>()
+            .firstWhere((_) => true, orElse: () => null);
+        final name = await showRealmNameDialog(
+          context,
+          title: context.t.cockpit.projectsRail.rename,
+          confirmLabel: context.t.cockpit.projectsRail.rename,
+          takenNames: const <String>{},
+          initial: current,
+        );
+        if (name == null || !mounted) return;
+        await vm.renameRemoteWorkspace(wsId, name);
+      case 'close':
+        await vm.removeRemoteWorkspace(wsId);
+    }
+  }
+
+  /// Roda `git <args>` (e opcionalmente `git <then>` se o 1º passar) no host do
+  /// workspace remoto [wsId], mostrando o dialog de processo. Como o `git.run`
+  /// remoto não é streaming, emite a saída de cada passo de uma vez.
+  Future<void> _runRemoteGitDialog(
+    String wsId,
+    List<String> args, {
+    List<String>? then,
+    required String title,
+  }) async {
+    final vm = _vm;
+    final controller = StreamController<String>();
+    final success = () async {
+      try {
+        final first = await vm.remoteGitRun(wsId, args);
+        if (first.stdout.isNotEmpty) controller.add(first.stdout);
+        if (first.stderr.isNotEmpty) controller.add(first.stderr);
+        if (first.code != 0 || then == null) {
+          return first.code == 0;
+        }
+        final second = await vm.remoteGitRun(wsId, then);
+        if (second.stdout.isNotEmpty) controller.add(second.stdout);
+        if (second.stderr.isNotEmpty) controller.add(second.stderr);
+        return second.code == 0;
+      } catch (e) {
+        controller.add('$e');
+        return false;
+      } finally {
+        await controller.close();
+      }
+    }();
+    await showGitProcessDialog(
+      context,
+      title: title,
+      output: controller.stream,
+      success: success,
+    );
+    await vm.refreshActiveRemoteGit();
+  }
+
   /// "Fork Worktree": nova worktree ramificada da branch do fork [base] —
   /// mesmo dialog do criar, validando contra o namespace do repo de origem.
   Future<void> _forkWorktree(Project base) async {
@@ -1039,6 +1130,9 @@ class _CockpitPageState extends State<CockpitPage> {
                               onSelectRemote: vm.selectProject,
                               onRemoveRemoteWorkspace: (wsId) =>
                                   unawaited(vm.removeRemoteWorkspace(wsId)),
+                              remoteBranchOf: vm.remoteBranchOf,
+                              onRemoteWorkspaceAction:
+                                  _handleRemoteWorkspaceAction,
                             ),
                             // Alça de arraste na borda direita (direita = alarga).
                             Positioned(

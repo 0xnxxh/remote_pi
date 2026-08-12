@@ -93,6 +93,30 @@ class RemoteHostsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Renomeia o label de exibição de um pin (mesmo id/host/pasta). Vazio =
+  /// no-op; o pin não existe = no-op silencioso.
+  Future<void> renamePin(String id, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    RemoteWorkspacePin? pin;
+    for (final p in _store.pins()) {
+      if (p.id == id) {
+        pin = p;
+        break;
+      }
+    }
+    if (pin == null) return;
+    await _store.savePin(
+      RemoteWorkspacePin(
+        id: pin.id,
+        hostId: pin.hostId,
+        path: pin.path,
+        name: trimmed,
+      ),
+    );
+    notifyListeners();
+  }
+
   static String _basename(String path) {
     final trimmed = path.endsWith('/') && path.length > 1
         ? path.substring(0, path.length - 1)

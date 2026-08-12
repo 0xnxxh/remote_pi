@@ -905,6 +905,7 @@ class _Translations$cockpit$projectsRail$es extends Translations$cockpit$project
 	@override String get remove => 'Quitar';
 	@override String get moveToRealm => 'Mover a realm';
 	@override String get copyWorkspaceId => 'Copiar id del workspace';
+	@override String get rename => 'Renombrar';
 	@override String get close => 'Cerrar';
 	@override String get newRealm => 'Nuevo realm…';
 	@override String get manageRealms => 'Gestionar realms…';
@@ -2066,6 +2067,7 @@ extension on TranslationsEs {
 			'cockpit.projectsRail.remove' => 'Quitar',
 			'cockpit.projectsRail.moveToRealm' => 'Mover a realm',
 			'cockpit.projectsRail.copyWorkspaceId' => 'Copiar id del workspace',
+			'cockpit.projectsRail.rename' => 'Renombrar',
 			'cockpit.projectsRail.close' => 'Cerrar',
 			'cockpit.projectsRail.newRealm' => 'Nuevo realm…',
 			'cockpit.projectsRail.manageRealms' => 'Gestionar realms…',
@@ -2119,9 +2121,9 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuario@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
 			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
-			'cockpit.remoteHost.installingServer' => 'Instalando servidor',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.installingServer' => 'Instalando servidor',
 			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Servidor ${version}',
 			'cockpit.remoteHost.loadingWorkspace' => 'Cargando workspace…',
 			'cockpit.remoteHost.reconnecting' => ({required Object host}) => 'Reconectando a ${host}…',

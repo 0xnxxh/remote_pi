@@ -2181,6 +2181,39 @@ class CockpitViewModel extends ChangeNotifier {
     selectProject('${Project.remotePrefix}${pin.id}');
   }
 
+  /// Branch do workspace remoto [wsId] (do git status já carregado), ou `null`
+  /// se ainda não lido. Usado pelo "copiar branch" do menu do rail.
+  String? remoteBranchOf(String wsId) {
+    final b = _remoteGitInfo[wsId]?.branch;
+    return (b == null || b.isEmpty) ? null : b;
+  }
+
+  /// Roda um git cru no host do workspace remoto [wsId] (Camada A do menu do
+  /// rail: pull/push/sync). Resolve host + pasta do pin e usa o `git.run`.
+  /// Lança se [wsId] não for remoto.
+  Future<GitRunResult> remoteGitRun(String wsId, List<String> args) async {
+    final host = remoteHostForWorkspace(wsId);
+    if (host == null) {
+      throw StateError('remoteGitRun em workspace não-remoto: $wsId');
+    }
+    final root = _projectById(wsId)?.remotePath ?? '';
+    final service = await _remoteHosts.gitServiceFor(host);
+    return service.run(root, args);
+  }
+
+  /// Renomeia o label de um workspace remoto (pin) e refaz o slot do rail.
+  Future<void> renameRemoteWorkspace(String workspaceId, String name) async {
+    final pinId = workspaceId.startsWith(Project.remotePrefix)
+        ? workspaceId.substring(Project.remotePrefix.length)
+        : workspaceId;
+    await _remoteHosts.renamePin(pinId, name);
+    _syncRemoteWorkspaces();
+    notifyListeners();
+  }
+
+  /// Refresca o git do workspace remoto ativo (após pull/push/sync no menu).
+  Future<void> refreshActiveRemoteGit() => _refreshRemoteGit();
+
   /// Remove um workspace remoto (pin) pelo id do workspace.
   Future<void> removeRemoteWorkspace(String workspaceId) async {
     final pinId = workspaceId.startsWith(Project.remotePrefix)
