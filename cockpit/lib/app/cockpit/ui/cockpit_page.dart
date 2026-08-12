@@ -15,6 +15,7 @@ import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_folder_picker.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_db_executor.dart';
+import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_host_error_message.dart';
 import 'package:cockpit_core/cockpit_core.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
@@ -176,16 +177,23 @@ class _CockpitPageState extends State<CockpitPage> {
         final host = _vm.remoteHostForWorkspace(wsId);
         if (host == null) return null;
         return buildRemoteDbExecutor(() => _vm.remoteHosts.dbServiceFor(host));
-      };
-    // As conexões de um workspace remoto vivem no host (.cockpit/databases.json).
-    context.read<DatabaseViewModel>().remoteConnectionsFor = (wsId, root) {
-      final host = _vm.remoteHostForWorkspace(wsId);
-      if (host == null) return null;
-      return loadRemoteConnections(
-        () => _vm.remoteHosts.fileServiceFor(host),
-        root,
-      );
-    };
+      }
+      // As conexões de um workspace remoto vivem no host
+      // (.cockpit/databases.json) — resolução da query E leitura do painel.
+      ..remoteConnectionsFor = _remoteConnectionsFor;
+    context.read<DatabaseViewModel>().remoteConnectionsFor =
+        _remoteConnectionsFor;
+  }
+
+  /// Loader remoto de conexões, compartilhado pelo [DbQueryService] (resolução
+  /// da query) e pelo [DatabaseViewModel] (listagem do painel).
+  Future<List<DbConnection>>? _remoteConnectionsFor(String wsId, String root) {
+    final host = _vm.remoteHostForWorkspace(wsId);
+    if (host == null) return null;
+    return loadRemoteConnections(
+      () => _vm.remoteHosts.fileServiceFor(host),
+      root,
+    );
   }
 
   /// Capturado no initState pra uso seguro no dispose (sem `context`).

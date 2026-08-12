@@ -338,7 +338,7 @@ class DbQueryService {
     String name,
   ) async {
     final all =
-        await (remoteConnectionsFor!(workspaceId, root) ??
+        await (remoteConnectionsFor?.call(workspaceId, root) ??
             Future.value(const <DbConnection>[]));
     for (final c in all) {
       if (c.name == name) return c;
