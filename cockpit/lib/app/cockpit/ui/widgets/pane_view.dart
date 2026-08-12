@@ -772,14 +772,17 @@ class _TabState extends State<_Tab> {
                   ],
                 ),
               )
-            : Text(
-                s.displayTitle,
-                overflow: TextOverflow.ellipsis,
-                style: context.typo.tab.copyWith(
-                  color: isFocusedActive || widget.active
-                      ? colors.text
-                      : colors.text3,
-                  fontStyle: isPreview ? FontStyle.italic : FontStyle.normal,
+            : AppTooltip(
+                message: s.displayTitle,
+                child: Text(
+                  s.displayTitle,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.typo.tab.copyWith(
+                    color: isFocusedActive || widget.active
+                        ? colors.text
+                        : colors.text3,
+                    fontStyle: isPreview ? FontStyle.italic : FontStyle.normal,
+                  ),
                 ),
               );
 
