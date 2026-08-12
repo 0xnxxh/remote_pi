@@ -14,6 +14,14 @@ dependencies:
     path: ../cockpit_engine
   cockpit_protocol:
     path: ../cockpit_protocol
+  # Deps diretas dos drivers de DB: o `dart compile exe` só empacota os native
+  # assets das dependências DIRETAS do pacote raiz — via cockpit_engine
+  # (transitivo) os dylibs do anaki ficavam de fora ("No available native
+  # assets"). Declarar aqui força o bundle no binário do servidor.
+  anaki_sqlite: ^0.1.4
+  anaki_postgres: ^0.1.5
+  anaki_mysql: ^0.1.7
+  anaki_mssql: ^0.1.4
 
 dev_dependencies:
   test: ^1.25.0

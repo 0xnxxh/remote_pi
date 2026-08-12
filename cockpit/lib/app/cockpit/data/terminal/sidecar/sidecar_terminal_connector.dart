@@ -47,13 +47,16 @@ class SidecarTerminalConnector {
         debugPrint('sidecar: cockpit-server binary not found, using local PTY');
         return null;
       }
-      final dylib = File('${File(binary).parent.path}/libcockpit_pty.dylib');
+      // Bundle `bin/` + `lib/`: as dylibs (anaki via rpath, pty via env) ficam
+      // em ../lib relativo ao exe (@executable_path/../lib).
+      final libDir = '${File(binary).parent.parent.path}/lib';
+      final ptyDylib = File('$libDir/libcockpit_pty.dylib');
       _child = await Process.start(
         binary,
         ['--socket', socketPath, '--exit-on-idle', '15'],
         environment: {
           ...Platform.environment,
-          if (dylib.existsSync()) 'COCKPIT_PTY_DYLIB': dylib.path,
+          if (ptyDylib.existsSync()) 'COCKPIT_PTY_DYLIB': ptyDylib.path,
         },
       );
       // Drena stdout/stderr: pipe cheio bloquearia o servidor (e SIGPIPE já
@@ -100,21 +103,24 @@ class SidecarTerminalConnector {
     return '${dir.path}/cockpit-server.sock';
   }
 
-  /// Ordem: env de override → Resources do bundle (empacotado pelo
-  /// `macos/build_server.sh`) → binário app-managed (`~/.cockpit/bin`, mesmo
-  /// lar da CLI interna) → build de dev no cwd (fluxo `flutter run` no repo).
-  String? _resolveServerBinary() {
+  /// Resolve o binário do servidor no bundle `bin/`+`lib/` (dart build cli).
+  /// Ordem: env → Resources do `.app` → app-managed (`~/.cockpit/server`) →
+  /// build de dev (`build/server-bundle`, fluxo `flutter run` no repo).
+  String? _resolveServerBinary() => resolveServerBundleBinary();
+
+  /// Reusado pelo bootstrap SSH (RemoteHostConnector) como fonte local.
+  static String? resolveServerBundleBinary() {
     final candidates = <String?>[
       Platform.environment['COCKPIT_SERVER_BIN'],
       if (Platform.isMacOS)
-        // .app/Contents/MacOS/<exe> → ../Resources/cockpit-server
+        // .app/Contents/MacOS/<exe> → ../Resources/cockpit-server-bundle/bin
         '${File(Platform.resolvedExecutable).parent.parent.path}'
-            '/Resources/cockpit-server',
+            '/Resources/cockpit-server-bundle/bin/cockpit-server',
       () {
         final home = userHome();
-        return home == null ? null : '$home/.cockpit/bin/cockpit-server';
+        return home == null ? null : '$home/.cockpit/server/bin/cockpit-server';
       }(),
-      '${Directory.current.path}/build/wave0/cockpit-server',
+      '${Directory.current.path}/build/server-bundle/bin/cockpit-server',
     ];
     for (final candidate in candidates) {
       if (candidate != null && File(candidate).existsSync()) return candidate;

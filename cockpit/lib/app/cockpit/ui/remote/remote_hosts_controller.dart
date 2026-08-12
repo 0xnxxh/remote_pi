@@ -1,12 +1,10 @@
-import 'dart:io';
-
 import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
-import 'package:cockpit/app/core/utils/user_home.dart';
+import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
 import 'package:cockpit_remote/cockpit_remote.dart';
 import 'package:flutter/foundation.dart';
 
@@ -118,23 +116,8 @@ class RemoteHostsController extends ChangeNotifier {
     return '${existing + 1}';
   }
 
-  String? _resolveLocalServerBinary() {
-    final candidates = <String?>[
-      Platform.environment['COCKPIT_SERVER_BIN'],
-      if (Platform.isMacOS)
-        '${File(Platform.resolvedExecutable).parent.parent.path}'
-            '/Resources/cockpit-server',
-      () {
-        final home = userHome();
-        return home == null ? null : '$home/.cockpit/bin/cockpit-server';
-      }(),
-      '${Directory.current.path}/build/wave0/cockpit-server',
-    ];
-    for (final candidate in candidates) {
-      if (candidate != null && File(candidate).existsSync()) return candidate;
-    }
-    return null;
-  }
+  String? _resolveLocalServerBinary() =>
+      SidecarTerminalConnector.resolveServerBundleBinary();
 
   @override
   void dispose() {

@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "105.0.0"
   anaki_mssql:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: anaki_mssql
       sha256: "007a9ad84b92a1d00966c430cf70f7f83d28c7d49ceb82f03ca75febd565a102"
@@ -18,7 +18,7 @@ packages:
     source: hosted
     version: "0.1.4"
   anaki_mysql:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: anaki_mysql
       sha256: "7629c4457fb23b8f8820e35806b4dc9b30cbea6dd008c0b5b82bfada84c23f40"
@@ -34,7 +34,7 @@ packages:
     source: hosted
     version: "0.1.1"
   anaki_postgres:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: anaki_postgres
       sha256: "33a192f26fff15502c870c9d0841f50f9a6a13904bb135e6a89dfee6a3c0a6ca"
@@ -42,7 +42,7 @@ packages:
     source: hosted
     version: "0.1.5"
   anaki_sqlite:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: anaki_sqlite
       sha256: d789ffded55658f58c8c0966f4dcdd4afd01b30952c97be555f92dae195d8340

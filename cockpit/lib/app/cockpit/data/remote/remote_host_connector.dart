@@ -176,13 +176,18 @@ class RemoteHostConnector {
         'local cockpit-server binary not found',
       );
     }
-    final dylib = '${File(binary).parent.path}/libcockpit_pty.dylib';
+    // Bundle: <root>/bin/cockpit-server + <root>/lib/*.dylib (anaki + pty). O
+    // exe resolve as dylibs em @executable_path/../lib, então preservamos o
+    // layout no host (~/.cockpit/server/{bin,lib}).
+    final bundleRoot = File(binary).parent.parent.path;
+    final libDir = Directory('$bundleRoot/lib');
 
     Future<void> push(String local, String remote) async {
       final bytes = await File(local).readAsBytes();
       final (code, stderrText) = await SshTunnel.run(
         host.sshTarget,
-        'mkdir -p ~/.cockpit/bin && cat > $remote && chmod +x $remote',
+        'mkdir -p ~/.cockpit/server/bin ~/.cockpit/server/lib && '
+        'cat > $remote && chmod +x $remote',
         stdinBytes: bytes,
       );
       if (code != 0) {
@@ -193,16 +198,20 @@ class RemoteHostConnector {
       }
     }
 
-    await push(binary, '~/.cockpit/bin/cockpit-server');
-    if (File(dylib).existsSync()) {
-      await push(dylib, '~/.cockpit/bin/libcockpit_pty.dylib');
+    await push(binary, '~/.cockpit/server/bin/cockpit-server');
+    if (libDir.existsSync()) {
+      for (final f in libDir.listSync().whereType<File>()) {
+        if (!f.path.endsWith('.dylib') && !f.path.endsWith('.so')) continue;
+        await push(f.path, '~/.cockpit/server/lib/${f.uri.pathSegments.last}');
+      }
     }
 
     final (code, stderrText) = await SshTunnel.run(
       host.sshTarget,
-      // nohup + redirects: o servidor sobrevive ao fim desta sessão ssh.
-      'COCKPIT_PTY_DYLIB=\$HOME/.cockpit/bin/libcockpit_pty.dylib '
-      'nohup \$HOME/.cockpit/bin/cockpit-server '
+      // nohup + redirects: o servidor sobrevive ao fim desta sessão ssh. O pty
+      // vem do ../lib do bundle; o anaki resolve por rpath.
+      'COCKPIT_PTY_DYLIB=\$HOME/.cockpit/server/lib/libcockpit_pty.dylib '
+      'nohup \$HOME/.cockpit/server/bin/cockpit-server '
       '--socket \$HOME/.cockpit/cockpit-server.sock --exit-on-idle 0 '
       '>/dev/null 2>&1 & echo started',
     );

@@ -1,13 +1,13 @@
 #!/bin/bash
-# Compila o `cockpit-server` (plano 58: Dart AOT headless, packages/cockpit_server)
-# + a dylib do PTY e empacota em Resources do .app, assinados.
+# Empacota o cockpit-server (plano 58) no .app via `dart build cli` — que
+# SUPORTA build hooks (native assets do anaki), ao contrário do
+# `dart compile exe`. O resultado (bin/ + lib/) vai para
+#   Resources/cockpit-server-bundle/{bin,lib}
+# e o app resolve o binário lá (SidecarTerminalConnector). O exe carrega as
+# dylibs (anaki + pty) de ../lib via rpath.
 #
-# ATENÇÃO — arquitetura: AOT do Dart NÃO sobrevive ao lipo (mesma razão que
-# levou a CLI pra Rust). O servidor embarca em FATIA ÚNICA (a do host que
-# buildou); a dylib C vai universal. Num Mac Intel com app buildado em Apple
-# Silicon, o binário não roda e o app cai no PTY in-process sozinho (fallback
-# do SidecarTerminalGateway) — pendência registrada no plano 58 (fatia x64
-# via runner Intel no CI, arquivos por arch escolhidos em runtime).
+# ATENÇÃO — arquitetura: fatia única (a do host que buildou). Mac Intel com
+# build arm64 cai no fallback in-process (pendência: fatia x64 no CI).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"   # cockpit/
@@ -24,46 +24,38 @@ DART="$(resolve_dart)"
 
 : "${BUILT_PRODUCTS_DIR:?precisa rodar pelo Xcode (BUILT_PRODUCTS_DIR ausente)}"
 : "${PRODUCT_NAME:?PRODUCT_NAME ausente}"
-RES="$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.app/Contents/Resources"
-mkdir -p "$RES"
+DEST="$BUILT_PRODUCTS_DIR/$PRODUCT_NAME.app/Contents/Resources/cockpit-server-bundle"
+rm -rf "$DEST"
+mkdir -p "$DEST"
 
 # Dylib do PTY: universal (C compila as duas fatias num comando).
 SRC="$ROOT/plugins/cockpit_pty/src"
-DYLIB="$RES/libcockpit_pty.dylib"
+PTY="$ROOT/build/wave0/libcockpit_pty.dylib"
+mkdir -p "$ROOT/build/wave0"
 cc -dynamiclib -O2 -DDART_SHARED_LIB -arch arm64 -arch x86_64 \
-  -o "$DYLIB" "$SRC/cockpit_pty.c" -I"$SRC" -lpthread
-echo "[build_server] dylib $(/usr/bin/lipo -archs "$DYLIB")"
+  -o "$PTY" "$SRC/cockpit_pty.c" -I"$SRC" -lpthread
 
-# Servidor: AOT da arquitetura do host.
+# Servidor via dart build cli (bundle bin/ + lib/ com os native assets).
 ( cd "$ROOT/packages/cockpit_server" && "$DART" pub get >/dev/null )
-DEST="$RES/cockpit-server"
-"$DART" compile exe "$ROOT/packages/cockpit_server/bin/cockpit_server.dart" \
-  -o "$DEST" >/dev/null
-chmod +x "$DEST"
-
-# Prova executável (padrão do build_cli: estrutura não basta): sobe num
-# socket de probe e mata. NUNCA rodar sem --socket/kill — o binário não tem
-# --help e ficaria escutando no socket default como órfão.
-PROBE="$(mktemp -d)/probe.sock"
-COCKPIT_PTY_DYLIB="$DYLIB" "$DEST" --socket "$PROBE" >/dev/null 2>&1 &
-PROBE_PID=$!
-for _ in 1 2 3 4 5 6 7 8 9 10; do [ -S "$PROBE" ] && break; sleep 0.3; done
-if [ ! -S "$PROBE" ]; then
-  kill "$PROBE_PID" 2>/dev/null || true
-  echo "[build_server] erro: o binário gerado não sobe" >&2
-  exit 1
-fi
-kill "$PROBE_PID" 2>/dev/null || true
-rm -f "$PROBE"
+BUNDLE="$(mktemp -d)/out"
+( cd "$ROOT/packages/cockpit_server" && "$DART" build cli -o "$BUNDLE" >/dev/null )
+# `dart build cli` gera <out>/bundle/{bin,lib}.
+mv "$BUNDLE"/bundle/* "$DEST"/
+mv "$DEST/bin/cockpit_server" "$DEST/bin/cockpit-server"
+cp "$PTY" "$DEST/lib/libcockpit_pty.dylib"
+chmod +x "$DEST/bin/cockpit-server"
 
 IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:-}"
-if [ -z "$IDENTITY" ] || [ "$IDENTITY" = "-" ]; then
-  echo "[build_server] codesign ad-hoc (dev)"
-  codesign --force -s - "$DYLIB" "$DEST"
-else
-  echo "[build_server] codesign ($IDENTITY) + hardened runtime"
-  codesign --force --options runtime \
-    --entitlements "$ROOT/macos/cockpit_hook.entitlements" \
-    -s "$IDENTITY" "$DYLIB" "$DEST"
-fi
-echo "[build_server] bundle OK -> $DEST ($(/usr/bin/lipo -archs "$DEST"))"
+sign() {
+  if [ -z "$IDENTITY" ] || [ "$IDENTITY" = "-" ]; then
+    codesign --force -s - "$@"
+  else
+    codesign --force --options runtime \
+      --entitlements "$ROOT/macos/cockpit_hook.entitlements" \
+      -s "$IDENTITY" "$@"
+  fi
+}
+# Assina as dylibs antes do exe.
+for f in "$DEST"/lib/*.dylib; do sign "$f"; done
+sign "$DEST/bin/cockpit-server"
+echo "[build_server] bundle OK -> $DEST"
