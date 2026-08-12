@@ -70,7 +70,7 @@ class RemoteDbService implements DbService {
       return await _connection.call('db.mongo', {
         'conn': conn.toJson(),
         'command': command,
-        if (database != null) 'database': database,
+        'database': ?database,
       });
     } on RemoteRpcException catch (e) {
       throw _mapError(e);

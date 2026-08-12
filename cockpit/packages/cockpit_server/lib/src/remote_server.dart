@@ -293,6 +293,11 @@ class _Connection {
           await _git.commit(p['repo'] as String, p['message'] as String);
           return null;
         }(),
+        'git.run' =>
+          (await _git.run(
+            p['repo'] as String,
+            (p['args'] as List).cast<String>(),
+          )).toJson(),
         'db.query' => _db.query(
           RemoteDbConnDescriptor.fromJson(
             (p['conn'] as Map).cast<String, Object?>(),

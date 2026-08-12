@@ -58,6 +58,25 @@ class NativeGitService implements GitService {
     await _git(repoPath, ['commit', '-m', message]);
   }
 
+  @override
+  Future<GitRunResult> run(String repoPath, List<String> args) async {
+    try {
+      final result = await Process.run(
+        'git',
+        ['-C', repoPath, ...args],
+        stdoutEncoding: SystemEncoding(),
+        stderrEncoding: SystemEncoding(),
+      );
+      return GitRunResult(
+        code: result.exitCode,
+        stdout: result.stdout as String,
+        stderr: (result.stderr as String).trim(),
+      );
+    } on ProcessException catch (e) {
+      throw GitException(GitErrorKind.command, e.message);
+    }
+  }
+
   Future<String> _git(String repoPath, List<String> args) async {
     final ProcessResult result;
     try {

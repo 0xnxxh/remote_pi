@@ -99,6 +99,12 @@ class RemoteGitService implements GitService {
   Future<void> commit(String repoPath, String message) =>
       _call('git.commit', {'repo': repoPath, 'message': message});
 
+  @override
+  Future<GitRunResult> run(String repoPath, List<String> args) async {
+    final data = await _call('git.run', {'repo': repoPath, 'args': args});
+    return GitRunResult.fromJson(data.cast<String, Object?>());
+  }
+
   Future<Map<String, Object?>> _call(
     String method,
     Map<String, Object?> params,

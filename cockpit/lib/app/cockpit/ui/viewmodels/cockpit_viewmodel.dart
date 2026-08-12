@@ -48,6 +48,7 @@ import 'package:cockpit/app/cockpit/domain/entities/file_view.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_commit.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_history_commit.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_history_file_change.dart';
+import 'package:cockpit/app/cockpit/domain/git_history_parsers.dart';
 import 'package:cockpit/app/cockpit/domain/entities/layout_spec.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_file_status.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_info.dart';
@@ -83,6 +84,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/unified_diff_parser.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_git_adapter.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit_core/cockpit_core.dart' show GitRunResult;
 import 'package:cockpit_remote/cockpit_remote.dart' show RemoteGitService;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
@@ -2811,13 +2813,63 @@ class CockpitViewModel extends ChangeNotifier {
   }
 
   /// Historico estruturado da root selecionada na visualizacao History.
+  /// Remoto (plano 58): roda o mesmo `git log` no host via `git.run` e
+  /// alimenta o parser compartilhado — zero duplicação de parsing.
   Future<Result<List<GitHistoryCommit>, GitHistoryError>> loadGitHistory(
-    String root,
-  ) => _gitHistory.read(root);
+    String root, {
+    int limit = 100,
+  }) async {
+    if (_activeRemoteHost() == null) return _gitHistory.read(root, limit: limit);
+    try {
+      final r = await (await _activeRemoteGit()).run(root, [
+        'log',
+        '-n',
+        '$limit',
+        '--decorate=short',
+        '--date=iso-strict',
+        '--format=%H%x1f%P%x1f%D%x1f%an%x1f%aI%x1f%s%x1e',
+      ]);
+      if (r.code != 0) {
+        return Failure(
+          GitHistoryError(GitHistoryErrorKind.commandFailed, detail: r.stderr),
+        );
+      }
+      return Success(GitHistoryParser.parse(r.stdout));
+    } catch (e) {
+      return Failure(
+        GitHistoryError(GitHistoryErrorKind.commandFailed, detail: '$e'),
+      );
+    }
+  }
 
   Future<Result<List<GitHistoryFileChange>, GitHistoryError>>
-  loadGitHistoryFiles(String root, String commitHash) =>
-      _gitHistory.readFiles(root, commitHash);
+  loadGitHistoryFiles(String root, String commitHash) async {
+    if (_activeRemoteHost() == null) {
+      return _gitHistory.readFiles(root, commitHash);
+    }
+    try {
+      final r = await (await _activeRemoteGit()).run(root, [
+        'show',
+        '--format=',
+        '--name-status',
+        '-z',
+        '--find-renames',
+        '--first-parent',
+        commitHash,
+        '--',
+      ]);
+      if (r.code != 0) {
+        return Failure(
+          GitHistoryError(GitHistoryErrorKind.commandFailed, detail: r.stderr),
+        );
+      }
+      return Success(GitHistoryFileChangeParser.parse(r.stdout));
+    } catch (e) {
+      return Failure(
+        GitHistoryError(GitHistoryErrorKind.commandFailed, detail: '$e'),
+      );
+    }
+  }
 
   /// Atualiza o estado git (e o token do historico) depois de uma operacao
   /// concluida pelo painel de processo.
@@ -3012,6 +3064,9 @@ class CockpitViewModel extends ChangeNotifier {
     if (pid == null) {
       return const FileOperationError(FileOperationErrorKind.noWorkspace);
     }
+    if (_activeRemoteHost() != null) {
+      return _discardRemoteFile(pid, absPath);
+    }
     final root = rootContaining(pid, absPath);
     if (root == null) {
       return const FileOperationError(FileOperationErrorKind.invalidPath);
@@ -3045,6 +3100,50 @@ class CockpitViewModel extends ChangeNotifier {
     _fileTreeRevision++;
     notifyListeners();
     return err == null ? null : _gitFailure(err);
+  }
+
+  /// Discard remoto (plano 58): mesma semântica do local, mas 100% via git no
+  /// host (o protocolo não tem fs.delete). Novo staged → `git rm -f` (tira do
+  /// index e apaga o arquivo); novo untracked → `git clean -f`; rastreado →
+  /// `git restore --source=HEAD --staged --worktree`.
+  Future<FileOperationError?> _discardRemoteFile(
+    String pid,
+    String absPath,
+  ) async {
+    final root = selectedProject?.remotePath ?? '';
+    if (root.isEmpty) {
+      return const FileOperationError(FileOperationErrorKind.invalidPath);
+    }
+    final rel = _subOf(absPath, root);
+    try {
+      final git = await _activeRemoteGit();
+      // "Novo" = HEAD não conhece o caminho (cat-file -e falha).
+      final inHead = await git.run(root, ['cat-file', '-e', 'HEAD:$rel']);
+      final isNew = inHead.code != 0;
+      final GitRunResult r;
+      if (isNew) {
+        final staged =
+            _activeRemoteGitInfo?.stagedFiles.containsKey(rel) ?? false;
+        r = staged
+            ? await git.run(root, ['rm', '-f', '--', rel])
+            : await git.run(root, ['clean', '-f', '--', rel]);
+      } else {
+        r = await git.run(root, [
+          'restore',
+          '--source=HEAD',
+          '--staged',
+          '--worktree',
+          '--',
+          rel,
+        ]);
+      }
+      await _refreshRemoteGit();
+      _fileTreeRevision++;
+      notifyListeners();
+      return r.code == 0 ? null : _gitFailure(r.stderr);
+    } catch (e) {
+      return _gitFailure('$e');
+    }
   }
 
   /// Erro de git (stderr cru) embrulhado no tipo que a UI sabe traduzir.

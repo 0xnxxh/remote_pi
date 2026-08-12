@@ -56,6 +56,31 @@ class GitException implements Exception {
 
 /// Git do servidor: roda o binário `git` no host que serve (plano 58, Wave 3).
 /// [repoPath] é a raiz do repositório no filesystem remoto.
+/// Saída crua de `git <args>` (exit code + streams), pro escape hatch [GitService.run].
+class GitRunResult {
+  const GitRunResult({
+    required this.code,
+    required this.stdout,
+    required this.stderr,
+  });
+
+  final int code;
+  final String stdout;
+  final String stderr;
+
+  Map<String, Object?> toJson() => {
+    'code': code,
+    'stdout': stdout,
+    'stderr': stderr,
+  };
+
+  factory GitRunResult.fromJson(Map<String, Object?> j) => GitRunResult(
+    code: (j['code'] as num?)?.toInt() ?? -1,
+    stdout: j['stdout'] as String? ?? '',
+    stderr: j['stderr'] as String? ?? '',
+  );
+}
+
 abstract interface class GitService {
   Future<GitStatus> status(String repoPath);
 
@@ -65,4 +90,9 @@ abstract interface class GitService {
   Future<void> stage(String repoPath, List<String> files);
   Future<void> unstage(String repoPath, List<String> files);
   Future<void> commit(String repoPath, String message);
+
+  /// Roda `git <args>` cru no repo e devolve (code, stdout, stderr) SEM lançar
+  /// em exit ≠ 0 — escape hatch para operações sem método dedicado (log/show/
+  /// restore/rm/amend). O cliente parseia a saída com os parsers que já tem.
+  Future<GitRunResult> run(String repoPath, List<String> args);
 }
