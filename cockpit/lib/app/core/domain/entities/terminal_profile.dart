@@ -52,6 +52,9 @@ class TerminalProfile {
   /// [id] do perfil cmd (Windows).
   static const String cmdId = 'cmd';
 
+  /// Retorna o nome da distro WSL se este perfil for de uma distro WSL, caso contrário null.
+  String? get wslDistro => id.startsWith(wslPrefix) ? id.substring(wslPrefix.length) : null;
+
   @override
   String toString() => 'TerminalProfile($id, $executable ${args.join(' ')})';
 }

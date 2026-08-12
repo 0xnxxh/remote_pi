@@ -41,8 +41,11 @@ import 'package:cockpit/app/cockpit/data/setup/environment_installer_impl.dart';
 import 'package:cockpit/app/cockpit/data/hooks/terminal_status_server_impl.dart';
 import 'package:cockpit/app/cockpit/data/tasks/pty_task_runner.dart';
 import 'package:cockpit/app/cockpit/data/tasks/task_discovery_impl.dart';
+import 'package:cockpit/app/cockpit/data/process/process_tree_provider_factory.dart';
 import 'package:cockpit/app/cockpit/data/terminal/file_terminal_scrollback_store.dart';
 import 'package:cockpit/app/cockpit/data/terminal/pty_terminal_gateway_factory.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/process_tree_provider.dart';
+import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/cockpit/data/update/auto_updater_self_updater.dart';
 import 'package:cockpit/app/cockpit/data/update/noop_self_updater.dart';
 import 'package:cockpit/app/cockpit/data/update/update_checker_impl.dart';
@@ -192,6 +195,10 @@ Future<Module> buildCockpitModule() async {
         ..addInstance<TerminalGatewayFactory>(const PtyTerminalGatewayFactory())
         ..addInstance<TerminalScrollbackStore>(
           const FileTerminalScrollbackStore(),
+        )
+        ..addLazySingleton<ProcessTreeProvider>(createHostProcessTreeProvider)
+        ..addLazySingleton<TerminalHarnessMonitor>(
+          CockpitTerminalHarnessMonitor.new,
         )
         ..addLazySingleton<TerminalStatusServer>(TerminalStatusServerImpl.new)
         ..addLazySingleton<TaskRunnerGateway>(PtyTaskRunner.new)

@@ -20,6 +20,9 @@ class PtyTerminalGateway implements TerminalGateway {
   SpawnDirectory? get spawnDirectory => _resolvedDirectory;
 
   @override
+  int? get rootProcessId => _pty?.pid;
+
+  @override
   void start({
     required String workingDirectory,
     required TerminalProfile profile,

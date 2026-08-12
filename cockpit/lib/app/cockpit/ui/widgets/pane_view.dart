@@ -28,6 +28,7 @@ import 'package:cockpit/app/cockpit/ui/widgets/db_mongo_view.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/db_redis_table.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_viewer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/adaptive_terminal_pane.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/pane_tab_leading.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
@@ -288,17 +289,34 @@ class _TabStripState extends State<_TabStrip> {
   /// Dropdown com todas as abas (pular direto pra uma) — aparece no overflow.
   Future<void> _showTabList(BuildContext anchor) async {
     final pane = widget.pane;
+    final colors = context.colors;
     final picked = await showAppMenu<String>(
       anchor,
       minWidth: 220,
       items: [
         for (final id in pane.tabs)
-          AppMenuItem(
-            value: id,
-            label: widget.vm.session(id)?.displayTitle ?? '—',
-            icon: _tabIcon(widget.vm.session(id)),
-            selected: id == pane.active,
-          ),
+          () {
+            final s = widget.vm.session(id);
+            return AppMenuItem(
+              value: id,
+              label: s?.displayTitle ?? '—',
+              leading: s is TerminalSession
+                  ? ListenableBuilder(
+                      listenable: s,
+                      builder: (context, _) => PaneTabLeading(
+                        item: s,
+                        defaultIcon: _tabIcon(s),
+                        iconColor: colors.text2,
+                      ),
+                    )
+                  : PaneTabLeading(
+                      item: s,
+                      defaultIcon: _tabIcon(s),
+                      iconColor: colors.text2,
+                    ),
+              selected: id == pane.active,
+            );
+          }(),
       ],
     );
     if (picked != null) widget.vm.selectTab(pane.id, picked);
@@ -791,10 +809,11 @@ class _TabState extends State<_Tab> {
               else if (s is MongoBrowserSession)
                 const DbEngineIcon(DbEngine.mongo, size: 14)
               else
-                Icon(
-                  icon,
+                PaneTabLeading(
+                  item: s,
+                  defaultIcon: icon,
                   size: 13,
-                  color: isFocusedActive
+                  iconColor: isFocusedActive
                       ? colors.accentText
                       : (widget.active ? colors.text2 : colors.text3),
                 ),

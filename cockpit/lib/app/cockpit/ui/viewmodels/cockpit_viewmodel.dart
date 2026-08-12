@@ -77,6 +77,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/session/task_output_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/task_terminal_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.dart';
+import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
@@ -127,6 +128,7 @@ class CockpitViewModel extends ChangeNotifier {
     this._taskRunner,
     this._dbService,
     this._layoutLoader,
+    this._harnessMonitor,
   ) {
     // Contexto do shell que o GitController precisa (page-scoped, mesma vida).
     git
@@ -172,6 +174,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// (plano 51): mesma resolução de conexão/senha, mesma serialização.
   final DbQueryService _dbService;
   final LayoutLoader _layoutLoader;
+  final TerminalHarnessMonitor _harnessMonitor;
   final RpcGatewayFactory _factory;
   final FolderLister _folders;
   final SessionHistory _history;
@@ -3776,6 +3779,8 @@ class CockpitViewModel extends ChangeNotifier {
       replay: replay,
       // Restauração: comando a digitar no shell novo (ex.: `claude --resume`).
       startupCommand: startupCommand,
+      // Detecção do harness interativo ativo (ícone da aba).
+      monitor: _harnessMonitor,
       // Injeta no env da PTY: roteamento (id da tab) + transporte (socket/porta).
       // O `cockpit-hook` do claude herda e reporta status de turno de volta.
       // `COCKPIT_TAB_ID` é o nome correto (o que a CLI endereça é uma tab);
@@ -4766,6 +4771,7 @@ class CockpitViewModel extends ChangeNotifier {
       s.dispose();
     }
     _sessions.clear();
+    _harnessMonitor.dispose();
     super.dispose();
   }
 }
