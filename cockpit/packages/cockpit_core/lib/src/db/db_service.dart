@@ -11,9 +11,10 @@ class RemoteDbConnDescriptor {
     this.database = '',
     this.sqlitePath = '',
     this.password,
+    this.useTls = false,
   });
 
-  /// `sqlite` | `postgres` | `mysql` | `mssql` (só SQL nesta fase).
+  /// `sqlite` | `postgres` | `mysql` | `mssql` | `redis` | `mongo`.
   final String engine;
   final String url;
   final String host;
@@ -22,6 +23,10 @@ class RemoteDbConnDescriptor {
   final String database;
   final String sqlitePath;
   final String? password;
+
+  /// TLS pro Redis (`rediss://`); ignorado pelos demais engines (Postgres/…
+  /// derivam de query params na URL; Mongo, do scheme).
+  final bool useTls;
 
   Map<String, Object?> toJson() => {
     'engine': engine,
@@ -32,6 +37,7 @@ class RemoteDbConnDescriptor {
     if (database.isNotEmpty) 'database': database,
     if (sqlitePath.isNotEmpty) 'sqlitePath': sqlitePath,
     if (password != null) 'password': password,
+    if (useTls) 'useTls': useTls,
   };
 
   factory RemoteDbConnDescriptor.fromJson(Map<String, Object?> j) =>
@@ -44,6 +50,7 @@ class RemoteDbConnDescriptor {
         database: j['database'] as String? ?? '',
         sqlitePath: j['sqlitePath'] as String? ?? '',
         password: j['password'] as String?,
+        useTls: j['useTls'] as bool? ?? false,
       );
 }
 
@@ -68,5 +75,23 @@ abstract interface class DbService {
     String sql, {
     int limit = 200,
     bool dml = false,
+  });
+
+  /// Redis: envia [parts] (`['GET','foo']`) e devolve o reply JSON-serializável.
+  Future<Object?> redis(RemoteDbConnDescriptor conn, List<String> parts);
+
+  /// Redis em lote: [commands] em sequência numa única conexão, replies na
+  /// mesma ordem (tabela do plano 52).
+  Future<List<Object?>> redisMany(
+    RemoteDbConnDescriptor conn,
+    List<List<String>> commands,
+  );
+
+  /// Mongo: roda [command] (`runCommand`) → documento de resposta. [database]
+  /// força o alvo (seletor do painel); ausente = o da URL/fallback.
+  Future<Object?> mongo(
+    RemoteDbConnDescriptor conn,
+    Map<String, Object?> command, {
+    String? database,
   });
 }

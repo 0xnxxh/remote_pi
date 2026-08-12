@@ -25,10 +25,60 @@ class RemoteDbService implements DbService {
       });
       return (data as Map).cast<String, Object?>();
     } on RemoteRpcException catch (e) {
-      throw DbServiceException(
-        DbErrorKind.values.asNameMap()[e.code] ?? DbErrorKind.queryFailed,
-        e.detail,
-      );
+      throw _mapError(e);
     }
   }
+
+  @override
+  Future<Object?> redis(
+    RemoteDbConnDescriptor conn,
+    List<String> parts,
+  ) async {
+    try {
+      return await _connection.call('db.redis', {
+        'conn': conn.toJson(),
+        'parts': parts,
+      });
+    } on RemoteRpcException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<List<Object?>> redisMany(
+    RemoteDbConnDescriptor conn,
+    List<List<String>> commands,
+  ) async {
+    try {
+      final data = await _connection.call('db.redisMany', {
+        'conn': conn.toJson(),
+        'commands': commands,
+      });
+      return (data as List).cast<Object?>();
+    } on RemoteRpcException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  @override
+  Future<Object?> mongo(
+    RemoteDbConnDescriptor conn,
+    Map<String, Object?> command, {
+    String? database,
+  }) async {
+    try {
+      return await _connection.call('db.mongo', {
+        'conn': conn.toJson(),
+        'command': command,
+        if (database != null) 'database': database,
+      });
+    } on RemoteRpcException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  DbServiceException _mapError(RemoteRpcException e) => DbServiceException(
+    DbErrorKind.values.asNameMap()[e.code] ?? DbErrorKind.queryFailed,
+    e.detail,
+  );
 }

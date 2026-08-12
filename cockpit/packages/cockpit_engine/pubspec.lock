@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "105.0.0"
+  anaki_mongodb:
+    dependency: "direct main"
+    description:
+      name: anaki_mongodb
+      sha256: "289d995ffd5fdba8897417cb516df22583b78f72d8bf27e073f874b5eae522ec"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.7"
   anaki_mssql:
     dependency: "direct main"
     description:
@@ -41,6 +49,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.5"
+  anaki_redis:
+    dependency: "direct main"
+    description:
+      name: anaki_redis
+      sha256: "456f7072f176a83c2d767577608c8bf920de1c2c3bf28c812fd1e5edb0149d8d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.4"
   anaki_sqlite:
     dependency: "direct main"
     description:

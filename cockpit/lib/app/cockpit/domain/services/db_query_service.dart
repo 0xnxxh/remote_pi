@@ -68,6 +68,12 @@ class DbQueryService {
   Future<List<DbConnection>>? Function(String workspaceId, String root)?
   remoteConnectionsFor;
 
+  /// Runner NoSQL remoto (plano 58, Wave 4): Redis/Mongo executados no
+  /// `cockpit-server` do host. Setado pelo app junto do [remoteExecutorFor];
+  /// não-nulo só em workspace remoto. Mesma resolução de conexão/senha do
+  /// caminho SQL — só o destino do comando muda.
+  NoSqlRunner? Function(String workspaceId)? remoteNoSqlFor;
+
   /// Passphrases digitadas mas **não** salvas no cofre: valem enquanto o app
   /// viver. É o que permite "não quero segredo em cofre nenhum" sem punir com
   /// um prompt por query.
@@ -232,6 +238,13 @@ class DbQueryService {
     required String connName,
     required List<String> parts,
   }) async {
+    final remote = remoteNoSqlFor?.call(workspaceId);
+    if (remote != null) {
+      final conn = await _resolveRemote(workspaceId, workspaceRoot, connName);
+      _requireEngine(conn, DbEngine.redis, connName);
+      final password = await _passwordFor(conn, workspaceId);
+      return remote.redis(conn, parts, password: password);
+    }
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     _requireEngine(conn, DbEngine.redis, connName);
     final password = await _passwordFor(conn, workspaceId);
@@ -250,6 +263,13 @@ class DbQueryService {
     required String connName,
     required List<List<String>> commands,
   }) async {
+    final remote = remoteNoSqlFor?.call(workspaceId);
+    if (remote != null) {
+      final conn = await _resolveRemote(workspaceId, workspaceRoot, connName);
+      _requireEngine(conn, DbEngine.redis, connName);
+      final password = await _passwordFor(conn, workspaceId);
+      return remote.redisMany(conn, commands, password: password);
+    }
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     _requireEngine(conn, DbEngine.redis, connName);
     final password = await _passwordFor(conn, workspaceId);
@@ -271,6 +291,19 @@ class DbQueryService {
     required Map<String, dynamic> command,
     String? database,
   }) async {
+    final remote = remoteNoSqlFor?.call(workspaceId);
+    if (remote != null) {
+      final conn = await _resolveRemote(workspaceId, workspaceRoot, connName);
+      _requireEngine(conn, DbEngine.mongo, connName);
+      final password = await _passwordFor(conn, workspaceId);
+      final target = database ?? mongoDatabase(workspaceId, conn);
+      return remote.mongo(
+        conn,
+        command,
+        password: password,
+        database: target,
+      );
+    }
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     _requireEngine(conn, DbEngine.mongo, connName);
     final password = await _passwordFor(conn, workspaceId);

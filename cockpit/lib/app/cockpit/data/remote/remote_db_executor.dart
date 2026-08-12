@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:cockpit/app/cockpit/data/db/db_connection_store_impl.dart';
+import 'package:cockpit/app/cockpit/data/db/nosql_command_runner.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/nosql_runner.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_result.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
@@ -72,6 +74,75 @@ RemoteDbExecutor buildRemoteDbExecutor(
   };
 }
 
+/// [NoSqlRunner] que roda Redis/Mongo no host via `cockpit-server` (plano 58,
+/// Wave 4). Mesmo contrato do runner local — o `DbQueryService` troca só o
+/// destino quando o workspace é remoto. [dbServiceProvider] resolve o serviço
+/// do host (conecta por SSH se preciso).
+NoSqlRunner buildRemoteNoSqlRunner(
+  Future<RemoteDbService> Function() dbServiceProvider,
+) => _RemoteNoSqlRunner(dbServiceProvider);
+
+class _RemoteNoSqlRunner implements NoSqlRunner {
+  _RemoteNoSqlRunner(this._provider);
+
+  final Future<RemoteDbService> Function() _provider;
+
+  @override
+  Future<Object?> redis(
+    DbConnection conn,
+    List<String> parts, {
+    String? password,
+  }) async {
+    final service = await _provider();
+    try {
+      return await service.redis(_descriptor(conn, password), parts);
+    } on DbServiceException catch (e) {
+      throw DbQueryException(e.kind.name, e.detail ?? e.kind.name);
+    }
+  }
+
+  @override
+  Future<List<Object?>> redisMany(
+    DbConnection conn,
+    List<List<String>> commands, {
+    String? password,
+  }) async {
+    final service = await _provider();
+    try {
+      return await service.redisMany(_descriptor(conn, password), commands);
+    } on DbServiceException catch (e) {
+      throw DbQueryException(e.kind.name, e.detail ?? e.kind.name);
+    }
+  }
+
+  @override
+  Future<Object?> mongo(
+    DbConnection conn,
+    Map<String, dynamic> command, {
+    String? password,
+    String? database,
+  }) async {
+    final service = await _provider();
+    // Mongo conecta pela URI (Atlas/TLS/authSource); a senha do cofre entra no
+    // userinfo aqui, igual ao runner local. O descritor leva a URI já pronta.
+    final url = NoSqlRunnerImpl.mongoUriFor(conn, password);
+    final descriptor = RemoteDbConnDescriptor(
+      engine: conn.engine.name,
+      url: url,
+      database: conn.database,
+    );
+    try {
+      return await service.mongo(
+        descriptor,
+        command.cast<String, Object?>(),
+        database: database,
+      );
+    } on DbServiceException catch (e) {
+      throw DbQueryException(e.kind.name, e.detail ?? e.kind.name);
+    }
+  }
+}
+
 RemoteDbConnDescriptor _descriptor(DbConnection conn, String? password) =>
     RemoteDbConnDescriptor(
       engine: conn.engine.name,
@@ -82,6 +153,7 @@ RemoteDbConnDescriptor _descriptor(DbConnection conn, String? password) =>
       database: conn.database,
       sqlitePath: conn.engine == DbEngine.sqlite ? conn.sqlitePath : '',
       password: password,
+      useTls: conn.useTls, // Redis: `rediss://` liga TLS no host.
     );
 
 /// Reidrata o `DbResult` a partir do JSON do servidor. Células chegam

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:anaki_mongodb/anaki_mongodb.dart';
 import 'package:anaki_mssql/anaki_mssql.dart';
 import 'package:anaki_mysql/anaki_mysql.dart';
 import 'package:anaki_orm/anaki_orm.dart';
 import 'package:anaki_postgres/anaki_postgres.dart';
+import 'package:anaki_redis/anaki_redis.dart';
 import 'package:anaki_sqlite/anaki_sqlite.dart';
 import 'package:cockpit_core/cockpit_core.dart';
 
@@ -36,6 +38,138 @@ class NativeDbService implements DbService {
       );
     }
   }
+
+  @override
+  Future<Object?> redis(
+    RemoteDbConnDescriptor conn,
+    List<String> parts,
+  ) async {
+    if (parts.isEmpty) {
+      throw const DbServiceException(DbErrorKind.queryFailed, 'Empty command.');
+    }
+    return _guardNoSql(
+      () => Isolate.run(() async {
+        final client = _redisClient(conn);
+        await client.open();
+        try {
+          return _jsonable(await client.command(parts));
+        } finally {
+          await client.close();
+        }
+      }),
+    );
+  }
+
+  @override
+  Future<List<Object?>> redisMany(
+    RemoteDbConnDescriptor conn,
+    List<List<String>> commands,
+  ) async {
+    if (commands.isEmpty) return const [];
+    for (final parts in commands) {
+      if (parts.isEmpty) {
+        throw const DbServiceException(
+          DbErrorKind.queryFailed,
+          'Empty command.',
+        );
+      }
+    }
+    final result = await _guardNoSql(
+      () => Isolate.run(() async {
+        final client = _redisClient(conn);
+        await client.open();
+        try {
+          final replies = <Object?>[];
+          for (final parts in commands) {
+            replies.add(_jsonable(await client.command(parts)));
+          }
+          return replies;
+        } finally {
+          await client.close();
+        }
+      }),
+    );
+    return (result as List).cast<Object?>();
+  }
+
+  @override
+  Future<Object?> mongo(
+    RemoteDbConnDescriptor conn,
+    Map<String, Object?> command, {
+    String? database,
+  }) async {
+    // O cliente já embute a senha na URL do descritor (mesma política do
+    // executor SQL), então a URI aqui é a definitiva. `extendedJsonCodec` OFF:
+    // replies mantêm `{"$oid":…}`/`{"$date":…}` lossless (plano 53).
+    final uri = conn.url;
+    final target = (database != null && database.isNotEmpty)
+        ? database
+        : _mongoDatabase(conn);
+    return _guardNoSql(
+      () => Isolate.run(() async {
+        final mongo = AnakiMongoDb(
+          MongoDriver.uri(uri, database: target),
+          extendedJsonCodec: false,
+        );
+        await mongo.open();
+        try {
+          return _jsonable(await mongo.runCommand(command));
+        } finally {
+          await mongo.close();
+        }
+      }),
+    );
+  }
+
+  /// Banco alvo do Mongo quando o cliente não fixou um: o da URL, senão o
+  /// `authSource` (onde o usuário existe), senão `admin` (presente em qualquer
+  /// deployment — mantém `ping`/`listDatabases`). Mesma regra do runner local.
+  static String _mongoDatabase(RemoteDbConnDescriptor conn) {
+    if (conn.database.isNotEmpty) return conn.database;
+    final authSource = conn.url.isEmpty
+        ? null
+        : Uri.parse(conn.url).queryParameters['authSource'];
+    return (authSource != null && authSource.isNotEmpty) ? authSource : 'admin';
+  }
+
+  static AnakiRedis _redisClient(RemoteDbConnDescriptor conn) => AnakiRedis(
+    host: conn.host,
+    port: conn.port ?? 6379,
+    username: conn.user.isEmpty ? null : conn.user,
+    password: conn.password,
+    db: int.tryParse(conn.database) ?? 0,
+    tls: conn.useTls,
+  );
+
+  /// Envelope de erro dos comandos NoSQL: reusa o timeout e a classificação
+  /// por mensagem (o reply do anaki não tem tipo estável de conexão vs comando).
+  Future<Object?> _guardNoSql(Future<Object?> Function() run) async {
+    try {
+      return await run().timeout(timeout);
+    } on DbServiceException {
+      rethrow;
+    } on TimeoutException {
+      throw DbServiceException(
+        DbErrorKind.timeout,
+        'Command exceeded ${timeout.inSeconds}s',
+      );
+    } on Object catch (e) {
+      final msg = e.toString();
+      final kind = msg.toLowerCase().contains('connect')
+          ? DbErrorKind.connectionFailed
+          : DbErrorKind.queryFailed;
+      throw DbServiceException(kind, msg);
+    }
+  }
+
+  /// Normaliza replies NoSQL pro fio: primitivos passam, ObjectId/DateTime/etc
+  /// viram String, mapas/listas recursivos.
+  static Object? _jsonable(Object? v) => switch (v) {
+    null || int() || double() || bool() || String() => v,
+    final Map m => {for (final e in m.entries) '${e.key}': _jsonable(e.value)},
+    final List l => [for (final e in l) _jsonable(e)],
+    _ => v.toString(),
+  };
 
   static Future<Map<String, Object?>> _runInIsolate(
     RemoteDbConnDescriptor conn,

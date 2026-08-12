@@ -300,6 +300,28 @@ class _Connection {
           limit: (p['limit'] as num?)?.toInt() ?? 200,
           dml: p['dml'] as bool? ?? false,
         ),
+        'db.redis' => _db.redis(
+          RemoteDbConnDescriptor.fromJson(
+            (p['conn'] as Map).cast<String, Object?>(),
+          ),
+          (p['parts'] as List).cast<String>(),
+        ),
+        'db.redisMany' => _db.redisMany(
+          RemoteDbConnDescriptor.fromJson(
+            (p['conn'] as Map).cast<String, Object?>(),
+          ),
+          [
+            for (final c in (p['commands'] as List).cast<List>())
+              c.cast<String>(),
+          ],
+        ),
+        'db.mongo' => _db.mongo(
+          RemoteDbConnDescriptor.fromJson(
+            (p['conn'] as Map).cast<String, Object?>(),
+          ),
+          (p['command'] as Map).cast<String, Object?>(),
+          database: p['database'] as String?,
+        ),
         _ => throw _RpcUnknown(req.method),
       };
       _send(RpcResponse(rid: req.rid, ok: true, data: await _awaited(data)));

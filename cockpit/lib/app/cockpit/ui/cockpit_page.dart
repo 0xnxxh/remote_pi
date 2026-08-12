@@ -178,6 +178,12 @@ class _CockpitPageState extends State<CockpitPage> {
         if (host == null) return null;
         return buildRemoteDbExecutor(() => _vm.remoteHosts.dbServiceFor(host));
       }
+      // Redis/Mongo remotos: mesmo host, mesmo serviço — só o comando muda.
+      ..remoteNoSqlFor = (wsId) {
+        final host = _vm.remoteHostForWorkspace(wsId);
+        if (host == null) return null;
+        return buildRemoteNoSqlRunner(() => _vm.remoteHosts.dbServiceFor(host));
+      }
       // As conexões de um workspace remoto vivem no host
       // (.cockpit/databases.json) — resolução da query E leitura do painel.
       ..remoteConnectionsFor = _remoteConnectionsFor;
