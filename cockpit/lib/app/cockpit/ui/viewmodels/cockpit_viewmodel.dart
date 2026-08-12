@@ -2884,16 +2884,35 @@ class CockpitViewModel extends ChangeNotifier {
   Future<List<GitCommit>> recentCommits() async {
     final pid = _selectedProjectId;
     if (pid == null) return const [];
-    final roots = rootsOf(pid);
-    if (roots.length != 1) return const [];
-    final result = await git.output(roots.single, [
-      'log',
-      '-n',
-      '20',
-      '--format=%H%x1f%s%x1e',
-    ]);
-    if (result.$1 != 0) return const [];
-    return result.$2
+    final String logOut;
+    if (_activeRemoteHost() != null) {
+      final root = selectedProject?.remotePath ?? '';
+      if (root.isEmpty) return const [];
+      try {
+        final r = await (await _activeRemoteGit()).run(root, [
+          'log',
+          '-n',
+          '20',
+          '--format=%H%x1f%s%x1e',
+        ]);
+        if (r.code != 0) return const [];
+        logOut = r.stdout;
+      } catch (_) {
+        return const [];
+      }
+    } else {
+      final roots = rootsOf(pid);
+      if (roots.length != 1) return const [];
+      final result = await git.output(roots.single, [
+        'log',
+        '-n',
+        '20',
+        '--format=%H%x1f%s%x1e',
+      ]);
+      if (result.$1 != 0) return const [];
+      logOut = result.$2;
+    }
+    return logOut
         .split('\u001e')
         .where((entry) => entry.trim().isNotEmpty)
         .map((entry) {
@@ -2911,6 +2930,21 @@ class CockpitViewModel extends ChangeNotifier {
   Future<String?> commitMessage(String hash) async {
     final pid = _selectedProjectId;
     if (pid == null) return null;
+    if (_activeRemoteHost() != null) {
+      final root = selectedProject?.remotePath ?? '';
+      if (root.isEmpty) return null;
+      try {
+        final r = await (await _activeRemoteGit()).run(root, [
+          'log',
+          '-1',
+          '--format=%B',
+          hash,
+        ]);
+        return r.code == 0 ? r.stdout.trim() : null;
+      } catch (_) {
+        return null;
+      }
+    }
     final roots = rootsOf(pid);
     if (roots.length != 1) return null;
     final result = await git.output(roots.single, [
@@ -2926,15 +2960,23 @@ class CockpitViewModel extends ChangeNotifier {
     final pid = _selectedProjectId;
     if (pid == null) return 'No workspace selected.';
     if (_activeRemoteHost() != null) {
-      if (amendHash != null) {
-        return 'Amend is not supported on remote workspaces yet.';
-      }
       final root = selectedProject?.remotePath ?? '';
       if (_activeRemoteGitInfo?.stagedFiles.isEmpty ?? true) {
         return 'There are no staged changes to commit.';
       }
       try {
-        await (await _activeRemoteGit()).commit(root, message);
+        final git = await _activeRemoteGit();
+        if (amendHash != null) {
+          // Só o último commit é amendável direto (mesma regra do local).
+          final head = await git.run(root, ['rev-parse', 'HEAD']);
+          if (head.stdout.trim() != amendHash) {
+            return 'Only the last commit can be amended directly.';
+          }
+          final r = await git.run(root, ['commit', '--amend', '-m', message]);
+          if (r.code != 0) return r.stderr;
+        } else {
+          await git.commit(root, message);
+        }
         await _refreshRemoteGit();
         return null;
       } catch (e) {

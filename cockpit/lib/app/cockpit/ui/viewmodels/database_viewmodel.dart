@@ -292,6 +292,10 @@ class DatabaseViewModel extends ChangeNotifier {
       // Só sobrescreve quando o usuário digitou algo; vazio = mantém a atual.
       await _secrets.write(newKey, password);
     }
+    // A senha mudou/migrou de chave: invalida o cache de sessão pra próxima
+    // query reler o valor atual (evita usar a senha antiga após uma edição).
+    if (previousName != null) service.forgetPassword(wsId, previousName);
+    service.forgetPassword(wsId, conn.name);
     await _syncSshPassphrase(
       conn,
       wsId,
@@ -313,6 +317,7 @@ class DatabaseViewModel extends ChangeNotifier {
     await _secrets.delete(DbQueryService.secretKey(wsId, conn.name));
     await _secrets.delete(DbQueryService.sshSecretKey(wsId, conn.name));
     service.forgetSshPassphrase(wsId, conn.name);
+    service.forgetPassword(wsId, conn.name);
     // A host key confiada some junto: manter o fingerprint de um bastion que
     // ninguém mais usa só acumula lixo com aparência de decisão de segurança.
     final endpoint = conn.ssh?.endpoint;

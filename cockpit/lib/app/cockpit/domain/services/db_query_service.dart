@@ -79,6 +79,10 @@ class DbQueryService {
   /// um prompt por query.
   final Map<String, String> _passphraseCache = {};
 
+  /// Senhas de banco já lidas do cofre nesta sessão, por [secretKey]. Evita
+  /// reler o Keychain (e re-disparar o prompt de ACL do macOS) a cada query.
+  final Map<String, String> _passwordCache = {};
+
   /// Limite default de linhas quando nem chamada nem `.dbq` especificam.
   static const defaultLimit = 200;
 
@@ -527,12 +531,18 @@ class DbQueryService {
   /// desmontar o shell — o TTL ocioso cobre o resto.
   Future<void> closeSshTunnels() async {
     _passphraseCache.clear();
+    _passwordCache.clear();
     await _tunnel.closeAll();
   }
 
   /// Esquece a passphrase de sessão (renome/remoção de conexão).
   void forgetSshPassphrase(String workspaceId, String connName) =>
       _passphraseCache.remove(sshSecretKey(workspaceId, connName));
+
+  /// Esquece a senha de banco cacheada nesta sessão (renome/remoção/edição de
+  /// conexão) — a próxima query relê o cofre com o valor atual.
+  void forgetPassword(String workspaceId, String connName) =>
+      _passwordCache.remove(secretKey(workspaceId, connName));
 
   DbDriver _driverFor(DbConnection conn) {
     final driver = _registry.forEngine(conn.engine);
@@ -548,9 +558,19 @@ class DbQueryService {
 
   Future<String?> _passwordFor(DbConnection conn, String workspaceId) async {
     if (conn.engine == DbEngine.sqlite) return null;
+    final key = secretKey(workspaceId, conn.name);
+    // Cache de sessão: sem ele, cada query relê o cofre nativo, e no macOS
+    // toda leitura do Keychain pode disparar o prompt de autorização (ACL
+    // atrelada à assinatura) — o usuário via "pediu a senha de novo" a cada
+    // operação num workspace remoto. Uma leitura por conexão por sessão basta.
+    final cached = _passwordCache[key];
+    if (cached != null) return cached;
     if (conn.savePassword) {
-      final saved = await _secrets.read(secretKey(workspaceId, conn.name));
-      if (saved != null) return saved;
+      final saved = await _secrets.read(key);
+      if (saved != null) {
+        _passwordCache[key] = saved;
+        return saved;
+      }
     }
     // Fallback: senha embutida na URL — o caminho de quem NÃO usa o cofre
     // (dialog com "Save Password" off grava `user:senha@` no databases.json)
