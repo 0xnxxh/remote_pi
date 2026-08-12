@@ -88,6 +88,12 @@ class RemoteHostConnector {
     return RemoteFileService(_connection!);
   }
 
+  /// Serviço git do host (mesma conexão). Conecta se preciso.
+  Future<RemoteGitService> gitService() async {
+    await ensure();
+    return RemoteGitService(_connection!);
+  }
+
   Future<RemoteTerminalService> _open() async {
     _setPhase(
       phase == RemoteHostPhase.connected

@@ -52,6 +52,10 @@ class RemoteHostsController extends ChangeNotifier {
   Future<RemoteFileService> fileServiceFor(RemoteHost host) =>
       _connectorFor(host).fileService();
 
+  /// Serviço git do host (source control remoto). Conecta se preciso.
+  Future<RemoteGitService> gitServiceFor(RemoteHost host) =>
+      _connectorFor(host).gitService();
+
   Future<void> addHost({
     required String name,
     required String sshTarget,

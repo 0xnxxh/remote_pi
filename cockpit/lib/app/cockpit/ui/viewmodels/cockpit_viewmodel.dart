@@ -80,7 +80,9 @@ import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.d
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_git_adapter.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit_remote/cockpit_remote.dart' show RemoteGitService;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
@@ -534,7 +536,11 @@ class CockpitViewModel extends ChangeNotifier {
   bool isMultiRoot(String projectId) => rootsOf(projectId).length > 1;
 
   /// Estado git de uma **root** específica ([rootPath] absoluto).
-  GitInfo? gitInfoForRoot(String rootPath) => git.infoForRoot(rootPath);
+  GitInfo? gitInfoForRoot(String rootPath) {
+    final remote = _activeRemoteGitInfo;
+    if (remote != null && _activeRemoteHost() != null) return remote;
+    return git.infoForRoot(rootPath);
+  }
 
   /// Estado git do projeto (branch + sujos), ou `null` se não for repo git.
   /// Em multi-root não existe "o" GitInfo do workspace — devolve `null` (a
@@ -562,6 +568,18 @@ class CockpitViewModel extends ChangeNotifier {
   GitFileStatus? gitStatusForPath(String absolutePath) {
     final pid = _selectedProjectId;
     if (pid == null) return null;
+    // Workspace remoto: status vem do cache remoto, por caminho relativo à
+    // pasta do pin.
+    final remote = _activeRemoteGitInfo;
+    if (remote != null && _activeRemoteHost() != null) {
+      final rootPath = selectedProject?.remotePath ?? '';
+      if (absolutePath == rootPath) {
+        return remote.files.isEmpty ? null : GitFileStatus.modified;
+      }
+      final rel = _subOf(absolutePath, rootPath);
+      return remote.files[rel] ??
+          (remote.isUntracked(rel) ? GitFileStatus.untracked : null);
+    }
     final root = rootContaining(pid, absolutePath);
     if (root == null) return null;
     // A própria pasta da root (multi-root): o rel seria vazio e sumiria — usa
@@ -692,6 +710,42 @@ class CockpitViewModel extends ChangeNotifier {
         .where((h) => h.id == hostId)
         .cast<RemoteHost?>()
         .firstWhere((_) => true, orElse: () => null);
+  }
+
+  // === Source control remoto (plano 58) ==================================
+  // Cache do GitInfo por (workspace remoto → pasta). O painel de Source
+  // Control lê os getters git do VM; quando o workspace é remoto, eles
+  // roteiam para este cache em vez do GitController local.
+  final Map<String, GitInfo> _remoteGitInfo = <String, GitInfo>{};
+
+  /// Recarrega o `git status` remoto do workspace ativo (se remoto) e
+  /// notifica a UI. Chamado ao selecionar e após cada mutação.
+  Future<void> _refreshRemoteGit() async {
+    final p = selectedProject;
+    final host = _activeRemoteHost();
+    final root = p?.remotePath;
+    if (p == null || host == null || root == null || root.isEmpty) return;
+    try {
+      final service = await _remoteHosts.gitServiceFor(host);
+      final status = await service.status(root);
+      _remoteGitInfo[p.id] = remoteGitInfo(status);
+    } catch (_) {
+      // Pasta não é repo git (ou conexão caiu) → sem source control remoto.
+      _remoteGitInfo.remove(p.id);
+    }
+    notifyListeners();
+  }
+
+  /// GitInfo remoto da pasta do workspace ativo (ou null).
+  GitInfo? get _activeRemoteGitInfo {
+    final p = selectedProject;
+    return p == null ? null : _remoteGitInfo[p.id];
+  }
+
+  /// Serviço git remoto do host ativo (para as mutações). Lança se não remoto.
+  Future<RemoteGitService> _activeRemoteGit() async {
+    final host = _activeRemoteHost()!;
+    return _remoteHosts.gitServiceFor(host);
   }
 
   /// Arquivos de [cwd] que casam com [query] (autocomplete do `@`). Caminhos
@@ -1189,17 +1243,21 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// `true` se o workspace [projectId] tem git — single-root: a raiz é repo;
   /// multi-root: qualquer root (habilita a aba Source Control).
-  bool isGitRepo(String projectId) => git.isGitRepo(projectId);
+  bool isGitRepo(String projectId) {
+    final p = _projectById(projectId);
+    if (p != null && p.isRemoteTerminal) return _remoteGitInfo[p.id] != null;
+    return git.isGitRepo(projectId);
+  }
 
   /// Status git (relativo à **root**) dos arquivos com mudança de uma root.
   Map<String, GitFileStatus> changedFilesOfRoot(String rootPath) =>
-      git.changedFilesOfRoot(rootPath);
+      _activeRemoteGitInfo?.files ?? git.changedFilesOfRoot(rootPath);
 
   Map<String, GitFileStatus> stagedFilesOfRoot(String rootPath) =>
-      git.stagedFilesOfRoot(rootPath);
+      _activeRemoteGitInfo?.stagedFiles ?? git.stagedFilesOfRoot(rootPath);
 
   Map<String, GitFileStatus> unstagedFilesOfRoot(String rootPath) =>
-      git.unstagedFilesOfRoot(rootPath);
+      _activeRemoteGitInfo?.changedFiles ?? git.unstagedFilesOfRoot(rootPath);
 
   /// Caminhos **absolutos** com mudança git do projeto selecionado (exclui
   /// ignorados), varrendo **todas as roots** — alimenta a árvore podada do
@@ -1254,6 +1312,11 @@ class CockpitViewModel extends ChangeNotifier {
     if (projectId == null || tree == null || paneId == null) return;
     final leaf = findLeaf(tree, paneId);
     if (leaf == null) return;
+    // Workspace remoto: o diff parseado remoto é fiação futura; por ora abre
+    // o conteúdo do arquivo (não um diff vazio confuso).
+    if (_activeRemoteHost() != null && commitHash == null) {
+      return openFile(path, isPreview: isPreview);
+    }
     // Diff roda contra a root que contém o arquivo (multi-root: o repo filho).
     final root = repoRoot ?? rootContaining(projectId, path);
     if (root == null) return;
@@ -2752,6 +2815,22 @@ class CockpitViewModel extends ChangeNotifier {
   Future<String?> commitStaged(String message, {String? amendHash}) async {
     final pid = _selectedProjectId;
     if (pid == null) return 'No workspace selected.';
+    if (_activeRemoteHost() != null) {
+      if (amendHash != null) {
+        return 'Amend is not supported on remote workspaces yet.';
+      }
+      final root = selectedProject?.remotePath ?? '';
+      if (_activeRemoteGitInfo?.stagedFiles.isEmpty ?? true) {
+        return 'There are no staged changes to commit.';
+      }
+      try {
+        await (await _activeRemoteGit()).commit(root, message);
+        await _refreshRemoteGit();
+        return null;
+      } catch (e) {
+        return '$e';
+      }
+    }
     final roots = rootsOf(
       pid,
     ).where((root) => stagedFilesOfRoot(root).isNotEmpty).toList();
@@ -2793,6 +2872,9 @@ class CockpitViewModel extends ChangeNotifier {
   }) async {
     final pid = _selectedProjectId;
     if (pid == null) return 'No workspace selected.';
+    if (_activeRemoteHost() != null) {
+      return _remoteStage(absPaths, staged: staged);
+    }
     final byRoot = <String, List<String>>{};
     for (final path in absPaths) {
       final root = rootContaining(pid, path);
@@ -2815,11 +2897,36 @@ class CockpitViewModel extends ChangeNotifier {
   Future<String?> stageFile(String absPath) async {
     final pid = _selectedProjectId;
     if (pid == null) return 'No workspace selected.';
+    if (_activeRemoteHost() != null) {
+      return _remoteStage([absPath], staged: true);
+    }
     final root = rootContaining(pid, absPath);
     if (root == null) return 'File is outside the workspace roots.';
     final err = await git.collect(root, ['add', '--', _subOf(absPath, root)]);
     unawaited(git.refresh(pid));
     return err;
+  }
+
+  /// Stage/unstage remoto: converte paths absolutos → relativos à pasta do
+  /// pin e chama o RemoteGitService; refresca o cache no fim.
+  Future<String?> _remoteStage(
+    List<String> absPaths, {
+    required bool staged,
+  }) async {
+    final root = selectedProject?.remotePath ?? '';
+    final rels = [for (final p in absPaths) _subOf(p, root)];
+    try {
+      final service = await _activeRemoteGit();
+      if (staged) {
+        await service.stage(root, rels);
+      } else {
+        await service.unstage(root, rels);
+      }
+      await _refreshRemoteGit();
+      return null;
+    } catch (e) {
+      return '$e';
+    }
   }
 
   /// Unstage (Source Control): `git restore --staged -- <arquivo>` na root
@@ -3029,6 +3136,12 @@ class CockpitViewModel extends ChangeNotifier {
   Future<String?> _restoreFile(String absPath, {required bool staged}) async {
     final pid = _selectedProjectId;
     if (pid == null) return 'No workspace selected.';
+    if (_activeRemoteHost() != null) {
+      // Remoto só suporta unstage (restore --staged); restore do working tree
+      // (discard) fica pra depois.
+      if (staged) return _remoteStage([absPath], staged: false);
+      return 'Discard is not supported on remote workspaces yet.';
+    }
     final root = rootContaining(pid, absPath);
     if (root == null) return 'File is outside the workspace roots.';
     final rel = _subOf(absPath, root);
@@ -3137,8 +3250,16 @@ class CockpitViewModel extends ChangeNotifier {
     git.watchProject(id); // segue o working tree do novo projeto ao vivo
     unawaited(git.refresh(id)); // pode ter mudado desde a última vez
     unawaited(_refreshWorktrees(_rootOf(id))); // reflete worktrees externas
+    // Workspace remoto: carrega o git status do host (source control remoto).
+    if (_projectById(id)?.isRemoteTerminal ?? false) {
+      unawaited(_refreshRemoteGit());
+    }
     notifyListeners();
   }
+
+  /// Recarrega o source control do workspace remoto ativo (botão refresh /
+  /// pull-to-refresh do painel). No-op se o ativo é local.
+  Future<void> refreshRemoteGit() => _refreshRemoteGit();
 
   /// Subpastas do projeto selecionado em [relativePath] (vazio = raiz), para o
   /// seletor navegável de "onde o agente atua". [relativePath] usa `/` e fica
