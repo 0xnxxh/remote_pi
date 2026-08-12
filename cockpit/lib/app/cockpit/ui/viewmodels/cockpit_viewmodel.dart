@@ -80,6 +80,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.d
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
+import 'package:cockpit/app/cockpit/data/filesystem/unified_diff_parser.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_git_adapter.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit_remote/cockpit_remote.dart' show RemoteGitService;
@@ -699,6 +700,28 @@ class CockpitViewModel extends ChangeNotifier {
     }
   }
 
+  /// Diff de um arquivo do workspace remoto (working tree, e index se não
+  /// houver mudança no working tree), parseado com o mesmo parser do local.
+  /// Untracked (index 'A' vindo do status) → `--cached` mostra o conteúdo novo.
+  Future<FileDiff> _remoteFileDiff(String root, String absPath) async {
+    final rel = _subOf(absPath, root);
+    try {
+      final service = await _activeRemoteGit();
+      var raw = await service.diff(root, rel);
+      if (raw.trim().isEmpty) {
+        // Sem mudança no working tree → tenta o staged (arquivo novo/add).
+        raw = await service.diff(root, rel, staged: true);
+      }
+      if (raw.trim().isEmpty) return FileDiff.unchanged(absPath);
+      if (unifiedDiffLooksBinary(raw)) return FileDiff.binary(absPath);
+      final (hunks, kind) = parseUnifiedDiff(raw);
+      if (hunks.isEmpty) return FileDiff.unchanged(absPath);
+      return FileDiff(path: absPath, kind: kind, hunks: hunks);
+    } catch (_) {
+      return FileDiff.unchanged(absPath);
+    }
+  }
+
   /// O [RemoteHost] do workspace ativo, ou `null` se o ativo é local.
   RemoteHost? _activeRemoteHost() {
     final project = _projectById(_selectedProjectId);
@@ -1312,14 +1335,13 @@ class CockpitViewModel extends ChangeNotifier {
     if (projectId == null || tree == null || paneId == null) return;
     final leaf = findLeaf(tree, paneId);
     if (leaf == null) return;
-    // Workspace remoto: o diff parseado remoto é fiação futura; por ora abre
-    // o conteúdo do arquivo (não um diff vazio confuso).
-    if (_activeRemoteHost() != null && commitHash == null) {
-      return openFile(path, isPreview: isPreview);
-    }
+    final remoteDiff = _activeRemoteHost() != null && commitHash == null;
     // Diff roda contra a root que contém o arquivo (multi-root: o repo filho).
-    final root = repoRoot ?? rootContaining(projectId, path);
-    if (root == null) return;
+    // Remoto: a root é a pasta do pin.
+    final root = remoteDiff
+        ? (selectedProject?.remotePath ?? '')
+        : (repoRoot ?? rootContaining(projectId, path));
+    if (root == null || root.isEmpty) return;
 
     // Já aberto? Seleciona (e fixa se não é preview).
     DiffViewerSession? previewCandidate;
@@ -1342,7 +1364,9 @@ class CockpitViewModel extends ChangeNotifier {
       }
     }
 
-    final diff = commitHash == null
+    final diff = remoteDiff
+        ? await _remoteFileDiff(root, path)
+        : commitHash == null
         ? await _gitDiff.read(root, path)
         : await _gitDiff.readCommit(
             root,
