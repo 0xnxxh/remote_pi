@@ -183,6 +183,28 @@ Future<void> main() async {
 
     await repo.delete(recursive: true);
 
+    // 10. Databases remotos (Wave 4): SQLite via anaki no servidor.
+    final db = RemoteDbService(connection2);
+    final dbFile = '${repo.path}-wave4.db';
+    final conn = RemoteDbConnDescriptor(engine: 'sqlite', sqlitePath: dbFile);
+    await db.query(
+      conn,
+      'CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)',
+      dml: true,
+    );
+    await db.query(
+      conn,
+      "INSERT INTO items (name) VALUES ('wave4-db')",
+      dml: true,
+    );
+    final result = await db.query(conn, 'SELECT id, name FROM items');
+    final rows = result['rows'] as List;
+    _check(
+      'db.query remoto (sqlite via anaki no servidor)',
+      rows.isNotEmpty && '${rows.first}'.contains('wave4-db'),
+    );
+    await File(dbFile).delete().catchError((_) => File(dbFile));
+
     await connection2.close();
     stdout.writeln('E2E OK');
   } catch (e, s) {

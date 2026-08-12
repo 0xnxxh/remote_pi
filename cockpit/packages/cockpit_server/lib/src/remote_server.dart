@@ -18,13 +18,15 @@ class RemoteServer {
   RemoteServer(
     this._terminals,
     this._files,
-    this._git, {
+    this._git,
+    this._db, {
     this.serverVersion = '0.1.0',
   });
 
   final TerminalService _terminals;
   final FileService _files;
   final GitService _git;
+  final DbService _db;
   final String serverVersion;
   static const _codec = RemoteMessageCodec();
 
@@ -71,6 +73,7 @@ class RemoteServer {
       _terminals,
       _files,
       _git,
+      _db,
       serverVersion,
     );
     _connections.add(connection);
@@ -88,6 +91,7 @@ class _Connection {
     this._terminals,
     this._files,
     this._git,
+    this._db,
     this._serverVersion,
   ) {
     RemoteServer._codec
@@ -108,6 +112,7 @@ class _Connection {
   final TerminalService _terminals;
   final FileService _files;
   final GitService _git;
+  final DbService _db;
   final String _serverVersion;
 
   final Map<String, StreamSubscription<PtyEvent>> _attachments = {};
@@ -287,6 +292,14 @@ class _Connection {
           await _git.commit(p['repo'] as String, p['message'] as String);
           return null;
         }(),
+        'db.query' => _db.query(
+          RemoteDbConnDescriptor.fromJson(
+            (p['conn'] as Map).cast<String, Object?>(),
+          ),
+          p['sql'] as String,
+          limit: (p['limit'] as num?)?.toInt() ?? 200,
+          dml: p['dml'] as bool? ?? false,
+        ),
         _ => throw _RpcUnknown(req.method),
       };
       _send(RpcResponse(rid: req.rid, ok: true, data: await _awaited(data)));
@@ -300,6 +313,15 @@ class _Connection {
         ),
       );
     } on GitException catch (e) {
+      _send(
+        RpcResponse(
+          rid: req.rid,
+          ok: false,
+          code: e.kind.name,
+          detail: e.detail,
+        ),
+      );
+    } on DbServiceException catch (e) {
       _send(
         RpcResponse(
           rid: req.rid,

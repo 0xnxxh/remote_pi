@@ -20,6 +20,7 @@ Future<void> main(List<String> args) async {
     ..addLazySingleton<TerminalService>(NativeTerminalService.new)
     ..addInstance<FileService>(const NativeFileService())
     ..addInstance<GitService>(const NativeGitService())
+    ..addInstance<DbService>(const NativeDbService())
     ..addLazySingleton<RemoteServer>(RemoteServer.new)
     ..commit();
 
