@@ -341,11 +341,16 @@ classe dos dois lados do fio).
 - [x] Verificação: e2e estendido 14/14 (fs.write/read, fs.list, git
       untracked→staged→commit na MESMA conexão dos terminais) + unit
       `native_git_service_test`. Suíte 884, analyze limpo nos pacotes.
-- [ ] **Pendente da wave**: catálogo (workspaces/layouts) servido pelo
-      servidor (decisão E) + "Add remote workspace" com picker remoto;
-      sockets da CLI/`cockpit-hook` no servidor + rebroadcast; integração na
-      UI (file tree + source control consumindo os serviços remotos). Fiação
-      de UI/VM, à parte como nas waves anteriores.
+- [x] **Integração de UI (2026-08-11)**: "+" vira menu Local/Remoto; workspace
+      remoto = PASTA de um host (RemoteWorkspacePin persistido; vários por
+      host, igual local); seleção de pasta ao conectar via picker remoto;
+      **árvore de arquivos remota** (listChildren → fs.list) e **abrir arquivo
+      remoto** no viewer (fs.read → texto/md/svg). Rotas por `_activeRemoteHost`.
+- [ ] **Pendente da wave**: **source control remoto** (rotear GitController →
+      RemoteGitService — peça stateful grande, ~500 LOC de estado local),
+      **write remoto** (editar/salvar via fs.write), imagem/mídia remota
+      (download), worktrees remotos; catálogo servido pelo servidor (decisão E);
+      sockets CLI/`cockpit-hook` no servidor + rebroadcast.
 - **Aceite**: do MacBook, navegar árvore, abrir arquivo, stage/commit no
   iMac; GUI do iMac aberta ao mesmo tempo espelha (decisão D); `cockpit send`
   funciona com GUI fechada.
