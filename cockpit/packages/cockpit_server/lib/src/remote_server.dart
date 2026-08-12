@@ -266,6 +266,7 @@ class _Connection {
           );
           return null;
         }(),
+        'fs.home' => {'home': await _files.home()},
         'git.status' => (await _git.status(p['repo'] as String)).toJson(),
         'git.diff' => {
           'diff': await _git.diff(

@@ -28,6 +28,12 @@ class RemoteFileService implements FileService {
   }
 
   @override
+  Future<String> home() async {
+    final data = await _call('fs.home', const {});
+    return data['home'] as String? ?? '';
+  }
+
+  @override
   Future<void> write(String path, Uint8List bytes) async {
     try {
       await _connection.call('fs.write', {

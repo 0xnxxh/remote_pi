@@ -764,12 +764,19 @@ class _CockpitPageState extends State<CockpitPage> {
     }
     if (!mounted) return;
 
-    // Raiz `/` do host: navegação segura; o usuário desce até a pasta. (Um
-    // `fs.home` no protocolo pra começar na HOME é melhoria futura.)
+    // Começa na HOME do host (fs.home); cai em `/` se o host não a expõe.
+    String initialPath;
+    try {
+      final home = await fileService.home();
+      initialPath = home.isNotEmpty ? home : '/';
+    } catch (_) {
+      initialPath = '/';
+    }
+    if (!mounted) return;
     final path = await showRemoteFolderPicker(
       context,
       fileService: fileService,
-      initialPath: '/',
+      initialPath: initialPath,
       hostName: host.name,
     );
     if (path == null || !mounted) return;

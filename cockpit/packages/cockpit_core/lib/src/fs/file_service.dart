@@ -47,4 +47,8 @@ abstract interface class FileService {
   Future<Uint8List> read(String path, {int maxBytes = 8 * 1024 * 1024});
 
   Future<void> write(String path, Uint8List bytes);
+
+  /// Diretório HOME do usuário do host (ponto de partida do picker de pasta —
+  /// melhor que `/`). Vazio se o host não expõe HOME.
+  Future<String> home();
 }

@@ -8,6 +8,12 @@ class NativeFileService implements FileService {
   const NativeFileService();
 
   @override
+  Future<String> home() async {
+    final env = Platform.environment;
+    return env['HOME'] ?? env['USERPROFILE'] ?? '';
+  }
+
+  @override
   Future<List<FileEntry>> list(String path) async {
     final dir = Directory(path);
     if (!dir.existsSync()) {
