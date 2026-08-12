@@ -578,8 +578,19 @@ class CockpitViewModel extends ChangeNotifier {
         return remote.files.isEmpty ? null : GitFileStatus.modified;
       }
       final rel = _subOf(absolutePath, rootPath);
-      return remote.files[rel] ??
-          (remote.isUntracked(rel) ? GitFileStatus.untracked : null);
+      // Match exato (arquivo).
+      final exact = remote.files[rel];
+      if (exact != null) return exact;
+      // Pasta: agrega o status mais severo dos descendentes (acende a pasta).
+      GitFileStatus? agg;
+      final prefix = '$rel/';
+      for (final e in remote.files.entries) {
+        if (e.key.startsWith(prefix)) {
+          agg = GitFileStatus.strongest(agg, e.value);
+        }
+      }
+      if (agg != null) return agg;
+      return remote.isUntracked(rel) ? GitFileStatus.untracked : null;
     }
     final root = rootContaining(pid, absolutePath);
     if (root == null) return null;
@@ -1302,7 +1313,9 @@ class CockpitViewModel extends ChangeNotifier {
     final project = selectedProject;
     if (project == null) return const [];
     final out = <String>[];
-    for (var root in rootsOf(project.id)) {
+    // Remoto: a única root é a pasta do pin (rootsOf é do git local, vazio).
+    final roots = project.isRemoteTerminal ? treeRoots : rootsOf(project.id);
+    for (var root in roots) {
       if (root.endsWith('/')) root = root.substring(0, root.length - 1);
       for (final rel in filesForRoot(root).keys) {
         out.add('$root/$rel');
@@ -2022,6 +2035,11 @@ class CockpitViewModel extends ChangeNotifier {
     try {
       if (selected != null) await _activateProject(selected);
       git.watchProject(selected); // watcher ao vivo do projeto inicial
+      // Workspace remoto como seleção inicial: carrega o git status do host
+      // (senão a aba de Source Control não aparece até trocar de workspace).
+      if (_projectById(selected)?.isRemoteTerminal ?? false) {
+        unawaited(_refreshRemoteGit());
+      }
     } catch (error, stack) {
       debugPrint('[boot] falha ao ativar o workspace inicial: $error\n$stack');
     } finally {
