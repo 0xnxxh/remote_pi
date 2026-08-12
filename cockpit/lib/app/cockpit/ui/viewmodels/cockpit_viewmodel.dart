@@ -84,6 +84,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/unified_diff_parser.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_git_adapter.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
 import 'package:cockpit_core/cockpit_core.dart' show GitRunResult;
 import 'package:cockpit_remote/cockpit_remote.dart' show RemoteGitService;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
@@ -2133,19 +2134,28 @@ class CockpitViewModel extends ChangeNotifier {
       unawaited(_disposeRuntimeAfterFrame(p.id));
       if (_selectedProjectId == p.id) _selectedProjectId = null;
     }
-    // Injeta pins novos.
+    // Injeta pins novos e reconcilia os existentes (nome/cor/imagem editados
+    // nas Configurações não apareceriam se só injetássemos os novos).
     for (final pin in pins) {
       final id = '${Project.remotePrefix}${pin.id}';
-      if (_projectById(id) != null) continue;
-      _projectList.add(
-        Project.remoteHost(
-          pinId: pin.id,
-          hostId: pin.hostId,
-          name: pin.name,
-          remotePath: pin.path,
-          colorValue: 0xFF0C7F87,
-        ),
-      );
+      final desired = Project.remoteHost(
+        pinId: pin.id,
+        hostId: pin.hostId,
+        name: pin.name,
+        remotePath: pin.path,
+        colorValue: pin.colorValue,
+      ).copyWith(imagePath: pin.imagePath);
+      final idx = _projectList.indexWhere((p) => p.id == id);
+      if (idx < 0) {
+        _projectList.add(desired);
+      } else {
+        final cur = _projectList[idx];
+        if (cur.name != desired.name ||
+            cur.colorValue != desired.colorValue ||
+            cur.imagePath != desired.imagePath) {
+          _projectList[idx] = desired;
+        }
+      }
     }
   }
 
@@ -2201,12 +2211,24 @@ class CockpitViewModel extends ChangeNotifier {
     return service.run(root, args);
   }
 
-  /// Renomeia o label de um workspace remoto (pin) e refaz o slot do rail.
-  Future<void> renameRemoteWorkspace(String workspaceId, String name) async {
+  /// Atualiza as Configurações de um workspace remoto (nome/cor/imagem de
+  /// fundo) — mesmo dialog do local, persistido no pin. `imagePath` omitido
+  /// mantém a imagem atual; `null` explícito remove.
+  Future<void> updateRemoteWorkspace(
+    String workspaceId, {
+    String? name,
+    int? colorValue,
+    Object? imagePath = RemoteWorkspacePin.unsetImage,
+  }) async {
     final pinId = workspaceId.startsWith(Project.remotePrefix)
         ? workspaceId.substring(Project.remotePrefix.length)
         : workspaceId;
-    await _remoteHosts.renamePin(pinId, name);
+    await _remoteHosts.updatePin(
+      pinId,
+      name: name,
+      colorValue: colorValue,
+      imagePath: imagePath,
+    );
     _syncRemoteWorkspaces();
     notifyListeners();
   }

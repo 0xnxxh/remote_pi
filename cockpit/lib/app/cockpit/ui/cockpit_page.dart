@@ -564,24 +564,40 @@ class _CockpitPageState extends State<CockpitPage> {
           then: const ['push'],
           title: page.syncTitle(label: label),
         );
-      case 'rename':
-        final current = vm.remoteWorkspaces
-            .where((p) => p.id == wsId)
-            .map((p) => p.name)
-            .cast<String?>()
-            .firstWhere((_) => true, orElse: () => null);
-        final name = await showRealmNameDialog(
-          context,
-          title: context.t.cockpit.projectsRail.rename,
-          confirmLabel: context.t.cockpit.projectsRail.rename,
-          takenNames: const <String>{},
-          initial: current,
-        );
-        if (name == null || !mounted) return;
-        await vm.renameRemoteWorkspace(wsId, name);
+      case 'config':
+        await _configureRemoteWorkspace(wsId);
       case 'close':
         await vm.removeRemoteWorkspace(wsId);
     }
+  }
+
+  /// Configurações do workspace remoto: mesmo dialog do local (nome + cor +
+  /// imagem de fundo), persistido no pin. `path` vai vazio — o picker de imagem
+  /// é local, e a pasta do host não existe no cliente.
+  Future<void> _configureRemoteWorkspace(String wsId) async {
+    final vm = _vm;
+    Project? project;
+    for (final p in vm.remoteWorkspaces) {
+      if (p.id == wsId) {
+        project = p;
+        break;
+      }
+    }
+    if (project == null) return;
+    final result = await showWorkspaceSettingsDialog(
+      context,
+      name: project.name,
+      colorValue: project.colorValue,
+      path: '',
+      imagePath: project.imagePath,
+    );
+    if (result == null) return;
+    await vm.updateRemoteWorkspace(
+      wsId,
+      name: result.name,
+      colorValue: result.colorValue,
+      imagePath: result.imagePath,
+    );
   }
 
   /// Roda `git <args>` (e opcionalmente `git <then>` se o 1º passar) no host do

@@ -268,6 +268,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 workspaceId: ws.id,
                 name: ws.name,
                 colorValue: ws.colorValue,
+                imagePath: ws.imagePath,
                 selected: ws.id == widget.selectedId,
                 branch: widget.remoteBranchOf(ws.id),
                 onTap: () => widget.onSelectRemote(ws.id),
@@ -423,6 +424,7 @@ class _RemoteSlot extends StatelessWidget {
     required this.workspaceId,
     required this.name,
     required this.colorValue,
+    required this.imagePath,
     required this.selected,
     required this.branch,
     required this.onTap,
@@ -433,6 +435,9 @@ class _RemoteSlot extends StatelessWidget {
   final String workspaceId;
   final String name;
   final int colorValue;
+
+  /// Imagem de fundo do avatar (personalizada nas Configurações), ou `null`.
+  final String? imagePath;
   final bool selected;
 
   /// Branch do workspace remoto (git já lido), ou `null` se sem git / não lido.
@@ -465,7 +470,11 @@ class _RemoteSlot extends StatelessWidget {
           label: tr.copyWorkspaceId,
           icon: Icons.content_copy,
         ),
-        AppMenuItem(value: 'rename', label: tr.rename, icon: Icons.edit_outlined),
+        AppMenuItem(
+          value: 'config',
+          label: tr.settings,
+          icon: Icons.settings_outlined,
+        ),
         AppMenuItem(
           value: 'close',
           label: tr.close,
@@ -503,15 +512,13 @@ class _RemoteSlot extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(9, 7, 9, 7),
         child: Row(
           children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: accent.withValues(alpha: 0.5)),
-              ),
-              child: Icon(Icons.cloud_outlined, size: 17, color: accent),
+            // Mesmo avatar do workspace local: imagem de fundo quando houver,
+            // senão a inicial sobre a cor. A afordância "remoto" fica no badge
+            // "SSH" à direita.
+            WorkspaceAvatar(
+              imagePath: imagePath,
+              colorValue: colorValue,
+              initial: name.isEmpty ? '?' : name.characters.first.toUpperCase(),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -541,16 +548,22 @@ class _RemoteSlot extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 2),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapUp: (_) => _showMenu(context),
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: Icon(
-                  Icons.more_vert,
-                  size: 14,
-                  color: context.colors.text3,
+            // Builder: o menu ancora no RenderBox do context passado a
+            // showAppMenu. Sem isto, o context do slot inteiro faria o popup
+            // abrir na largura toda (aparecia "embaixo"); com o Builder o
+            // context é o do ícone, igual ao workspace local.
+            Builder(
+              builder: (iconContext) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (_) => _showMenu(iconContext),
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: Icon(
+                    Icons.more_vert,
+                    size: 14,
+                    color: context.colors.text3,
+                  ),
                 ),
               ),
             ),

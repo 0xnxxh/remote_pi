@@ -93,11 +93,16 @@ class RemoteHostsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Renomeia o label de exibição de um pin (mesmo id/host/pasta). Vazio =
-  /// no-op; o pin não existe = no-op silencioso.
-  Future<void> renamePin(String id, String name) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return;
+  /// Atualiza a personalização de um pin (nome/cor/imagem de fundo) — o que as
+  /// Configurações do workspace remoto editam. Nome vazio é ignorado; passar
+  /// `imagePath: null` **remove** a imagem (a sentinela do copyWith distingue
+  /// "não mexer" de "limpar"). Pin inexistente = no-op silencioso.
+  Future<void> updatePin(
+    String id, {
+    String? name,
+    int? colorValue,
+    Object? imagePath = RemoteWorkspacePin.unsetImage,
+  }) async {
     RemoteWorkspacePin? pin;
     for (final p in _store.pins()) {
       if (p.id == id) {
@@ -106,12 +111,12 @@ class RemoteHostsController extends ChangeNotifier {
       }
     }
     if (pin == null) return;
+    final cleanName = name?.trim();
     await _store.savePin(
-      RemoteWorkspacePin(
-        id: pin.id,
-        hostId: pin.hostId,
-        path: pin.path,
-        name: trimmed,
+      pin.copyWith(
+        name: (cleanName != null && cleanName.isNotEmpty) ? cleanName : null,
+        colorValue: colorValue,
+        imagePath: imagePath,
       ),
     );
     notifyListeners();
