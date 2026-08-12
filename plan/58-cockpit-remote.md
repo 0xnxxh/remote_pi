@@ -367,6 +367,22 @@ classe dos dois lados do fio).
 - **Aceite**: workspace numa VPS sem GUI (terminal + arquivos + git +
   commit) e query num Postgres acessível só pela VPS, tudo do MacBook.
 
+### Pendência — Task Run remoto (plano 48) NÃO remotizado
+> O **Task Run** (`tasks.json`, plano 48) ficou **fora** do escopo dos domínios
+> remotos do plano 58 (que cobriu terminais/arquivos/git/databases). Hoje é
+> **local-only por construção**: a descoberta lê `.cockpit/tasks.json` do disco
+> **local** (`File(...).readAsString`, não `fs.read`) e a execução spawna **PTY
+> local** (`Process.start` + `launchctl asuser`). Num workspace remoto rodaria
+> na máquina errada, então **o painel de Task é escondido em workspace remoto**
+> (gate por `isRemoteTerminal` em `cockpit_page`, 2026-08-12).
+>
+> **A adicionar depois** (extensão natural do plano 58):
+> - [ ] Descoberta remota: loader lê `tasks.json` via `fs.read` do host quando o
+>   workspace é remoto (mesmo padrão do `databases.json` e do git).
+> - [ ] Execução remota: rodar a task no host **reusando o domínio de terminal**
+>   (o servidor já spawna PTY no host) → saída pra `TaskOutputSession`, em vez de
+>   um domínio `exec` novo.
+
 ### Wave 5 — Relay próprio + E2E (pré-requisito do tablet fora de casa)
 > **Wave condicional, fora do escopo atual** (decisão G): só entra se o
 > cenário fora-de-casa justificar; relay PRÓPRIO do Cockpit, não o do

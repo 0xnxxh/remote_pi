@@ -1199,7 +1199,14 @@ class _CockpitPageState extends State<CockpitPage> {
                                       // (project.path é vazio).
                                       workspaceRoot: vm.treeRootPath,
                                     ),
-                              tasksPanel: vm.selectedProject == null
+                              // Task Run é local-only por ora: descoberta lê o
+                              // tasks.json do disco local e execução spawna PTY
+                              // local (cwd/launchctl locais). Num workspace
+                              // remoto rodaria na máquina errada, então some até
+                              // ganharmos um caminho remoto (plano 58, pendente).
+                              tasksPanel:
+                                  vm.selectedProject == null ||
+                                      vm.selectedProject!.isRemoteTerminal
                                   ? null
                                   : TasksPanel(
                                       cwd: vm.selectedProject!.path,
