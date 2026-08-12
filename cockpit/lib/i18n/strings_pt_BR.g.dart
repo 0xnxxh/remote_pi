@@ -1054,6 +1054,10 @@ class _Translations$cockpit$remoteHost$pt_BR extends Translations$cockpit$remote
 	@override String pickFolderTitle({required Object host}) => 'Abrir pasta em ${host}';
 	@override String get openHere => 'Abrir aqui';
 	@override String get emptyFolder => 'Sem subpastas';
+	@override String get newLocal => 'Novo workspace local';
+	@override String get newRemote => 'Novo workspace remoto';
+	@override String get chooseHost => 'Escolher um host';
+	@override String get newHostEntry => 'Novo host…';
 }
 
 // Path: settings.language
@@ -2132,6 +2136,10 @@ extension on TranslationsPtBr {
 			'cockpit.remoteHost.pickFolderTitle' => ({required Object host}) => 'Abrir pasta em ${host}',
 			'cockpit.remoteHost.openHere' => 'Abrir aqui',
 			'cockpit.remoteHost.emptyFolder' => 'Sem subpastas',
+			'cockpit.remoteHost.newLocal' => 'Novo workspace local',
+			'cockpit.remoteHost.newRemote' => 'Novo workspace remoto',
+			'cockpit.remoteHost.chooseHost' => 'Escolher um host',
+			'cockpit.remoteHost.newHostEntry' => 'Novo host…',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglês',

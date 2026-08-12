@@ -620,7 +620,11 @@
       "errDetail": "Detalhes: ${detail}",
       "pickFolderTitle": "Abrir pasta em ${host}",
       "openHere": "Abrir aqui",
-      "emptyFolder": "Sem subpastas"
+      "emptyFolder": "Sem subpastas",
+      "newLocal": "Novo workspace local",
+      "newRemote": "Novo workspace remoto",
+      "chooseHost": "Escolher um host",
+      "newHostEntry": "Novo host…"
     }
   },
   "settings": {

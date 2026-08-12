@@ -9,6 +9,7 @@ import 'package:cockpit/app/core/routes.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
+import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
@@ -627,16 +628,87 @@ class _CockpitPageState extends State<CockpitPage> {
 
   Future<void> _manageRealms() => showRealmManagerDialog(context, vm: _vm);
 
-  /// "Add remote host" (plano 58): coleta user@host + nome e injeta o pin. A
-  /// conexão SSH acontece ao selecionar o pin (com loading/erro tipado).
-  Future<void> _addRemoteHost(CockpitViewModel vm) async {
-    final draft = await showAddRemoteHostDialog(context);
-    if (draft == null) return;
-    await vm.addRemoteHost(name: draft.name, sshTarget: draft.sshTarget);
+  /// Menu do "+" (plano 58): Local vs Remoto, ancorado no botão.
+  Future<void> _newWorkspaceMenu(
+    CockpitViewModel vm,
+    BuildContext anchor,
+  ) async {
+    final tr = context.t.cockpit.remoteHost;
+    final choice = await showAppMenu<String>(
+      anchor,
+      items: [
+        AppMenuItem(
+          value: 'local',
+          label: tr.newLocal,
+          icon: Icons.folder_outlined,
+        ),
+        AppMenuItem(
+          value: 'remote',
+          label: tr.newRemote,
+          icon: Icons.cloud_outlined,
+        ),
+      ],
+    );
+    if (choice == null || !anchor.mounted) return;
+    if (choice == 'local') {
+      await _createWorkspace();
+    } else {
+      await _newRemoteWorkspace(vm, anchor);
+    }
   }
 
-  /// "Open folder" num host remoto (plano 58): conecta (SSH), navega o
-  /// filesystem remoto e abre um terminal na pasta escolhida.
+  /// Fluxo "New remote workspace": escolhe (ou adiciona) o host → conecta →
+  /// picker de pasta remota → abre a pasta como workspace. Seleção da pasta no
+  /// momento da conexão (pedido do Jacob 2026-08-11).
+  Future<void> _newRemoteWorkspace(
+    CockpitViewModel vm,
+    BuildContext anchor,
+  ) async {
+    final host = await _pickOrAddHost(vm, anchor);
+    if (host == null || !mounted) return;
+    await _openRemoteFolder(vm, host.id);
+  }
+
+  /// Escolhe um host existente ou adiciona um novo. Sem hosts, vai direto pro
+  /// dialog de adicionar.
+  Future<RemoteHost?> _pickOrAddHost(
+    CockpitViewModel vm,
+    BuildContext anchor,
+  ) async {
+    final hosts = vm.remoteHosts.hosts;
+    if (hosts.isEmpty) return _addRemoteHost(vm);
+
+    final tr = context.t.cockpit.remoteHost;
+    final picked = await showAppMenu<String>(
+      anchor,
+      items: [
+        for (final h in hosts)
+          AppMenuItem(value: h.id, label: h.name, icon: Icons.cloud_outlined),
+        const AppMenuItem<String>.divider(),
+        AppMenuItem(value: '__new__', label: tr.newHostEntry, icon: Icons.add),
+      ],
+    );
+    if (picked == null || !mounted) return null;
+    if (picked == '__new__') return _addRemoteHost(vm);
+    return hosts
+        .where((h) => h.id == picked)
+        .cast<RemoteHost?>()
+        .firstWhere((_) => true, orElse: () => null);
+  }
+
+  /// Coleta user@host + nome, persiste e devolve o host criado (ou null).
+  Future<RemoteHost?> _addRemoteHost(CockpitViewModel vm) async {
+    final draft = await showAddRemoteHostDialog(context);
+    if (draft == null) return null;
+    await vm.addRemoteHost(name: draft.name, sshTarget: draft.sshTarget);
+    return vm.remoteHosts.hosts
+        .where((h) => h.sshTarget == draft.sshTarget)
+        .cast<RemoteHost?>()
+        .firstWhere((_) => true, orElse: () => null);
+  }
+
+  /// Conecta (SSH), navega o filesystem remoto e abre um terminal na pasta
+  /// escolhida.
   Future<void> _openRemoteFolder(CockpitViewModel vm, String hostId) async {
     final host = vm.remoteHosts.hosts
         .where((h) => h.id == hostId)
@@ -921,9 +993,10 @@ class _CockpitPageState extends State<CockpitPage> {
                               cockpit: vm.cockpitWorkspace,
                               onSelectCockpit: () =>
                                   vm.selectProject(Project.cockpitId),
+                              onNewWorkspace: (anchor) =>
+                                  _newWorkspaceMenu(vm, anchor),
                               remoteHosts: vm.remoteWorkspaces,
                               onSelectRemote: vm.selectProject,
-                              onAddRemoteHost: () => _addRemoteHost(vm),
                               onOpenRemoteFolder: (hostId) =>
                                   _openRemoteFolder(vm, hostId),
                               onRemoveRemoteHost: (hostId) =>

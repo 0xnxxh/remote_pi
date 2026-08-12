@@ -74,9 +74,9 @@ class ProjectsRail extends StatefulWidget {
     required this.onMoveToRealm,
     this.cockpit,
     required this.onSelectCockpit,
+    required this.onNewWorkspace,
     this.remoteHosts = const [],
     required this.onSelectRemote,
-    required this.onAddRemoteHost,
     required this.onOpenRemoteFolder,
     required this.onRemoveRemoteHost,
     this.width = 252,
@@ -101,8 +101,8 @@ class ProjectsRail extends StatefulWidget {
   /// Seleciona um host remoto (pelo id do workspace).
   final void Function(String workspaceId) onSelectRemote;
 
-  /// Abre o dialog "Add remote host".
-  final VoidCallback onAddRemoteHost;
+  /// "+": abre o menu Local vs Remoto, ancorado no [anchorContext] do botão.
+  final void Function(BuildContext anchorContext) onNewWorkspace;
 
   /// Abre o picker de pasta remota do host (pelo hostId).
   final void Function(String hostId) onOpenRemoteFolder;
@@ -213,7 +213,6 @@ class _ProjectsRailState extends State<ProjectsRail> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final projects = widget.projects;
-    final onAdd = widget.onAdd;
     return Container(
       width: widget.width,
       decoration: BoxDecoration(
@@ -233,12 +232,14 @@ class _ProjectsRailState extends State<ProjectsRail> {
                   style: context.typo.title.copyWith(color: colors.text),
                 ),
                 const Spacer(),
-                // "+" sempre visível: com o Cockpit fixo no topo o rail nunca
-                // fica realmente vazio, e criar workspace precisa estar à mão.
-                _SmallIcon(
-                  icon: Icons.add,
-                  tooltip: context.t.cockpit.projectsRail.newWorkspace,
-                  onTap: () => onAdd(),
+                // "+" abre um menu Local vs Remoto (plano 58). Builder pra
+                // ancorar o popover no próprio botão.
+                Builder(
+                  builder: (btnContext) => _SmallIcon(
+                    icon: Icons.add,
+                    tooltip: context.t.cockpit.projectsRail.newWorkspace,
+                    onTap: () => widget.onNewWorkspace(btnContext),
+                  ),
                 ),
               ],
             ),
@@ -268,10 +269,6 @@ class _ProjectsRailState extends State<ProjectsRail> {
                     widget.onRemoveRemoteHost(host.remoteHostId ?? ''),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: _AddRemoteButton(onTap: widget.onAddRemoteHost),
-          ),
           Expanded(
             child: projects.isEmpty
                 ? const _EmptyRail()
@@ -494,37 +491,6 @@ class _RemoteSlot extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Botão discreto "Add remote host" abaixo dos slots remotos.
-class _AddRemoteButton extends StatelessWidget {
-  const _AddRemoteButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return HoverTap(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(7),
-      onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(9, 6, 9, 6),
-      child: Row(
-        children: [
-          Icon(Icons.add, size: 15, color: colors.text2),
-          const SizedBox(width: 12),
-          Text(
-            context.t.cockpit.remoteHost.addHost,
-            style: context.typo.body.copyWith(
-              fontSize: 12.5,
-              color: colors.text2,
-            ),
-          ),
-        ],
       ),
     );
   }

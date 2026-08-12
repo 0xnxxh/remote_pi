@@ -620,7 +620,11 @@
       "errDetail": "Detalles: ${detail}",
       "pickFolderTitle": "Abrir carpeta en ${host}",
       "openHere": "Abrir aquí",
-      "emptyFolder": "Sin subcarpetas"
+      "emptyFolder": "Sin subcarpetas",
+      "newLocal": "Nuevo workspace local",
+      "newRemote": "Nuevo workspace remoto",
+      "chooseHost": "Elegir un host",
+      "newHostEntry": "Nuevo host…"
     }
   },
   "settings": {
