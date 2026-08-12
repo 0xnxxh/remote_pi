@@ -617,7 +617,10 @@
       "errSshUnreachable": "No se puede llegar a ${host} por SSH. ¿Está encendido y con Inicio de sesión remoto activado?",
       "errInstallFailed": "No se pudo instalar el servidor en ${host}.",
       "errVersionMismatch": "Versión del servidor incompatible; actualízalo.",
-      "errDetail": "Detalles: ${detail}"
+      "errDetail": "Detalles: ${detail}",
+      "pickFolderTitle": "Abrir carpeta en ${host}",
+      "openHere": "Abrir aquí",
+      "emptyFolder": "Sin subcarpetas"
     }
   },
   "settings": {

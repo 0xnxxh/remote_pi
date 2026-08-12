@@ -1051,6 +1051,9 @@ class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHos
 	@override String errInstallFailed({required Object host}) => 'No se pudo instalar el servidor en ${host}.';
 	@override String get errVersionMismatch => 'Versión del servidor incompatible; actualízalo.';
 	@override String errDetail({required Object detail}) => 'Detalles: ${detail}';
+	@override String pickFolderTitle({required Object host}) => 'Abrir carpeta en ${host}';
+	@override String get openHere => 'Abrir aquí';
+	@override String get emptyFolder => 'Sin subcarpetas';
 }
 
 // Path: settings.language
@@ -2126,6 +2129,9 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.errInstallFailed' => ({required Object host}) => 'No se pudo instalar el servidor en ${host}.',
 			'cockpit.remoteHost.errVersionMismatch' => 'Versión del servidor incompatible; actualízalo.',
 			'cockpit.remoteHost.errDetail' => ({required Object detail}) => 'Detalles: ${detail}',
+			'cockpit.remoteHost.pickFolderTitle' => ({required Object host}) => 'Abrir carpeta en ${host}',
+			'cockpit.remoteHost.openHere' => 'Abrir aquí',
+			'cockpit.remoteHost.emptyFolder' => 'Sin subcarpetas',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',

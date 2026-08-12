@@ -9,7 +9,12 @@ import 'package:cockpit/app/core/routes.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
+import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_folder_picker.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_host_error_message.dart';
+import 'package:cockpit_core/cockpit_core.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
@@ -630,6 +635,43 @@ class _CockpitPageState extends State<CockpitPage> {
     await vm.addRemoteHost(name: draft.name, sshTarget: draft.sshTarget);
   }
 
+  /// "Open folder" num host remoto (plano 58): conecta (SSH), navega o
+  /// filesystem remoto e abre um terminal na pasta escolhida.
+  Future<void> _openRemoteFolder(CockpitViewModel vm, String hostId) async {
+    final host = vm.remoteHosts.hosts
+        .where((h) => h.id == hostId)
+        .cast<RemoteHost?>()
+        .firstWhere((_) => true, orElse: () => null);
+    if (host == null) return;
+
+    // Conecta (túnel SSH; o picker abre já com a conexão pronta). O erro
+    // tipado vira frase na borda da UI.
+    final FileService fileService;
+    try {
+      fileService = await vm.remoteHosts.fileServiceFor(host);
+    } on RemoteHostException catch (e) {
+      if (!mounted) return;
+      await showInfoDialog(
+        context,
+        title: context.t.cockpit.remoteHost.addHost,
+        message: remoteHostErrorMessage(context, e),
+      );
+      return;
+    }
+    if (!mounted) return;
+
+    // Raiz `/` do host: navegação segura; o usuário desce até a pasta. (Um
+    // `fs.home` no protocolo pra começar na HOME é melhoria futura.)
+    final path = await showRemoteFolderPicker(
+      context,
+      fileService: fileService,
+      initialPath: '/',
+      hostName: host.name,
+    );
+    if (path == null || !mounted) return;
+    vm.openRemoteFolder(hostId, path);
+  }
+
   /// "Fechar" o workspace (confirma → remove da lista local + encerra agentes).
   /// **Não deleta** a pasta no disco — só sai do cockpit.
   Future<void> _deleteProject(Project project) async {
@@ -882,6 +924,8 @@ class _CockpitPageState extends State<CockpitPage> {
                               remoteHosts: vm.remoteWorkspaces,
                               onSelectRemote: vm.selectProject,
                               onAddRemoteHost: () => _addRemoteHost(vm),
+                              onOpenRemoteFolder: (hostId) =>
+                                  _openRemoteFolder(vm, hostId),
                               onRemoveRemoteHost: (hostId) =>
                                   unawaited(vm.removeRemoteHost(hostId)),
                             ),

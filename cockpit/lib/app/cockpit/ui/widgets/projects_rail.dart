@@ -77,6 +77,7 @@ class ProjectsRail extends StatefulWidget {
     this.remoteHosts = const [],
     required this.onSelectRemote,
     required this.onAddRemoteHost,
+    required this.onOpenRemoteFolder,
     required this.onRemoveRemoteHost,
     this.width = 252,
   });
@@ -102,6 +103,9 @@ class ProjectsRail extends StatefulWidget {
 
   /// Abre o dialog "Add remote host".
   final VoidCallback onAddRemoteHost;
+
+  /// Abre o picker de pasta remota do host (pelo hostId).
+  final void Function(String hostId) onOpenRemoteFolder;
 
   /// Remove um host remoto (pelo hostId).
   final void Function(String hostId) onRemoveRemoteHost;
@@ -258,6 +262,8 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 colorValue: host.colorValue,
                 selected: host.id == widget.selectedId,
                 onTap: () => widget.onSelectRemote(host.id),
+                onOpenFolder: () =>
+                    widget.onOpenRemoteFolder(host.remoteHostId ?? ''),
                 onRemove: () =>
                     widget.onRemoveRemoteHost(host.remoteHostId ?? ''),
               ),
@@ -414,6 +420,7 @@ class _RemoteSlot extends StatelessWidget {
     required this.colorValue,
     required this.selected,
     required this.onTap,
+    required this.onOpenFolder,
     required this.onRemove,
   });
 
@@ -421,6 +428,7 @@ class _RemoteSlot extends StatelessWidget {
   final int colorValue;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback onOpenFolder;
   final VoidCallback onRemove;
 
   @override
@@ -460,6 +468,15 @@ class _RemoteSlot extends StatelessWidget {
                 ),
               ),
             ),
+            AppTooltip(
+              message: context.t.cockpit.remoteHost.openHere,
+              child: _SmallIcon(
+                icon: Icons.folder_open_outlined,
+                tooltip: context.t.cockpit.remoteHost.openHere,
+                onTap: onOpenFolder,
+              ),
+            ),
+            const SizedBox(width: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(

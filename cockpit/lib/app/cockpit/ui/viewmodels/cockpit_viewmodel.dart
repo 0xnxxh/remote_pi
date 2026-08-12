@@ -1926,6 +1926,25 @@ class CockpitViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Controller dos hosts remotos (a UI usa pra abrir o picker de pasta).
+  RemoteHostsController get remoteHosts => _remoteHosts;
+
+  /// Abre uma nova aba de terminal no workspace do host, numa pasta remota
+  /// específica ([remotePath]) em vez da HOME. Seleciona o workspace do host e
+  /// reusa [newTerminalTab] (que já resolve o gateway remoto por projeto).
+  void openRemoteFolder(String hostId, String remotePath) {
+    final workspaceId = '${Project.remotePrefix}$hostId';
+    if (_projectById(workspaceId) == null) return;
+    if (_selectedProjectId != workspaceId) {
+      selectProject(workspaceId);
+    }
+    final title = _basename(remotePath);
+    newTerminalTab(
+      cwd: remotePath,
+      title: title.isEmpty ? 'Terminal' : title,
+    );
+  }
+
   /// Liga/desliga o workspace de sistema "Cockpit" em runtime (empurrado pela
   /// `CockpitPage` a partir de `AppSettings.showCockpit`).
   ///

@@ -81,6 +81,13 @@ class RemoteHostConnector {
     return _inflight ??= _open().whenComplete(() => _inflight = null);
   }
 
+  /// Serviço de arquivos do host (mesma conexão dos terminais). Conecta se
+  /// preciso; usado pelo picker de pasta remota.
+  Future<RemoteFileService> fileService() async {
+    await ensure();
+    return RemoteFileService(_connection!);
+  }
+
   Future<RemoteTerminalService> _open() async {
     _setPhase(
       phase == RemoteHostPhase.connected

@@ -617,7 +617,10 @@
       "errSshUnreachable": "Não foi possível alcançar ${host} via SSH. Está ligado e com o Login Remoto ativado?",
       "errInstallFailed": "Não foi possível instalar o servidor em ${host}.",
       "errVersionMismatch": "Versão do servidor incompatível; atualize-o.",
-      "errDetail": "Detalhes: ${detail}"
+      "errDetail": "Detalhes: ${detail}",
+      "pickFolderTitle": "Abrir pasta em ${host}",
+      "openHere": "Abrir aqui",
+      "emptyFolder": "Sem subpastas"
     }
   },
   "settings": {

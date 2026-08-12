@@ -6,6 +6,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
+import 'package:cockpit_remote/cockpit_remote.dart';
 import 'package:flutter/foundation.dart';
 
 /// Estado app-scoped dos hosts remotos (plano 58, Wave 2/fecho): dono do
@@ -45,6 +46,10 @@ class RemoteHostsController extends ChangeNotifier {
     connector.phases.listen((_) => notifyListeners());
     return RemoteHostTerminalGateway(connector);
   }
+
+  /// Serviço de arquivos do host (picker de pasta remota). Conecta se preciso.
+  Future<RemoteFileService> fileServiceFor(RemoteHost host) =>
+      _connectorFor(host).fileService();
 
   Future<void> addHost({
     required String name,

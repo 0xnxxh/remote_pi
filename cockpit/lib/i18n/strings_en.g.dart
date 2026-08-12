@@ -2098,6 +2098,15 @@ class Translations$cockpit$remoteHost$en {
 
 	/// en: 'Details: ${detail}'
 	String errDetail({required Object detail}) => 'Details: ${detail}';
+
+	/// en: 'Open folder on ${host}'
+	String pickFolderTitle({required Object host}) => 'Open folder on ${host}';
+
+	/// en: 'Open here'
+	String get openHere => 'Open here';
+
+	/// en: 'No subfolders'
+	String get emptyFolder => 'No subfolders';
 }
 
 // Path: settings.language
@@ -3828,6 +3837,9 @@ extension on Translations {
 			'cockpit.remoteHost.errInstallFailed' => ({required Object host}) => 'Could not install the server on ${host}.',
 			'cockpit.remoteHost.errVersionMismatch' => 'Server version incompatible; update it.',
 			'cockpit.remoteHost.errDetail' => ({required Object detail}) => 'Details: ${detail}',
+			'cockpit.remoteHost.pickFolderTitle' => ({required Object host}) => 'Open folder on ${host}',
+			'cockpit.remoteHost.openHere' => 'Open here',
+			'cockpit.remoteHost.emptyFolder' => 'No subfolders',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
