@@ -381,7 +381,7 @@ classe dos dois lados do fio).
 ## Definition of Done (do plano inteiro)
 
 - [ ] Os 3 cenários do Contexto funcionam (iMac attach, VPS, base pronta p/ iPad)
-- [ ] `plan/00-decisions.md` atualizado (local-only reaberto; pi RPC deprecado)
+- [x] `plan/00-decisions.md` atualizado (local-only reaberto; pi RPC deprecado)
 - [ ] `docs/remote-protocol.md` completo e versionado
 - [ ] Guardrails iPad verificados: cliente compila sem os plugins desktop
 - [ ] Zero crypto manual (SSH ou E2E de biblioteca auditada)
