@@ -94,6 +94,12 @@ class RemoteHostConnector {
     return RemoteGitService(_connection!);
   }
 
+  /// Serviço de DB do host (mesma conexão). Conecta se preciso.
+  Future<RemoteDbService> dbService() async {
+    await ensure();
+    return RemoteDbService(_connection!);
+  }
+
   Future<RemoteTerminalService> _open() async {
     _setPhase(
       phase == RemoteHostPhase.connected

@@ -14,6 +14,7 @@ import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_folder_picker.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_db_executor.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_host_error_message.dart';
 import 'package:cockpit_core/cockpit_core.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
@@ -167,7 +168,24 @@ class _CockpitPageState extends State<CockpitPage> {
           endpoint: endpoint,
           fingerprint: fingerprint,
         );
+      }
+      // DB remoto (plano 58, Wave 4): quando o workspace é de um host remoto,
+      // a query roda no cockpit-server do host. Resolvido por workspace pra
+      // não confundir workspaces locais e remotos abertos ao mesmo tempo.
+      ..remoteExecutorFor = (wsId) {
+        final host = _vm.remoteHostForWorkspace(wsId);
+        if (host == null) return null;
+        return buildRemoteDbExecutor(() => _vm.remoteHosts.dbServiceFor(host));
       };
+    // As conexões de um workspace remoto vivem no host (.cockpit/databases.json).
+    context.read<DatabaseViewModel>().remoteConnectionsFor = (wsId, root) {
+      final host = _vm.remoteHostForWorkspace(wsId);
+      if (host == null) return null;
+      return loadRemoteConnections(
+        () => _vm.remoteHosts.fileServiceFor(host),
+        root,
+      );
+    };
   }
 
   /// Capturado no initState pra uso seguro no dispose (sem `context`).
@@ -1156,7 +1174,9 @@ class _CockpitPageState extends State<CockpitPage> {
                                   ? null
                                   : DbPanel(
                                       workspaceId: vm.selectedProject!.id,
-                                      workspaceRoot: vm.selectedProject!.path,
+                                      // Remoto: a root é a pasta do host
+                                      // (project.path é vazio).
+                                      workspaceRoot: vm.treeRootPath,
                                     ),
                               tasksPanel: vm.selectedProject == null
                                   ? null

@@ -230,10 +230,18 @@ class DatabaseViewModel extends ChangeNotifier {
     return reload();
   }
 
+  /// Loader remoto de conexões (plano 58, Wave 4): quando setado e devolve
+  /// não-nulo pro workspace ativo, substitui a leitura local — o
+  /// `.cockpit/databases.json` de um workspace remoto vive no host. O app o
+  /// seta; workspaces locais devolvem `null`.
+  Future<List<DbConnection>>? Function(String workspaceId, String root)?
+  remoteConnectionsFor;
+
   Future<void> reload() async {
     final root = _workspaceRoot;
     if (root == null) return;
-    final loaded = await _store.load(root);
+    final remote = remoteConnectionsFor?.call(_workspaceId ?? '', root);
+    final loaded = await (remote ?? _store.load(root));
     if (_disposed || root != _workspaceRoot) return;
     _connections = loaded;
     _tablesCache.clear();

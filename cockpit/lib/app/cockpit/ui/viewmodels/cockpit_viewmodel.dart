@@ -734,8 +734,12 @@ class CockpitViewModel extends ChangeNotifier {
   }
 
   /// O [RemoteHost] do workspace ativo, ou `null` se o ativo é local.
-  RemoteHost? _activeRemoteHost() {
-    final project = _projectById(_selectedProjectId);
+  RemoteHost? _activeRemoteHost() => remoteHostForWorkspace(_selectedProjectId);
+
+  /// O [RemoteHost] dono do workspace [workspaceId], ou `null` se local. Usado
+  /// pelo roteamento de DB remoto (o DbQueryService pergunta por workspace).
+  RemoteHost? remoteHostForWorkspace(String? workspaceId) {
+    final project = _projectById(workspaceId);
     final hostId = project?.remoteHostId;
     if (project == null || !project.isRemoteTerminal || hostId == null) {
       return null;

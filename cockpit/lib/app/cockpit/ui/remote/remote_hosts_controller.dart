@@ -56,6 +56,10 @@ class RemoteHostsController extends ChangeNotifier {
   Future<RemoteGitService> gitServiceFor(RemoteHost host) =>
       _connectorFor(host).gitService();
 
+  /// Serviço de DB do host (queries remotas). Conecta se preciso.
+  Future<RemoteDbService> dbServiceFor(RemoteHost host) =>
+      _connectorFor(host).dbService();
+
   Future<void> addHost({
     required String name,
     required String sshTarget,

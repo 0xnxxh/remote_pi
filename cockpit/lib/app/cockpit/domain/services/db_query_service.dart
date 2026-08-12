@@ -9,6 +9,19 @@ import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_result.dart';
 import 'package:cockpit/app/cockpit/domain/entities/ssh_tunnel_config.dart';
 
+/// Executa uma query SQL num host remoto (plano 58, Wave 4). Implementado
+/// pelo app (fala com o `cockpit-server` via `RemoteDbService`); o
+/// `DbQueryService` só o invoca quando o workspace ativo é remoto. Recebe a
+/// conexão + senha já resolvidas no cliente e devolve o `DbResult`.
+typedef RemoteDbExecutor =
+    Future<DbResult> Function(
+      DbConnection conn,
+      String sql, {
+      required int limit,
+      required bool dml,
+      String? password,
+    });
+
 /// Orquestra a execução de queries — o **mesmo** motor pra tab `.dbq` e pra
 /// CLI `cockpit db` (decisão J do plano 51): resolve a conexão por nome no
 /// store, resolve senha no cofre (nunca expõe pro chamador), escolhe o driver
@@ -40,6 +53,13 @@ class DbQueryService {
   /// Confirmação de host key nova (TOFU). Mesma regra do [passphrasePrompt]:
   /// ausente = recusa honesta, nunca confiança cega.
   HostKeyPrompt? hostKeyPrompt;
+
+  /// Executor remoto (plano 58, Wave 4): resolvido por workspace. Quando
+  /// devolve não-nulo, a query SQL vai pro `cockpit-server` do host (que
+  /// alcança o DB pela rede dele) em vez do driver local — sem túnel SSH
+  /// local. A conexão e o segredo continuam resolvidos no cliente. O app
+  /// seta este resolvedor; workspaces locais devolvem `null`.
+  RemoteDbExecutor? Function(String workspaceId)? remoteExecutorFor;
 
   /// Passphrases digitadas mas **não** salvas no cofre: valem enquanto o app
   /// viver. É o que permite "não quero segredo em cofre nenhum" sem punir com
@@ -74,6 +94,19 @@ class DbQueryService {
     int? limit,
     bool dml = false,
   }) async {
+    // Workspace remoto (plano 58): a query roda no cockpit-server do host.
+    final remote = remoteExecutorFor?.call(workspaceId);
+    if (remote != null) {
+      final conn = await _resolveNoTunnel(workspaceRoot, connName);
+      final password = await _passwordFor(conn, workspaceId);
+      return remote(
+        conn,
+        sql,
+        limit: limit ?? defaultLimit,
+        dml: dml,
+        password: password,
+      );
+    }
     // Resolver conexão e abrir túnel ficam FORA da fila: não tocam o dylib, e
     // prender o slot durante um handshake SSH atrasaria as outras queries do
     // mesmo engine à toa.
@@ -132,6 +165,23 @@ class DbQueryService {
   }) async {
     if (statements.isEmpty) {
       throw const DbQueryException('query_failed', 'Nothing to run.');
+    }
+    // Remoto: roda cada statement no host, devolve o último (mesma semântica).
+    final remote = remoteExecutorFor?.call(workspaceId);
+    if (remote != null) {
+      final conn = await _resolveNoTunnel(workspaceRoot, connName);
+      final password = await _passwordFor(conn, workspaceId);
+      DbResult? last;
+      for (final sql in statements) {
+        last = await remote(
+          conn,
+          sql,
+          limit: limit ?? defaultLimit,
+          dml: false,
+          password: password,
+        );
+      }
+      return last!;
     }
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     final driver = _driverFor(conn);
@@ -260,6 +310,21 @@ class DbQueryService {
   /// destino pra ponta local do túnel** (plano 54, decisão A). Este é o único
   /// ponto do fluxo que sabe da existência de SSH: drivers, views, sessões e
   /// CLI recebem uma `DbConnection` TCP comum.
+  /// Carrega a conexão pelo nome SEM abrir túnel local (caminho remoto: o
+  /// host alcança o DB pela rede dele).
+  Future<DbConnection> _resolveNoTunnel(String root, String name) async {
+    final all = await _store.load(root);
+    for (final c in all) {
+      if (c.name == name) return c;
+    }
+    final available = all.map((c) => c.name).join(', ');
+    throw DbQueryException(
+      'unknown_connection',
+      'No connection named "$name" in this workspace. '
+          'Available: ${available.isEmpty ? '(none)' : available}',
+    );
+  }
+
   Future<DbConnection> _resolve(
     String root,
     String workspaceId,
