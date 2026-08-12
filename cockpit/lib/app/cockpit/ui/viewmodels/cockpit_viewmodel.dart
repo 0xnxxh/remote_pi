@@ -636,6 +636,51 @@ class CockpitViewModel extends ChangeNotifier {
     return treeRootPath.isNotEmpty;
   }
 
+  /// Lê um arquivo para o viewer, roteando pro host remoto quando o workspace
+  /// ativo é remoto (plano 58). Remoto suporta texto/markdown/svg (o conteúdo
+  /// vem como string via `fs.read`); imagem/áudio/vídeo remotos = unsupported
+  /// por ora (precisariam de download; melhoria futura).
+  Future<FileView> _readFile(String path) async {
+    final host = _activeRemoteHost();
+    if (host == null) return _fileReader.read(path);
+    try {
+      final service = await _remoteHosts.fileServiceFor(host);
+      final bytes = await service.read(path);
+      final text = utf8.decode(bytes, allowMalformed: true);
+      final ext = path.contains('.')
+          ? path.substring(path.lastIndexOf('.') + 1).toLowerCase()
+          : '';
+      const media = {
+        'png',
+        'jpg',
+        'jpeg',
+        'gif',
+        'webp',
+        'bmp',
+        'ico',
+        'mp4',
+        'mov',
+        'mkv',
+        'webm',
+        'mp3',
+        'wav',
+        'flac',
+        'ogg',
+        'm4a',
+        'pdf',
+      };
+      if (media.contains(ext)) return const FileViewUnsupported();
+      if (const {'md', 'mdx', 'markdown'}.contains(ext)) {
+        return FileViewMarkdown(text);
+      }
+      if (ext == 'svg') return FileViewSvg(path, text);
+      return FileViewText(text, language: ext.isEmpty ? null : ext);
+    } catch (_) {
+      // fs.read falhou (too_large, permissão, conexão) → não abre.
+      return const FileViewUnsupported();
+    }
+  }
+
   /// O [RemoteHost] do workspace ativo, ou `null` se o ativo é local.
   RemoteHost? _activeRemoteHost() {
     final project = _projectById(_selectedProjectId);
@@ -773,7 +818,7 @@ class CockpitViewModel extends ChangeNotifier {
       }
     }
 
-    final view = await _fileReader.read(path);
+    final view = await _readFile(path);
     if (view is FileViewUnsupported) return; // binário/vídeo: não abre
 
     // Se é preview e temos um candidato, reutiliza (substitui conteúdo).
