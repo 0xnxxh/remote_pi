@@ -1632,9 +1632,21 @@ class CockpitViewModel extends ChangeNotifier {
   Future<bool> saveFile(String sessionId, String content) async {
     final s = _sessions[sessionId];
     if (s is! FileViewerSession) return false;
-    final ok = await _fileReader.write(s.path, content);
-    if (!ok) return false;
-    final fresh = await _fileReader.read(s.path);
+    final host = _activeRemoteHost();
+    if (host != null) {
+      // Remoto: grava via fs.write no host e reclassifica com `_readFile`
+      // (que já roteia a leitura pro serviço remoto).
+      try {
+        final service = await _remoteHosts.fileServiceFor(host);
+        await service.write(s.path, utf8.encode(content));
+      } catch (_) {
+        return false; // fs.write falhou (permissão, conexão) → não salvou.
+      }
+    } else {
+      final ok = await _fileReader.write(s.path, content);
+      if (!ok) return false;
+    }
+    final fresh = await _readFile(s.path);
     final cur = _sessions[sessionId];
     if (cur is FileViewerSession && fresh is! FileViewUnsupported) {
       cur.view = fresh;
