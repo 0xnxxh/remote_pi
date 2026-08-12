@@ -1043,27 +1043,24 @@ class _CockpitPageState extends State<CockpitPage> {
                                 ],
                               ),
                       ),
-                      // Cockpit (sem pasta) nunca mostra a árvore/tasks/busca,
-                      // mesmo com `treeVisible` persistido de outro workspace.
-                      if (vm.treeVisible &&
-                          !vm.isPathless(vm.selectedProjectId))
+                      // Cockpit (sem pasta) nunca mostra a árvore; workspace
+                      // remoto mostra a árvore do host (plano 58).
+                      if (vm.treeVisible && vm.activeHasFileTree)
                         Stack(
                           children: [
                             FileTreePanel(
                               // Pasta do workspace; reseta ao trocar de workspace.
-                              key: ValueKey(vm.selectedProject?.path ?? ''),
+                              key: ValueKey(vm.treeRootPath),
                               width: _treeWidth,
-                              rootPath: vm.selectedProject?.path ?? '',
+                              rootPath: vm.treeRootPath,
                               sourceControlViewMode: _sourceControlViewMode,
                               onSourceControlViewModeChanged: context
                                   .read<SettingsController>()
                                   .setSourceControlViewMode,
-                              // Roots derivadas (multi-root = seções por repo).
+                              // Roots derivadas (multi-root local = seções por
+                              // repo; remoto = a pasta do host).
                               roots: [
-                                for (final r
-                                    in vm.selectedProject == null
-                                        ? const <String>[]
-                                        : vm.rootsOf(vm.selectedProject!.id))
+                                for (final r in vm.treeRoots)
                                   WorkspaceRoot(
                                     path: r,
                                     name: r.split('/').last,

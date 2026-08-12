@@ -576,9 +576,78 @@ class CockpitViewModel extends ChangeNotifier {
     return id == null ? null : _sessions[id];
   }
 
-  /// Filhos de uma pasta (lazy-load da árvore de arquivos).
-  Future<List<FileNode>> listChildren(String path) =>
-      _fileSystem.children(path);
+  /// Filhos de uma pasta (lazy-load da árvore de arquivos). Roteia pro
+  /// filesystem REMOTO quando o workspace ativo é um host remoto (plano 58);
+  /// senão, o filesystem local.
+  Future<List<FileNode>> listChildren(String path) async {
+    final host = _activeRemoteHost();
+    if (host == null) return _fileSystem.children(path);
+    try {
+      final service = await _remoteHosts.fileServiceFor(host);
+      final entries = await service.list(path);
+      final dirs = <FileNode>[];
+      final files = <FileNode>[];
+      for (final e in entries) {
+        if (e.name == '.DS_Store') continue;
+        if (e.isDirectory && const {'.git', '.hg', '.svn'}.contains(e.name)) {
+          continue;
+        }
+        final joined = path.endsWith('/')
+            ? '$path${e.name}'
+            : '$path/${e.name}';
+        (e.isDirectory ? dirs : files).add(
+          FileNode(name: e.name, path: joined, isDirectory: e.isDirectory),
+        );
+      }
+      return [...dirs, ...files];
+    } catch (_) {
+      // Falha de conexão/permissão → árvore vazia (sem crash); o badge de
+      // conexão do host já sinaliza o estado.
+      return const <FileNode>[];
+    }
+  }
+
+  /// Raiz da árvore de arquivos do workspace ativo: a pasta remota quando é um
+  /// host remoto, senão o path local. Vazio = sem árvore (Cockpit/sem seleção).
+  String get treeRootPath {
+    final p = selectedProject;
+    if (p == null) return '';
+    if (p.isRemoteTerminal) return p.remotePath ?? '';
+    return p.path;
+  }
+
+  /// Roots da árvore (multi-root local; único remoto por enquanto).
+  List<String> get treeRoots {
+    final p = selectedProject;
+    if (p == null) return const [];
+    if (p.isRemoteTerminal) {
+      final path = p.remotePath ?? '';
+      return path.isEmpty ? const [] : [path];
+    }
+    return rootsOf(p.id);
+  }
+
+  /// `true` se o workspace ativo mostra árvore de arquivos (local com pasta ou
+  /// remoto); `false` pro Cockpit (systemTerminal, sem pasta).
+  bool get activeHasFileTree {
+    final p = selectedProject;
+    if (p == null) return false;
+    if (p.isSystemTerminal) return false;
+    return treeRootPath.isNotEmpty;
+  }
+
+  /// O [RemoteHost] do workspace ativo, ou `null` se o ativo é local.
+  RemoteHost? _activeRemoteHost() {
+    final project = _projectById(_selectedProjectId);
+    final hostId = project?.remoteHostId;
+    if (project == null || !project.isRemoteTerminal || hostId == null) {
+      return null;
+    }
+    return _remoteHosts.hosts
+        .where((h) => h.id == hostId)
+        .cast<RemoteHost?>()
+        .firstWhere((_) => true, orElse: () => null);
+  }
 
   /// Arquivos de [cwd] que casam com [query] (autocomplete do `@`). Caminhos
   /// relativos a [cwd].
