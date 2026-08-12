@@ -5,6 +5,7 @@ import 'package:cockpit/app/cockpit/domain/contracts/db_driver.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/mongo_database_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/nosql_runner.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
+import 'package:cockpit/app/cockpit/domain/db_schema_sql.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_result.dart';
 import 'package:cockpit/app/cockpit/domain/entities/ssh_tunnel_config.dart';
@@ -61,6 +62,12 @@ class DbQueryService {
   /// seta este resolvedor; workspaces locais devolvem `null`.
   RemoteDbExecutor? Function(String workspaceId)? remoteExecutorFor;
 
+  /// Conexões de um workspace remoto (o `.cockpit/databases.json` vive no
+  /// host). Setado pelo app junto do [remoteExecutorFor]; usado pra resolver
+  /// o nome da conexão no caminho remoto (o store local não vê o host).
+  Future<List<DbConnection>>? Function(String workspaceId, String root)?
+  remoteConnectionsFor;
+
   /// Passphrases digitadas mas **não** salvas no cofre: valem enquanto o app
   /// viver. É o que permite "não quero segredo em cofre nenhum" sem punir com
   /// um prompt por query.
@@ -97,7 +104,7 @@ class DbQueryService {
     // Workspace remoto (plano 58): a query roda no cockpit-server do host.
     final remote = remoteExecutorFor?.call(workspaceId);
     if (remote != null) {
-      final conn = await _resolveNoTunnel(workspaceRoot, connName);
+      final conn = await _resolveRemote(workspaceId, workspaceRoot, connName);
       final password = await _passwordFor(conn, workspaceId);
       return remote(
         conn,
@@ -135,6 +142,19 @@ class DbQueryService {
     String? table,
     String? schema,
   }) async {
+    // Remoto: introspecção roda a SQL de schema no host, via o executor.
+    final remote = remoteExecutorFor?.call(workspaceId);
+    if (remote != null) {
+      final conn = await _resolveRemote(workspaceId, workspaceRoot, connName);
+      final password = await _passwordFor(conn, workspaceId);
+      return remote(
+        conn,
+        dbSchemaSql(conn.engine, table: table, schema: schema),
+        limit: 10000,
+        dml: false,
+        password: password,
+      );
+    }
     final conn = await _resolve(workspaceRoot, workspaceId, connName);
     final driver = _driverFor(conn);
     final password = await _passwordFor(conn, workspaceId);
@@ -169,7 +189,7 @@ class DbQueryService {
     // Remoto: roda cada statement no host, devolve o último (mesma semântica).
     final remote = remoteExecutorFor?.call(workspaceId);
     if (remote != null) {
-      final conn = await _resolveNoTunnel(workspaceRoot, connName);
+      final conn = await _resolveRemote(workspaceId, workspaceRoot, connName);
       final password = await _passwordFor(conn, workspaceId);
       DbResult? last;
       for (final sql in statements) {
@@ -310,10 +330,16 @@ class DbQueryService {
   /// destino pra ponta local do túnel** (plano 54, decisão A). Este é o único
   /// ponto do fluxo que sabe da existência de SSH: drivers, views, sessões e
   /// CLI recebem uma `DbConnection` TCP comum.
-  /// Carrega a conexão pelo nome SEM abrir túnel local (caminho remoto: o
-  /// host alcança o DB pela rede dele).
-  Future<DbConnection> _resolveNoTunnel(String root, String name) async {
-    final all = await _store.load(root);
+  /// Resolve a conexão pelo nome a partir das conexões REMOTAS do host
+  /// (`.cockpit/databases.json` lá) — sem túnel local, sem store local.
+  Future<DbConnection> _resolveRemote(
+    String workspaceId,
+    String root,
+    String name,
+  ) async {
+    final all =
+        await (remoteConnectionsFor!(workspaceId, root) ??
+            Future.value(const <DbConnection>[]));
     for (final c in all) {
       if (c.name == name) return c;
     }
