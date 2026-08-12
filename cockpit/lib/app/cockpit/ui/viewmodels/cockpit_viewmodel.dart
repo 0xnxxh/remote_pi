@@ -1880,14 +1880,16 @@ class CockpitViewModel extends ChangeNotifier {
     _projectList.add(Project.systemTerminal());
   }
 
-  /// Reconcilia os workspaces sintéticos de hosts remotos com o registro do
-  /// [RemoteHostsController]: injeta os novos, remove os que sumiram. Runtime,
-  /// nunca persistido (o registro mora no RemoteHostsStore).
+  /// Reconcilia os workspaces sintéticos remotos com os PINS do
+  /// [RemoteHostsController] (plano 58: workspace remoto = pasta de um host):
+  /// injeta os novos, remove os que sumiram. Runtime, nunca persistido no
+  /// repositório de projetos (o registro mora no RemoteHostsStore).
   void _syncRemoteWorkspaces() {
-    final wanted = {for (final h in _remoteHosts.hosts) h.id};
-    // Remove pins de hosts deletados (encerra runtime se estava selecionado).
+    final pins = _remoteHosts.pins;
+    final wanted = {for (final p in pins) '${Project.remotePrefix}${p.id}'};
+    // Remove workspaces de pins deletados (encerra runtime se selecionado).
     final stale = _projectList
-        .where((p) => p.isRemoteTerminal && !wanted.contains(p.remoteHostId))
+        .where((p) => p.isRemoteTerminal && !wanted.contains(p.id))
         .toList();
     for (final p in stale) {
       _projectList.remove(p);
@@ -1895,32 +1897,36 @@ class CockpitViewModel extends ChangeNotifier {
       if (_selectedProjectId == p.id) _selectedProjectId = null;
     }
     // Injeta pins novos.
-    for (final host in _remoteHosts.hosts) {
-      final id = '${Project.remotePrefix}${host.id}';
+    for (final pin in pins) {
+      final id = '${Project.remotePrefix}${pin.id}';
       if (_projectById(id) != null) continue;
       _projectList.add(
         Project.remoteHost(
-          hostId: host.id,
-          name: host.name,
+          pinId: pin.id,
+          hostId: pin.hostId,
+          name: pin.name,
+          remotePath: pin.path,
           colorValue: 0xFF0C7F87,
         ),
       );
     }
   }
 
-  /// Adiciona um host remoto (rail → dialog "Add remote host") e injeta seu
-  /// workspace terminal-only.
+  /// Adiciona um host remoto (dialog "Add remote host"). Não injeta workspace:
+  /// o workspace nasce quando o usuário escolhe uma pasta ([createRemoteWorkspace]).
   Future<void> addRemoteHost({
     required String name,
     required String sshTarget,
   }) async {
     await _remoteHosts.addHost(name: name, sshTarget: sshTarget);
-    _syncRemoteWorkspaces();
     notifyListeners();
   }
 
-  /// Remove um host remoto (pelo id do host, não do workspace).
+  /// Remove um host remoto e todos os workspaces (pins) dele.
   Future<void> removeRemoteHost(String hostId) async {
+    for (final pin in _remoteHosts.pins.where((p) => p.hostId == hostId)) {
+      await _remoteHosts.removePin(pin.id);
+    }
     await _remoteHosts.removeHost(hostId);
     _syncRemoteWorkspaces();
     notifyListeners();
@@ -1929,20 +1935,23 @@ class CockpitViewModel extends ChangeNotifier {
   /// Controller dos hosts remotos (a UI usa pra abrir o picker de pasta).
   RemoteHostsController get remoteHosts => _remoteHosts;
 
-  /// Abre uma nova aba de terminal no workspace do host, numa pasta remota
-  /// específica ([remotePath]) em vez da HOME. Seleciona o workspace do host e
-  /// reusa [newTerminalTab] (que já resolve o gateway remoto por projeto).
-  void openRemoteFolder(String hostId, String remotePath) {
-    final workspaceId = '${Project.remotePrefix}$hostId';
-    if (_projectById(workspaceId) == null) return;
-    if (_selectedProjectId != workspaceId) {
-      selectProject(workspaceId);
-    }
-    final title = _basename(remotePath);
-    newTerminalTab(
-      cwd: remotePath,
-      title: title.isEmpty ? 'Terminal' : title,
-    );
+  /// Cria (ou reusa) um workspace remoto pra pasta [remotePath] do host
+  /// [hostId] — o "workspace remoto = pasta" do plano 58 — e o seleciona.
+  Future<void> createRemoteWorkspace(String hostId, String remotePath) async {
+    final pin = await _remoteHosts.addPin(hostId: hostId, path: remotePath);
+    _syncRemoteWorkspaces();
+    notifyListeners();
+    selectProject('${Project.remotePrefix}${pin.id}');
+  }
+
+  /// Remove um workspace remoto (pin) pelo id do workspace.
+  Future<void> removeRemoteWorkspace(String workspaceId) async {
+    final pinId = workspaceId.startsWith(Project.remotePrefix)
+        ? workspaceId.substring(Project.remotePrefix.length)
+        : workspaceId;
+    await _remoteHosts.removePin(pinId);
+    _syncRemoteWorkspaces();
+    notifyListeners();
   }
 
   /// Liga/desliga o workspace de sistema "Cockpit" em runtime (empurrado pela
@@ -3816,13 +3825,13 @@ class CockpitViewModel extends ChangeNotifier {
     TerminalProfile? profile,
   }) {
     final project = selectedProject!;
-    // Host remoto (terminal-only via SSH): PTY no cockpit-server do host, cwd
-    // vazio = HOME remota. Gateway roteado pro connector daquele host.
+    // Workspace remoto (via SSH): PTY no cockpit-server do host, na PASTA do
+    // pin (vazio = HOME remota). Gateway roteado pro connector daquele host.
     if (project.isRemoteTerminal) {
       return _buildTerminal(
         _nid('t'),
         project.id,
-        '',
+        project.remotePath ?? '',
         title: 'Terminal',
         profile: profile,
       );

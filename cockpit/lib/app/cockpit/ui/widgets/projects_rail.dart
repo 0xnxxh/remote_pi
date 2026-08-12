@@ -77,8 +77,7 @@ class ProjectsRail extends StatefulWidget {
     required this.onNewWorkspace,
     this.remoteHosts = const [],
     required this.onSelectRemote,
-    required this.onOpenRemoteFolder,
-    required this.onRemoveRemoteHost,
+    required this.onRemoveRemoteWorkspace,
     this.width = 252,
   });
 
@@ -104,11 +103,8 @@ class ProjectsRail extends StatefulWidget {
   /// "+": abre o menu Local vs Remoto, ancorado no [anchorContext] do botão.
   final void Function(BuildContext anchorContext) onNewWorkspace;
 
-  /// Abre o picker de pasta remota do host (pelo hostId).
-  final void Function(String hostId) onOpenRemoteFolder;
-
-  /// Remove um host remoto (pelo hostId).
-  final void Function(String hostId) onRemoveRemoteHost;
+  /// Remove um workspace remoto (pin) pelo id do workspace.
+  final void Function(String workspaceId) onRemoveRemoteWorkspace;
 
   /// Worktrees (forks) de um workspace raiz, na ordem do git.
   final List<Project> Function(String rootId) worktreesOf;
@@ -254,19 +250,16 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 onTap: widget.onSelectCockpit,
               ),
             ),
-          // Hosts remotos (plano 58): slots próprios, terminal-only via SSH.
-          for (final host in widget.remoteHosts)
+          // Workspaces remotos (plano 58): um por pasta fixada; via SSH.
+          for (final ws in widget.remoteHosts)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
               child: _RemoteSlot(
-                name: host.name,
-                colorValue: host.colorValue,
-                selected: host.id == widget.selectedId,
-                onTap: () => widget.onSelectRemote(host.id),
-                onOpenFolder: () =>
-                    widget.onOpenRemoteFolder(host.remoteHostId ?? ''),
-                onRemove: () =>
-                    widget.onRemoveRemoteHost(host.remoteHostId ?? ''),
+                name: ws.name,
+                colorValue: ws.colorValue,
+                selected: ws.id == widget.selectedId,
+                onTap: () => widget.onSelectRemote(ws.id),
+                onRemove: () => widget.onRemoveRemoteWorkspace(ws.id),
               ),
             ),
           Expanded(
@@ -417,7 +410,6 @@ class _RemoteSlot extends StatelessWidget {
     required this.colorValue,
     required this.selected,
     required this.onTap,
-    required this.onOpenFolder,
     required this.onRemove,
   });
 
@@ -425,7 +417,6 @@ class _RemoteSlot extends StatelessWidget {
   final int colorValue;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback onOpenFolder;
   final VoidCallback onRemove;
 
   @override
@@ -465,15 +456,6 @@ class _RemoteSlot extends StatelessWidget {
                 ),
               ),
             ),
-            AppTooltip(
-              message: context.t.cockpit.remoteHost.openHere,
-              child: _SmallIcon(
-                icon: Icons.folder_open_outlined,
-                tooltip: context.t.cockpit.remoteHost.openHere,
-                onTap: onOpenFolder,
-              ),
-            ),
-            const SizedBox(width: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(

@@ -30,6 +30,7 @@ class Project {
     this.imagePath,
     this.kind = WorkspaceKind.project,
     this.remoteHostId,
+    this.remotePath,
   });
 
   /// Id sentinela do workspace de sistema "Cockpit". Não é um UUID, então nunca
@@ -47,22 +48,26 @@ class Project {
     kind: WorkspaceKind.systemTerminal,
   );
 
-  /// Prefixo do id de um workspace remoto sintético (`__remote__<hostId>`).
+  /// Prefixo do id de um workspace remoto sintético.
   static const String remotePrefix = '__remote__';
 
-  /// Constrói o workspace sintético de um host remoto (terminal-only).
+  /// Constrói o workspace sintético de um pin remoto (plano 58): uma PASTA
+  /// ([remotePath]) de um host. O id vem do pin (estável por (host, pasta)).
   factory Project.remoteHost({
+    required String pinId,
     required String hostId,
     required String name,
+    required String remotePath,
     required int colorValue,
   }) => Project(
-    id: '$remotePrefix$hostId',
+    id: '$remotePrefix$pinId',
     name: name,
     path: '',
     colorValue: colorValue,
     createdAt: DateTime.fromMillisecondsSinceEpoch(0),
     kind: WorkspaceKind.remoteTerminal,
     remoteHostId: hostId,
+    remotePath: remotePath,
   );
 
   /// Sentinela do [copyWith] para distinguir "não mexer em [imagePath]" de
@@ -109,6 +114,11 @@ class Project {
   /// `null`. O registro do host vive no `RemoteHostsStore`.
   final String? remoteHostId;
 
+  /// Pasta no filesystem do host quando [kind] == [WorkspaceKind.remoteTerminal].
+  /// É o "path" do workspace remoto (o terminal abre aqui; a árvore/git remotos
+  /// operam sobre ela). `null`/vazio = HOME do host.
+  final String? remotePath;
+
   /// `true` quando este `Project` é uma worktree de outro workspace.
   bool get isWorktree => parentId != null;
 
@@ -143,6 +153,7 @@ class Project {
     imagePath: imagePath == unchanged ? this.imagePath : imagePath as String?,
     kind: kind,
     remoteHostId: remoteHostId,
+    remotePath: remotePath,
   );
 
   @override

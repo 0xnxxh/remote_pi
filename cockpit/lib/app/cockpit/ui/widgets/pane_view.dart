@@ -332,7 +332,8 @@ class _TabStripState extends State<_TabStrip> {
                 onExit: (_) => _setHover(false),
                 child: Listener(
                   onPointerSignal: (pointerSignal) {
-                    if (pointerSignal is PointerScrollEvent && _scroll.hasClients) {
+                    if (pointerSignal is PointerScrollEvent &&
+                        _scroll.hasClients) {
                       final dy = pointerSignal.scrollDelta.dy;
                       final dx = pointerSignal.scrollDelta.dx;
                       final delta = (dx != 0) ? dx : dy;
@@ -352,9 +353,7 @@ class _TabStripState extends State<_TabStrip> {
                     thickness: 3,
                     radius: const Radius.circular(3),
                     child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(
-                        context,
-                      ).copyWith(
+                      behavior: ScrollConfiguration.of(context).copyWith(
                         scrollbars: false,
                         dragDevices: {
                           PointerDeviceKind.touch,
@@ -367,57 +366,61 @@ class _TabStripState extends State<_TabStrip> {
                         controller: _scroll,
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                        children: [
-                          for (var i = 0; i < pane.tabs.length; i++)
-                            _TabDropSlot(
-                              index: i,
-                              onInsert: (data, index) =>
-                                  widget.vm.moveTabToIndex(
-                                    data.paneId,
-                                    data.tabId,
+                          children: [
+                            for (var i = 0; i < pane.tabs.length; i++)
+                              _TabDropSlot(
+                                index: i,
+                                onInsert: (data, index) =>
+                                    widget.vm.moveTabToIndex(
+                                      data.paneId,
+                                      data.tabId,
+                                      pane.id,
+                                      index,
+                                    ),
+                                child: _Tab(
+                                  item: widget.vm.session(pane.tabs[i]),
+                                  paneId: pane.id,
+                                  visible: widget.visible,
+                                  active: pane.tabs[i] == pane.active,
+                                  focused: widget.focused,
+                                  onSelect: () => widget.vm.selectTab(
                                     pane.id,
-                                    index,
+                                    pane.tabs[i],
                                   ),
-                              child: _Tab(
-                                item: widget.vm.session(pane.tabs[i]),
-                                paneId: pane.id,
-                                visible: widget.visible,
-                                active: pane.tabs[i] == pane.active,
-                                focused: widget.focused,
-                                onSelect: () =>
-                                    widget.vm.selectTab(pane.id, pane.tabs[i]),
-                                onClose: () =>
-                                    widget.vm.closeTab(pane.id, pane.tabs[i]),
-                                onRename: (name) =>
-                                    widget.onRenameAgent(pane.tabs[i], name),
-                                onSetLabel: (label) =>
-                                    widget.vm.setPaneLabel(pane.tabs[i], label),
-                                onResetLabel: () =>
-                                    widget.vm.resetPaneLabel(pane.tabs[i]),
-                                onToggleRelay: () =>
-                                    widget.onToggleRelayAgent(pane.tabs[i]),
-                                onHistory: () =>
-                                    widget.onHistoryAgent(pane.tabs[i]),
+                                  onClose: () =>
+                                      widget.vm.closeTab(pane.id, pane.tabs[i]),
+                                  onRename: (name) =>
+                                      widget.onRenameAgent(pane.tabs[i], name),
+                                  onSetLabel: (label) => widget.vm.setPaneLabel(
+                                    pane.tabs[i],
+                                    label,
+                                  ),
+                                  onResetLabel: () =>
+                                      widget.vm.resetPaneLabel(pane.tabs[i]),
+                                  onToggleRelay: () =>
+                                      widget.onToggleRelayAgent(pane.tabs[i]),
+                                  onHistory: () =>
+                                      widget.onHistoryAgent(pane.tabs[i]),
+                                ),
                               ),
+                            // Windows: "+" e a seta formam um grupo — a divisória
+                            // fica só no fim dele. Ausente no POSIX (lá só existe
+                            // o login shell, sem escolha a fazer).
+                            _TabAdd(
+                              onTap: widget.onCreateTab,
+                              trailingBorder:
+                                  !widget.vm.showTerminalProfilePicker,
                             ),
-                          // Windows: "+" e a seta formam um grupo — a divisória
-                          // fica só no fim dele. Ausente no POSIX (lá só existe
-                          // o login shell, sem escolha a fazer).
-                          _TabAdd(
-                            onTap: widget.onCreateTab,
-                            trailingBorder:
-                                !widget.vm.showTerminalProfilePicker,
-                          ),
-                          if (widget.vm.showTerminalProfilePicker)
-                            _TabProfilePicker(vm: widget.vm),
-                        ],
+                            if (widget.vm.showTerminalProfilePicker)
+                              _TabProfilePicker(vm: widget.vm),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
             // Overflow: lista todas as abas pra pular direto (só quando estoura).
             if (_overflowing)
               Builder(

@@ -741,7 +741,8 @@ class _CockpitPageState extends State<CockpitPage> {
       hostName: host.name,
     );
     if (path == null || !mounted) return;
-    vm.openRemoteFolder(hostId, path);
+    // A pasta escolhida vira um workspace remoto persistente (plano 58).
+    await vm.createRemoteWorkspace(hostId, path);
   }
 
   /// "Fechar" o workspace (confirma → remove da lista local + encerra agentes).
@@ -997,10 +998,8 @@ class _CockpitPageState extends State<CockpitPage> {
                                   _newWorkspaceMenu(vm, anchor),
                               remoteHosts: vm.remoteWorkspaces,
                               onSelectRemote: vm.selectProject,
-                              onOpenRemoteFolder: (hostId) =>
-                                  _openRemoteFolder(vm, hostId),
-                              onRemoveRemoteHost: (hostId) =>
-                                  unawaited(vm.removeRemoteHost(hostId)),
+                              onRemoveRemoteWorkspace: (wsId) =>
+                                  unawaited(vm.removeRemoteWorkspace(wsId)),
                             ),
                             // Alça de arraste na borda direita (direita = alarga).
                             Positioned(

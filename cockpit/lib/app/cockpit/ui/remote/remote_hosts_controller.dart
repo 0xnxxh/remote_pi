@@ -5,6 +5,7 @@ import 'package:cockpit/app/cockpit/data/remote/remote_host_terminal_gateway.dar
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit_remote/cockpit_remote.dart';
 import 'package:flutter/foundation.dart';
@@ -58,6 +59,40 @@ class RemoteHostsController extends ChangeNotifier {
     final host = RemoteHost(id: _nextId(), name: name, sshTarget: sshTarget);
     await _store.save(host);
     notifyListeners();
+  }
+
+  /// Pins de workspace remoto (pastas fixadas).
+  List<RemoteWorkspacePin> get pins => _store.pins();
+
+  /// Fixa uma pasta [path] do host [hostId] como workspace (idempotente por
+  /// (host, pasta)); devolve o pin.
+  Future<RemoteWorkspacePin> addPin({
+    required String hostId,
+    required String path,
+  }) async {
+    final name = _basename(path);
+    final pin = RemoteWorkspacePin(
+      id: RemoteWorkspacePin.idFor(hostId, path),
+      hostId: hostId,
+      path: path,
+      name: name.isEmpty ? path : name,
+    );
+    await _store.savePin(pin);
+    notifyListeners();
+    return pin;
+  }
+
+  Future<void> removePin(String id) async {
+    await _store.removePin(id);
+    notifyListeners();
+  }
+
+  static String _basename(String path) {
+    final trimmed = path.endsWith('/') && path.length > 1
+        ? path.substring(0, path.length - 1)
+        : path;
+    final idx = trimmed.lastIndexOf('/');
+    return idx < 0 ? trimmed : trimmed.substring(idx + 1);
   }
 
   Future<void> removeHost(String id) async {
