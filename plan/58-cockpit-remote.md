@@ -346,11 +346,17 @@ classe dos dois lados do fio).
       host, igual local); seleção de pasta ao conectar via picker remoto;
       **árvore de arquivos remota** (listChildren → fs.list) e **abrir arquivo
       remoto** no viewer (fs.read → texto/md/svg). Rotas por `_activeRemoteHost`.
-- [ ] **Pendente da wave**: **source control remoto** (rotear GitController →
-      RemoteGitService — peça stateful grande, ~500 LOC de estado local),
-      **write remoto** (editar/salvar via fs.write), imagem/mídia remota
-      (download), worktrees remotos; catálogo servido pelo servidor (decisão E);
-      sockets CLI/`cockpit-hook` no servidor + rebroadcast.
+- [x] **Source control remoto (2026-08-11)**: RemoteGitAdapter (porcelain XY →
+      GitInfo, testado); cache `_remoteGitInfo` no VM recarregado no select e
+      pós-mutação; getters/ações git roteiam pro RemoteGitService quando o
+      workspace ativo é remoto. Funciona: status, stage/unstage, commit, **diff
+      lado-a-lado** (parseUnifiedDiff extraído, reuso local+remoto). Painel de
+      Source Control igual ao local.
+- [ ] **Pendente da wave**: discard/amend remotos (bloqueados com msg);
+      histórico de commits remoto (falta `git log` no GitService); **write
+      remoto** (editar/salvar via fs.write); imagem/mídia remota (download);
+      worktrees remotos; catálogo servido pelo servidor (decisão E); sockets
+      CLI/`cockpit-hook` no servidor + rebroadcast.
 - **Aceite**: do MacBook, navegar árvore, abrir arquivo, stage/commit no
   iMac; GUI do iMac aberta ao mesmo tempo espelha (decisão D); `cockpit send`
   funciona com GUI fechada.
