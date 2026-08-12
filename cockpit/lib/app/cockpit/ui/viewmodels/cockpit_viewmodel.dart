@@ -4056,8 +4056,15 @@ class CockpitViewModel extends ChangeNotifier {
   // ---- helpers --------------------------------------------------------------
 
   /// Raiz (path) do workspace [projectId] — usada pela tab `.dbq` pra
-  /// resolver conexões/paths relativos (plano 51).
-  String? projectRootOf(String projectId) => _projectById(projectId)?.path;
+  /// resolver conexões/paths relativos (plano 51). No workspace remoto (plano
+  /// 58) o `path` é vazio; a root efetiva é a pasta do pin (`remotePath`), a
+  /// mesma que o painel de DB usa via `treeRootPath` — sem isso o `.dbq`
+  /// resolveria conexões num root errado e listaria "(none)".
+  String? projectRootOf(String projectId) {
+    final p = _projectById(projectId);
+    if (p == null) return null;
+    return p.isRemoteTerminal ? (p.remotePath ?? '') : p.path;
+  }
 
   Project? _projectById(String? id) {
     for (final project in _projectList) {
