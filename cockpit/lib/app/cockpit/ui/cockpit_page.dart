@@ -564,11 +564,36 @@ class _CockpitPageState extends State<CockpitPage> {
           then: const ['push'],
           title: page.syncTitle(label: label),
         );
+      case 'worktree':
+        await _createRemoteWorktreeFlow(wsId);
       case 'config':
         await _configureRemoteWorkspace(wsId);
       case 'close':
         await vm.removeRemoteWorkspace(wsId);
     }
+  }
+
+  /// "Create worktree" de um workspace remoto: mesmo dialog do local, mas o
+  /// `git worktree add` roda no host (via createRemoteWorktree).
+  Future<void> _createRemoteWorktreeFlow(String wsId) async {
+    final vm = _vm;
+    final namespace = await vm.remoteWorktreeNamespace(wsId);
+    final label = vm.remoteWorkspaces
+            .where((p) => p.id == wsId)
+            .map((p) => p.name)
+            .cast<String?>()
+            .firstWhere((_) => true, orElse: () => null) ??
+        wsId;
+    if (!mounted) return;
+    await showWorktreeCreateDialog(
+      context,
+      rootName: label,
+      namespace: namespace,
+      hasPostCheckout: false,
+      onCreate:
+          (name, {baseRef, copyIgnored = false, copyUntracked = false, fetchRemote = true}) =>
+              vm.createRemoteWorktree(wsId, name),
+    );
   }
 
   /// Configurações do workspace remoto: mesmo dialog do local (nome + cor +
@@ -643,6 +668,25 @@ class _CockpitPageState extends State<CockpitPage> {
   /// mesmo dialog do criar, validando contra o namespace do repo de origem.
   Future<void> _forkWorktree(Project base) async {
     final vm = _vm;
+    // Remoto: fork-of-fork nasce no repo do PAI (top-level), ramificado da
+    // branch deste fork; o worktree add roda no host.
+    if (base.isRemoteTerminal) {
+      final parentId = base.parentId;
+      if (parentId == null) return;
+      final namespace = await vm.remoteWorktreeNamespace(parentId);
+      if (!mounted) return;
+      await showWorktreeCreateDialog(
+        context,
+        rootName: base.name,
+        namespace: namespace,
+        fork: true,
+        hasPostCheckout: false,
+        onCreate:
+            (name, {baseRef, copyIgnored = false, copyUntracked = false, fetchRemote = true}) =>
+                vm.createRemoteWorktree(parentId, name, baseRef: base.name),
+      );
+      return;
+    }
     final namespace = await vm.forkWorktreeNamespace(base.id);
     final hasHook = await vm.hasPostCheckoutHookForFork(base.id);
     if (!mounted) return;
@@ -673,7 +717,9 @@ class _CockpitPageState extends State<CockpitPage> {
   /// worktree — o inverso do merge. Conflito fica no worktree pro usuário
   /// resolver (o dialog mostra a saída do git).
   Future<void> _updateWorktree(Project fork) async {
-    final run = _vm.updateWorktreeFromParent(fork);
+    final run = fork.isRemoteTerminal
+        ? _vm.updateRemoteWorktreeFromParent(fork)
+        : _vm.updateWorktreeFromParent(fork);
     await showGitProcessDialog(
       context,
       title: context.t.cockpit.cockpitPage.updateFromParentTitle(
@@ -688,7 +734,9 @@ class _CockpitPageState extends State<CockpitPage> {
   /// worktree tem mudanças não commitadas; conflito → aborta e mostra o erro;
   /// sucesso → o VM remove o worktree e volta pro pai. Processo ao vivo no dialog.
   Future<void> _mergeWorktree(Project fork) async {
-    final outcome = _vm.mergeWorktreeToParent(fork);
+    final outcome = fork.isRemoteTerminal
+        ? _vm.mergeRemoteWorktreeToParent(fork)
+        : _vm.mergeWorktreeToParent(fork);
     await showGitProcessDialog(
       context,
       title: context.t.cockpit.cockpitPage.mergeToParentTitle(name: fork.name),
@@ -914,7 +962,9 @@ class _CockpitPageState extends State<CockpitPage> {
   /// dialog de informação.
   Future<void> _removeWorktree(Project fork) async {
     final vm = _vm;
-    final merged = await vm.isWorktreeBranchMerged(fork.id);
+    final merged = fork.isRemoteTerminal
+        ? await vm.isRemoteWorktreeBranchMerged(fork.id)
+        : await vm.isWorktreeBranchMerged(fork.id);
     if (!mounted) return;
     final warn = merged
         ? ''
@@ -930,7 +980,9 @@ class _CockpitPageState extends State<CockpitPage> {
       danger: true,
     );
     if (!ok) return;
-    final res = await vm.removeWorktree(fork.id);
+    final res = fork.isRemoteTerminal
+        ? await vm.removeRemoteWorktree(fork.id)
+        : await vm.removeWorktree(fork.id);
     if (!mounted) return;
     final err = res.fold<String?>((_) => null, (e) => e.message);
     if (err != null) {

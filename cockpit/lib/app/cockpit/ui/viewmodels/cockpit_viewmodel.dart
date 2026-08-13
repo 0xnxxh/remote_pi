@@ -85,6 +85,7 @@ import 'package:cockpit/app/cockpit/data/filesystem/unified_diff_parser.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_git_adapter.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_worktree_gateway.dart';
 import 'package:cockpit_core/cockpit_core.dart' show GitRunResult;
 import 'package:cockpit_remote/cockpit_remote.dart' show RemoteGitService;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
@@ -465,8 +466,9 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Workspaces de hosts remotos injetados (plano 58). Renderizados num slot
   /// próprio no rail, fora de realm/reorder/persist (são pins, não projetos).
-  List<Project> get remoteWorkspaces =>
-      _projectList.where((p) => p.isRemoteTerminal).toList(growable: false);
+  List<Project> get remoteWorkspaces => _projectList
+      .where((p) => p.isRemoteTerminal && p.parentId == null)
+      .toList(growable: false);
 
   /// Worktrees (forks) de um workspace raiz, na ordem do git (vazio se nenhuma).
   List<Project> worktreesOf(String rootId) =>
@@ -817,6 +819,267 @@ class CockpitViewModel extends ChangeNotifier {
       }
       unawaited(_loadRemoteGitFor(p));
     }
+    // Camada B: lista os worktrees de cada workspace remoto (mesma janela lazy).
+    for (final p in remoteWorkspaces) {
+      unawaited(_refreshRemoteWorktrees(p.id));
+    }
+  }
+
+  // === Worktrees remotos (plano 58, Camada B) ============================
+  // Um worktree remoto é só mais um workspace remoto (isRemoteTerminal +
+  // remoteHostId + remotePath) com parentId apontando pro workspace de origem,
+  // derivado do `git worktree list` do host. Ops via `git.run` (sem RPC novo).
+
+  Future<RemoteWorktreeGateway?> _remoteWorktreeGatewayFor(String wsId) async {
+    final host = remoteHostForWorkspace(wsId);
+    if (host == null) return null;
+    final git = await _remoteHosts.gitServiceFor(host);
+    final files = await _remoteHosts.fileServiceFor(host);
+    return RemoteWorktreeGateway(git, files);
+  }
+
+  /// Lista e reconcilia os worktrees remotos de [wsId] (slots-fork do rail).
+  /// Best-effort: host offline / pasta não-git → sem forks.
+  Future<void> _refreshRemoteWorktrees(String wsId) async {
+    final parent = _projectById(wsId);
+    final root = parent?.remotePath;
+    if (parent == null ||
+        !parent.isRemoteTerminal ||
+        parent.parentId != null ||
+        root == null ||
+        root.isEmpty) {
+      return;
+    }
+    final gw = await _remoteWorktreeGatewayFor(wsId);
+    if (gw == null) return;
+    List<RemoteWorktreeEntry> entries;
+    try {
+      entries = await gw.list(root);
+    } catch (_) {
+      return;
+    }
+    final forks = <Project>[
+      for (final e in entries)
+        Project(
+          id: '$wsId::${e.path}',
+          name: e.branch,
+          path: '',
+          colorValue: parent.colorValue,
+          createdAt: parent.createdAt,
+          realmId: parent.realmId,
+          parentId: wsId,
+          order: parent.order,
+          kind: WorkspaceKind.remoteTerminal,
+          remoteHostId: parent.remoteHostId,
+          remotePath: e.path,
+        ),
+    ];
+    for (final f in forks) {
+      _forkOrigin[f.id] = root; // origem = repo do pai no host
+    }
+    final newIds = forks.map((f) => f.id).toSet();
+    // Forks que sumiram → tira da UI e encerra runtime no fim do frame.
+    for (final f in _worktrees[wsId] ?? const <Project>[]) {
+      if (newIds.contains(f.id)) continue;
+      _projectList.removeWhere((p) => p.id == f.id);
+      if (_selectedProjectId == f.id) _selectedProjectId = wsId;
+      unawaited(_disposeRuntimeAfterFrame(f.id));
+    }
+    _worktrees[wsId] = forks;
+    for (final f in forks) {
+      final idx = _projectList.indexWhere((p) => p.id == f.id);
+      if (idx < 0) {
+        _projectList.add(f);
+      } else {
+        _projectList[idx] = f;
+      }
+      if (!_remoteGitInfo.containsKey(f.id) &&
+          !_remoteGitLoading.contains(f.id)) {
+        unawaited(_loadRemoteGitFor(f));
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Namespace (branches/worktrees/base) do host — valida o dialog de criar.
+  Future<WorktreeNamespace> remoteWorktreeNamespace(String wsId) async {
+    final parent = _projectById(wsId);
+    final root = parent?.remotePath;
+    if (root == null || root.isEmpty) return const WorktreeNamespace.empty();
+    final gw = await _remoteWorktreeGatewayFor(wsId);
+    if (gw == null) return const WorktreeNamespace.empty();
+    try {
+      return await gw.namespace(root);
+    } catch (_) {
+      return const WorktreeNamespace.empty();
+    }
+  }
+
+  /// Cria um worktree no host de [wsId] (branch nova [name], de [baseRef] no
+  /// fork-of-fork). Devolve o handle ao vivo (a saída do `git.run` sai de uma
+  /// vez); em sucesso, reconcilia, auto-seleciona o fork e o devolve.
+  WorktreeAddRun<Project> createRemoteWorktree(
+    String wsId,
+    String name, {
+    String? baseRef,
+  }) {
+    final controller = StreamController<String>();
+    final result = () async {
+      try {
+        final parent = _projectById(wsId);
+        final root = parent?.remotePath;
+        if (parent == null || root == null || root.isEmpty) {
+          return const Failure<Project, WorktreeOpError>(
+            WorktreeOpError('Workspace not found.'),
+          );
+        }
+        final gw = await _remoteWorktreeGatewayFor(wsId);
+        if (gw == null) {
+          return const Failure<Project, WorktreeOpError>(
+            WorktreeOpError('Host unavailable.'),
+          );
+        }
+        final r = await gw.add(root, name, baseRef: baseRef);
+        if (r.stdout.isNotEmpty) controller.add(r.stdout);
+        if (r.stderr.isNotEmpty) controller.add(r.stderr);
+        if (r.code != 0) {
+          return Failure<Project, WorktreeOpError>(
+            WorktreeOpError(
+              r.stderr.isEmpty ? 'git worktree add failed.' : r.stderr,
+            ),
+          );
+        }
+        await _refreshRemoteWorktrees(wsId);
+        final fork = _projectById(
+          '$wsId::${RemoteWorktreeGateway.pathFor(root, name)}',
+        );
+        if (fork == null) {
+          return const Failure<Project, WorktreeOpError>(
+            WorktreeOpError('Worktree created, but did not appear.'),
+          );
+        }
+        selectProject(fork.id);
+        return Success<Project, WorktreeOpError>(fork);
+      } catch (e) {
+        controller.add('$e');
+        return Failure<Project, WorktreeOpError>(WorktreeOpError('$e'));
+      } finally {
+        await controller.close();
+      }
+    }();
+    return WorktreeAddRun<Project>(output: controller.stream, result: result);
+  }
+
+  /// Remove um worktree remoto (`git worktree remove` + `git branch -D` no
+  /// host) e reconcilia; se era o selecionado, volta pro pai.
+  Future<Result<void, WorktreeOpError>> removeRemoteWorktree(
+    String forkId,
+  ) async {
+    final fork = _projectById(forkId);
+    final parentId = fork?.parentId;
+    final origin = _forkOrigin[forkId];
+    final path = fork?.remotePath;
+    if (fork == null || parentId == null || origin == null || path == null) {
+      return const Failure(WorktreeOpError('Worktree not found.'));
+    }
+    final gw = await _remoteWorktreeGatewayFor(parentId);
+    if (gw == null) return const Failure(WorktreeOpError('Host unavailable.'));
+    final r = await gw.remove(origin, path, fork.name);
+    if (r.code != 0) {
+      return Failure(
+        WorktreeOpError(r.stderr.isEmpty ? 'git worktree remove failed.' : r.stderr),
+      );
+    }
+    if (_selectedProjectId == forkId) selectProject(parentId);
+    await _refreshRemoteWorktrees(parentId);
+    return const Success(null);
+  }
+
+  /// `true` se a branch do fork remoto já foi mergeada — aviso antes de remover.
+  Future<bool> isRemoteWorktreeBranchMerged(String forkId) async {
+    final fork = _projectById(forkId);
+    final parentId = fork?.parentId;
+    final origin = _forkOrigin[forkId];
+    if (fork == null || parentId == null || origin == null) return false;
+    final gw = await _remoteWorktreeGatewayFor(parentId);
+    if (gw == null) return false;
+    try {
+      return await gw.isMerged(origin, fork.name);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mergeia a branch do fork remoto no pai (no host). Em sucesso, remove o
+  /// worktree e volta pro pai. Bloqueia se o pai tem mudanças não commitadas.
+  GitMergeOutcome mergeRemoteWorktreeToParent(Project fork) {
+    final controller = StreamController<String>();
+    final status = () async {
+      final parentId = fork.parentId;
+      final origin = parentId == null ? null : _forkOrigin[fork.id];
+      if (parentId == null || origin == null) {
+        controller.add('Not a worktree.');
+        await controller.close();
+        return GitMergeStatus.error;
+      }
+      if ((_remoteGitInfo[parentId]?.dirtyCount ?? 0) > 0) {
+        controller.add('Parent has uncommitted changes.');
+        await controller.close();
+        return GitMergeStatus.dirtyWorktree;
+      }
+      final gw = await _remoteWorktreeGatewayFor(parentId);
+      if (gw == null) {
+        controller.add('Host unavailable.');
+        await controller.close();
+        return GitMergeStatus.error;
+      }
+      final r = await gw.merge(origin, fork.name);
+      if (r.stdout.isNotEmpty) controller.add(r.stdout);
+      if (r.stderr.isNotEmpty) controller.add(r.stderr);
+      await controller.close();
+      if (r.code != 0) return GitMergeStatus.conflict;
+      await removeRemoteWorktree(fork.id);
+      selectProject(parentId);
+      unawaited(_refreshRemoteGit());
+      return GitMergeStatus.merged;
+    }();
+    return GitMergeOutcome(status: status, output: controller.stream);
+  }
+
+  /// "Update from parent" remoto: mergeia a branch do pai no checkout do fork
+  /// (no host). Conflito fica no fork (exit ≠ 0), o pai nunca é tocado.
+  GitRun updateRemoteWorktreeFromParent(Project fork) {
+    final controller = StreamController<String>();
+    final exit = () async {
+      final parentId = fork.parentId;
+      final parentBranch = parentId == null
+          ? null
+          : _remoteGitInfo[parentId]?.branch;
+      final root = fork.remotePath;
+      final host = parentId == null ? null : remoteHostForWorkspace(parentId);
+      if (parentBranch == null ||
+          parentBranch.isEmpty ||
+          root == null ||
+          host == null) {
+        controller.add('Parent branch not found.');
+        await controller.close();
+        return 1;
+      }
+      try {
+        final git = await _remoteHosts.gitServiceFor(host);
+        final r = await git.run(root, ['merge', '--no-edit', parentBranch]);
+        if (r.stdout.isNotEmpty) controller.add(r.stdout);
+        if (r.stderr.isNotEmpty) controller.add(r.stderr);
+        await controller.close();
+        if (r.code == 0) unawaited(_refreshRemoteGit());
+        return r.code;
+      } catch (e) {
+        controller.add('$e');
+        await controller.close();
+        return 1;
+      }
+    }();
+    return GitRun(output: controller.stream, exitCode: exit);
   }
 
   /// GitInfo remoto da pasta do workspace ativo (ou null).

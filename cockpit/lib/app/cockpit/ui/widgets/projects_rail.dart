@@ -216,6 +216,29 @@ class _ProjectsRailState extends State<ProjectsRail> {
     ];
   }
 
+  /// Forks (worktrees) de um workspace remoto — mesmo `_WorktreeItem` do local,
+  /// mas o git vem do cache remoto (lazy) e as ações roteiam pros handlers que
+  /// já ramificam por `isRemoteTerminal`.
+  List<Widget> _remoteForks(Project ws) {
+    final forks = widget.worktreesOf(ws.id);
+    return [
+      for (var i = 0; i < forks.length; i++)
+        _WorktreeItem(
+          worktree: forks[i],
+          originName: null,
+          isLast: i == forks.length - 1,
+          selected: forks[i].id == widget.selectedId,
+          notifications: widget.notificationCount(forks[i].id),
+          git: widget.remoteGitInfoOf(forks[i].id),
+          onTap: () => widget.onSelectRemote(forks[i].id),
+          onRemove: () => widget.onRemoveWorktree(forks[i]),
+          onMerge: () => widget.onMergeWorktree(forks[i]),
+          onUpdate: () => widget.onUpdateWorktree(forks[i]),
+          onFork: () => widget.onForkWorktree(forks[i]),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -262,20 +285,27 @@ class _ProjectsRailState extends State<ProjectsRail> {
               ),
             ),
           // Workspaces remotos (plano 58): um por pasta fixada; via SSH.
+          // Os worktrees (forks) do host penduram abaixo, iguais aos locais.
           for (final ws in widget.remoteHosts)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-              child: _RemoteSlot(
-                workspaceId: ws.id,
-                name: ws.name,
-                colorValue: ws.colorValue,
-                imagePath: ws.imagePath,
-                selected: ws.id == widget.selectedId,
-                git: widget.remoteGitInfoOf(ws.id),
-                onTap: () => widget.onSelectRemote(ws.id),
-                onAction: (action) =>
-                    widget.onRemoteWorkspaceAction(ws.id, action),
-                onRemove: () => widget.onRemoveRemoteWorkspace(ws.id),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _RemoteSlot(
+                    workspaceId: ws.id,
+                    name: ws.name,
+                    colorValue: ws.colorValue,
+                    imagePath: ws.imagePath,
+                    selected: ws.id == widget.selectedId,
+                    git: widget.remoteGitInfoOf(ws.id),
+                    onTap: () => widget.onSelectRemote(ws.id),
+                    onAction: (action) =>
+                        widget.onRemoteWorkspaceAction(ws.id, action),
+                    onRemove: () => widget.onRemoveRemoteWorkspace(ws.id),
+                  ),
+                  ..._remoteForks(ws),
+                ],
               ),
             ),
           Expanded(
@@ -466,6 +496,11 @@ class _RemoteSlot extends StatelessWidget {
           AppMenuItem(value: 'sync', label: tr.sync, icon: Icons.sync),
           AppMenuItem(value: 'pull', label: tr.pull, icon: Icons.arrow_downward),
           AppMenuItem(value: 'push', label: tr.push, icon: Icons.arrow_upward),
+          AppMenuItem(
+            value: 'worktree',
+            label: tr.createWorktree,
+            icon: Icons.call_split,
+          ),
           AppMenuItem(
             value: 'copy-branch',
             label: tr.copyBranch,
