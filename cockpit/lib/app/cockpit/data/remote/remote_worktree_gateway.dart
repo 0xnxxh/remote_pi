@@ -30,7 +30,13 @@ class RemoteWorktreeGateway {
   /// Worktrees de [repo] **excluindo** a raiz. Vazio se não é repo git.
   Future<List<RemoteWorktreeEntry>> list(String repo) async {
     final r = await _git.run(repo, const ['worktree', 'list', '--porcelain']);
-    if (r.code != 0) return const [];
+    // Erro (pasta não é repo, conexão) LANÇA — não devolve `[]`: o chamador não
+    // pode confundir "sem worktrees" com "falhou" e apagar os forks existentes.
+    if (r.code != 0) {
+      throw StateError(
+        'git worktree list failed (${r.code}): ${r.stderr}',
+      );
+    }
     return parsePorcelain(r.stdout, repo);
   }
 

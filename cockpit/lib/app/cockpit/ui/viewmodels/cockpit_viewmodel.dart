@@ -840,6 +840,9 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Lista e reconcilia os worktrees remotos de [wsId] (slots-fork do rail).
   /// Best-effort: host offline / pasta não-git → sem forks.
+  /// Token do último refresh de worktrees por workspace remoto (anti-corrida).
+  final Map<String, int> _remoteWorktreeToken = <String, int>{};
+
   Future<void> _refreshRemoteWorktrees(String wsId) async {
     final parent = _projectById(wsId);
     final root = parent?.remotePath;
@@ -852,12 +855,19 @@ class CockpitViewModel extends ChangeNotifier {
     }
     final gw = await _remoteWorktreeGatewayFor(wsId);
     if (gw == null) return;
+    // Token anti-corrida: a listagem SSH leva ~s. Um refresh disparado no boot
+    // (lista vazia, antes do worktree existir) pode voltar DEPOIS do create e
+    // sobrescrever, apagando o fork recém-criado. Só o resultado do refresh
+    // mais recente por workspace é aplicado.
+    final token = (_remoteWorktreeToken[wsId] ?? 0) + 1;
+    _remoteWorktreeToken[wsId] = token;
     List<RemoteWorktreeEntry> entries;
     try {
       entries = await gw.list(root);
     } catch (_) {
       return;
     }
+    if (_remoteWorktreeToken[wsId] != token) return; // obsoleto → descarta
     final forks = <Project>[
       for (final e in entries)
         Project(
