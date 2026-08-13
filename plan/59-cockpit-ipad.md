@@ -97,10 +97,30 @@ Hoje o `RemoteConnection` (em `cockpit_remote`) está preso ao `Socket` do
 - [x] Landscape travado: `Info.plist`, `AndroidManifest` (`sensorLandscape`),
       `SystemChrome` no `main` (gated iOS/Android).
 
-### Wave 1 — Spike de build mobile
-- [ ] `flutter build ios --no-codesign` e `flutter build apk` — capturar o que
-      quebra (itens 2/4/5 acima) e virar a lista de gating.
-- [ ] Decidir renderer do terminal no mobile (item 3): libghostty iOS vs xterm.
+### Wave 1 — Spike de build mobile ✅ (2026-08-13)
+Resultado: **os dois alvos compilam** (`app-debug.apk` e `Runner.app`). Bem
+melhor que o esperado. O que precisou:
+- [x] **Native-asset hooks do `anaki_*` (6 pacotes)**: lançavam
+      `UnsupportedError('Unsupported OS')` mesmo sem o código ser chamado.
+      Guard aplicado (no-op em OS não-desktop). **PENDENTE UPSTREAM**: a correção
+      está só no pub-cache local (efêmera). Jacob precisa aplicar o guard nos
+      repos anaki e republicar (ou usar `dependency_overrides` de path). Diff:
+      após `final os = input.config.code.targetOS;`, inserir
+      `if (os != OS.macOS && os != OS.linux && os != OS.windows) return;`.
+- [x] **Android — desugaring**: `flutter_local_notifications` exige
+      `isCoreLibraryDesugaringEnabled = true` + `coreLibraryDesugaring(desugar_jdk_libs:2.1.4)`.
+- [x] **Android — compileSdk**: `desktop_drop` (desktop-only) fixa SDK 33 mas
+      puxa deps que exigem 34+. `compileSdk = 36` no app + override `subprojects`
+      forçando 36 nos módulos de plugin.
+- [x] **iOS**: compilou direto (pods via CocoaPods; `cockpit_pty`/`media_kit`/
+      `pasteboard`/`flutter_secure_storage` têm podspec iOS). SPM ainda não, mas
+      CocoaPods resolve.
+- [x] **Renderer (item 3)**: `libghostty`/`flterm` **compilaram** pra iOS e
+      Android sem patch — o Ghostty passou no nível de build. Falta validar em
+      **runtime** (abrir no simulador/device); se não rodar, cai pro xterm puro-Dart.
+
+> Observação: build ≠ runtime. O próximo passo real é **abrir no simulador iOS**
+> e ver o app subir (transporte ainda é o desktop; a UI mobile é a Wave 4).
 
 ### Wave 2 — Guardrail de compilação (gating por plataforma)
 - [ ] Isolar tudo que é engine-local/desktop atrás de fábricas com fallback, para
