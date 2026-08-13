@@ -165,9 +165,11 @@ class RemoteHostConnector {
 
   /// "Install server": sobe binário + dylib pelo canal SSH (stdin → arquivo,
   /// sem depender de scp/rsync no host) e inicia o servidor remoto no socket
-  /// padrão. `--exit-on-idle 0`: o servidor de um host acessado remotamente
-  /// não morre sozinho (é ele que segura as sessões na queda do túnel);
-  /// gestão por launchd/systemd é a Wave 3.
+  /// padrão. `--exit-on-idle 120`: o servidor sobrevive a um blip de túnel
+  /// (reconexão restabelece o cliente e rearma o timer), mas se encerra sozinho
+  /// ~2min depois que o app fecha de vez — sem órfão no host. Persistência 24/7
+  /// gerida por launchd/systemd fica pra Wave 3.
+  static const _remoteIdleSeconds = 120;
   Future<void> _installAndStartServer() async {
     final binary = localServerBinaryResolver();
     if (binary == null) {
@@ -212,7 +214,8 @@ class RemoteHostConnector {
       // vem do ../lib do bundle; o anaki resolve por rpath.
       'COCKPIT_PTY_DYLIB=\$HOME/.cockpit/server/lib/libcockpit_pty.dylib '
       'nohup \$HOME/.cockpit/server/bin/cockpit-server '
-      '--socket \$HOME/.cockpit/cockpit-server.sock --exit-on-idle 0 '
+      '--socket \$HOME/.cockpit/cockpit-server.sock '
+      '--exit-on-idle $_remoteIdleSeconds '
       '>/dev/null 2>&1 & echo started',
     );
     if (code != 0) {
