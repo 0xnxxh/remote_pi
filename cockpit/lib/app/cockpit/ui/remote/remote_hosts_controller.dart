@@ -54,6 +54,11 @@ class RemoteHostsController extends ChangeNotifier {
   Future<RemoteGitService> gitServiceFor(RemoteHost host) =>
       _connectorFor(host).gitService();
 
+  /// Serviço de terminal do host (Task Run remoto, plano 58). Conecta se
+  /// preciso; mesma conexão SSH dos demais serviços.
+  Future<RemoteTerminalService> terminalServiceFor(RemoteHost host) =>
+      _connectorFor(host).ensure();
+
   /// Serviço de DB do host (queries remotas). Conecta se preciso.
   Future<RemoteDbService> dbServiceFor(RemoteHost host) =>
       _connectorFor(host).dbService();

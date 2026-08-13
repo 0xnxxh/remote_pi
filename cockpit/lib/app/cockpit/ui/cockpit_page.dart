@@ -15,6 +15,10 @@ import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_folder_picker.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_db_executor.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_task_gateway.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/task_discovery.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/tasks_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_host_error_message.dart';
 import 'package:cockpit_core/cockpit_core.dart';
@@ -189,6 +193,33 @@ class _CockpitPageState extends State<CockpitPage> {
       ..remoteConnectionsFor = _remoteConnectionsFor;
     context.read<DatabaseViewModel>().remoteConnectionsFor =
         _remoteConnectionsFor;
+    // Task Run remoto (plano 58): descoberta via fs.read + execução via terminal
+    // do host, roteados quando o workspace ativo é remoto.
+    context.read<TasksViewModel>().remoteContextFor = _remoteTaskContextFor;
+  }
+
+  /// Contexto de Task remoto do workspace ativo (host resolvido do projeto
+  /// selecionado), cacheado por host — o runner precisa sobreviver às trocas de
+  /// cwd pra manter as tasks rodando. `null` quando o ativo é local.
+  final Map<String, ({TaskDiscovery discovery, TaskRunnerGateway runner})>
+  _remoteTaskCtx = {};
+
+  ({TaskDiscovery discovery, TaskRunnerGateway runner})? _remoteTaskContextFor(
+    String cwd,
+  ) {
+    final host = _vm.remoteHostForWorkspace(_vm.selectedProjectId);
+    if (host == null) return null;
+    return _remoteTaskCtx.putIfAbsent(
+      host.id,
+      () => (
+        discovery: RemoteTaskDiscovery(
+          () => _vm.remoteHosts.fileServiceFor(host),
+        ),
+        runner: RemoteTaskRunner(
+          () => _vm.remoteHosts.terminalServiceFor(host),
+        ),
+      ),
+    );
   }
 
   /// Loader remoto de conexões, compartilhado pelo [DbQueryService] (resolução
@@ -339,6 +370,12 @@ class _CockpitPageState extends State<CockpitPage> {
 
   @override
   void dispose() {
+    // Runners de Task remotos (cacheados por host): mata as tasks e fecha os
+    // streams. Não fecha a conexão SSH (compartilhada com os outros serviços).
+    for (final ctx in _remoteTaskCtx.values) {
+      unawaited(ctx.runner.disposeAll());
+    }
+    _remoteTaskCtx.clear();
     HardwareKeyboard.instance.removeHandler(_handlePaneNavKey);
     HardwareKeyboard.instance.removeHandler(_realmKeyHandler);
     _settings?.removeListener(_syncLspCommands);
@@ -1370,12 +1407,13 @@ class _CockpitPageState extends State<CockpitPage> {
                               // local (cwd/launchctl locais). Num workspace
                               // remoto rodaria na máquina errada, então some até
                               // ganharmos um caminho remoto (plano 58, pendente).
-                              tasksPanel:
-                                  vm.selectedProject == null ||
-                                      vm.selectedProject!.isRemoteTerminal
+                              tasksPanel: vm.selectedProject == null
                                   ? null
                                   : TasksPanel(
-                                      cwd: vm.selectedProject!.path,
+                                      // Remoto: a raiz é a pasta do host
+                                      // (treeRootPath = remotePath); local usa o
+                                      // path do projeto.
+                                      cwd: vm.treeRootPath,
                                       listHeight: _tasksHeight,
                                       onResizeDelta: (dy) => setState(() {
                                         _tasksHeight = (_tasksHeight - dy)

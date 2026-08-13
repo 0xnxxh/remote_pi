@@ -124,7 +124,9 @@ class _TasksPanelState extends State<TasksPanel> {
             context.t.cockpit.tasksPanel.noTasks,
             style: context.typo.label.copyWith(color: colors.text3),
           ),
-          if (vm.hasProject && !vm.hasConfig) ...[
+          // Criar o tasks.json de exemplo é local-only (o remoto edita no
+          // host); no remoto o botão some e o vazio fica só informativo.
+          if (vm.hasProject && !vm.hasConfig && !vm.isRemote) ...[
             const SizedBox(height: 10),
             HoverTap(
               borderRadius: BorderRadius.circular(6),

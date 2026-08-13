@@ -29,11 +29,18 @@ class TasksJsonLoader {
     if (workspaceCwd.isEmpty) return const [];
     final file = File(pathFor(workspaceCwd));
     if (!await file.exists()) return const [];
+    return parseContent(await file.readAsString(), workspaceCwd);
+  }
 
+  /// Parseia o conteúdo JSONC de um `tasks.json` (sem tocar no filesystem) —
+  /// reusado pela descoberta REMOTA (plano 58), que lê o arquivo do host via
+  /// `fs.read`. [workspaceCwd] é a raiz onde os `cwd` relativos das tasks
+  /// resolvem (no remoto, a pasta do host).
+  List<TaskDefinition> parseContent(String content, String workspaceCwd) {
     final Object? decoded;
     try {
       // JSONC: aceita comentários (// e /* */) e vírgulas finais.
-      decoded = jsonDecode(stripJsonc(await file.readAsString()));
+      decoded = jsonDecode(stripJsonc(content));
     } catch (_) {
       return const []; // JSON malformado → ignora silenciosamente
     }

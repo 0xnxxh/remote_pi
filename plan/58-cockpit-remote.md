@@ -383,18 +383,26 @@ classe dos dois lados do fio).
 > na máquina errada, então **o painel de Task é escondido em workspace remoto**
 > (gate por `isRemoteTerminal` em `cockpit_page`, 2026-08-12).
 >
-> **A adicionar depois** (extensão natural do plano 58):
-> - [ ] Descoberta remota: loader lê `tasks.json` via `fs.read` do host quando o
->   workspace é remoto (mesmo padrão do `databases.json` e do git).
-> - [ ] Execução remota: rodar a task no host **reusando o domínio de terminal**
->   (o servidor já spawna PTY no host) → saída pra `TaskOutputSession`, em vez de
->   um domínio `exec` novo.
+> **ENTREGUE (2026-08-13)**:
+> - [x] Descoberta remota: `RemoteTaskDiscovery` lê `tasks.json` via `fs.read` do
+>   host (reusa o parser `TasksJsonLoader.parseContent`); sem auto-detect por
+>   adapters (no remoto as tasks vêm só do JSON).
+> - [x] Execução remota: `RemoteTaskRunner` spawna a task num PTY do host via o
+>   domínio de terminal (`TerminalService.open` + attach), mapeando `PtyEvent`→
+>   `TaskRun`. Login shell (`/bin/sh -lc 'exec …'`) pro PATH; teclas interativas
+>   (stdin), stop/restart/resize funcionam. Painel des-gateado no remoto.
+> - **Fica de fora (não-MVP)**: reload-on-save (sem watch de FS remoto), detecção
+>   de progresso (badge building→running), criar `tasks.json` de exemplo pelo app
+>   (edita-se no host).
 
 ### Wave 5 — Relay próprio + E2E (pré-requisito do tablet fora de casa)
 > **Wave condicional, fora do escopo atual** (decisão G): só entra se o
 > cenário fora-de-casa justificar; relay PRÓPRIO do Cockpit, não o do
 > Remote Pi.
 
+- [ ] **Melhorias de CI/CD** (pedido 2026-08-13): validar o job `server-x64`
+      numa release real; automatizar a validação E2E remota; revisar a matriz de
+      build (fatias/assinatura) e o gate de publicação do bundle do servidor.
 - [ ] Pareamento código/QR (Ed25519 + token de dispositivo) + revogação.
 - [ ] E2E sobre o pareamento (Noise ou equivalente; NUNCA plaintext).
 - [ ] Relay próprio + transporte no cliente e no servidor.
