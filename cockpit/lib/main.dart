@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:cockpit/app/bootstrapper.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
 import 'package:cockpit/app/core/data/diagnostics/error_handlers.dart';
 import 'package:cockpit/app/core/ui/widgets/app_error_view.dart';
 import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
 import 'package:cockpit/i18n/strings.g.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -18,6 +21,17 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 Future<void> main() async {
   await runGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Mobile (iPad/Android) é sempre landscape: o shell multi-pane do Cockpit
+    // (rail | panes | arquivos) é pensado pra largura de desktop. Desktop não
+    // tem orientação; o guard evita chamar o canal em plataformas sem ele.
+    if (Platform.isIOS || Platform.isAndroid) {
+      await SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+
     // ShadcnApp delegates to WidgetsApp but does not expose the inspector HUD
     // builders. Disable WidgetsApp's automatic inspector insertion so AppRoot
     // can provide one manually with the same DevTools selection semantics and

@@ -1,0 +1,131 @@
+# 59 — Cockpit no iPad/Android: cliente remoto puro
+
+> Continuação natural do [`58-cockpit-remote.md`](./58-cockpit-remote.md). O 58
+> provou o cliente/servidor (terminais, arquivos, git, DB, tasks rodando no host
+> via `cockpit-server`, transporte SSH). Este plano leva o **cliente** para
+> iPadOS/Android, sem motor local.
+
+## Contexto
+
+O Cockpit já é cliente/servidor: todo o motor (PTY, git, DB, LSP, tasks) roda no
+host; o cliente só renderiza e troca RPC. Logo o mobile **não porta engine
+nenhum** — ele é uma "tela" para um host remoto. O trabalho é (a) fazer o cliente
+**conectar** sem depender de coisa de desktop e (b) fazer ele **compilar** sem os
+plugins de desktop.
+
+Cenário-alvo: "controlo meus agentes do sofá / da rua, do iPad", falando com um
+host (iMac/VPS) que já tem o `cockpit-server` instalado.
+
+## Princípio de corte (o que sobrevive no mobile)
+
+> **No mobile só sobrevive o que é (a) consumível remotamente ou (b) pura
+> apresentação. Tudo que é motor-local ou plugin de desktop some.**
+
+Esse princípio faz features futuras se auto-classificarem: se depende de
+`Process.start`/FFI/plugin desktop, é motor-local e não vai pro mobile.
+
+## Decisões deste plano
+
+| # | Decisão |
+|---|---|
+| **A** | **Paridade total remota**: iPad faz tudo que o desktop faz (terminal + arquivos + git + DB + tasks), só que 100% contra um host remoto. Uma base de código, gating por plataforma — não um app separado. |
+| **B** | **Transporte único em `dartssh2`** (Dart puro), para desktop **e** mobile. Substitui o `SshTunnel` baseado no binário `ssh` do sistema (plano 58). Verificado: `dartssh2` tem `forwardLocalUnix` (`direct-streamlocal@openssh.com`), então encaminha direto pro socket UNIX remoto `~/.cockpit/cockpit-server.sock` — **zero mudança no `cockpit-server`**. |
+| **C** | **Sempre landscape** no iOS/Android (o shell multi-pane é pensado pra largura de desktop). Travado em 3 camadas: `Info.plist`, `AndroidManifest` (`sensorLandscape`), e `SystemChrome.setPreferredOrientations` no `main`. |
+| **D** | **Mobile não roda nem instala server**: não há binário local pra empurrar por SSH. O mobile só conecta a hosts **já provisionados** (de um desktop, ou pelo próprio usuário). O painel de hosts no mobile é "conectar + gerenciar chave", sem "install server". |
+| **E** | **Auth por chave guardada no dispositivo**: `flutter_secure_storage` (Keychain iOS) para a chave privada; geração de chave in-app (ed25519). Sem `~/.ssh`. |
+
+## Superfície mobile — matriz de Configurações
+
+| Categoria / item | Mobile | Motivo |
+|---|---|---|
+| General → toggle "Cockpit terminal" | ❌ | sem shell local; pseudo-workspace nem existe |
+| General → "Enable agents" | ❌ | agente é motor-local |
+| General → "Check for updates" | ❌ | `auto_updater` é desktop; a loja atualiza |
+| General → "Launch at login" | ❌ | desktop-only |
+| General → Idioma (locale) / Storage / Diagnostics | ✅ | apresentação/app |
+| Appearance (tema/fonte) | ✅ | apresentação |
+| Notifications | ✅ | `flutter_local_notifications` roda no iOS |
+| Terminal (engine/fonte/profile) | ❌ | config de PTY local |
+| Languages (LSP) | ❌ | LSP roda no host |
+| Automations (commit msg) | ❌ | harness local |
+| Connectivity / Daemon Agents / Schedules | ❌ | agente/relay/supervisor |
+| Remote hosts | ✅ | é o ponto (sem "install server", ver decisão D) |
+
+Fora das configs:
+- **Pseudo-workspace "Cockpit" sempre desativado** (nem renderiza no rail).
+- **Empty-state (`WelcomeView`)**: hoje 1 botão (criar workspace local). Passa a
+  ter **duas ações** — "Abrir pasta local" + "Conectar a um host" — construídas
+  pra todas as plataformas; no mobile só a de host aparece. Gating por flag, não
+  build separado.
+- **"+" do rail**: hoje sempre abre menu Local vs Remoto. No mobile, o "+" **pula
+  o menu e chama direto o fluxo de host**. Mesmo par de callbacks
+  (`onCreateWorkspace` / `onConnectHost`); o gating é só "que opções aponto".
+- **Titlebar**: um terceiro branch de `buildAppMenus()` — `MobileMenuBar` = layout
+  Win/Linux (`Menubar` shadcn) **sem os `window_controls`** (min/max/close, que
+  dependem de `window_manager`) e sem arraste de janela.
+
+## Refactor de fundo: `RemoteConnection` sobre transporte duplex
+
+Hoje o `RemoteConnection` (em `cockpit_remote`) está preso ao `Socket` do
+`dart:io` (UDS). O `SSHForwardChannel` do `dartssh2` é um duplex equivalente
+(`implements SSHSocket`, tem `stream`+`sink`). Então:
+
+- Abstrair `RemoteConnection` sobre um **transporte duplex genérico** (stream de
+  bytes + sink), com dois adaptadores: `Socket` UDS (desktop sidecar local) e
+  `SSHForwardChannel` (dartssh2, desktop remoto + mobile). Codec, handshake e
+  streaming de terminal **não mudam**.
+- Trocar o `SshTunnel` do plano 58 por um baseado em `forwardLocalUnix`, reusando
+  o `SshHostKeyStore` e o parsing de PEM que o túnel de **DB** já tem
+  (`data/db/ssh_tunnel_impl.dart`). Isso **unifica os dois túneis num só**.
+
+## Verificações (spikes) antes de fechar o desenho de build
+
+| # | Verificar | Se falhar |
+|---|---|---|
+| 1 | ✅ `dartssh2 forwardLocalUnix` → UDS remoto | resolvido (existe) |
+| 2 | `flutter build ios/apk` arranca? quais plugins dão hard-fail | vira a lista concreta do guardrail de gating |
+| 3 | `libghostty`/`flterm` compila pra iOS (Zig aarch64-ios)? | cair pro renderer xterm puro-Dart no alvo mobile |
+| 4 | cliente linka `anaki_*`/`cockpit_pty` direto? (não deveria — é no host) | isolar atrás de fábrica com fallback |
+| 5 | `window_manager`/`auto_updater`/`launch_at_startup`/`media_kit`/`desktop_drop` gateáveis por plataforma | gating condicional / stub mobile |
+| 6 | geração de chave ed25519 + `flutter_secure_storage` (Keychain iOS) | ajustar auth |
+| 7 | teclado virtual iOS vs handling kitty/atalhos do terminal | ajuste de UX de input |
+
+## Passos (waves)
+
+### Wave 0 — Scaffolding + landscape ✅ (2026-08-13)
+- [x] `flutter create --platforms=android,ios --org work.jacobmoura .`
+- [x] Landscape travado: `Info.plist`, `AndroidManifest` (`sensorLandscape`),
+      `SystemChrome` no `main` (gated iOS/Android).
+
+### Wave 1 — Spike de build mobile
+- [ ] `flutter build ios --no-codesign` e `flutter build apk` — capturar o que
+      quebra (itens 2/4/5 acima) e virar a lista de gating.
+- [ ] Decidir renderer do terminal no mobile (item 3): libghostty iOS vs xterm.
+
+### Wave 2 — Guardrail de compilação (gating por plataforma)
+- [ ] Isolar tudo que é engine-local/desktop atrás de fábricas com fallback, para
+      o alvo mobile não linkar cockpit_pty/anaki/auto_updater/window_manager/etc.
+
+### Wave 3 — Transporte unificado `dartssh2`
+- [ ] `RemoteConnection` sobre transporte duplex (adaptadores Socket + SSHForwardChannel).
+- [ ] `SshTunnel` do plano 58 via `forwardLocalUnix`; migrar desktop para ele.
+- [ ] Auth por chave no Keychain + geração de chave in-app (decisão E).
+
+### Wave 4 — Superfície mobile (UI)
+- [ ] Gating de Configurações (matriz acima).
+- [ ] `WelcomeView` com duas ações; "+" direto pro host no mobile.
+- [ ] `MobileMenuBar` (titlebar sem window controls).
+- [ ] UX de input (teclado virtual + terminal).
+
+## Definition of Done
+
+- [ ] iPad conecta a um host provisionado e opera terminal + arquivos + git + DB
+      + tasks (paridade total remota).
+- [ ] Cliente compila para iOS e Android sem os plugins desktop.
+- [ ] Um único transporte SSH (`dartssh2`) serve desktop e mobile.
+- [ ] Sempre landscape no mobile; sem pseudo-workspace local; sem "install server".
+
+## Fora de escopo
+
+- Rodar/instalar `cockpit-server` no próprio dispositivo mobile (decisão D).
+- Relay próprio / fora-de-casa (é a Wave 5 do plano 58).

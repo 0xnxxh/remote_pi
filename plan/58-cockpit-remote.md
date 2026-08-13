@@ -204,10 +204,12 @@ classe dos dois lados do fio).
   cliente NUNCA importa — o guardrail é erro de compilação, não disciplina.
   Sobram poucas deps Flutter desktop-only (media_kit, auto_updater) para
   flags/compilação condicional (decisão K).
-- Transporte no iPad: LAN direto e, no futuro, o relay próprio (decisão G).
-  SSH fica de fora do target mobile.
-- Teclado virtual + terminal é problema de UX próprio; fica para o plano do
-  cliente iPad, não deste.
+- Transporte no iPad: **revisado em 2026-08-13** — o mobile usa `dartssh2`
+  (SSH em Dart puro) com `forwardLocalUnix` pro UDS remoto, unificado com o
+  transporte do desktop. O relay próprio segue como futuro (decisão G). Ver
+  [`59-cockpit-ipad.md`](./59-cockpit-ipad.md), decisão B.
+- Teclado virtual + terminal é problema de UX próprio; detalhado no
+  [`59-cockpit-ipad.md`](./59-cockpit-ipad.md), não neste.
 
 ## Passos (waves)
 
