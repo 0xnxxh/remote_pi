@@ -1273,6 +1273,8 @@ class _Translations$settings$page$general$es extends Translations$settings$page$
 	@override String get enableAgentsDesc => 'Muestra la opción de abrir pestañas de agente (pi). Cuando está desactivado, Cockpit funciona solo como workspace de terminal.';
 	@override String get showCockpitTitle => 'Mostrar terminal de Cockpit';
 	@override String get showCockpitDesc => 'Mantiene un workspace sin carpeta, solo de terminal, fijado en la parte superior de la barra lateral. Desactivarlo cierra sus terminales.';
+	@override String get launchAtStartupTitle => 'Iniciar al arrancar';
+	@override String get launchAtStartupDesc => 'Inicia Cockpit automáticamente cuando inicias sesión en tu computadora.';
 	@override String get sectionUpdates => 'Actualizaciones';
 	@override String get checkUpdatesTitle => 'Buscar actualizaciones';
 	@override String get checkUpdatesDesc => 'Con qué frecuencia Cockpit debe buscar nuevas versiones.';
@@ -2208,6 +2210,8 @@ extension on TranslationsEs {
 			'settings.page.general.enableAgentsDesc' => 'Muestra la opción de abrir pestañas de agente (pi). Cuando está desactivado, Cockpit funciona solo como workspace de terminal.',
 			'settings.page.general.showCockpitTitle' => 'Mostrar terminal de Cockpit',
 			'settings.page.general.showCockpitDesc' => 'Mantiene un workspace sin carpeta, solo de terminal, fijado en la parte superior de la barra lateral. Desactivarlo cierra sus terminales.',
+			'settings.page.general.launchAtStartupTitle' => 'Iniciar al arrancar',
+			'settings.page.general.launchAtStartupDesc' => 'Inicia Cockpit automáticamente cuando inicias sesión en tu computadora.',
 			'settings.page.general.sectionUpdates' => 'Actualizaciones',
 			'settings.page.general.checkUpdatesTitle' => 'Buscar actualizaciones',
 			'settings.page.general.checkUpdatesDesc' => 'Con qué frecuencia Cockpit debe buscar nuevas versiones.',

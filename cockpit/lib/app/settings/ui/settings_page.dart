@@ -430,6 +430,14 @@ class _GeneralPanel extends StatelessWidget {
                         onChanged: controller.setShowCockpit,
                       ),
                     ),
+                    _Row(
+                      title: tr.launchAtStartupTitle,
+                      description: tr.launchAtStartupDesc,
+                      trailing: Switch(
+                        value: s.launchAtStartup,
+                        onChanged: controller.setLaunchAtStartup,
+                      ),
+                    ),
                   ],
                 ),
               ),

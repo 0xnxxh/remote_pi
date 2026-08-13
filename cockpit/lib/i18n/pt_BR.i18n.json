@@ -682,6 +682,8 @@
         "enableAgentsDesc": "Mostra a opção de abrir abas de agente (pi). Quando desligado, o Cockpit funciona apenas como workspace de terminal.",
         "showCockpitTitle": "Mostrar terminal do Cockpit",
         "showCockpitDesc": "Mantém um workspace sem pasta, só de terminal, fixado no topo da barra lateral. Desligar fecha seus terminais.",
+        "launchAtStartupTitle": "Iniciar ao ligar",
+        "launchAtStartupDesc": "Inicia o Cockpit automaticamente quando você faz login no computador.",
         "sectionUpdates": "Atualizações",
         "checkUpdatesTitle": "Verificar atualizações",
         "checkUpdatesDesc": "Com que frequência o Cockpit deve procurar novas versões.",

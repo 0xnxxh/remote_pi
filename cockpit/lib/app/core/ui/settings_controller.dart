@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cockpit/app/core/data/setup/launch_at_startup_service.dart';
 import 'package:cockpit/app/core/data/setup/sound_library.dart';
 import 'package:cockpit/app/core/data/theme_store.dart';
 import 'package:cockpit/app/core/domain/contracts/settings_store.dart';
@@ -20,6 +21,7 @@ class SettingsController extends ChangeNotifier {
 
   final SettingsStore _store;
   final ThemeStore _themeStore;
+  final LaunchAtStartupService _launchAtStartup = LaunchAtStartupService();
   AppSettings _settings = const AppSettings();
 
   AppSettings get settings => _settings;
@@ -264,6 +266,18 @@ class SettingsController extends ChangeNotifier {
 
   void setShowCockpit(bool value) =>
       _apply(_settings.copyWith(showCockpit: value));
+
+  /// Liga/desliga "iniciar com o sistema": grava a preferência na hora (UI
+  /// reflete imediato) e aplica no SO em background; se o SO recusar, reconcilia
+  /// a preferência com o estado efetivo lido de volta.
+  void setLaunchAtStartup(bool value) {
+    _apply(_settings.copyWith(launchAtStartup: value));
+    _launchAtStartup.apply(value).then((effective) {
+      if (effective != _settings.launchAtStartup) {
+        _apply(_settings.copyWith(launchAtStartup: effective));
+      }
+    });
+  }
 
   void setUpdateCheckFrequency(UpdateCheckFrequency frequency) =>
       _apply(_settings.copyWith(updateCheckFrequency: frequency));

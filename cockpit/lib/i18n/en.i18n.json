@@ -682,6 +682,8 @@
         "enableAgentsDesc": "Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.",
         "showCockpitTitle": "Show Cockpit terminal",
         "showCockpitDesc": "Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.",
+        "launchAtStartupTitle": "Launch at login",
+        "launchAtStartupDesc": "Start Cockpit automatically when you sign in to your computer.",
         "sectionUpdates": "Updates",
         "checkUpdatesTitle": "Check for updates",
         "checkUpdatesDesc": "How often Cockpit should look for new versions.",

@@ -217,6 +217,7 @@ dependencies:
   # tipadas em lib/i18n/strings.g.dart a partir dos .i18n.json; `slang_flutter`
   # é o runtime (TranslationProvider, LocaleSettings, `t` global).
   slang_flutter: ^4.18.0
+  launch_at_startup: ^0.5.1
 
 dev_dependencies:
   flutter_test:

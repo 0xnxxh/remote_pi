@@ -2537,6 +2537,12 @@ class Translations$settings$page$general$en {
 	/// en: 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.'
 	String get showCockpitDesc => 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.';
 
+	/// en: 'Launch at login'
+	String get launchAtStartupTitle => 'Launch at login';
+
+	/// en: 'Start Cockpit automatically when you sign in to your computer.'
+	String get launchAtStartupDesc => 'Start Cockpit automatically when you sign in to your computer.';
+
 	/// en: 'Updates'
 	String get sectionUpdates => 'Updates';
 
@@ -3956,6 +3962,8 @@ extension on Translations {
 			'settings.page.general.enableAgentsDesc' => 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.',
 			'settings.page.general.showCockpitTitle' => 'Show Cockpit terminal',
 			'settings.page.general.showCockpitDesc' => 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.',
+			'settings.page.general.launchAtStartupTitle' => 'Launch at login',
+			'settings.page.general.launchAtStartupDesc' => 'Start Cockpit automatically when you sign in to your computer.',
 			'settings.page.general.sectionUpdates' => 'Updates',
 			'settings.page.general.checkUpdatesTitle' => 'Check for updates',
 			'settings.page.general.checkUpdatesDesc' => 'How often Cockpit should look for new versions.',
