@@ -2431,8 +2431,16 @@ class CockpitViewModel extends ChangeNotifier {
     final pins = _remoteHosts.pins;
     final wanted = {for (final p in pins) '${Project.remotePrefix}${p.id}'};
     // Remove workspaces de pins deletados (encerra runtime se selecionado).
+    // Só os TOP-LEVEL (parentId == null): os forks (worktrees remotos) são
+    // reconciliados por _refreshRemoteWorktrees, não por pins — sem este guard
+    // eles seriam apagados aqui logo após criados.
     final stale = _projectList
-        .where((p) => p.isRemoteTerminal && !wanted.contains(p.id))
+        .where(
+          (p) =>
+              p.isRemoteTerminal &&
+              p.parentId == null &&
+              !wanted.contains(p.id),
+        )
         .toList();
     for (final p in stale) {
       _projectList.remove(p);
