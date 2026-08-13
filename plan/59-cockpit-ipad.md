@@ -122,6 +122,21 @@ melhor que o esperado. O que precisou:
 > Observação: build ≠ runtime. O próximo passo real é **abrir no simulador iOS**
 > e ver o app subir (transporte ainda é o desktop; a UI mobile é a Wave 4).
 
+**Runtime no iPad Pro 13" (simulador) ✅ (2026-08-13)**: o app **sobe e renderiza
+em landscape** — titlebar estilo Windows ("☰ Cockpit"), aba Terminal, teclado
+virtual, e o `cockpit_pty` até **spawnou um shell** (`I have no name!$`, o sim é
+macOS por baixo). Exceções observadas, **todas não-fatais** e todas itens de
+gating da Wave 2:
+- **`status-server` (som/chime, UDS)**: `bind falhou` no iOS (path do container
+  excede o limite de UDS + é feature desktop). Gatear off no mobile.
+- **update check**: `setLastUpdateCheckTime` no boot dispara `notifyListeners`
+  durante o build (auto_updater é desktop). Gatear off no mobile.
+- `cleanOrphans` já se protege (`if (!isMacOS && !isLinux) return`); `login_shell`
+  não derrubou o boot.
+
+Confirma que Wave 2 (gating) é sobre **desligar subsistemas desktop**, não
+consertar compilação — o app já roda.
+
 ### Wave 2 — Guardrail de compilação (gating por plataforma)
 - [ ] Isolar tudo que é engine-local/desktop atrás de fábricas com fallback, para
       o alvo mobile não linkar cockpit_pty/anaki/auto_updater/window_manager/etc.
