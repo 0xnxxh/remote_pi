@@ -625,7 +625,8 @@
       "newLocal": "Novo workspace local",
       "newRemote": "Novo workspace remoto",
       "chooseHost": "Escolher um host",
-      "newHostEntry": "Novo host…"
+      "newHostEntry": "Novo host…",
+      "editHost": "Editar host"
     }
   },
   "settings": {
@@ -672,7 +673,8 @@
         "connectivity": "Conectividade",
         "daemonAgents": "Agentes Daemon",
         "schedules": "Agendamentos",
-        "automations": "Automações"
+        "automations": "Automações",
+        "remoteHosts": "Hosts remotos"
       },
       "general": {
         "sectionAgent": "Agente",
@@ -947,6 +949,21 @@
         "staleModel": "O modelo \"${model}\" não está mais disponível para ${harness}. Usando o padrão da CLI; escolha outro modelo em Configurações se precisar.",
         "recommendedSuffix": "Recomendado"
       }
+    },
+    "remoteHosts": {
+      "title": "Hosts remotos",
+      "description": "Máquinas que você acessa por SSH. Adicionar um host aqui é o mesmo que adicionar pelo menu \"+\" do workspace.",
+      "empty": "Nenhum host remoto ainda.",
+      "add": "Adicionar host",
+      "edit": "Editar",
+      "remove": "Remover",
+      "removeTitle": "Remover host",
+      "removeMessage": "Remover \"${name}\" e todos os workspaces dele? Nada é apagado no host.",
+      "workspacesCount": "${count} workspace(s)",
+      "statusConnected": "Conectado",
+      "statusConnecting": "Conectando…",
+      "statusOffline": "Offline",
+      "statusIdle": "Não conectado"
     }
   },
   "automation": {

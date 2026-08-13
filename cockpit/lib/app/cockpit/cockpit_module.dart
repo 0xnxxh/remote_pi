@@ -206,6 +206,12 @@ Future<Module> buildCockpitModule() async {
         // settings + resolvedor do binário local usado no bootstrap "Install
         // server" (mesmo do sidecar). A UI dos pins consome o RemoteHostsStore.
         ..addInstance<RemoteHostsStore>(JsonRemoteHostsStore(settingsStore))
+        // App-scoped (não page-scoped): o CockpitViewModel injeta e a aba
+        // "Remote hosts" das Configurações (outra rota) observa a MESMA
+        // instância — add/remove de host reflete nos dois na hora. Espelha o
+        // padrão do AutomationController (singleton aqui + addChangeNotifier no
+        // ModularApp.provide).
+        ..addLazySingleton<RemoteHostsController>(RemoteHostsController.new)
         ..addInstance<TerminalScrollbackStore>(
           const FileTerminalScrollbackStore(),
         )
@@ -233,11 +239,6 @@ Future<Module> buildCockpitModule() async {
             // o VM o recebe no construtor e injeta o contexto de shell.
             ..addChangeNotifier<GitController>(GitController.new)
             ..addChangeNotifier<RealmController>(RealmController.new)
-            // Hosts remotos (plano 58): mesma vida da rota; o VM injeta os
-            // workspaces-pin e roteia os terminais SSH por aqui.
-            ..addChangeNotifier<RemoteHostsController>(
-              RemoteHostsController.new,
-            )
             ..addChangeNotifier<CockpitViewModel>(CockpitViewModel.new)
             ..addChangeNotifier<SetupViewModel>(SetupViewModel.new)
             ..addChangeNotifier<TasksViewModel>(TasksViewModel.new)

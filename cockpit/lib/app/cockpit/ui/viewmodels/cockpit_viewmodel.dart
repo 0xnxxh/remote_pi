@@ -2382,6 +2382,9 @@ class CockpitViewModel extends ChangeNotifier {
       _ready = true;
       notifyListeners();
     }
+    // Mudanças de host/pin vindas de OUTRA rota (aba "Remote hosts" das
+    // Configurações opera o mesmo RemoteHostsController) re-sincronizam a rail.
+    _remoteHosts.addListener(_onRemoteHostsChanged);
     // Estado git + worktrees de todos os projetos (assíncrono — a rail atualiza
     // conforme chega). Só há raízes no boot; os forks entram pela reconciliação.
     for (final project in _projectList) {
@@ -5712,8 +5715,17 @@ class CockpitViewModel extends ChangeNotifier {
     if (id != null && _trees.containsKey(id)) _scheduleSave(id);
   }
 
+  /// Re-sincroniza os workspaces remotos quando o [RemoteHostsController] muda
+  /// por fora (aba "Remote hosts" das Configurações). Idempotente.
+  void _onRemoteHostsChanged() {
+    if (!_ready) return;
+    _syncRemoteWorkspaces();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _remoteHosts.removeListener(_onRemoteHostsChanged);
     unawaited(_statusServer.stop());
     // O GitController é dono dos próprios timers/watchers; o módulo o
     // descarta junto com a rota. Aqui só desligamos o repasse de notify.

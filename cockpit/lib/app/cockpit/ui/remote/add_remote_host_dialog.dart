@@ -12,24 +12,41 @@ class RemoteHostDraft {
 /// Dialog "Add remote host" (plano 58, Wave 2): coleta nome + `user@host`.
 /// Sem validação de conectividade aqui — o teste é a conexão real ao abrir o
 /// pin (que já mostra loading/erro tipado).
-Future<RemoteHostDraft?> showAddRemoteHostDialog(BuildContext context) {
+Future<RemoteHostDraft?> showAddRemoteHostDialog(
+  BuildContext context, {
+  String? initialName,
+  String? initialSshTarget,
+  bool edit = false,
+}) {
   return showDialog<RemoteHostDraft>(
     context: context,
     barrierColor: context.colors.scrim,
-    builder: (context) => const _AddRemoteHostDialog(),
+    builder: (context) => _AddRemoteHostDialog(
+      initialName: initialName,
+      initialSshTarget: initialSshTarget,
+      edit: edit,
+    ),
   );
 }
 
 class _AddRemoteHostDialog extends StatefulWidget {
-  const _AddRemoteHostDialog();
+  const _AddRemoteHostDialog({
+    this.initialName,
+    this.initialSshTarget,
+    this.edit = false,
+  });
+
+  final String? initialName;
+  final String? initialSshTarget;
+  final bool edit;
 
   @override
   State<_AddRemoteHostDialog> createState() => _AddRemoteHostDialogState();
 }
 
 class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
-  final _name = TextEditingController();
-  final _ssh = TextEditingController();
+  late final _name = TextEditingController(text: widget.initialName ?? '');
+  late final _ssh = TextEditingController(text: widget.initialSshTarget ?? '');
 
   @override
   void dispose() {
@@ -60,7 +77,7 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
     final tr = context.t.cockpit.remoteHost;
     return AlertDialog(
       title: Text(
-        tr.addHost,
+        widget.edit ? tr.editHost : tr.addHost,
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
       ),
       content: ConstrainedBox(
@@ -93,7 +110,7 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
         ),
         PrimaryButton(
           onPressed: _valid ? _submit : null,
-          child: Text(context.t.common.add),
+          child: Text(widget.edit ? context.t.common.save : context.t.common.add),
         ),
       ],
     );

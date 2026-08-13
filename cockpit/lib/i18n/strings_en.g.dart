@@ -196,6 +196,7 @@ class Translations$settings$en {
 	late final Translations$settings$revokeDialog$en revokeDialog = Translations$settings$revokeDialog$en.internal(_root);
 	late final Translations$settings$pairingDialog$en pairingDialog = Translations$settings$pairingDialog$en.internal(_root);
 	late final Translations$settings$page$en page = Translations$settings$page$en.internal(_root);
+	late final Translations$settings$remoteHosts$en remoteHosts = Translations$settings$remoteHosts$en.internal(_root);
 }
 
 // Path: automation
@@ -2122,6 +2123,9 @@ class Translations$cockpit$remoteHost$en {
 
 	/// en: 'New host…'
 	String get newHostEntry => 'New host…';
+
+	/// en: 'Edit host'
+	String get editHost => 'Edit host';
 }
 
 // Path: settings.language
@@ -2238,6 +2242,54 @@ class Translations$settings$page$en {
 	late final Translations$settings$page$schedules$en schedules = Translations$settings$page$schedules$en.internal(_root);
 	late final Translations$settings$page$daemons$en daemons = Translations$settings$page$daemons$en.internal(_root);
 	late final Translations$settings$page$automations$en automations = Translations$settings$page$automations$en.internal(_root);
+}
+
+// Path: settings.remoteHosts
+class Translations$settings$remoteHosts$en {
+	Translations$settings$remoteHosts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Remote hosts'
+	String get title => 'Remote hosts';
+
+	/// en: 'Machines you reach over SSH. Adding a host here is the same as adding one from the workspace "+" menu.'
+	String get description => 'Machines you reach over SSH. Adding a host here is the same as adding one from the workspace "+" menu.';
+
+	/// en: 'No remote hosts yet.'
+	String get empty => 'No remote hosts yet.';
+
+	/// en: 'Add host'
+	String get add => 'Add host';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Remove host'
+	String get removeTitle => 'Remove host';
+
+	/// en: 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.'
+	String removeMessage({required Object name}) => 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.';
+
+	/// en: '${count} workspace(s)'
+	String workspacesCount({required Object count}) => '${count} workspace(s)';
+
+	/// en: 'Connected'
+	String get statusConnected => 'Connected';
+
+	/// en: 'Connecting…'
+	String get statusConnecting => 'Connecting…';
+
+	/// en: 'Offline'
+	String get statusOffline => 'Offline';
+
+	/// en: 'Not connected'
+	String get statusIdle => 'Not connected';
 }
 
 // Path: automation.error
@@ -2457,6 +2509,9 @@ class Translations$settings$page$nav$en {
 
 	/// en: 'Automations'
 	String get automations => 'Automations';
+
+	/// en: 'Remote hosts'
+	String get remoteHosts => 'Remote hosts';
 }
 
 // Path: settings.page.general
@@ -3860,6 +3915,7 @@ extension on Translations {
 			'cockpit.remoteHost.newRemote' => 'New remote workspace',
 			'cockpit.remoteHost.chooseHost' => 'Choose a host',
 			'cockpit.remoteHost.newHostEntry' => 'New host…',
+			'cockpit.remoteHost.editHost' => 'Edit host',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
@@ -3894,6 +3950,7 @@ extension on Translations {
 			'settings.page.nav.daemonAgents' => 'Daemon Agents',
 			'settings.page.nav.schedules' => 'Schedules',
 			'settings.page.nav.automations' => 'Automations',
+			'settings.page.nav.remoteHosts' => 'Remote hosts',
 			'settings.page.general.sectionAgent' => 'Agent',
 			'settings.page.general.enableAgentsTitle' => 'Enable agents',
 			'settings.page.general.enableAgentsDesc' => 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.',
@@ -4141,6 +4198,19 @@ extension on Translations {
 			'settings.page.automations.discoveryFailed' => 'Could not discover installed automation harnesses.',
 			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.',
 			'settings.page.automations.recommendedSuffix' => 'Recommended',
+			'settings.remoteHosts.title' => 'Remote hosts',
+			'settings.remoteHosts.description' => 'Machines you reach over SSH. Adding a host here is the same as adding one from the workspace "+" menu.',
+			'settings.remoteHosts.empty' => 'No remote hosts yet.',
+			'settings.remoteHosts.add' => 'Add host',
+			'settings.remoteHosts.edit' => 'Edit',
+			'settings.remoteHosts.remove' => 'Remove',
+			'settings.remoteHosts.removeTitle' => 'Remove host',
+			'settings.remoteHosts.removeMessage' => ({required Object name}) => 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.',
+			'settings.remoteHosts.workspacesCount' => ({required Object count}) => '${count} workspace(s)',
+			'settings.remoteHosts.statusConnected' => 'Connected',
+			'settings.remoteHosts.statusConnecting' => 'Connecting…',
+			'settings.remoteHosts.statusOffline' => 'Offline',
+			'settings.remoteHosts.statusIdle' => 'Not connected',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} is not installed or is not on PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'Model "${model}" is not available for ${harness}. Choose another model in Settings.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

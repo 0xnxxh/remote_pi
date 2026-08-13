@@ -625,7 +625,8 @@
       "newLocal": "New local workspace",
       "newRemote": "New remote workspace",
       "chooseHost": "Choose a host",
-      "newHostEntry": "New host…"
+      "newHostEntry": "New host…",
+      "editHost": "Edit host"
     }
   },
   "settings": {
@@ -672,7 +673,8 @@
         "connectivity": "Connectivity",
         "daemonAgents": "Daemon Agents",
         "schedules": "Schedules",
-        "automations": "Automations"
+        "automations": "Automations",
+        "remoteHosts": "Remote hosts"
       },
       "general": {
         "sectionAgent": "Agent",
@@ -947,6 +949,21 @@
         "staleModel": "Model \"${model}\" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.",
         "recommendedSuffix": "Recommended"
       }
+    },
+    "remoteHosts": {
+      "title": "Remote hosts",
+      "description": "Machines you reach over SSH. Adding a host here is the same as adding one from the workspace \"+\" menu.",
+      "empty": "No remote hosts yet.",
+      "add": "Add host",
+      "edit": "Edit",
+      "remove": "Remove",
+      "removeTitle": "Remove host",
+      "removeMessage": "Remove \"${name}\" and all its workspaces? Nothing is deleted on the host itself.",
+      "workspacesCount": "${count} workspace(s)",
+      "statusConnected": "Connected",
+      "statusConnecting": "Connecting…",
+      "statusOffline": "Offline",
+      "statusIdle": "Not connected"
     }
   },
   "automation": {

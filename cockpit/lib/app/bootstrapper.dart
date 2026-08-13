@@ -26,6 +26,7 @@ import 'package:cockpit/app/core/ui/widgets/bootstrap_error_view.dart';
 import 'package:cockpit/app/core/ui/widgets/devtools_inspector.dart';
 import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
 import 'package:cockpit/app/core/ui/widgets/loading_screen.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/core/utils/login_shell.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -367,7 +368,12 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
             () => inject<AutomationController>(),
           )
           ..addChangeNotifier<EditorMenuBridge>(EditorMenuBridge.new)
-          ..addChangeNotifier<WorkspaceMenuBridge>(WorkspaceMenuBridge.new),
+          ..addChangeNotifier<WorkspaceMenuBridge>(WorkspaceMenuBridge.new)
+          // Hosts remotos (plano 58): singleton no cockpit_module, observado
+          // aqui (app-scoped) por Settings ("Remote hosts") e pela rail.
+          ..addChangeNotifier<RemoteHostsController>(
+            () => inject<RemoteHostsController>(),
+          ),
         child: const AppRoot(),
       ),
     );

@@ -138,7 +138,39 @@ class RemoteHostsController extends ChangeNotifier {
     return idx < 0 ? trimmed : trimmed.substring(idx + 1);
   }
 
+  /// Edita nome e/ou destino SSH de um host (mesmo id). Trocar o `sshTarget`
+  /// derruba a conexão viva (o connector é recriado no próximo uso).
+  Future<void> editHost(
+    String id, {
+    String? name,
+    String? sshTarget,
+  }) async {
+    RemoteHost? host;
+    for (final h in _store.hosts()) {
+      if (h.id == id) {
+        host = h;
+        break;
+      }
+    }
+    if (host == null) return;
+    final newName = (name?.trim().isNotEmpty ?? false) ? name!.trim() : host.name;
+    final newTarget =
+        (sshTarget?.trim().isNotEmpty ?? false) ? sshTarget!.trim() : host.sshTarget;
+    if (newTarget != host.sshTarget) {
+      // Endpoint mudou → a conexão atual não vale mais.
+      await _connectors.remove(id)?.dispose();
+    }
+    await _store.save(
+      RemoteHost(id: id, name: newName, sshTarget: newTarget),
+    );
+    notifyListeners();
+  }
+
+  /// Remove o host, seus workspaces (pins) e encerra a conexão.
   Future<void> removeHost(String id) async {
+    for (final pin in _store.pins().where((p) => p.hostId == id).toList()) {
+      await _store.removePin(pin.id);
+    }
     await _connectors.remove(id)?.dispose();
     await _store.remove(id);
     notifyListeners();

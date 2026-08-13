@@ -1,6 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+// Hosts remotos (plano 58): RemoteHostsController é infra compartilhada (como
+// AutomationController), provida app-scoped no bootstrapper. A aba os gerencia.
+import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart'
+    show RemoteHostPhase;
+import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/setup_check.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
@@ -67,6 +75,7 @@ enum _Category {
   automations,
   shortcuts,
   notifications,
+  remoteHosts,
   connectivity,
   daemons,
   scheduling,
@@ -123,6 +132,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _Category.automations => const _AutomationsPanel(),
                     _Category.shortcuts => const _ShortcutsPanel(),
                     _Category.notifications => const _NotificationsPanel(),
+                    _Category.remoteHosts => const _RemoteHostsPanel(),
                     _Category.connectivity => const _ConnectivityPanel(),
                     _Category.daemons => const _DaemonsPanel(),
                     _Category.scheduling => const _AgendamentosPanel(),
@@ -236,6 +246,14 @@ class _CategoryNav extends StatelessWidget {
             label: context.t.settings.page.nav.notifications,
             selected: selected == _Category.notifications,
             onTap: () => onSelect(_Category.notifications),
+          ),
+          // Hosts remotos (plano 58, SSH) — sempre disponível, não depende do
+          // ambiente remote-pi (extensão/supervisor).
+          _NavItem(
+            icon: Icons.cloud_outlined,
+            label: context.t.settings.page.nav.remoteHosts,
+            selected: selected == _Category.remoteHosts,
+            onTap: () => onSelect(_Category.remoteHosts),
           ),
           // Abas que dependem do ambiente remote-pi — ocultas até instalá-lo
           // (via checklist da aba de agente).
@@ -1863,6 +1881,146 @@ class _ShortcutKeys extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Remote hosts (plano 58)
+// ---------------------------------------------------------------------------
+
+class _RemoteHostsPanel extends StatelessWidget {
+  const _RemoteHostsPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<RemoteHostsController>();
+    final tr = context.t.settings.remoteHosts;
+    final colors = context.colors;
+    final hosts = controller.hosts;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Section(
+                label: tr.title,
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: tr.title,
+                      description: tr.description,
+                      trailing: PrimaryButton(
+                        onPressed: () => _add(context, controller),
+                        child: Text(tr.add),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (hosts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    tr.empty,
+                    textAlign: TextAlign.center,
+                    style: context.typo.body.copyWith(color: colors.text3),
+                  ),
+                )
+              else
+                _Card(
+                  children: [
+                    for (final h in hosts)
+                      _Row(
+                        title: h.name,
+                        description:
+                            '${h.sshTarget}  ·  ${_statusLabel(context, controller.phaseOf(h.id))}'
+                            '  ·  ${tr.workspacesCount(count: controller.pins.where((p) => p.hostId == h.id).length)}',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GhostButton(
+                              onPressed: () => _edit(context, controller, h),
+                              child: Text(tr.edit),
+                            ),
+                            const SizedBox(width: 4),
+                            GhostButton(
+                              onPressed: () => _remove(context, controller, h),
+                              child: Text(
+                                tr.remove,
+                                style: TextStyle(color: colors.error),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _statusLabel(BuildContext context, RemoteHostPhase phase) {
+    final tr = context.t.settings.remoteHosts;
+    return switch (phase) {
+      RemoteHostPhase.connected => tr.statusConnected,
+      RemoteHostPhase.openingTunnel ||
+      RemoteHostPhase.installingServer ||
+      RemoteHostPhase.connecting ||
+      RemoteHostPhase.reconnecting => tr.statusConnecting,
+      RemoteHostPhase.failed => tr.statusOffline,
+      RemoteHostPhase.idle => tr.statusIdle,
+    };
+  }
+
+  Future<void> _add(
+    BuildContext context,
+    RemoteHostsController controller,
+  ) async {
+    final draft = await showAddRemoteHostDialog(context);
+    if (draft == null) return;
+    await controller.addHost(name: draft.name, sshTarget: draft.sshTarget);
+  }
+
+  Future<void> _edit(
+    BuildContext context,
+    RemoteHostsController controller,
+    RemoteHost host,
+  ) async {
+    final draft = await showAddRemoteHostDialog(
+      context,
+      initialName: host.name,
+      initialSshTarget: host.sshTarget,
+      edit: true,
+    );
+    if (draft == null) return;
+    await controller.editHost(
+      host.id,
+      name: draft.name,
+      sshTarget: draft.sshTarget,
+    );
+  }
+
+  Future<void> _remove(
+    BuildContext context,
+    RemoteHostsController controller,
+    RemoteHost host,
+  ) async {
+    final tr = context.t.settings.remoteHosts;
+    final ok = await showConfirmDialog(
+      context,
+      title: tr.removeTitle,
+      message: tr.removeMessage(name: host.name),
+      confirmLabel: context.t.common.remove,
+      danger: true,
+    );
+    if (!ok) return;
+    await controller.removeHost(host.id);
   }
 }
 
