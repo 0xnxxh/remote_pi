@@ -777,6 +777,48 @@ class CockpitViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Workspaces remotos cujo git está sendo carregado agora (evita disparos
+  /// duplicados do lazy-load do badge).
+  final Set<String> _remoteGitLoading = <String>{};
+
+  /// GitInfo remoto de um workspace [wsId] (pro badge do rail). Pode ser `null`
+  /// enquanto o lazy-load não terminou, ou se a pasta não é repo git.
+  GitInfo? remoteGitInfoOf(String wsId) => _remoteGitInfo[wsId];
+
+  /// Carrega o `git status` de UM workspace remoto (background, best-effort) e
+  /// cacheia — é o que preenche o badge de slots que não são o ativo. Conexão
+  /// por host é reusada; host offline apenas não mostra badge (sem travar).
+  Future<void> _loadRemoteGitFor(Project p) async {
+    if (!p.isRemoteTerminal || _remoteGitLoading.contains(p.id)) return;
+    final host = remoteHostForWorkspace(p.id);
+    final root = p.remotePath;
+    if (host == null || root == null || root.isEmpty) return;
+    _remoteGitLoading.add(p.id);
+    try {
+      final service = await _remoteHosts.gitServiceFor(host);
+      final status = await service.status(root);
+      _remoteGitInfo[p.id] = remoteGitInfo(status);
+    } catch (_) {
+      _remoteGitInfo.remove(p.id);
+    } finally {
+      _remoteGitLoading.remove(p.id);
+      notifyListeners();
+    }
+  }
+
+  /// Dispara o lazy-load do git de todos os workspaces remotos ainda sem info
+  /// (badge da Opção 2). Chamado após [_syncRemoteWorkspaces]; roda em
+  /// background, um por workspace (hosts iguais reusam a conexão).
+  void _ensureRemoteGitLoaded() {
+    for (final p in remoteWorkspaces) {
+      if (_remoteGitInfo.containsKey(p.id) ||
+          _remoteGitLoading.contains(p.id)) {
+        continue;
+      }
+      unawaited(_loadRemoteGitFor(p));
+    }
+  }
+
   /// GitInfo remoto da pasta do workspace ativo (ou null).
   GitInfo? get _activeRemoteGitInfo {
     final p = selectedProject;
@@ -2157,6 +2199,8 @@ class CockpitViewModel extends ChangeNotifier {
         }
       }
     }
+    // Badge de git dos slots remotos: carrega em background (Opção 2, lazy).
+    _ensureRemoteGitLoaded();
   }
 
   /// Adiciona um host remoto (dialog "Add remote host"). Não injeta workspace:
@@ -2189,13 +2233,6 @@ class CockpitViewModel extends ChangeNotifier {
     _syncRemoteWorkspaces();
     notifyListeners();
     selectProject('${Project.remotePrefix}${pin.id}');
-  }
-
-  /// Branch do workspace remoto [wsId] (do git status já carregado), ou `null`
-  /// se ainda não lido. Usado pelo "copiar branch" do menu do rail.
-  String? remoteBranchOf(String wsId) {
-    final b = _remoteGitInfo[wsId]?.branch;
-    return (b == null || b.isEmpty) ? null : b;
   }
 
   /// Roda um git cru no host do workspace remoto [wsId] (Camada A do menu do

@@ -78,7 +78,7 @@ class ProjectsRail extends StatefulWidget {
     this.remoteHosts = const [],
     required this.onSelectRemote,
     required this.onRemoveRemoteWorkspace,
-    required this.remoteBranchOf,
+    required this.remoteGitInfoOf,
     required this.onRemoteWorkspaceAction,
     this.width = 252,
   });
@@ -108,8 +108,9 @@ class ProjectsRail extends StatefulWidget {
   /// Remove um workspace remoto (pin) pelo id do workspace.
   final void Function(String workspaceId) onRemoveRemoteWorkspace;
 
-  /// Branch do workspace remoto (pra habilitar/copiar no menu); `null` = sem git.
-  final String? Function(String workspaceId) remoteBranchOf;
+  /// Git status do workspace remoto (badge abaixo do nome + branch do menu);
+  /// `null` = sem git ou ainda carregando (lazy).
+  final GitInfo? Function(String workspaceId) remoteGitInfoOf;
 
   /// Ação do menu do workspace remoto (Camada A): 'pull'|'push'|'sync'|'rename'|
   /// 'close'. Copiar branch/id é resolvido no próprio slot.
@@ -270,7 +271,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 colorValue: ws.colorValue,
                 imagePath: ws.imagePath,
                 selected: ws.id == widget.selectedId,
-                branch: widget.remoteBranchOf(ws.id),
+                git: widget.remoteGitInfoOf(ws.id),
                 onTap: () => widget.onSelectRemote(ws.id),
                 onAction: (action) =>
                     widget.onRemoteWorkspaceAction(ws.id, action),
@@ -426,7 +427,7 @@ class _RemoteSlot extends StatelessWidget {
     required this.colorValue,
     required this.imagePath,
     required this.selected,
-    required this.branch,
+    required this.git,
     required this.onTap,
     required this.onAction,
     required this.onRemove,
@@ -440,9 +441,15 @@ class _RemoteSlot extends StatelessWidget {
   final String? imagePath;
   final bool selected;
 
-  /// Branch do workspace remoto (git já lido), ou `null` se sem git / não lido.
-  /// Gate das ações de git (pull/push/sync/copiar branch) no menu.
-  final String? branch;
+  /// Git status do workspace remoto (branch + sujeira), ou `null` se sem git /
+  /// ainda carregando. Alimenta o badge abaixo do nome E o gate das ações de
+  /// git no menu (a branch sai daqui).
+  final GitInfo? git;
+
+  String? get branch {
+    final b = git?.branch;
+    return (b == null || b.isEmpty) ? null : b;
+  }
   final VoidCallback onTap;
 
   /// Ações roteadas pra página: 'pull' | 'push' | 'sync' | 'rename' | 'close'.
@@ -522,14 +529,26 @@ class _RemoteSlot extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                name,
-                overflow: TextOverflow.ellipsis,
-                style: context.typo.body.copyWith(
-                  fontSize: 13.5,
-                  color: colors.text,
-                  fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.typo.body.copyWith(
+                      fontSize: 13.5,
+                      color: colors.text,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                  ),
+                  // Mesmo badge do local: branch + contador de sujeira, quando
+                  // o git remoto já foi lido (lazy). Sem git → nada.
+                  if (git != null) ...[
+                    const SizedBox(height: 4),
+                    _GitBadge(info: git!),
+                  ],
+                ],
               ),
             ),
             Container(

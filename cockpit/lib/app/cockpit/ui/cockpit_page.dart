@@ -1146,7 +1146,7 @@ class _CockpitPageState extends State<CockpitPage> {
                               onSelectRemote: vm.selectProject,
                               onRemoveRemoteWorkspace: (wsId) =>
                                   unawaited(vm.removeRemoteWorkspace(wsId)),
-                              remoteBranchOf: vm.remoteBranchOf,
+                              remoteGitInfoOf: vm.remoteGitInfoOf,
                               onRemoteWorkspaceAction:
                                   _handleRemoteWorkspaceAction,
                             ),
