@@ -438,7 +438,9 @@ class CockpitViewModel extends ChangeNotifier {
         .where(
           (p) =>
               p.parentId == null &&
-              !p.isPathless &&
+              // Remotos (plano 58) participam da lista/realm/reorder igual aos
+              // locais; só o Cockpit sintético (systemTerminal) fica de fora.
+              !p.isSystemTerminal &&
               p.realmId == realmCtrl.activeId,
         )
         .toList();
@@ -2467,7 +2469,11 @@ class CockpitViewModel extends ChangeNotifier {
         name: pin.name,
         remotePath: pin.path,
         colorValue: pin.colorValue,
-      ).copyWith(imagePath: pin.imagePath);
+      ).copyWith(
+        imagePath: pin.imagePath,
+        realmId: pin.realmId,
+        order: pin.order,
+      );
       final idx = _projectList.indexWhere((p) => p.id == id);
       if (idx < 0) {
         _projectList.add(desired);
@@ -2475,7 +2481,9 @@ class CockpitViewModel extends ChangeNotifier {
         final cur = _projectList[idx];
         if (cur.name != desired.name ||
             cur.colorValue != desired.colorValue ||
-            cur.imagePath != desired.imagePath) {
+            cur.imagePath != desired.imagePath ||
+            cur.realmId != desired.realmId ||
+            cur.order != desired.order) {
           _projectList[idx] = desired;
         }
       }
@@ -2510,7 +2518,17 @@ class CockpitViewModel extends ChangeNotifier {
   /// Cria (ou reusa) um workspace remoto pra pasta [remotePath] do host
   /// [hostId] — o "workspace remoto = pasta" do plano 58 — e o seleciona.
   Future<void> createRemoteWorkspace(String hostId, String remotePath) async {
-    final pin = await _remoteHosts.addPin(hostId: hostId, path: remotePath);
+    // Nasce no realm ativo, no fim da lista (igual ao workspace local novo).
+    final roots = rootProjects;
+    final nextOrder = roots.isEmpty
+        ? 0
+        : roots.map((p) => p.order).reduce(max) + 1;
+    final pin = await _remoteHosts.addPin(
+      hostId: hostId,
+      path: remotePath,
+      realmId: realmCtrl.activeId,
+      order: nextOrder,
+    );
     _syncRemoteWorkspaces();
     notifyListeners();
     selectProject('${Project.remotePrefix}${pin.id}');
@@ -2703,7 +2721,14 @@ class CockpitViewModel extends ChangeNotifier {
       final moved = p.copyWith(realmId: Realm.defaultId);
       _projectList[i] = moved;
       if (p.parentId == null && !p.isSystemTerminal) {
-        await _projects.save(moved); // forks são runtime, não persistem
+        if (p.isRemoteTerminal) {
+          await _remoteHosts.updatePin(
+            _pinIdOf(p.id),
+            realmId: Realm.defaultId,
+          );
+        } else {
+          await _projects.save(moved); // forks são runtime, não persistem
+        }
       }
     }
     if (realmCtrl.activeId == id) await switchRealm(Realm.defaultId);
@@ -2724,9 +2749,15 @@ class CockpitViewModel extends ChangeNotifier {
     if (p.parentId != null || p.isSystemTerminal || p.realmId == realmId) {
       return;
     }
-    if (pathExistsInRealm(p.path, realmId)) return;
+    // Invariante "um path por realm" é do local; remoto se identifica por
+    // (host, pasta) no pin, sem colisão — não checa path vazio.
+    if (!p.isRemoteTerminal && pathExistsInRealm(p.path, realmId)) return;
     _projectList[idx] = p.copyWith(realmId: realmId);
-    await _projects.save(_projectList[idx]);
+    if (p.isRemoteTerminal) {
+      await _remoteHosts.updatePin(_pinIdOf(workspaceId), realmId: realmId);
+    } else {
+      await _projects.save(_projectList[idx]);
+    }
     // Forks acompanham a raiz (runtime; a reconciliação também os refaria).
     for (var i = 0; i < _projectList.length; i++) {
       final f = _projectList[i];
@@ -2864,15 +2895,26 @@ class CockpitViewModel extends ChangeNotifier {
     var insertAt = roots.indexWhere((p) => p.id == targetId);
     if (!before) insertAt += 1;
     roots.insert(insertAt, moved);
-    // Reatribui order sequencial (0..n) e persiste cada raiz.
+    // Reatribui order sequencial (0..n) e persiste cada raiz. Remoto grava no
+    // pin (RemoteHostsStore); local no repositório de projetos.
     for (var i = 0; i < roots.length; i++) {
       final updated = roots[i].copyWith(order: i);
       final idx = _projectList.indexWhere((p) => p.id == updated.id);
       if (idx >= 0) _projectList[idx] = updated;
-      await _projects.save(updated);
+      if (updated.isRemoteTerminal) {
+        await _remoteHosts.updatePin(_pinIdOf(updated.id), order: i);
+      } else {
+        await _projects.save(updated);
+      }
     }
     notifyListeners();
   }
+
+  /// Extrai o id do pin a partir do id do workspace remoto (tira o prefixo).
+  String _pinIdOf(String workspaceId) =>
+      workspaceId.startsWith(Project.remotePrefix)
+      ? workspaceId.substring(Project.remotePrefix.length)
+      : workspaceId;
 
   /// Pra onde a seleção vai quando o workspace [excluding] deixa de existir:
   /// o primeiro workspace raiz do realm ativo que não seja ele, senão o

@@ -536,6 +536,11 @@ class _CockpitPageState extends State<CockpitPage> {
   /// `git.run` no host, renomear e fechar. Copiar branch/id já resolve no slot.
   Future<void> _handleRemoteWorkspaceAction(String wsId, String action) async {
     final vm = _vm;
+    // Move to realm: 'realm|<realmId>' (submenu), igual ao workspace local.
+    if (action.startsWith('realm|')) {
+      await vm.moveWorkspaceToRealm(wsId, action.substring('realm|'.length));
+      return;
+    }
     final label = vm.remoteWorkspaces
         .where((p) => p.id == wsId)
         .map((p) => p.name)
@@ -1194,7 +1199,6 @@ class _CockpitPageState extends State<CockpitPage> {
                                   vm.selectProject(Project.cockpitId),
                               onNewWorkspace: (anchor) =>
                                   _newWorkspaceMenu(vm, anchor),
-                              remoteHosts: vm.remoteWorkspaces,
                               onSelectRemote: vm.selectProject,
                               onRemoveRemoteWorkspace: (wsId) =>
                                   unawaited(vm.removeRemoteWorkspace(wsId)),

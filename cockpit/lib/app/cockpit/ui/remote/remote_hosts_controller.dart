@@ -75,6 +75,8 @@ class RemoteHostsController extends ChangeNotifier {
   Future<RemoteWorkspacePin> addPin({
     required String hostId,
     required String path,
+    String realmId = 'default',
+    int order = 0,
   }) async {
     final name = _basename(path);
     final pin = RemoteWorkspacePin(
@@ -82,6 +84,8 @@ class RemoteHostsController extends ChangeNotifier {
       hostId: hostId,
       path: path,
       name: name.isEmpty ? path : name,
+      realmId: realmId,
+      order: order,
     );
     await _store.savePin(pin);
     notifyListeners();
@@ -102,6 +106,8 @@ class RemoteHostsController extends ChangeNotifier {
     String? name,
     int? colorValue,
     Object? imagePath = RemoteWorkspacePin.unsetImage,
+    String? realmId,
+    int? order,
   }) async {
     RemoteWorkspacePin? pin;
     for (final p in _store.pins()) {
@@ -117,6 +123,8 @@ class RemoteHostsController extends ChangeNotifier {
         name: (cleanName != null && cleanName.isNotEmpty) ? cleanName : null,
         colorValue: colorValue,
         imagePath: imagePath,
+        realmId: realmId,
+        order: order,
       ),
     );
     notifyListeners();

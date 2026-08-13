@@ -75,7 +75,6 @@ class ProjectsRail extends StatefulWidget {
     this.cockpit,
     required this.onSelectCockpit,
     required this.onNewWorkspace,
-    this.remoteHosts = const [],
     required this.onSelectRemote,
     required this.onRemoveRemoteWorkspace,
     required this.remoteGitInfoOf,
@@ -95,9 +94,6 @@ class ProjectsRail extends StatefulWidget {
 
   /// Seleciona o workspace de sistema "Cockpit".
   final VoidCallback onSelectCockpit;
-
-  /// Workspaces de hosts remotos (plano 58), renderizados num slot próprio.
-  final List<Project> remoteHosts;
 
   /// Seleciona um host remoto (pelo id do workspace).
   final void Function(String workspaceId) onSelectRemote;
@@ -284,30 +280,9 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 onTap: widget.onSelectCockpit,
               ),
             ),
-          // Workspaces remotos (plano 58): um por pasta fixada; via SSH.
-          // Os worktrees (forks) do host penduram abaixo, iguais aos locais.
-          for (final ws in widget.remoteHosts)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _RemoteSlot(
-                    workspaceId: ws.id,
-                    name: ws.name,
-                    colorValue: ws.colorValue,
-                    imagePath: ws.imagePath,
-                    selected: ws.id == widget.selectedId,
-                    git: widget.remoteGitInfoOf(ws.id),
-                    onTap: () => widget.onSelectRemote(ws.id),
-                    onAction: (action) =>
-                        widget.onRemoteWorkspaceAction(ws.id, action),
-                    onRemove: () => widget.onRemoveRemoteWorkspace(ws.id),
-                  ),
-                  ..._remoteForks(ws),
-                ],
-              ),
-            ),
+          // Workspaces remotos (plano 58) NÃO têm mais um bloco fixo aqui: eles
+          // entram na lista `projects` abaixo, no realm ativo, reordenáveis e
+          // arrastáveis igual aos locais (o loop ramifica por isRemoteTerminal).
           Expanded(
             child: projects.isEmpty
                 ? const _EmptyRail()
@@ -323,6 +298,33 @@ class _ProjectsRailState extends State<ProjectsRail> {
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         children: [
                           for (final project in projects) ...[
+                            // Remoto (plano 58): mesmo lugar/realm/reorder que o
+                            // local, mas com o slot SSH + forks remotos.
+                            if (project.isRemoteTerminal) ...[
+                              _WorkspaceReorderable(
+                                projectId: project.id,
+                                title: project.name,
+                                colorValue: project.colorValue,
+                                initial: project.initial,
+                                imagePath: project.imagePath,
+                                onReorder: widget.onReorder,
+                                child: _RemoteSlot(
+                                  workspaceId: project.id,
+                                  name: project.name,
+                                  colorValue: project.colorValue,
+                                  imagePath: project.imagePath,
+                                  selected: project.id == widget.selectedId,
+                                  git: widget.remoteGitInfoOf(project.id),
+                                  moveTargets: widget.moveTargetsOf(project.id),
+                                  onTap: () => widget.onSelectRemote(project.id),
+                                  onAction: (action) => widget
+                                      .onRemoteWorkspaceAction(project.id, action),
+                                  onRemove: () =>
+                                      widget.onRemoveRemoteWorkspace(project.id),
+                                ),
+                              ),
+                              ..._remoteForks(project),
+                            ] else ...[
                             _WorkspaceReorderable(
                               projectId: project.id,
                               title: project.name,
@@ -361,6 +363,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                             // Worktrees (forks) penduradas abaixo do workspace,
                             // sempre expandidas (plan/42, decisões 5, 12).
                             ..._forkItems(project),
+                            ],
                           ],
                         ],
                       ),
@@ -458,6 +461,7 @@ class _RemoteSlot extends StatelessWidget {
     required this.imagePath,
     required this.selected,
     required this.git,
+    required this.moveTargets,
     required this.onTap,
     required this.onAction,
     required this.onRemove,
@@ -466,6 +470,9 @@ class _RemoteSlot extends StatelessWidget {
   final String workspaceId;
   final String name;
   final int colorValue;
+
+  /// Realms de destino do "Move to realm" (vazio esconde o item).
+  final List<RealmTarget> moveTargets;
 
   /// Imagem de fundo do avatar (personalizada nas Configurações), ou `null`.
   final String? imagePath;
@@ -512,6 +519,20 @@ class _RemoteSlot extends StatelessWidget {
           label: tr.copyWorkspaceId,
           icon: Icons.content_copy,
         ),
+        if (moveTargets.isNotEmpty)
+          AppMenuItem(
+            value: 'realm', // nunca devolvido — só os filhos
+            label: tr.moveToRealm,
+            icon: Icons.public,
+            children: [
+              for (final t in moveTargets)
+                AppMenuItem(
+                  value: 'realm|${t.id}',
+                  label: t.name,
+                  enabled: t.enabled,
+                ),
+            ],
+          ),
         AppMenuItem(
           value: 'config',
           label: tr.settings,
