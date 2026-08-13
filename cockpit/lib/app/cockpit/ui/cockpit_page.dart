@@ -111,7 +111,11 @@ class _CockpitPageState extends State<CockpitPage> {
     context.read<CockpitViewModel>().init();
     final updateVm = context.read<UpdateViewModel>();
     updateVm.attachSettings(context.read<SettingsController>());
-    updateVm.check();
+    // Self-update (Sparkle/WinSparkle) é desktop-only; no mobile a loja atualiza.
+    // Evita também o notify-durante-build do setLastUpdateCheckTime no boot iOS.
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      updateVm.check();
+    }
     // Publica o estado do workspace no menu File (New Agent / New Terminal): só
     // habilitam quando há workspace ativo. Re-sincroniza a cada mudança da VM.
     _workspaceMenu = context.read<WorkspaceMenuBridge>();
