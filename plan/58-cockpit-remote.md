@@ -395,6 +395,29 @@ classe dos dois lados do fio).
 >   de progresso (badge building→running), criar `tasks.json` de exemplo pelo app
 >   (edita-se no host).
 
+### Pendência — Status de turno (som/notificação) NÃO chega do host
+> O chime/notificação de fim de turno do claude é **100% local** hoje: o
+> `cockpit-hook` reporta por um **socket Unix na máquina cliente**
+> (`TerminalStatusServer`). Quando o claude roda num **terminal remoto**, o hook
+> dispara **no host** — que não tem o `cockpit-hook` instalado nem alcança o
+> socket do cliente — então **turnos remotos não produzem som/notificação**
+> (confirmado 2026-08-13). Não é regressão; é lacuna do setup remoto.
+>
+> **A adicionar** (domínio "status" remoto, contraparte do que já existe pra
+> terminais/arquivos/git/db/tasks):
+> - [ ] **Protocolo**: evento `status` push server→cliente (mesma conexão RPC
+>       que já faz streaming de output do terminal).
+> - [ ] **Server**: mini status-listener no host (socket Unix, igual o do
+>       cliente) + forward do evento pela conexão.
+> - [ ] **Bootstrap**: instalar o `cockpit-hook` no host (empurrar o binário,
+>       como o server + dylibs). **Pegadinha**: `cockpit-hook` é exe Dart AOT →
+>       host Linux (VPS) precisa da fatia Linux empacotada; macOS→macOS direto.
+> - [ ] **Spawn remoto**: injetar `COCKPIT_TAB_ID` + caminho do socket **do
+>       host** no env do terminal/task remoto (hoje injeta o do cliente).
+> - [ ] **Cliente**: rotear o evento recebido pro `onTurnFinished` da sessão
+>       remota certa (por `COCKPIT_TAB_ID`) → reusa a lógica de som/notificação
+>       atual (foco/aba ativa/settings valem igual).
+
 ### Wave 5 — Relay próprio + E2E (pré-requisito do tablet fora de casa)
 > **Wave condicional, fora do escopo atual** (decisão G): só entra se o
 > cenário fora-de-casa justificar; relay PRÓPRIO do Cockpit, não o do
