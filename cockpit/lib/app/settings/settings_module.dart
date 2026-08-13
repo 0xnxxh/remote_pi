@@ -1,3 +1,4 @@
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/settings/data/daemon/supervisor_client_impl.dart';
 import 'package:cockpit/app/settings/data/relay/relay_gateway_impl.dart';
 import 'package:cockpit/app/settings/domain/contracts/cron_gateway.dart';
@@ -34,6 +35,12 @@ Module buildSettingsModule() => createModule(
         '/',
         transition: TransitionType.fade,
         provide: (s) => s
+          // Hosts remotos (plano 58): singleton do cockpit_module (já carregado
+          // — cockpit é a rota inicial). Providenciado aqui como ChangeNotifier
+          // pra aba "Remote hosts" observar a MESMA instância que a rail.
+          ..addChangeNotifier<RemoteHostsController>(
+            () => inject<RemoteHostsController>(),
+          )
           ..addChangeNotifier<ConnectivityViewModel>(ConnectivityViewModel.new)
           ..addChangeNotifier<DaemonsViewModel>(DaemonsViewModel.new)
           ..addChangeNotifier<CronViewModel>(CronViewModel.new)
