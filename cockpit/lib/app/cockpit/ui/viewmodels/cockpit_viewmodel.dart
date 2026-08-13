@@ -5579,7 +5579,15 @@ class CockpitViewModel extends ChangeNotifier {
   /// se selecionados, a seleção volta pro pai. Só notifica quando a lista muda.
   Future<void> _refreshWorktrees(String rootId) async {
     final root = _projectById(rootId);
-    if (root == null || root.parentId != null || root.isSystemTerminal) return;
+    // Remoto tem gestão de worktrees PRÓPRIA (_refreshRemoteWorktrees): sem
+    // este guard, o refresh local acharia zero worktrees no disco e limparia
+    // _worktrees[wsId], apagando os forks remotos ~2s após criados.
+    if (root == null ||
+        root.parentId != null ||
+        root.isSystemTerminal ||
+        root.isRemoteTerminal) {
+      return;
+    }
 
     // Multi-root: worktrees são **por root** — varre cada repo filho e anota a
     // origem (as ops de remove/merge/namespace rodam contra ela). Single-root
