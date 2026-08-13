@@ -362,10 +362,17 @@ classe dos dois lados do fio).
   funciona com GUI fechada.
 
 ### Wave 4 — Databases remotos + VPS de ponta a ponta
-- [ ] Anaki + túneis de DB executando no servidor; grid/.dbq no cliente
-      recebem só resultados paginados.
+- [x] Anaki + túneis de DB executando no servidor; grid/.dbq no cliente
+      recebem só resultados paginados. **Entregue e validado na GUI
+      (2026-08-12)**: SQL (Postgres/MySQL/MSSQL/SQLite) + Redis + Mongo rodam no
+      `cockpit-server` do host via `dart build cli` (native assets do anaki);
+      grid, `.dbq` e painéis Redis/Mongo consomem os resultados do host.
+      Conexões lidas do `.cockpit/databases.json` do host; senha cacheada por
+      sessão (sem re-prompt do Keychain).
 - **Aceite**: workspace numa VPS sem GUI (terminal + arquivos + git +
   commit) e query num Postgres acessível só pela VPS, tudo do MacBook.
+  > Mecanismo validado contra `jacob@localhost` (mesmo caminho SSH→server); um
+  > VPS real usa exatamente o mesmo fluxo.
 
 ### Pendência — Task Run remoto (plano 48) NÃO remotizado
 > O **Task Run** (`tasks.json`, plano 48) ficou **fora** do escopo dos domínios
