@@ -37,10 +37,16 @@ Module buildSettingsModule() => createModule(
         transition: TransitionType.fade,
         provide: (s) => s
           // Hosts remotos (plano 58): singleton do cockpit_module (já carregado
-          // — cockpit é a rota inicial). Providenciado aqui como ChangeNotifier
-          // pra aba "Remote hosts" observar a MESMA instância que a rail.
-          ..addChangeNotifier<RemoteHostsController>(
+          // — cockpit é a rota inicial). Observado aqui pela aba "Remote hosts"
+          // (a MESMA instância que a rail). Usa addListenable com **dispose
+          // no-op**: `addChangeNotifier` daria `vm.dispose()` no pop desta rota
+          // e mataria o singleton compartilhado ("used after disposed" ao
+          // reabrir Settings ou no próximo rebuild da rail). O dono é o
+          // cockpit_module (rota base, nunca sai da pilha).
+          ..addListenable<RemoteHostsController>(
             () => inject<RemoteHostsController>(),
+            (vm) => vm,
+            (_) {},
           )
           ..addChangeNotifier<ConnectivityViewModel>(ConnectivityViewModel.new)
           ..addChangeNotifier<DaemonsViewModel>(DaemonsViewModel.new)
