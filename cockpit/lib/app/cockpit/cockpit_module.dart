@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/db_connection_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/db_driver.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/nosql_runner.dart';
@@ -143,11 +144,15 @@ Future<Module> buildCockpitModule() async {
   final appVersion = (await PackageInfo.fromPlatform()).version;
 
   // Notificações do SO — init pede permissão; falha não pode derrubar o boot.
+  // `local_notifier` é desktop-only (macOS/Windows/Linux); no mobile pula (o
+  // init lançaria "iOS settings must be set"). Notificação mobile é evolução.
   final notifier = LocalNotifier();
-  try {
-    await notifier.init();
-  } catch (error) {
-    debugPrint('Falha ao iniciar notificações: $error');
+  if (!isMobilePlatform) {
+    try {
+      await notifier.init();
+    } catch (error) {
+      debugPrint('Falha ao iniciar notificações: $error');
+    }
   }
 
   return createModule(

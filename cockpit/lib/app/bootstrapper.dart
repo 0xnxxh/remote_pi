@@ -10,6 +10,7 @@ import 'package:cockpit/app/cockpit/data/tasks/task_process_registry.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_process_registry.dart';
 import 'package:cockpit/app/core/data/repositories/json_settings_store.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/data/setup/hive_migration.dart';
 import 'package:cockpit/app/core/data/setup/json_state_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
@@ -145,7 +146,9 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
         // Finder/Dock não há `$SHELL` (launchd não tem shell-pai) — a
         // resolução consulta o SO (dscl/getent) e o spawn de PTY, síncrono,
         // lê do cache. Ver login_shell.dart / issue #42.
-        await resolveLoginShell();
+        // Mobile: sem shell local (e `Process.run` é proibido no iOS real, só
+        // funciona no simulador que é macOS por baixo) → pula.
+        if (!isMobilePlatform) await resolveLoginShell();
 
         // Mata filhos órfãos desta instância ou de instâncias já encerradas,
         // preservando agents/LSP/tasks de outros Cockpits ainda vivos.
@@ -157,14 +160,17 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
 
         // Hooks do Cockpit no ~/.claude/settings.json (idempotente) pra
         // sessões `claude` nas abas reportarem status de turno. Não-fatal.
-        unawaited(
-          ClaudeHookInstallerImpl().ensureInstalled().then((r) {
-            r.fold(
-              (_) {},
-              (e) => debugPrint('[claude-hook] install falhou: $e'),
-            );
-          }),
-        );
+        // Desktop-only (mobile não tem ~/.claude nem claude local, plano 59).
+        if (!isMobilePlatform) {
+          unawaited(
+            ClaudeHookInstallerImpl().ensureInstalled().then((r) {
+              r.fold(
+                (_) {},
+                (e) => debugPrint('[claude-hook] install falhou: $e'),
+              );
+            }),
+          );
+        }
 
         final config = await PiSpawnConfig.resolve();
         _appModule = await buildAppModule(config: config);
