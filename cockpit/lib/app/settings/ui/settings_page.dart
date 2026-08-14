@@ -54,6 +54,7 @@ import 'package:cockpit/app/core/ui/font_catalog.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/app/settings/ui/font_picker_dialog.dart';
 import 'package:cockpit/i18n/strings.g.dart';
+import 'package:cockpit/app/core/routes.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -63,7 +64,10 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// Conectividade) e o conteúdo à direita. Por ora só **Aparência** está
 /// implementada; Conectividade chega na próxima fase.
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.initialTab});
+
+  /// Aba a abrir de cara (deep-link via `pushNamed(arguments:)`). `null` = padrão.
+  final SettingsTab? initialTab;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -105,6 +109,11 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    // Deep-link: abrir já numa aba (ex.: WelcomeView do mobile → Remote hosts,
+    // onde mora a chave do device). O argumento vem do pushNamed.
+    if (widget.initialTab == SettingsTab.remoteHosts) {
+      _category = _Category.remoteHosts;
+    }
     // Sonda o ambiente para decidir se as abas remotas aparecem.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<SettingsEnvGate>().check();

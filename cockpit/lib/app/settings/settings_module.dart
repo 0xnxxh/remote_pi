@@ -10,6 +10,7 @@ import 'package:cockpit/app/settings/ui/daemons_viewmodel.dart';
 import 'package:cockpit/app/settings/ui/notifications_viewmodel.dart';
 import 'package:cockpit/app/settings/ui/settings_env_gate.dart';
 import 'package:cockpit/app/settings/ui/settings_page.dart';
+import 'package:cockpit/app/core/routes.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 /// Feature **Configurações** — `path: '/settings'` (rota empilhada por cima do
@@ -50,7 +51,11 @@ Module buildSettingsModule() => createModule(
           ..addChangeNotifier<NotificationsViewModel>(
             NotificationsViewModel.new,
           ),
-        child: (context, state) => const SettingsPage(),
+        child: (context, state) => SettingsPage(
+          initialTab: state.arguments is SettingsTab
+              ? state.arguments as SettingsTab
+              : null,
+        ),
       );
   },
 );

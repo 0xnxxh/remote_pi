@@ -1273,9 +1273,14 @@ class _CockpitPageState extends State<CockpitPage> {
                       Expanded(
                         child: vm.selectedProjectId == null
                             ? WelcomeView(
+                                hasHosts: vm.remoteHosts.hosts.isNotEmpty,
                                 onCreateWorkspace: _createWorkspace,
                                 onConnectHost: (anchor) =>
                                     _newRemoteWorkspace(vm, anchor),
+                                onConfigureHost: () => context.pushNamed(
+                                  RoutePaths.settings,
+                                  arguments: SettingsTab.remoteHosts,
+                                ),
                               )
                             : IndexedStack(
                                 index: _activeIndex(vm),

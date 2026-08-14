@@ -540,6 +540,8 @@ class _Translations$cockpit$welcomeView$pt_BR extends Translations$cockpit$welco
 	@override String get createWorkspace => 'Criar workspace';
 	@override String get openLocalFolder => 'Abrir pasta local';
 	@override String get connectHost => 'Conectar a um host';
+	@override String get configureHost => 'Configurar host';
+	@override String get addWorkspace => 'Adicionar workspace';
 }
 
 // Path: cockpit.modelPicker
@@ -1863,6 +1865,8 @@ extension on TranslationsPtBr {
 			'cockpit.welcomeView.createWorkspace' => 'Criar workspace',
 			'cockpit.welcomeView.openLocalFolder' => 'Abrir pasta local',
 			'cockpit.welcomeView.connectHost' => 'Conectar a um host',
+			'cockpit.welcomeView.configureHost' => 'Configurar host',
+			'cockpit.welcomeView.addWorkspace' => 'Adicionar workspace',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Buscar modelo (${count})',
 			'cockpit.paneView.closePaneTitle' => 'Fechar painel?',
 			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'Isso fecha todas as ${count} aba(s) deste painel e encerra os agentes/terminais nele.',
@@ -2152,10 +2156,10 @@ extension on TranslationsPtBr {
 			'cockpit.notifications.agentCrashed' => 'Agente parou inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
 			'cockpit.remoteHost.addHost' => 'Adicionar host remoto',
-			'cockpit.remoteHost.hostName' => 'Nome',
-			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuário@host)',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.hostName' => 'Nome',
+			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuário@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
 			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
 			'cockpit.remoteHost.installingServer' => 'Instalando servidor',

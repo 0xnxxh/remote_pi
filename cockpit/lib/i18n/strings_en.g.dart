@@ -983,6 +983,12 @@ class Translations$cockpit$welcomeView$en {
 
 	/// en: 'Connect to host'
 	String get connectHost => 'Connect to host';
+
+	/// en: 'Configure host'
+	String get configureHost => 'Configure host';
+
+	/// en: 'Add workspace'
+	String get addWorkspace => 'Add workspace';
 }
 
 // Path: cockpit.modelPicker
@@ -3627,6 +3633,8 @@ extension on Translations {
 			'cockpit.welcomeView.createWorkspace' => 'Create workspace',
 			'cockpit.welcomeView.openLocalFolder' => 'Open local folder',
 			'cockpit.welcomeView.connectHost' => 'Connect to host',
+			'cockpit.welcomeView.configureHost' => 'Configure host',
+			'cockpit.welcomeView.addWorkspace' => 'Add workspace',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Search model (${count})',
 			'cockpit.paneView.closePaneTitle' => 'Close pane?',
 			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'This closes all ${count} tab(s) in this pane and ends the agents/terminals in it.',
@@ -3916,10 +3924,10 @@ extension on Translations {
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'cockpit.remoteHost.addHost' => 'Add remote host',
-			'cockpit.remoteHost.hostName' => 'Name',
-			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.hostName' => 'Name',
+			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Connecting to ${host}…',
 			'cockpit.remoteHost.openingTunnel' => 'SSH tunnel',
 			'cockpit.remoteHost.installingServer' => 'Installing server',

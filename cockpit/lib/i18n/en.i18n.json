@@ -259,7 +259,9 @@
       "subtitle": "Open a folder or connect to a remote host to start.",
       "createWorkspace": "Create workspace",
       "openLocalFolder": "Open local folder",
-      "connectHost": "Connect to host"
+      "connectHost": "Connect to host",
+      "configureHost": "Configure host",
+      "addWorkspace": "Add workspace"
     },
     "modelPicker": {
       "search": "Search model (${count})"

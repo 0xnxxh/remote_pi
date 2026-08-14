@@ -15,14 +15,24 @@ class WelcomeView extends StatelessWidget {
     super.key,
     required this.onCreateWorkspace,
     required this.onConnectHost,
+    required this.onConfigureHost,
+    required this.hasHosts,
   });
 
   /// Dispara o fluxo de criação local (escolher pasta → dialog → criar).
   final Future<void> Function() onCreateWorkspace;
 
-  /// Dispara o fluxo de conexão a um host remoto. Recebe o `context` do botão
-  /// como âncora do menu de seleção de host.
+  /// Dispara o fluxo de conexão a um host remoto (adicionar workspace). Recebe o
+  /// `context` do botão como âncora do menu de seleção de host.
   final Future<void> Function(BuildContext anchor) onConnectHost;
+
+  /// Abre Configurações já na aba "Remote hosts" (onde mora a chave pública do
+  /// device pra copiar no servidor). Usado no mobile quando ainda não há host.
+  final VoidCallback onConfigureHost;
+
+  /// Se já existe pelo menos um host cadastrado (muda a ação primária no mobile:
+  /// sem host → configurar; com host → adicionar workspace).
+  final bool hasHosts;
 
   @override
   Widget build(BuildContext context) {
@@ -64,34 +74,52 @@ class WelcomeView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Host remoto: sempre disponível; única opção no mobile.
-                  Builder(
-                    builder: (btnContext) => PrimaryButton(
-                      onPressed: () => onConnectHost(btnContext),
-                      leading: const Icon(Icons.cloud_outlined, size: 16),
-                      child: Text(context.t.cockpit.welcomeView.connectHost),
-                    ),
-                  ),
-                  // Pasta local: desktop-only (no mobile não há FS local útil).
-                  if (!isMobilePlatform) ...[
-                    const SizedBox(width: 10),
-                    SecondaryButton(
-                      onPressed: () => onCreateWorkspace(),
-                      leading: const Icon(Icons.folder_outlined, size: 16),
-                      child: Text(
-                        context.t.cockpit.welcomeView.openLocalFolder,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              _actions(context),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _actions(BuildContext context) {
+    final tr = context.t.cockpit.welcomeView;
+    if (isMobilePlatform) {
+      // Sem host ainda → manda pras Configurações (aba Remote hosts), onde está
+      // a chave pública pra copiar no servidor. Com host → adicionar workspace.
+      if (!hasHosts) {
+        return PrimaryButton(
+          onPressed: onConfigureHost,
+          leading: const Icon(Icons.settings_outlined, size: 16),
+          child: Text(tr.configureHost),
+        );
+      }
+      return Builder(
+        builder: (btnContext) => PrimaryButton(
+          onPressed: () => onConnectHost(btnContext),
+          leading: const Icon(Icons.add, size: 16),
+          child: Text(tr.addWorkspace),
+        ),
+      );
+    }
+    // Desktop: pasta local + host (o host resolve pick-or-add internamente).
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Builder(
+          builder: (btnContext) => PrimaryButton(
+            onPressed: () => onConnectHost(btnContext),
+            leading: const Icon(Icons.cloud_outlined, size: 16),
+            child: Text(tr.connectHost),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SecondaryButton(
+          onPressed: () => onCreateWorkspace(),
+          leading: const Icon(Icons.folder_outlined, size: 16),
+          child: Text(tr.openLocalFolder),
+        ),
+      ],
     );
   }
 }

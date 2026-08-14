@@ -540,6 +540,8 @@ class _Translations$cockpit$welcomeView$es extends Translations$cockpit$welcomeV
 	@override String get createWorkspace => 'Crear workspace';
 	@override String get openLocalFolder => 'Abrir carpeta local';
 	@override String get connectHost => 'Conectar a un host';
+	@override String get configureHost => 'Configurar host';
+	@override String get addWorkspace => 'Añadir workspace';
 }
 
 // Path: cockpit.modelPicker
@@ -1863,6 +1865,8 @@ extension on TranslationsEs {
 			'cockpit.welcomeView.createWorkspace' => 'Crear workspace',
 			'cockpit.welcomeView.openLocalFolder' => 'Abrir carpeta local',
 			'cockpit.welcomeView.connectHost' => 'Conectar a un host',
+			'cockpit.welcomeView.configureHost' => 'Configurar host',
+			'cockpit.welcomeView.addWorkspace' => 'Añadir workspace',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Buscar modelo (${count})',
 			'cockpit.paneView.closePaneTitle' => '¿Cerrar panel?',
 			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'Esto cierra todas las ${count} pestaña(s) de este panel y finaliza los agentes/terminales en él.',
@@ -2152,10 +2156,10 @@ extension on TranslationsEs {
 			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			'cockpit.remoteHost.addHost' => 'Añadir host remoto',
-			'cockpit.remoteHost.hostName' => 'Nombre',
-			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuario@host)',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.hostName' => 'Nombre',
+			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuario@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
 			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
 			'cockpit.remoteHost.installingServer' => 'Instalando servidor',

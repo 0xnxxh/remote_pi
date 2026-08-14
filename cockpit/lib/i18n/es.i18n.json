@@ -259,7 +259,9 @@
       "subtitle": "Abre una carpeta o conéctate a un host remoto para empezar.",
       "createWorkspace": "Crear workspace",
       "openLocalFolder": "Abrir carpeta local",
-      "connectHost": "Conectar a un host"
+      "connectHost": "Conectar a un host",
+      "configureHost": "Configurar host",
+      "addWorkspace": "Añadir workspace"
     },
     "modelPicker": {
       "search": "Buscar modelo (${count})"
