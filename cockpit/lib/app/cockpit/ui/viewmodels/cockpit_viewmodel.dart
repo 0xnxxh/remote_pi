@@ -66,6 +66,7 @@ import 'package:cockpit/app/core/domain/entities/lsp_semantic_tokens.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/utils/path_utils.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
@@ -2434,6 +2435,10 @@ class CockpitViewModel extends ChangeNotifier {
   /// posição é irrelevante (fica de fora de [rootProjects]; o rail o renderiza
   /// num slot próprio via [cockpitWorkspace]).
   void _injectCockpit() {
+    // Mobile (plano 59): sem shell local, o pseudo-workspace "Cockpit"
+    // (systemTerminal) não existe — o mobile é remote-only. Nunca injeta,
+    // independente de `showCockpit`.
+    if (isMobilePlatform) return;
     if (_projectById(Project.cockpitId) != null) return;
     _projectList.add(Project.systemTerminal());
   }

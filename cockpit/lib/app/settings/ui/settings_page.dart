@@ -23,6 +23,7 @@ import 'package:cockpit/app/core/data/lsp/lsp_command.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_launchers.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
 import 'package:cockpit/app/core/utils/native_folder_picker.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/terminal/terminal_controller.dart'
     show terminalEngineIsSelectable;
@@ -87,6 +88,14 @@ extension on _Category {
       this == _Category.connectivity ||
       this == _Category.daemons ||
       this == _Category.scheduling;
+
+  /// Abas escondidas no mobile (plano 59): motor-local ou desktop-only. Sobram
+  /// General, Appearance, Shortcuts, Notifications e Remote hosts.
+  bool get hiddenOnMobile =>
+      this == _Category.terminal ||
+      this == _Category.languages ||
+      this == _Category.automations ||
+      isRemote;
 }
 
 class _SettingsPageState extends State<SettingsPage> {
@@ -106,7 +115,10 @@ class _SettingsPageState extends State<SettingsPage> {
     final colors = context.colors;
     final remoteReady = context.watch<SettingsEnvGate>().remoteReady;
     // Categoria selecionada caiu (ambiente sumiu) → volta pra Aparência.
-    final category = (!remoteReady && _category.isRemote)
+    // No mobile, abas motor-local/desktop-only não existem → cai pra General.
+    final category = (isMobilePlatform && _category.hiddenOnMobile)
+        ? _Category.general
+        : (!remoteReady && _category.isRemote)
         ? _Category.appearance
         : _category;
     return Scaffold(
@@ -217,24 +229,27 @@ class _CategoryNav extends StatelessWidget {
             selected: selected == _Category.appearance,
             onTap: () => onSelect(_Category.appearance),
           ),
-          _NavItem(
-            icon: Icons.terminal_outlined,
-            label: context.t.settings.page.nav.terminal,
-            selected: selected == _Category.terminal,
-            onTap: () => onSelect(_Category.terminal),
-          ),
-          _NavItem(
-            icon: Icons.code,
-            label: context.t.settings.page.nav.language,
-            selected: selected == _Category.languages,
-            onTap: () => onSelect(_Category.languages),
-          ),
-          _NavItem(
-            icon: Icons.auto_awesome_outlined,
-            label: context.t.settings.page.nav.automations,
-            selected: selected == _Category.automations,
-            onTap: () => onSelect(_Category.automations),
-          ),
+          // Terminal / Languages / Automations: motor-local, ocultos no mobile.
+          if (!isMobilePlatform) ...[
+            _NavItem(
+              icon: Icons.terminal_outlined,
+              label: context.t.settings.page.nav.terminal,
+              selected: selected == _Category.terminal,
+              onTap: () => onSelect(_Category.terminal),
+            ),
+            _NavItem(
+              icon: Icons.code,
+              label: context.t.settings.page.nav.language,
+              selected: selected == _Category.languages,
+              onTap: () => onSelect(_Category.languages),
+            ),
+            _NavItem(
+              icon: Icons.auto_awesome_outlined,
+              label: context.t.settings.page.nav.automations,
+              selected: selected == _Category.automations,
+              onTap: () => onSelect(_Category.automations),
+            ),
+          ],
           _NavItem(
             icon: Icons.keyboard_outlined,
             label: context.t.settings.page.nav.shortcuts,
@@ -394,68 +409,72 @@ class _GeneralPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Section(
-                label: tr.sectionAgent,
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.enableAgentsTitle,
-                      description: tr.enableAgentsDesc,
-                      // Mantém o switch clicável: tentar DESLIGAR com um agente em
-                      // uso mostra um erro explicando o porquê (em vez de um switch
-                      // inerte, sem feedback). Ligar é sempre permitido.
-                      trailing: Switch(
-                        value: s.enableAgent,
-                        onChanged: (value) {
-                          if (!value && agentsInUse) {
-                            _notifyAgentsInUse(context);
-                            return;
-                          }
-                          controller.setEnableAgent(value);
-                        },
+              // Agent / Cockpit / Updates: motor-local + self-update = desktop.
+              // No mobile some tudo; sobram Idioma/Storage/Diagnostics.
+              if (!isMobilePlatform) ...[
+                _Section(
+                  label: tr.sectionAgent,
+                  child: _Card(
+                    children: [
+                      _Row(
+                        title: tr.enableAgentsTitle,
+                        description: tr.enableAgentsDesc,
+                        // Mantém o switch clicável: tentar DESLIGAR com um agente
+                        // em uso mostra um erro explicando o porquê (em vez de um
+                        // switch inerte, sem feedback). Ligar é sempre permitido.
+                        trailing: Switch(
+                          value: s.enableAgent,
+                          onChanged: (value) {
+                            if (!value && agentsInUse) {
+                              _notifyAgentsInUse(context);
+                              return;
+                            }
+                            controller.setEnableAgent(value);
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _Section(
-                label: 'Cockpit',
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.showCockpitTitle,
-                      description: tr.showCockpitDesc,
-                      trailing: Switch(
-                        value: s.showCockpit,
-                        onChanged: controller.setShowCockpit,
+                _Section(
+                  label: 'Cockpit',
+                  child: _Card(
+                    children: [
+                      _Row(
+                        title: tr.showCockpitTitle,
+                        description: tr.showCockpitDesc,
+                        trailing: Switch(
+                          value: s.showCockpit,
+                          onChanged: controller.setShowCockpit,
+                        ),
                       ),
-                    ),
-                    _Row(
-                      title: tr.launchAtStartupTitle,
-                      description: tr.launchAtStartupDesc,
-                      trailing: Switch(
-                        value: s.launchAtStartup,
-                        onChanged: controller.setLaunchAtStartup,
+                      _Row(
+                        title: tr.launchAtStartupTitle,
+                        description: tr.launchAtStartupDesc,
+                        trailing: Switch(
+                          value: s.launchAtStartup,
+                          onChanged: controller.setLaunchAtStartup,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _Section(
-                label: tr.sectionUpdates,
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.checkUpdatesTitle,
-                      description: tr.checkUpdatesDesc,
-                      trailing: _UpdateCheckDropdown(
-                        value: s.updateCheckFrequency,
-                        onChanged: controller.setUpdateCheckFrequency,
+                _Section(
+                  label: tr.sectionUpdates,
+                  child: _Card(
+                    children: [
+                      _Row(
+                        title: tr.checkUpdatesTitle,
+                        description: tr.checkUpdatesDesc,
+                        trailing: _UpdateCheckDropdown(
+                          value: s.updateCheckFrequency,
+                          onChanged: controller.setUpdateCheckFrequency,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
               _Section(
                 label: context.t.settings.language.title,
                 child: _Card(
