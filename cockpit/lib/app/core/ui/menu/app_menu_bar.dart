@@ -1,5 +1,7 @@
 import 'dart:io' show Platform;
 
+import 'package:cockpit/app/core/utils/platform_kind.dart';
+
 import 'package:cockpit/app/core/app_intents.dart';
 import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/menu_model.dart';
@@ -406,19 +408,23 @@ List<MenuItem> _windowItems(BuildContext context, List<MenuNode> items) {
 }
 
 /// Equivalente de janela dos papéis do SO. `null` = sem equivalente fora do
-/// macOS (about/services/hide/…) → item omitido.
-void Function()? _windowRole(MenuBarRole role) => switch (role) {
-  MenuBarRole.quit => () => windowManager.close(),
-  MenuBarRole.minimizeWindow => () => windowManager.minimize(),
-  MenuBarRole.zoomWindow => () async {
-    if (await windowManager.isMaximized()) {
-      await windowManager.unmaximize();
-    } else {
-      await windowManager.maximize();
-    }
-  },
-  _ => null,
-};
+/// macOS (about/services/hide/…) → item omitido. No mobile (iPad/Android) não
+/// há janela nem `window_manager`: todos os papéis de janela são omitidos.
+void Function()? _windowRole(MenuBarRole role) {
+  if (isMobilePlatform) return null;
+  return switch (role) {
+    MenuBarRole.quit => () => windowManager.close(),
+    MenuBarRole.minimizeWindow => () => windowManager.minimize(),
+    MenuBarRole.zoomWindow => () async {
+      if (await windowManager.isMaximized()) {
+        await windowManager.unmaximize();
+      } else {
+        await windowManager.maximize();
+      }
+    },
+    _ => null,
+  };
+}
 
 /// Rótulo dos roles que a barra **desenhada** (Windows/Linux) renderiza. Os
 /// demais roles são omitidos ali: só existem como item nativo no macOS.
