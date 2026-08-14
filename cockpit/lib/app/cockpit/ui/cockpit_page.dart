@@ -144,9 +144,13 @@ class _CockpitPageState extends State<CockpitPage> {
     // Restaura a visibilidade dos painéis (rail/árvore) salva na sessão anterior
     // e persiste de volta a cada toggle. A VM é a fonte de verdade em runtime.
     final vm = context.read<CockpitViewModel>();
+    // Mobile (iPad/Android): layout diferente — rail e painel de arquivos já
+    // começam abertos. A pane direita só aparece de fato quando há árvore
+    // (o layout gateia por `treeVisible && activeHasFileTree`), então na
+    // WelcomeView ela fica oculta até haver workspace com pasta.
     vm.restorePanelVisibility(
-      rail: _settings!.settings.railVisible,
-      tree: _settings!.settings.treeVisible,
+      rail: isMobilePlatform || _settings!.settings.railVisible,
+      tree: isMobilePlatform || _settings!.settings.treeVisible,
     );
     vm.onPanelVisibilityChanged = (rail, tree) =>
         _settings!.setPanelVisibility(rail: rail, tree: tree);
