@@ -1186,7 +1186,10 @@ class _CockpitPageState extends State<CockpitPage> {
                   treeVisible: vm.treeVisible,
                   onToggleRail: vm.toggleRail,
                   onToggleTree: vm.toggleTree,
-                  filesEnabled: !vm.isPathless(vm.selectedProjectId),
+                  // Remoto TEM árvore (a pasta do host); só o Cockpit
+                  // (systemTerminal) não. `activeHasFileTree` cobre os dois —
+                  // `!isPathless` desabilitava indevidamente o remoto (path='').
+                  filesEnabled: vm.activeHasFileTree,
                 ),
                 Expanded(
                   child: Row(
