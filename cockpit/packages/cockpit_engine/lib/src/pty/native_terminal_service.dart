@@ -78,6 +78,19 @@ class NativeTerminalService implements TerminalService {
     final stdoutPort = ReceivePort();
     final exitPort = ReceivePort();
 
+    // Executable vazio = "login shell do HOST": o cliente (ex.: iPad) não sabe
+    // qual é o shell do host, então quem resolve é o servidor, aqui, onde o
+    // `$SHELL` do usuário do host está disponível. `-l` (login) carrega
+    // .zprofile/.zshrc → oh-my-zsh e cia. Ver remote_host_terminal_gateway.
+    final executable = spec.executable.isNotEmpty
+        ? spec.executable
+        : (Platform.environment['SHELL']?.trim().isNotEmpty ?? false)
+        ? Platform.environment['SHELL']!.trim()
+        : '/bin/sh';
+    final arguments = spec.executable.isEmpty && spec.arguments.isEmpty
+        ? const <String>['-l']
+        : spec.arguments;
+
     final arena = Arena();
     final Pointer<Void> handle;
     try {
@@ -85,8 +98,8 @@ class NativeTerminalService implements TerminalService {
       options.ref
         ..rows = spec.rows
         ..cols = spec.columns
-        ..executable = spec.executable.toNativeUtf8(allocator: arena).cast()
-        ..arguments = _stringArray(arena, [spec.executable, ...spec.arguments])
+        ..executable = executable.toNativeUtf8(allocator: arena).cast()
+        ..arguments = _stringArray(arena, [executable, ...arguments])
         ..environment = _stringArray(arena, [
           for (final e in {
             ...Platform.environment,
@@ -120,7 +133,7 @@ class NativeTerminalService implements TerminalService {
       info: PtySessionInfo(
         id: id,
         pid: _bindings.getPid(handle),
-        executable: spec.executable,
+        executable: executable,
         rows: spec.rows,
         columns: spec.columns,
         scrollbackLength: 0,

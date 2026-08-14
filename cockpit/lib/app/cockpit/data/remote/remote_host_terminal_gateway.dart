@@ -72,11 +72,16 @@ class RemoteHostTerminalGateway implements TerminalGateway {
     }
     if (_killed) return;
 
+    // Login shell: o **host** resolve seu próprio shell (o cliente não sabe qual
+    // é o shell do host — pior no iPad, onde o fallback é `/bin/sh` e o
+    // oh-my-zsh/.zshrc não carrega). Executable vazio = "use o $SHELL do host,
+    // login". Perfis explícitos (pwsh, wsl…) seguem literais.
+    final loginShell = profile.id == TerminalProfile.loginShellId;
     try {
       final info = await service.open(
         PtySpawnSpec(
-          executable: profile.executable,
-          arguments: profile.args,
+          executable: loginShell ? '' : profile.executable,
+          arguments: loginShell ? const <String>[] : profile.args,
           // Caminho é do filesystem REMOTO (vazio = HOME remota do servidor).
           workingDirectory: workingDirectory.isEmpty ? null : workingDirectory,
           environment: _terminalEnv(extraEnv),
