@@ -536,8 +536,10 @@ class _Translations$cockpit$welcomeView$pt_BR extends Translations$cockpit$welco
 
 	// Translations
 	@override String get title => 'Bem-vindo ao Cockpit';
-	@override String get subtitle => 'Abra uma pasta para iniciar um workspace.';
+	@override String get subtitle => 'Abra uma pasta ou conecte a um host remoto para começar.';
 	@override String get createWorkspace => 'Criar workspace';
+	@override String get openLocalFolder => 'Abrir pasta local';
+	@override String get connectHost => 'Conectar a um host';
 }
 
 // Path: cockpit.modelPicker
@@ -1853,8 +1855,10 @@ extension on TranslationsPtBr {
 			'cockpit.cockpitPage.lspRunning' => 'em execução',
 			'cockpit.cockpitPage.lspStopped' => 'parado',
 			'cockpit.welcomeView.title' => 'Bem-vindo ao Cockpit',
-			'cockpit.welcomeView.subtitle' => 'Abra uma pasta para iniciar um workspace.',
+			'cockpit.welcomeView.subtitle' => 'Abra uma pasta ou conecte a um host remoto para começar.',
 			'cockpit.welcomeView.createWorkspace' => 'Criar workspace',
+			'cockpit.welcomeView.openLocalFolder' => 'Abrir pasta local',
+			'cockpit.welcomeView.connectHost' => 'Conectar a um host',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Buscar modelo (${count})',
 			'cockpit.paneView.closePaneTitle' => 'Fechar painel?',
 			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'Isso fecha todas as ${count} aba(s) deste painel e encerra os agentes/terminais nele.',
@@ -2146,10 +2150,10 @@ extension on TranslationsPtBr {
 			'cockpit.remoteHost.addHost' => 'Adicionar host remoto',
 			'cockpit.remoteHost.hostName' => 'Nome',
 			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuário@host)',
-			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
-			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
+			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
 			'cockpit.remoteHost.installingServer' => 'Instalando servidor',
 			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Servidor ${version}',
 			'cockpit.remoteHost.loadingWorkspace' => 'Carregando workspace…',

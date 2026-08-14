@@ -31,6 +31,7 @@ import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/app/core/utils/native_folder_picker.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/gestures.dart' show PointerDownEvent, kBackMouseButton;
 import 'package:flutter/services.dart'
@@ -866,6 +867,12 @@ class _CockpitPageState extends State<CockpitPage> {
     CockpitViewModel vm,
     BuildContext anchor,
   ) async {
+    // Mobile (plano 59): sem workspace local, o "+" vai direto pro fluxo de host
+    // (pula o menu Local vs Remoto).
+    if (isMobilePlatform) {
+      await _newRemoteWorkspace(vm, anchor);
+      return;
+    }
     final tr = context.t.cockpit.remoteHost;
     final choice = await showAppMenu<String>(
       anchor,
@@ -1265,7 +1272,11 @@ class _CockpitPageState extends State<CockpitPage> {
                         ),
                       Expanded(
                         child: vm.selectedProjectId == null
-                            ? WelcomeView(onCreateWorkspace: _createWorkspace)
+                            ? WelcomeView(
+                                onCreateWorkspace: _createWorkspace,
+                                onConnectHost: (anchor) =>
+                                    _newRemoteWorkspace(vm, anchor),
+                              )
                             : IndexedStack(
                                 index: _activeIndex(vm),
                                 sizing: StackFit.expand,

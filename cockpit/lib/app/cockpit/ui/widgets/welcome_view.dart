@@ -1,16 +1,28 @@
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Tela inicial quando ainda não há workspace. Diferente do antigo onboarding,
 /// **não** força instalar nada: o Cockpit serve como multiplexador de terminal
 /// sem o Pi. O checklist do ambiente de agente vive agora dentro da aba de
-/// agente (ver `AgentSetupChecklist`). Aqui só convidamos a criar um workspace.
+/// agente (ver `AgentSetupChecklist`).
+///
+/// Duas ações (plano 59): abrir pasta local **e** conectar a um host remoto.
+/// No mobile (iPad/Android), remote-only, só a de host aparece.
 class WelcomeView extends StatelessWidget {
-  const WelcomeView({super.key, required this.onCreateWorkspace});
+  const WelcomeView({
+    super.key,
+    required this.onCreateWorkspace,
+    required this.onConnectHost,
+  });
 
-  /// Dispara o fluxo de criação (escolher pasta → dialog → criar).
+  /// Dispara o fluxo de criação local (escolher pasta → dialog → criar).
   final Future<void> Function() onCreateWorkspace;
+
+  /// Dispara o fluxo de conexão a um host remoto. Recebe o `context` do botão
+  /// como âncora do menu de seleção de host.
+  final Future<void> Function(BuildContext anchor) onConnectHost;
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +64,29 @@ class WelcomeView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              PrimaryButton(
-                onPressed: () => onCreateWorkspace(),
-                leading: const Icon(Icons.add, size: 16),
-                child: Text(context.t.cockpit.welcomeView.createWorkspace),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Host remoto: sempre disponível; única opção no mobile.
+                  Builder(
+                    builder: (btnContext) => PrimaryButton(
+                      onPressed: () => onConnectHost(btnContext),
+                      leading: const Icon(Icons.cloud_outlined, size: 16),
+                      child: Text(context.t.cockpit.welcomeView.connectHost),
+                    ),
+                  ),
+                  // Pasta local: desktop-only (no mobile não há FS local útil).
+                  if (!isMobilePlatform) ...[
+                    const SizedBox(width: 10),
+                    SecondaryButton(
+                      onPressed: () => onCreateWorkspace(),
+                      leading: const Icon(Icons.folder_outlined, size: 16),
+                      child: Text(
+                        context.t.cockpit.welcomeView.openLocalFolder,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

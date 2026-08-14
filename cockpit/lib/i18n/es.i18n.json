@@ -256,8 +256,10 @@
     },
     "welcomeView": {
       "title": "Bienvenido a Cockpit",
-      "subtitle": "Abre una carpeta para iniciar un workspace.",
-      "createWorkspace": "Crear workspace"
+      "subtitle": "Abre una carpeta o conéctate a un host remoto para empezar.",
+      "createWorkspace": "Crear workspace",
+      "openLocalFolder": "Abrir carpeta local",
+      "connectHost": "Conectar a un host"
     },
     "modelPicker": {
       "search": "Buscar modelo (${count})"
