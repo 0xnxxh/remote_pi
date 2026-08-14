@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cockpit/app/cockpit/data/remote/dartssh_host_connection.dart';
+import 'package:cockpit/app/cockpit/data/remote/ssh_channel_duplex.dart';
 import 'package:cockpit/app/cockpit/data/remote/ssh_tunnel.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit_core/cockpit_core.dart';
 import 'package:cockpit_remote/cockpit_remote.dart';
 
@@ -56,6 +59,7 @@ class RemoteHostConnector {
   final String? Function() localServerBinaryResolver;
 
   SshTunnel? _tunnel;
+  DartSshHostConnection? _dartConn;
   RemoteConnection? _connection;
   RemoteTerminalService? _service;
   Future<RemoteTerminalService>? _inflight;
@@ -106,6 +110,9 @@ class RemoteHostConnector {
           ? RemoteHostPhase.reconnecting
           : RemoteHostPhase.openingTunnel,
     );
+    // Mobile (plano 59): transporte dartssh2 (Dart puro), sem binário `ssh` nem
+    // bootstrap (decisão D — não instala server). Desktop segue no system-ssh.
+    if (isMobilePlatform) return _openMobile();
     final SshTunnel tunnel;
     try {
       tunnel = await SshTunnel.open(target: host.sshTarget);
@@ -134,6 +141,60 @@ class RemoteHostConnector {
     _service = RemoteTerminalService(connection);
     _setPhase(RemoteHostPhase.connected);
     return _service!;
+  }
+
+  /// Abertura no mobile: conecta via dartssh2, resolve `$HOME` do host e
+  /// encaminha pro socket UNIX remoto. Sem bootstrap — se o server não está lá,
+  /// falha com erro claro (o mobile não instala server, decisão D).
+  Future<RemoteTerminalService> _openMobile() async {
+    final SshEndpoint endpoint;
+    try {
+      endpoint = SshEndpoint.parse(host.sshTarget);
+    } on DartSshException catch (e) {
+      _setPhase(RemoteHostPhase.failed);
+      throw RemoteHostException(RemoteHostErrorKind.sshUnreachable, e.code);
+    }
+
+    final conn = DartSshHostConnection(endpoint);
+    try {
+      await conn.connect();
+    } on DartSshException catch (e) {
+      _setPhase(RemoteHostPhase.failed);
+      throw RemoteHostException(
+        RemoteHostErrorKind.sshUnreachable,
+        e.detail ?? e.code,
+      );
+    }
+    _dartConn = conn;
+    unawaited(conn.done.then((_) => _onTunnelClosed()));
+
+    _setPhase(RemoteHostPhase.connecting);
+    try {
+      final home = await conn.run(r'printf %s "$HOME"');
+      final remoteSocket = '$home/.cockpit/cockpit-server.sock';
+      final channel = await conn.forwardUnix(remoteSocket);
+      final connection = await RemoteConnection.connectOn(
+        SshChannelDuplex(channel),
+        clientName: 'cockpit-ipad',
+      );
+      _connection = connection;
+      _service = RemoteTerminalService(connection);
+      _setPhase(RemoteHostPhase.connected);
+      return _service!;
+    } on TerminalException catch (e) {
+      _setPhase(RemoteHostPhase.failed);
+      if (e.detail == 'version_mismatch') {
+        throw const RemoteHostException(RemoteHostErrorKind.versionMismatch);
+      }
+      // Server ausente no host: mobile não instala (decisão D).
+      throw RemoteHostException(
+        RemoteHostErrorKind.serverInstallFailed,
+        e.detail,
+      );
+    } catch (e) {
+      _setPhase(RemoteHostPhase.failed);
+      throw RemoteHostException(RemoteHostErrorKind.protocol, '$e');
+    }
   }
 
   Future<RemoteConnection?> _tryProtocol(
@@ -235,6 +296,7 @@ class RemoteHostConnector {
   Future<void> dispose() async {
     await _connection?.close();
     await _tunnel?.close();
+    await _dartConn?.close();
     _connection = null;
     _service = null;
     await _phases.close();
