@@ -499,7 +499,9 @@ class _GeneralPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              const _StorageSection(),
+              // Local de Armazenamento: escolher pasta/relocar não se aplica ao
+              // mobile (sandbox do app, sem pastas do usuário como no desktop).
+              if (!isMobilePlatform) const _StorageSection(),
               const _DiagnosticsSection(),
             ],
           ),
