@@ -146,10 +146,22 @@ consertar compilação — o app já roda.
       pubspec do cliente). `cockpit_pty`/`libghostty` compilam no mobile, então
       não bloqueiam — só o anaki precisa de tratamento.
 
-### Wave 3 — Transporte unificado `dartssh2`  ← **próximo, o real enabler**
-- [ ] `RemoteConnection` sobre transporte duplex (adaptadores Socket + SSHForwardChannel).
-- [ ] `SshTunnel` do plano 58 via `forwardLocalUnix`; migrar desktop para ele.
-- [ ] Auth por chave no Keychain + geração de chave in-app (decisão E).
+### Wave 3 — Transporte dartssh2 no mobile ✅ (2026-08-14)
+> **Decisão revisada (2026-08-14)**: `dartssh2` **só no mobile**; o desktop fica
+> no system-ssh (mantém ssh-agent/`~/.ssh/config`/ProxyJump, sem regressão no
+> fluxo validado). Os dois convivem atrás do `RemoteDuplex`. Unificar o desktop
+> fica pra quando o mobile estiver provado em campo.
+- [x] `RemoteConnection` sobre `RemoteDuplex` (Socket + `SSHForwardChannel`).
+- [x] `SshChannelDuplex` (`forwardLocalUnix` → UDS remoto) + `DartSshHostConnection`
+      (parse `user@host[:port]`, host-key TOFU, `forwardUnix`, `run` p/ `$HOME`).
+- [x] `MobileSshKeyStore`: gera ed25519 (pinenacl) na 1ª conexão, PEM no Keychain
+      (`flutter_secure_storage`), linha `authorized_keys` exposta. Keygen testado
+      (round-trip `fromPem`).
+- [x] `RemoteHostConnector` ramifica: mobile = dartssh2 (sem bootstrap, decisão D).
+- [x] UI: aba Remote hosts mostra a chave pública do device (copiar).
+- [ ] **E2E real**: conectar de um device/simulador a um host com a chave no
+      `authorized_keys` (a chave nasce no Keychain do device — validação é do
+      Jacob com host real). Build iOS/Android verde com as deps novas.
 
 ### Wave 4 — Superfície mobile (UI) — núcleo feito 2026-08-14
 - [x] Gating de Configurações (matriz): esconde Terminal/Languages/Automations/
