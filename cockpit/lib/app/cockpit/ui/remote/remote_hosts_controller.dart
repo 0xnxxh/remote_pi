@@ -1,3 +1,4 @@
+import 'package:cockpit/app/cockpit/data/remote/mobile_ssh_key_store.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
@@ -19,6 +20,12 @@ class RemoteHostsController extends ChangeNotifier {
 
   final RemoteHostsStore _store;
   final Map<String, RemoteHostConnector> _connectors = {};
+  final MobileSshKeyStore _deviceKeys = MobileSshKeyStore();
+
+  /// Linha `authorized_keys` da chave deste dispositivo (mobile): o usuário cola
+  /// no `~/.ssh/authorized_keys` do host pra autorizar o iPad/Android. Gera a
+  /// chave na 1ª chamada (guardada no Keychain).
+  Future<String> devicePublicKey() => _deviceKeys.publicKeyLine();
 
   List<RemoteHost> get hosts => _store.hosts();
 

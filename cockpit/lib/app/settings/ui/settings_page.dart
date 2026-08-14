@@ -22,6 +22,7 @@ import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_command.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_launchers.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
+import 'package:flutter/services.dart';
 import 'package:cockpit/app/core/utils/native_folder_picker.dart';
 import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
@@ -1932,6 +1933,9 @@ class _RemoteHostsPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Chave do dispositivo (mobile): o iPad/Android não tem ~/.ssh,
+              // então mostramos a pública gerada pra o usuário autorizar no host.
+              if (isMobilePlatform) _DeviceKeySection(controller: controller),
               _Section(
                 label: tr.title,
                 child: _Card(
@@ -2048,6 +2052,92 @@ class _RemoteHostsPanel extends StatelessWidget {
     );
     if (!ok) return;
     await controller.removeHost(host.id);
+  }
+}
+
+/// Chave pública deste dispositivo (mobile): mono-box + copiar. Gera a chave na
+/// 1ª renderização (via controller → MobileSshKeyStore, guardada no Keychain).
+class _DeviceKeySection extends StatelessWidget {
+  const _DeviceKeySection({required this.controller});
+
+  final RemoteHostsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.t.settings.remoteHosts;
+    final colors = context.colors;
+    return _Section(
+      label: tr.deviceKeyTitle,
+      child: _Card(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  tr.deviceKeyDesc,
+                  style: context.typo.body.copyWith(color: colors.text2),
+                ),
+                const SizedBox(height: 12),
+                FutureBuilder<String>(
+                  future: controller.devicePublicKey(),
+                  builder: (context, snap) {
+                    final key = snap.data ?? '';
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: colors.panel3,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: colors.border),
+                          ),
+                          child: SelectableText(
+                            key.isEmpty ? '…' : key,
+                            style: context.typo.mono.copyWith(
+                              fontSize: 12,
+                              color: colors.text,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: SecondaryButton(
+                            onPressed: key.isEmpty
+                                ? null
+                                : () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: key),
+                                    );
+                                    if (!context.mounted) return;
+                                    showToast(
+                                      context: context,
+                                      location: ToastLocation.bottomRight,
+                                      builder: (context, _) => SurfaceCard(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Text(tr.deviceKeyCopied),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                            leading: const Icon(Icons.copy, size: 15),
+                            child: Text(tr.deviceKeyCopy),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

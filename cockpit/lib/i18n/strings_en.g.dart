@@ -2285,6 +2285,18 @@ class Translations$settings$remoteHosts$en {
 	/// en: '${count} workspace(s)'
 	String workspacesCount({required Object count}) => '${count} workspace(s)';
 
+	/// en: 'This device's key'
+	String get deviceKeyTitle => 'This device\'s key';
+
+	/// en: 'Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.'
+	String get deviceKeyDesc => 'Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.';
+
+	/// en: 'Copy public key'
+	String get deviceKeyCopy => 'Copy public key';
+
+	/// en: 'Public key copied'
+	String get deviceKeyCopied => 'Public key copied';
+
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
 
@@ -4223,6 +4235,10 @@ extension on Translations {
 			'settings.remoteHosts.removeTitle' => 'Remove host',
 			'settings.remoteHosts.removeMessage' => ({required Object name}) => 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.',
 			'settings.remoteHosts.workspacesCount' => ({required Object count}) => '${count} workspace(s)',
+			'settings.remoteHosts.deviceKeyTitle' => 'This device\'s key',
+			'settings.remoteHosts.deviceKeyDesc' => 'Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.',
+			'settings.remoteHosts.deviceKeyCopy' => 'Copy public key',
+			'settings.remoteHosts.deviceKeyCopied' => 'Public key copied',
 			'settings.remoteHosts.statusConnected' => 'Connected',
 			'settings.remoteHosts.statusConnecting' => 'Connecting…',
 			'settings.remoteHosts.statusOffline' => 'Offline',

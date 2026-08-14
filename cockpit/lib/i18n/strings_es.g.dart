@@ -1153,6 +1153,10 @@ class _Translations$settings$remoteHosts$es extends Translations$settings$remote
 	@override String get removeTitle => 'Eliminar host';
 	@override String removeMessage({required Object name}) => '¿Eliminar "${name}" y todos sus workspaces? No se borra nada en el host.';
 	@override String workspacesCount({required Object count}) => '${count} workspace(s)';
+	@override String get deviceKeyTitle => 'Clave de este dispositivo';
+	@override String get deviceKeyDesc => 'Añade esta clave pública a ~/.ssh/authorized_keys del host para que este dispositivo pueda conectarse.';
+	@override String get deviceKeyCopy => 'Copiar clave pública';
+	@override String get deviceKeyCopied => 'Clave pública copiada';
 	@override String get statusConnected => 'Conectado';
 	@override String get statusConnecting => 'Conectando…';
 	@override String get statusOffline => 'Sin conexión';
@@ -2467,6 +2471,10 @@ extension on TranslationsEs {
 			'settings.remoteHosts.removeTitle' => 'Eliminar host',
 			'settings.remoteHosts.removeMessage' => ({required Object name}) => '¿Eliminar "${name}" y todos sus workspaces? No se borra nada en el host.',
 			'settings.remoteHosts.workspacesCount' => ({required Object count}) => '${count} workspace(s)',
+			'settings.remoteHosts.deviceKeyTitle' => 'Clave de este dispositivo',
+			'settings.remoteHosts.deviceKeyDesc' => 'Añade esta clave pública a ~/.ssh/authorized_keys del host para que este dispositivo pueda conectarse.',
+			'settings.remoteHosts.deviceKeyCopy' => 'Copiar clave pública',
+			'settings.remoteHosts.deviceKeyCopied' => 'Clave pública copiada',
 			'settings.remoteHosts.statusConnected' => 'Conectado',
 			'settings.remoteHosts.statusConnecting' => 'Conectando…',
 			'settings.remoteHosts.statusOffline' => 'Sin conexión',
