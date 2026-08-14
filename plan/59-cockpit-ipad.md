@@ -137,20 +137,30 @@ gating da Wave 2:
 Confirma que Wave 2 (gating) é sobre **desligar subsistemas desktop**, não
 consertar compilação — o app já roda.
 
-### Wave 2 — Guardrail de compilação (gating por plataforma)
-- [ ] Isolar tudo que é engine-local/desktop atrás de fábricas com fallback, para
-      o alvo mobile não linkar cockpit_pty/anaki/auto_updater/window_manager/etc.
+### Wave 2 — Guardrail de compilação + gating de runtime ✅ (2026-08-14, parcial)
+- [x] `core/utils/platform_kind.dart`: helper único `isMobilePlatform`/`isDesktopPlatform`.
+- [x] **Gates de runtime** (as 2 exceções do spike): `TerminalStatusServer.start`
+      no-op no mobile; update-check no boot só desktop. App sobe **sem exceção**.
+- [ ] Isolar o **motor-local de DB** (anaki) do app (hoje só o build hook está
+      guardado localmente; falta o guard upstream + idealmente tirar anaki do
+      pubspec do cliente). `cockpit_pty`/`libghostty` compilam no mobile, então
+      não bloqueiam — só o anaki precisa de tratamento.
 
-### Wave 3 — Transporte unificado `dartssh2`
+### Wave 3 — Transporte unificado `dartssh2`  ← **próximo, o real enabler**
 - [ ] `RemoteConnection` sobre transporte duplex (adaptadores Socket + SSHForwardChannel).
 - [ ] `SshTunnel` do plano 58 via `forwardLocalUnix`; migrar desktop para ele.
 - [ ] Auth por chave no Keychain + geração de chave in-app (decisão E).
 
-### Wave 4 — Superfície mobile (UI)
-- [ ] Gating de Configurações (matriz acima).
-- [ ] `WelcomeView` com duas ações; "+" direto pro host no mobile.
-- [ ] `MobileMenuBar` (titlebar sem window controls).
-- [ ] UX de input (teclado virtual + terminal).
+### Wave 4 — Superfície mobile (UI) — núcleo feito 2026-08-14
+- [x] Gating de Configurações (matriz): esconde Terminal/Languages/Automations/
+      Connectivity/Daemons/Scheduling + seções Agent/Cockpit/Updates do General.
+- [x] Pseudo-workspace "Cockpit" nunca injeta no mobile.
+- [x] `WelcomeView` com duas ações ("Conectar a um host" sempre; "Abrir pasta
+      local" só desktop); "+" do rail direto pro host no mobile.
+      **Validado no simulador iPad Pro 13"** (screenshot: só o botão de host).
+- [ ] `MobileMenuBar` (titlebar sem window controls) — a titlebar Win/Linux já
+      renderiza no iOS de forma aceitável; refino pendente.
+- [ ] UX de input (teclado virtual + terminal) — a validar com host real.
 
 ## Definition of Done
 
