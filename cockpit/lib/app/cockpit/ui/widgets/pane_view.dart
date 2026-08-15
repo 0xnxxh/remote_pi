@@ -1148,6 +1148,12 @@ class _PaneTools extends StatelessWidget {
       child: Row(
         spacing: 12,
         children: [
+          if (onOpenBrowser != null)
+            btn(
+              Icon(Icons.public, size: spacing, color: iconColor),
+              tr.openBrowser,
+              onOpenBrowser!,
+            ),
           btn(
             _SplitterScreenIcon(
               type: _SplitterScreenIconType.horizontal,
@@ -1164,12 +1170,6 @@ class _PaneTools extends StatelessWidget {
             tr.splitDown,
             onSplitDown,
           ),
-          if (onOpenBrowser != null)
-            btn(
-              Icon(Icons.public, size: spacing, color: iconColor),
-              tr.openBrowser,
-              onOpenBrowser!,
-            ),
           btn(
             _SplitterScreenIcon(
               type: _SplitterScreenIconType.close,
