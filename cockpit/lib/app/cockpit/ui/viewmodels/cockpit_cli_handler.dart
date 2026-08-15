@@ -12,8 +12,10 @@ import 'package:cockpit/app/cockpit/domain/entities/sql_statements.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_access_gate.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/domain/services/mongo_browse_service.dart';
+import 'package:cockpit/app/cockpit/domain/entities/browser_capability.dart';
 import 'package:cockpit/app/core/domain/result.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
+import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/file_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/mongo_browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
@@ -513,6 +515,34 @@ class CockpitCliHandler {
       // `cockpit redis browse` / `cockpit mongo browse` (plano 53, decisão D):
       // o agente abre a view filtrada pro humano. Abrir view ≠ executar — não
       // devolve dados; valida filtro/conexão ANTES de abrir.
+      case 'browse':
+        return _dbCommand(c, (project) async {
+          final raw = (c.args['url'] ?? '').toString();
+          if (raw.isEmpty) {
+            return const CockpitCommandResult.fail('missing url');
+          }
+          final url = normalizeBrowserUrl(raw);
+          // Sem webview inline (Linux): browser do SO, e o JSON diz isso.
+          if (!BrowserCapability.resolve().isInline) {
+            final ok = await _vm.openUrlExternally(url);
+            if (!ok) {
+              return CockpitCommandResult.fail('could not open "$url"');
+            }
+            return CockpitCommandResult.ok({'mode': 'system', 'url': url});
+          }
+          final session = _vm.openWebBrowser(
+            url,
+            projectId: project.id,
+            reuse: true,
+          );
+          if (session == null) {
+            return const CockpitCommandResult.fail(
+              'workspace has no open pane to attach the browser to',
+            );
+          }
+          return CockpitCommandResult.ok({'mode': 'inline', 'url': url});
+        });
+
       case 'redis-browse':
         return _dbCommand(c, (project) async {
           final connName = (c.args['db'] ?? '').toString();

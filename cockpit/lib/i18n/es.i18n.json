@@ -277,9 +277,16 @@
       "newTerminal": "Nueva terminal…",
       "splitRight": "Dividir a la derecha",
       "splitDown": "Dividir abajo",
+      "openBrowser": "Abrir navegador",
       "closePane": "Cerrar panel",
       "dropHereToMove": "Suelta aquí para mover la pestaña",
       "dockAsTab": "Acoplar como pestaña"
+    },
+    "browserPane": {
+      "back": "Atrás",
+      "forward": "Adelante",
+      "reload": "Recargar",
+      "urlHint": "Escribe la URL o dirección"
     },
     "fileTreePanel": {
       "viewDiff": "Ver Diff",

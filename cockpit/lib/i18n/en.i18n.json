@@ -277,9 +277,16 @@
       "newTerminal": "New terminal…",
       "splitRight": "Split right",
       "splitDown": "Split down",
+      "openBrowser": "Open browser",
       "closePane": "Close pane",
       "dropHereToMove": "Drop here to move the tab",
       "dockAsTab": "Dock as tab"
+    },
+    "browserPane": {
+      "back": "Back",
+      "forward": "Forward",
+      "reload": "Reload",
+      "urlHint": "Enter URL or address"
     },
     "fileTreePanel": {
       "viewDiff": "View Diff",

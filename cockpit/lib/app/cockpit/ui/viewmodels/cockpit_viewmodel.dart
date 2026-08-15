@@ -11,6 +11,8 @@ import 'dart:io'
 import 'dart:math' show max;
 
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import 'package:cockpit/app/cockpit/domain/contracts/app_launcher.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
@@ -75,6 +77,8 @@ import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/file_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/mongo_browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
+import 'package:cockpit/app/cockpit/domain/entities/browser_capability.dart';
+import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/redis_browser_session.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/task_discovery.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
@@ -147,6 +151,22 @@ class CockpitViewModel extends ChangeNotifier {
     _lastGitRevision = git.revision;
     git.addListener(_onGitNotify);
     realmCtrl.addListener(notifyListeners);
+    // Auto-open do navegador quando uma task anuncia dev server (plano 58).
+    _previewSub = _taskRunner.previewUrls().listen(_onTaskPreviewUrl);
+  }
+
+  StreamSubscription<TaskPreviewUrl>? _previewSub;
+
+  /// Task emitiu URL local (`npm run dev` etc.): abre o navegador embutido
+  /// nela — reusando a aba já aberta na mesma origem — ou, sem webview inline
+  /// (Linux), o browser do SO.
+  void _onTaskPreviewUrl(TaskPreviewUrl preview) {
+    final url = normalizeBrowserUrl(preview.url);
+    if (BrowserCapability.resolve().isInline) {
+      openWebBrowser(url, reuse: true);
+    } else {
+      unawaited(openUrlExternally(url));
+    }
   }
 
   /// Alvos do poll de git: a família visível na rail (raiz do projeto
@@ -914,6 +934,70 @@ class CockpitViewModel extends ChangeNotifier {
     if (session == null) return false;
     if (filter != null) (session as MongoBrowserSession).requestFilter(filter);
     return true;
+  }
+
+  /// Abre [url] no browser do SO — fallback das plataformas sem webview
+  /// inline (plano 58) e caminho do auto-open de task no Linux.
+  Future<bool> openUrlExternally(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    try {
+      return await url_launcher.launchUrl(uri);
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Abre uma aba de **navegador** (plano 58). [url] vazia = aba em branco com
+  /// o campo de URL focado (botão da pane). [inPane] força a pane alvo (botão);
+  /// default = pane focada. Com [reuse], foca uma aba de navegador já aberta na
+  /// mesma origem (host:porta) e navega nela em vez de duplicar — é o caminho
+  /// do auto-open de task e do `cockpit browse`.
+  BrowserSession? openWebBrowser(
+    String url, {
+    String? projectId,
+    String? inPane,
+    bool reuse = false,
+  }) {
+    final pid = projectId ?? _selectedProjectId;
+    final tree = pid == null ? null : _trees[pid];
+    if (pid == null || tree == null) return null;
+    final paneId = inPane ?? _focused[pid] ?? leaves(tree).firstOrNull?.id;
+    if (paneId == null) return null;
+
+    if (reuse && url.isNotEmpty) {
+      final target = Uri.tryParse(url);
+      bool sameOrigin(BrowserSession s) {
+        final cur = Uri.tryParse(s.url);
+        return target != null &&
+            cur != null &&
+            cur.host == target.host &&
+            cur.port == target.port;
+      }
+
+      for (final s in _sessions.values) {
+        if (s is BrowserSession && s.projectId == pid && sameOrigin(s)) {
+          for (final leaf in leaves(tree)) {
+            if (leaf.tabs.contains(s.id)) {
+              if (pid == _selectedProjectId) selectTab(leaf.id, s.id);
+              s.requestUrl(url);
+              return s;
+            }
+          }
+        }
+      }
+    }
+
+    final session = BrowserSession(
+      id: _nid('v'),
+      projectId: pid,
+      workingDirectory: _projectById(pid)?.path ?? '',
+    );
+    if (url.isNotEmpty) session.seedUrl = url;
+    _sessions[session.id] = session;
+    _addLeafTab(pid, paneId, session.id);
+    notifyListeners();
+    return session;
   }
 
   /// Núcleo comum dos browsers de banco: foca a tab existente que [matches]
@@ -4264,6 +4348,14 @@ class CockpitViewModel extends ChangeNotifier {
           workingDirectory: project.path,
         );
         return true;
+      case 'browser':
+        _sessions[id] = BrowserSession(
+          id: id,
+          projectId: project.id,
+          workingDirectory: project.path,
+          url: desc['url'] as String? ?? '',
+        );
+        return true;
       case 'empty':
         _makeEmptyWithId(id, project.id);
         return true;
@@ -4509,6 +4601,9 @@ class CockpitViewModel extends ChangeNotifier {
     if (s is RedisBrowserSession) {
       return <String, dynamic>{'type': 'redis', 'conn': s.connName};
     }
+    if (s is BrowserSession) {
+      return <String, dynamic>{'type': 'browser', 'url': s.url};
+    }
     if (s is MongoBrowserSession) {
       return <String, dynamic>{
         'type': 'mongo',
@@ -4722,6 +4817,7 @@ class CockpitViewModel extends ChangeNotifier {
   @override
   void dispose() {
     unawaited(_statusServer.stop());
+    unawaited(_previewSub?.cancel());
     // O GitController é dono dos próprios timers/watchers; o módulo o
     // descarta junto com a rota. Aqui só desligamos o repasse de notify.
     git.removeListener(_onGitNotify);

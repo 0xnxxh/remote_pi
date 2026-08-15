@@ -20,6 +20,8 @@ USAGE:
   cockpit redis [browse] --db <conn> ...       Redis command / open key table
   cockpit mongo [browse] --db <conn> [--database <name>] ...
                                                MongoDB runCommand / open browser
+  cockpit browse <url> [--json]                open the built-in browser tab at
+                                               <url> (system browser on Linux)
   cockpit orchestrate <file.ckp> [--json]      apply a .ckp pane layout (open
                                                terminals/splits + run commands)
   cockpit install-skill   [--force]            install the Claude Code skill

@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cockpit/app/cockpit/domain/entities/browser_capability.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
+import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/file_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
@@ -15,6 +17,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/setup_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_composer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_setup_checklist.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_transcript.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/browser_pane.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/active_listenable_builder.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
@@ -448,6 +451,11 @@ class _TabStripState extends State<_TabStrip> {
             _PaneTools(
               onSplitRight: () => widget.onSplit(SplitDir.vertical),
               onSplitDown: () => widget.onSplit(SplitDir.horizontal),
+              // Sem webview na plataforma (Linux) o botão nem aparece — regra
+              // de "zero UI órfã" do plano 58.
+              onOpenBrowser: BrowserCapability.resolve().isInline
+                  ? () => widget.vm.openWebBrowser('', inPane: widget.pane.id)
+                  : null,
               onClosePane: () => _confirmClosePane(context),
             ),
           ],
@@ -1106,11 +1114,15 @@ class _PaneTools extends StatelessWidget {
   const _PaneTools({
     required this.onSplitRight,
     required this.onSplitDown,
+    required this.onOpenBrowser,
     required this.onClosePane,
   });
 
   final VoidCallback onSplitRight;
   final VoidCallback onSplitDown;
+
+  /// `null` = plataforma sem webview inline (Linux) — botão oculto.
+  final VoidCallback? onOpenBrowser;
   final VoidCallback onClosePane;
 
   @override
@@ -1152,6 +1164,12 @@ class _PaneTools extends StatelessWidget {
             tr.splitDown,
             onSplitDown,
           ),
+          if (onOpenBrowser != null)
+            btn(
+              Icon(Icons.public, size: spacing, color: iconColor),
+              tr.openBrowser,
+              onOpenBrowser!,
+            ),
           btn(
             _SplitterScreenIcon(
               type: _SplitterScreenIconType.close,
@@ -1385,6 +1403,11 @@ class _PaneBodyState extends State<_PaneBody> {
         focused: widget.focused,
         workspaceRoot: vm.projectRootOf(item.projectId) ?? '',
       );
+    }
+
+    // Navegador embutido (plano 58): toolbar compacta + webview inline.
+    if (item is BrowserSession) {
+      return BrowserPane(session: item, active: widget.active);
     }
 
     // Tab de query `.dbq` (plano 51): editor SQL + grid de resultado. Reusa a
