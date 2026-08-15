@@ -10,7 +10,6 @@ import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
-import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_folder_picker.dart';
@@ -20,8 +19,6 @@ import 'package:cockpit/app/cockpit/domain/contracts/task_discovery.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/tasks_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
-import 'package:cockpit/app/cockpit/ui/remote/remote_host_error_message.dart';
-import 'package:cockpit_core/cockpit_core.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
@@ -218,17 +215,20 @@ class _CockpitPageState extends State<CockpitPage> {
   ) {
     final host = _vm.remoteHostForWorkspace(_vm.selectedProjectId);
     if (host == null) return null;
-    return _remoteTaskCtx.putIfAbsent(
-      host.id,
-      () => (
+    return _remoteTaskCtx.putIfAbsent(host.id, () {
+      final runner = RemoteTaskRunner(
+        () => _vm.remoteHosts.terminalServiceFor(host),
+      );
+      // Liga o output deste runner ao store de terminais (senão a aba de output
+      // da task remota fica vazia — plano 60, Wave D).
+      _vm.taskTerminals.registerRunner(runner);
+      return (
         discovery: RemoteTaskDiscovery(
           () => _vm.remoteHosts.fileServiceFor(host),
         ),
-        runner: RemoteTaskRunner(
-          () => _vm.remoteHosts.terminalServiceFor(host),
-        ),
-      ),
-    );
+        runner: runner,
+      );
+    });
   }
 
   /// Loader remoto de conexões, compartilhado pelo [DbQueryService] (resolução
@@ -960,36 +960,23 @@ class _CockpitPageState extends State<CockpitPage> {
         .firstWhere((_) => true, orElse: () => null);
     if (host == null) return;
 
-    // Conecta (túnel SSH; o picker abre já com a conexão pronta). O erro
-    // tipado vira frase na borda da UI.
-    final FileService fileService;
-    try {
-      fileService = await vm.remoteHosts.fileServiceFor(host);
-    } on RemoteHostException catch (e) {
-      if (!mounted) return;
-      await showInfoDialog(
-        context,
-        title: context.t.cockpit.remoteHost.addHost,
-        message: remoteHostErrorMessage(context, e),
-      );
-      return;
-    }
-    if (!mounted) return;
-
-    // Começa na HOME do host (fs.home); cai em `/` se o host não a expõe.
-    String initialPath;
-    try {
-      final home = await fileService.home();
-      initialPath = home.isNotEmpty ? home : '/';
-    } catch (_) {
-      initialPath = '/';
-    }
-    if (!mounted) return;
+    // O picker abre IMEDIATAMENTE em loading e faz o túnel SSH + HOME lá dentro
+    // (plano 60, Wave A) — em host lento não fica "nada acontecendo" antes do
+    // dialog. Erro tipado é mostrado dentro do próprio picker.
     final path = await showRemoteFolderPicker(
       context,
-      fileService: fileService,
-      initialPath: initialPath,
       hostName: host.name,
+      connect: () async {
+        final service = await vm.remoteHosts.fileServiceFor(host);
+        String initialPath;
+        try {
+          final home = await service.home();
+          initialPath = home.isNotEmpty ? home : '/';
+        } catch (_) {
+          initialPath = '/';
+        }
+        return (service: service, initialPath: initialPath);
+      },
     );
     if (path == null || !mounted) return;
     // A pasta escolhida vira um workspace remoto persistente (plano 58).

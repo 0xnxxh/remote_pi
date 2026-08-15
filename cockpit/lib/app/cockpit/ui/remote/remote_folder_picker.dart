@@ -1,27 +1,34 @@
+import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_host_error_message.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit_core/cockpit_core.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+/// Sessão de conexão resolvida pelo picker: o [FileService] do host já
+/// conectado + o caminho inicial (HOME remota, ou `/` de fallback).
+typedef RemoteFolderConnect =
+    Future<({FileService service, String initialPath})> Function();
+
 /// Navega o filesystem REMOTO (via [FileService] do host) e devolve o caminho
 /// da pasta escolhida — o "Add remote workspace" do plano 58: fixa uma pasta
 /// específica do host, em vez de abrir sempre na HOME.
 ///
-/// Recebe o serviço já conectado (o connector do host resolve a conexão SSH).
-/// Começa em [initialPath] (HOME remota).
+/// O dialog abre **imediatamente** em loading e faz a conexão SSH lá dentro
+/// (via [connect]) — em hosts lentos, a tela some da experiência de "nada
+/// acontece por segundos" (plano 60, Wave A). Erro de conexão é mostrado no
+/// próprio dialog, não num info dialog à parte.
 Future<String?> showRemoteFolderPicker(
   BuildContext context, {
-  required FileService fileService,
-  required String initialPath,
+  required RemoteFolderConnect connect,
   required String hostName,
 }) {
   return showDialog<String>(
     context: context,
     barrierColor: context.colors.scrim,
     builder: (context) => _RemoteFolderPicker(
-      fileService: fileService,
-      initialPath: initialPath,
+      connect: connect,
       hostName: hostName,
     ),
   );
@@ -29,13 +36,11 @@ Future<String?> showRemoteFolderPicker(
 
 class _RemoteFolderPicker extends StatefulWidget {
   const _RemoteFolderPicker({
-    required this.fileService,
-    required this.initialPath,
+    required this.connect,
     required this.hostName,
   });
 
-  final FileService fileService;
-  final String initialPath;
+  final RemoteFolderConnect connect;
   final String hostName;
 
   @override
@@ -43,7 +48,8 @@ class _RemoteFolderPicker extends StatefulWidget {
 }
 
 class _RemoteFolderPickerState extends State<_RemoteFolderPicker> {
-  late String _path = widget.initialPath;
+  FileService? _service;
+  String _path = '';
   List<FileEntry>? _entries;
   String? _error;
   bool _loading = true;
@@ -51,16 +57,36 @@ class _RemoteFolderPickerState extends State<_RemoteFolderPicker> {
   @override
   void initState() {
     super.initState();
-    _load(_path);
+    _connect();
+  }
+
+  /// Conecta o host (túnel SSH + HOME remota) com o dialog já visível em
+  /// loading; a lista carrega assim que a conexão fecha. Erro tipado vira
+  /// frase na borda da UI (mesmo padrão do call-site antigo).
+  Future<void> _connect() async {
+    try {
+      final session = await widget.connect();
+      if (!mounted) return;
+      _service = session.service;
+      await _load(session.initialPath);
+    } on RemoteHostException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = remoteHostErrorMessage(context, e);
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _load(String path) async {
+    final service = _service;
+    if (service == null) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final all = await widget.fileService.list(path);
+      final all = await service.list(path);
       // Só pastas visíveis (o workspace é uma pasta).
       final dirs = all
           .where((e) => e.isDirectory && !e.name.startsWith('.'))
@@ -148,8 +174,11 @@ class _RemoteFolderPickerState extends State<_RemoteFolderPicker> {
           child: Text(context.t.common.cancel),
         ),
         PrimaryButton(
-          // Abre nesta pasta.
-          onPressed: _loading ? null : () => Navigator.of(context).pop(_path),
+          // Abre nesta pasta (desabilitado enquanto conecta/carrega ou se a
+          // conexão falhou).
+          onPressed: _loading || _service == null
+              ? null
+              : () => Navigator.of(context).pop(_path),
           child: Text(tr.openHere),
         ),
       ],

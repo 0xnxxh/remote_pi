@@ -723,7 +723,12 @@ class _FileViewerState extends State<FileViewer> {
       if (mounted) _syncMenuBridge();
     });
 
-    final Widget body = switch (widget.session.view) {
+    // Workspace remoto: a aba abre já visível enquanto `fs.read` viaja pela
+    // rede (plano 60, Wave A). Mostra um spinner no lugar do conteúdo até o
+    // primeiro byte chegar, em vez de deixar a tela vazia por segundos.
+    final Widget body = widget.session.loading
+        ? const Center(child: CircularProgressIndicator())
+        : switch (widget.session.view) {
       FileViewMarkdown(:final text) =>
         editingNow
             ? _editor()

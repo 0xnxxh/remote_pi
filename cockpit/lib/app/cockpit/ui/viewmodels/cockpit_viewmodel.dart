@@ -207,6 +207,12 @@ class CockpitViewModel extends ChangeNotifier {
   final TerminalStatusServer _statusServer;
   final ContentSearcher _contentSearcher;
   final TaskTerminalStore _taskTerminals;
+
+  /// Store de terminais de task (app-scoped). Exposto para o call-site remoto
+  /// registrar cada `RemoteTaskRunner` novo (senão o output remoto não alimenta
+  /// a aba — plano 60, Wave D).
+  TaskTerminalStore get taskTerminals => _taskTerminals;
+
   final TerminalScrollbackStore _scrollback;
   final GitCommandRunner _gitRunner;
   final GitDiffReader _gitDiff;
@@ -688,26 +694,7 @@ class CockpitViewModel extends ChangeNotifier {
       final ext = path.contains('.')
           ? path.substring(path.lastIndexOf('.') + 1).toLowerCase()
           : '';
-      const media = {
-        'png',
-        'jpg',
-        'jpeg',
-        'gif',
-        'webp',
-        'bmp',
-        'ico',
-        'mp4',
-        'mov',
-        'mkv',
-        'webm',
-        'mp3',
-        'wav',
-        'flac',
-        'ogg',
-        'm4a',
-        'pdf',
-      };
-      if (media.contains(ext)) return const FileViewUnsupported();
+      if (_kRemoteMediaExts.contains(ext)) return const FileViewUnsupported();
       if (const {'md', 'mdx', 'markdown'}.contains(ext)) {
         return FileViewMarkdown(text);
       }
@@ -1231,6 +1218,26 @@ class CockpitViewModel extends ChangeNotifier {
       }
     }
 
+    // REMOTO: `fs.read` viaja pela rede. Abrimos a aba JÁ visível em loading e
+    // lemos depois (plano 60, Wave A) — em host lento não fica "nada
+    // acontecendo" antes da aba surgir. No local o read é de disco
+    // (instantâneo), então segue read-first, sem skeleton.
+    if (_activeRemoteHost() != null) {
+      await _openRemoteFileLoading(
+        path: path,
+        projectId: projectId,
+        tree: tree,
+        paneId: paneId,
+        isPreview: isPreview,
+        previewCandidate: previewCandidate,
+        revealLine: revealLine,
+        addedLines: addedLines,
+        modifiedLines: modifiedLines,
+        removedLines: removedLines,
+      );
+      return;
+    }
+
     final view = await _readFile(path);
     if (view is FileViewUnsupported) return; // binário/vídeo: não abre
 
@@ -1279,9 +1286,19 @@ class CockpitViewModel extends ChangeNotifier {
     if (revealLine != null) viewer.reveal(revealLine, select: false);
     _sessions[viewer.id] = viewer;
     _watchFileViewer(viewer);
+    _placeNewViewer(viewer, projectId, paneId, tree, isPreview: isPreview);
+  }
 
-    // Se a pane só tem o placeholder vazio, substitui; senão adiciona aba.
-    // Se é preview e a aba ativa é um FileViewer, substitui em vez de adicionar.
+  /// Insere uma aba de viewer recém-criada na pane [paneId]: substitui o
+  /// placeholder vazio ou outro preview, ou adiciona ao lado. Extraído de
+  /// [openFile] para reuso pelo caminho remoto (skeleton, Wave A).
+  void _placeNewViewer(
+    FileViewerSession viewer,
+    String projectId,
+    String paneId,
+    PaneNode tree, {
+    required bool isPreview,
+  }) {
     final current = _trees[projectId] ?? tree;
     final lf = findLeaf(current, paneId);
     final activeTabId = lf?.active;
@@ -1329,6 +1346,109 @@ class CockpitViewModel extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  /// Caminho remoto de [openFile]: cria a aba imediatamente em loading, lê o
+  /// conteúdo pela rede e preenche (ou descarta se ilegível). Preserva a
+  /// semântica de preview.
+  Future<void> _openRemoteFileLoading({
+    required String path,
+    required String projectId,
+    required PaneNode tree,
+    required String paneId,
+    required bool isPreview,
+    required FileViewerSession? previewCandidate,
+    int? revealLine,
+    Set<int>? addedLines,
+    Set<int>? modifiedLines,
+    Set<int>? removedLines,
+  }) async {
+    // Mídia é sempre unsupported no remoto (classificada por extensão em
+    // _readFile) — filtra aqui pra não piscar uma aba que seria descartada.
+    if (_isRemoteMediaPath(path)) return;
+
+    final reused = isPreview && previewCandidate != null;
+    final FileViewerSession target;
+    if (reused) {
+      target = previewCandidate;
+      target.path = path;
+      target.dirty = false;
+      target.revealLine = null;
+      target.loading = true;
+      target.notifyListeners();
+      _trees[projectId] = updateLeaf(
+        tree,
+        paneId,
+        (p) => p.copyWith(active: target.id),
+      );
+      notifyListeners();
+    } else {
+      target = FileViewerSession(
+        id: _nid('v'),
+        projectId: projectId,
+        path: path,
+        view: const FileViewText(''),
+        isPreview: isPreview,
+        loading: true,
+      );
+      _sessions[target.id] = target;
+      _watchFileViewer(target);
+      _placeNewViewer(target, projectId, paneId, tree, isPreview: isPreview);
+    }
+
+    final view = await _readFile(path);
+    // A aba pode ter sido fechada durante o read.
+    if (_sessions[target.id] != target) return;
+    if (view is FileViewUnsupported) {
+      // Ilegível (too_large/permissão/conexão). Aba nova → fecha; preview
+      // reusado → só encerra o loading (mantém o conteúdo anterior).
+      if (reused) {
+        target.loading = false;
+        target.notifyListeners();
+      } else {
+        final leaf = _leafOf(target.id);
+        if (leaf != null) closeTab(leaf, target.id);
+      }
+      return;
+    }
+    if (addedLines != null && modifiedLines != null && removedLines != null) {
+      target.setGitChangeLines(
+        added: addedLines,
+        modified: modifiedLines,
+        removed: removedLines,
+      );
+    }
+    target.view = view;
+    target.loading = false;
+    if (revealLine != null) {
+      target.reveal(revealLine, select: false);
+    } else {
+      target.notifyListeners();
+    }
+  }
+
+  /// Id da pane (folha) que contém a aba [tabId] na árvore ativa, ou `null`.
+  String? _leafOf(String tabId) {
+    final tree = _activeTree;
+    if (tree == null) return null;
+    for (final leaf in leaves(tree)) {
+      if (leaf.tabs.contains(tabId)) return leaf.id;
+    }
+    return null;
+  }
+
+  /// Extensões que o viewer remoto trata como mídia/binário (não abre). Espelha
+  /// a classificação de [_readFile] no ramo remoto.
+  static const Set<String> _kRemoteMediaExts = {
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', //
+    'mp4', 'mov', 'mkv', 'webm', 'mp3', 'wav', 'flac', 'ogg', 'm4a', 'pdf',
+  };
+
+  bool _isRemoteMediaPath(String path) {
+    final ext = path.contains('.')
+        ? path.substring(path.lastIndexOf('.') + 1).toLowerCase()
+        : '';
+    return _kRemoteMediaExts.contains(ext);
   }
 
   /// Abre uma mudanca no arquivo normal, revelando a primeira linha afetada.
