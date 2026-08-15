@@ -103,6 +103,11 @@ dependencies:
   # arrastar/min/max pela nossa barra. macOS/Windows/Linux.
   window_manager: ^0.4.3
 
+  # Topologia de monitores, pra reencaixar a janela salva no arranjo de telas
+  # atual (ver core/domain/services/window_placement.dart). Já vinha transitivo
+  # pelo window_manager; explícito porque agora é usado direto.
+  screen_retriever: ^0.2.0
+
   # Wave 2 — aba de terminal: emulador (absorvido) + PTY nativo (plugin interno).
   # xterm foi ABSORVIDO como módulo interno em lib/app/core/terminal/xterm/
   # (2026-07-19): o upstream (TerminalStudio/xterm.dart) está parado, o projeto
