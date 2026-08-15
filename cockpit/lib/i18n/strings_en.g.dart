@@ -2138,6 +2138,30 @@ class Translations$cockpit$remoteHost$en {
 
 	/// en: 'Edit host'
 	String get editHost => 'Edit host';
+
+	/// en: 'Username'
+	String get userLabel => 'Username';
+
+	/// en: 'Host / IP'
+	String get hostLabel => 'Host / IP';
+
+	/// en: 'Port'
+	String get portLabel => 'Port';
+
+	/// en: 'Authentication'
+	String get authLabel => 'Authentication';
+
+	/// en: 'SSH key'
+	String get authKey => 'SSH key';
+
+	/// en: 'Password'
+	String get authPassword => 'Password';
+
+	/// en: 'Password'
+	String get passwordLabel => 'Password';
+
+	/// en: 'Leave blank to keep current'
+	String get passwordKeep => 'Leave blank to keep current';
 }
 
 // Path: settings.language
@@ -2314,6 +2338,12 @@ class Translations$settings$remoteHosts$en {
 
 	/// en: 'Not connected'
 	String get statusIdle => 'Not connected';
+
+	/// en: 'How it works'
+	String get helpTitle => 'How it works';
+
+	/// en: 'Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys.'
+	String get helpBody => 'Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys.';
 }
 
 // Path: automation.error
@@ -3950,6 +3980,14 @@ extension on Translations {
 			'cockpit.remoteHost.chooseHost' => 'Choose a host',
 			'cockpit.remoteHost.newHostEntry' => 'New host…',
 			'cockpit.remoteHost.editHost' => 'Edit host',
+			'cockpit.remoteHost.userLabel' => 'Username',
+			'cockpit.remoteHost.hostLabel' => 'Host / IP',
+			'cockpit.remoteHost.portLabel' => 'Port',
+			'cockpit.remoteHost.authLabel' => 'Authentication',
+			'cockpit.remoteHost.authKey' => 'SSH key',
+			'cockpit.remoteHost.authPassword' => 'Password',
+			'cockpit.remoteHost.passwordLabel' => 'Password',
+			'cockpit.remoteHost.passwordKeep' => 'Leave blank to keep current',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
@@ -4251,6 +4289,8 @@ extension on Translations {
 			'settings.remoteHosts.statusConnecting' => 'Connecting…',
 			'settings.remoteHosts.statusOffline' => 'Offline',
 			'settings.remoteHosts.statusIdle' => 'Not connected',
+			'settings.remoteHosts.helpTitle' => 'How it works',
+			'settings.remoteHosts.helpBody' => 'Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys.',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} is not installed or is not on PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'Model "${model}" is not available for ${harness}. Choose another model in Settings.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

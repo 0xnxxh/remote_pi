@@ -1065,6 +1065,14 @@ class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHos
 	@override String get chooseHost => 'Elegir un host';
 	@override String get newHostEntry => 'Nuevo host…';
 	@override String get editHost => 'Editar host';
+	@override String get userLabel => 'Usuario';
+	@override String get hostLabel => 'Host / IP';
+	@override String get portLabel => 'Puerto';
+	@override String get authLabel => 'Autenticación';
+	@override String get authKey => 'Clave SSH';
+	@override String get authPassword => 'Contraseña';
+	@override String get passwordLabel => 'Contraseña';
+	@override String get passwordKeep => 'Deja en blanco para mantener la actual';
 }
 
 // Path: settings.language
@@ -1163,6 +1171,8 @@ class _Translations$settings$remoteHosts$es extends Translations$settings$remote
 	@override String get statusConnecting => 'Conectando…';
 	@override String get statusOffline => 'Sin conexión';
 	@override String get statusIdle => 'No conectado';
+	@override String get helpTitle => 'Cómo funciona';
+	@override String get helpBody => 'Cockpit se conecta a tu máquina por SSH y habla con un pequeño servidor que ejecuta las terminales, archivos y git allí. El host debe tener Cockpit (escritorio) o el cockpit-server instalado y en ejecución, y la clave pública de este dispositivo añadida en su ~/.ssh/authorized_keys.';
 }
 
 // Path: automation.error
@@ -2182,6 +2192,14 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.chooseHost' => 'Elegir un host',
 			'cockpit.remoteHost.newHostEntry' => 'Nuevo host…',
 			'cockpit.remoteHost.editHost' => 'Editar host',
+			'cockpit.remoteHost.userLabel' => 'Usuario',
+			'cockpit.remoteHost.hostLabel' => 'Host / IP',
+			'cockpit.remoteHost.portLabel' => 'Puerto',
+			'cockpit.remoteHost.authLabel' => 'Autenticación',
+			'cockpit.remoteHost.authKey' => 'Clave SSH',
+			'cockpit.remoteHost.authPassword' => 'Contraseña',
+			'cockpit.remoteHost.passwordLabel' => 'Contraseña',
+			'cockpit.remoteHost.passwordKeep' => 'Deja en blanco para mantener la actual',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',
@@ -2483,6 +2501,8 @@ extension on TranslationsEs {
 			'settings.remoteHosts.statusConnecting' => 'Conectando…',
 			'settings.remoteHosts.statusOffline' => 'Sin conexión',
 			'settings.remoteHosts.statusIdle' => 'No conectado',
+			'settings.remoteHosts.helpTitle' => 'Cómo funciona',
+			'settings.remoteHosts.helpBody' => 'Cockpit se conecta a tu máquina por SSH y habla con un pequeño servidor que ejecuta las terminales, archivos y git allí. El host debe tener Cockpit (escritorio) o el cockpit-server instalado y en ejecución, y la clave pública de este dispositivo añadida en su ~/.ssh/authorized_keys.',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} no está instalado o no está en el PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'El modelo "${model}" no está disponible para ${harness}. Elige otro modelo en Configuración.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

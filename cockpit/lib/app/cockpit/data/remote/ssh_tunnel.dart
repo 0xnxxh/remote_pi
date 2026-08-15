@@ -29,10 +29,15 @@ class SshTunnel {
 
   /// Sobe o túnel e espera o socket local ficar conectável.
   ///
-  /// `BatchMode=yes`: falha alto se o ssh precisar de senha interativa (a UI
-  /// mostra o erro tipado; a correção é o usuário configurar chave/agent).
+  /// Auth por CHAVE (default, [password] null): `BatchMode=yes` — falha alto se
+  /// o ssh precisar de senha (a UI mostra o erro tipado). Auth por SENHA
+  /// ([password] setado, plano 60 Wave C): injeta a senha via `SSH_ASKPASS`
+  /// (helper efêmero 0600) e aceita host key nova (`accept-new`); nada de senha
+  /// em argv nem em variável de ambiente.
   static Future<SshTunnel> open({
     required String target,
+    int port = 22,
+    String? password,
     String remoteSocketPath = r'$HOME/.cockpit/cockpit-server.sock',
     Duration timeout = const Duration(seconds: 15),
   }) async {
@@ -40,36 +45,39 @@ class SshTunnel {
         '${Directory.systemTemp.path}/cockpit-ssh-'
         '${DateTime.now().microsecondsSinceEpoch}.sock';
 
-    // O forward streamlocal do OpenSSH NÃO resolve path relativo nem expande
-    // `~`/`$HOME` — precisa de path absoluto. Resolvemos a home remota com um
-    // exec rápido antes de abrir o túnel.
-    var resolvedRemote = remoteSocketPath;
-    if (remoteSocketPath.contains(r'$HOME')) {
-      final result = await Process.run('ssh', [
-        '-o',
-        'BatchMode=yes',
-        target,
-        r'printf %s "$HOME"',
-      ]);
-      if (result.exitCode != 0) {
-        throw SshTunnelException((result.stderr as String).trim());
-      }
-      resolvedRemote = remoteSocketPath.replaceFirst(
-        r'$HOME',
-        (result.stdout as String).trim(),
-      );
-    }
+    final askpass = await _Askpass.create(password);
+    final authOpts = _authOpts(port: port, usingPassword: password != null);
 
-    final process = await Process.start('ssh', [
-      '-N', // só forward, sem shell
-      '-o', 'BatchMode=yes',
-      '-o', 'ExitOnForwardFailure=yes',
-      '-o', 'ServerAliveInterval=10',
-      '-o', 'ServerAliveCountMax=3',
-      '-o', 'StreamLocalBindUnlink=yes',
-      '-L', '$localPath:$resolvedRemote',
-      target,
-    ]);
+    try {
+      // O forward streamlocal do OpenSSH NÃO resolve path relativo nem expande
+      // `~`/`$HOME` — precisa de path absoluto. Resolvemos a home remota com um
+      // exec rápido antes de abrir o túnel.
+      var resolvedRemote = remoteSocketPath;
+      if (remoteSocketPath.contains(r'$HOME')) {
+        final result = await Process.run('ssh', [
+          ...authOpts,
+          target,
+          r'printf %s "$HOME"',
+        ], environment: askpass?.env);
+        if (result.exitCode != 0) {
+          throw SshTunnelException((result.stderr as String).trim());
+        }
+        resolvedRemote = remoteSocketPath.replaceFirst(
+          r'$HOME',
+          (result.stdout as String).trim(),
+        );
+      }
+
+      final process = await Process.start('ssh', [
+        '-N', // só forward, sem shell
+        ...authOpts,
+        '-o', 'ExitOnForwardFailure=yes',
+        '-o', 'ServerAliveInterval=10',
+        '-o', 'ServerAliveCountMax=3',
+        '-o', 'StreamLocalBindUnlink=yes',
+        '-L', '$localPath:$resolvedRemote',
+        target,
+      ], environment: askpass?.env);
 
     final stderrBuffer = StringBuffer();
     process.stderr.transform(utf8.decoder).listen(stderrBuffer.write);
@@ -96,10 +104,26 @@ class SshTunnel {
           'timeout waiting for tunnel; ${stderrBuffer.toString().trim()}',
         );
       }
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      return tunnel;
+    } finally {
+      // Auth já ocorreu (o socket apareceu, ou falhou/estourou) — o helper de
+      // senha não é mais necessário. Removê-lo evita deixar a senha no disco.
+      await askpass?.dispose();
     }
-    return tunnel;
   }
+
+  /// Opções de auth comuns aos execs/forward: porta custom + BatchMode (chave)
+  /// ou aceite de host key novo (senha, que chega via SSH_ASKPASS).
+  static List<String> _authOpts({
+    required int port,
+    required bool usingPassword,
+  }) => [
+    if (port != 22) ...['-p', '$port'],
+    if (usingPassword) ...['-o', 'StrictHostKeyChecking=accept-new']
+    else ...['-o', 'BatchMode=yes'],
+  ];
 
   /// Executa um comando no host remoto pelo MESMO ssh do sistema (usado pelo
   /// bootstrap "Install server"). Retorna (exitCode, stderr).
@@ -107,21 +131,27 @@ class SshTunnel {
     String target,
     String command, {
     List<int>? stdinBytes,
+    int port = 22,
+    String? password,
   }) async {
-    final process = await Process.start('ssh', [
-      '-o',
-      'BatchMode=yes',
-      target,
-      command,
-    ]);
-    if (stdinBytes != null) {
-      process.stdin.add(stdinBytes);
+    final askpass = await _Askpass.create(password);
+    try {
+      final process = await Process.start('ssh', [
+        ..._authOpts(port: port, usingPassword: password != null),
+        target,
+        command,
+      ], environment: askpass?.env);
+      if (stdinBytes != null) {
+        process.stdin.add(stdinBytes);
+      }
+      await process.stdin.close();
+      final stderrText = await process.stderr.transform(utf8.decoder).join();
+      unawaited(process.stdout.drain<void>());
+      final code = await process.exitCode;
+      return (code, stderrText.trim());
+    } finally {
+      await askpass?.dispose();
     }
-    await process.stdin.close();
-    final stderrText = await process.stderr.transform(utf8.decoder).join();
-    unawaited(process.stdout.drain<void>());
-    final code = await process.exitCode;
-    return (code, stderrText.trim());
   }
 
   Future<void> close() async {
@@ -129,6 +159,49 @@ class SshTunnel {
     await _closed.future;
     try {
       File(localSocketPath).deleteSync();
+    } catch (_) {
+      // já removido.
+    }
+  }
+}
+
+/// Injeção de senha no `ssh` do sistema via `SSH_ASKPASS` (plano 60, Wave C).
+/// Escreve a senha num arquivo temporário 0600 e um helper 0700 que faz `cat`
+/// dele; o ssh chama o helper quando pede a senha. `SSH_ASKPASS_REQUIRE=force`
+/// (OpenSSH 8.4+) dispensa tty/DISPLAY. A senha nunca vai pra argv nem env — só
+/// pro arquivo protegido, apagado em [dispose] após a autenticação.
+class _Askpass {
+  _Askpass._(this._pwFile, this._helper, this.env);
+
+  final File _pwFile;
+  final File _helper;
+  final Map<String, String> env;
+
+  static Future<_Askpass?> create(String? password) async {
+    if (password == null || password.isEmpty) return null;
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final base = Directory.systemTemp.path;
+    final pwFile = File('$base/cockpit-ssh-pw-$stamp');
+    await pwFile.writeAsString(password, flush: true);
+    final helper = File('$base/cockpit-ssh-askpass-$stamp.sh');
+    await helper.writeAsString(
+      '#!/bin/sh\ncat "${pwFile.path}"\n',
+      flush: true,
+    );
+    await Process.run('chmod', ['600', pwFile.path]);
+    await Process.run('chmod', ['700', helper.path]);
+    return _Askpass._(pwFile, helper, {
+      'SSH_ASKPASS': helper.path,
+      'SSH_ASKPASS_REQUIRE': 'force',
+      // Fallback pra OpenSSH < 8.4 (que exige DISPLAY setado pra usar askpass).
+      'DISPLAY': ':0',
+    });
+  }
+
+  Future<void> dispose() async {
+    try {
+      if (_pwFile.existsSync()) _pwFile.deleteSync();
+      if (_helper.existsSync()) _helper.deleteSync();
     } catch (_) {
       // já removido.
     }

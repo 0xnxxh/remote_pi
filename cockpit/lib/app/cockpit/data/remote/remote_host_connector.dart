@@ -49,7 +49,11 @@ class RemoteHostException implements Exception {
 /// 3. serviço pronto. Queda do túnel → [phase] = reconnecting e retry com
 ///    backoff; sessões sobrevivem no servidor remoto (semântica tmux).
 class RemoteHostConnector {
-  RemoteHostConnector(this.host, {required this.localServerBinaryResolver});
+  RemoteHostConnector(
+    this.host, {
+    required this.localServerBinaryResolver,
+    this.passwordResolver,
+  });
 
   final RemoteHost host;
 
@@ -58,8 +62,15 @@ class RemoteHostConnector {
   /// arch remota é o `--version` pós-instalação falhar alto.
   final String? Function() localServerBinaryResolver;
 
+  /// Resolve a senha SSH do host (auth por senha), lida do Keychain sob
+  /// demanda. `null` = auth por chave (default). Plano 60, Wave C.
+  final Future<String?> Function()? passwordResolver;
+
   SshTunnel? _tunnel;
   DartSshHostConnection? _dartConn;
+
+  /// Senha resolvida na abertura atual (auth por senha); só em memória.
+  String? _password;
   RemoteConnection? _connection;
   RemoteTerminalService? _service;
   Future<RemoteTerminalService>? _inflight;
@@ -110,12 +121,19 @@ class RemoteHostConnector {
           ? RemoteHostPhase.reconnecting
           : RemoteHostPhase.openingTunnel,
     );
+    // Senha (auth por senha) lida do Keychain uma vez por abertura; null =
+    // auth por chave. Guardada só em memória, pro bootstrap reusar.
+    _password = await passwordResolver?.call();
     // Mobile (plano 59): transporte dartssh2 (Dart puro), sem binário `ssh` nem
     // bootstrap (decisão D — não instala server). Desktop segue no system-ssh.
     if (isMobilePlatform) return _openMobile();
     final SshTunnel tunnel;
     try {
-      tunnel = await SshTunnel.open(target: host.sshTarget);
+      tunnel = await SshTunnel.open(
+        target: host.sshTarget,
+        port: host.port,
+        password: _password,
+      );
     } on SshTunnelException catch (e) {
       _setPhase(RemoteHostPhase.failed);
       throw RemoteHostException(RemoteHostErrorKind.sshUnreachable, e.detail);
@@ -147,15 +165,16 @@ class RemoteHostConnector {
   /// encaminha pro socket UNIX remoto. Sem bootstrap — se o server não está lá,
   /// falha com erro claro (o mobile não instala server, decisão D).
   Future<RemoteTerminalService> _openMobile() async {
-    final SshEndpoint endpoint;
-    try {
-      endpoint = SshEndpoint.parse(host.sshTarget);
-    } on DartSshException catch (e) {
+    // sshTarget é `user@host` (sem porta); a porta vive em host.port.
+    if (host.user.isEmpty || host.host.isEmpty) {
       _setPhase(RemoteHostPhase.failed);
-      throw RemoteHostException(RemoteHostErrorKind.sshUnreachable, e.code);
+      throw const RemoteHostException(
+        RemoteHostErrorKind.sshUnreachable,
+        'ssh_target_no_user',
+      );
     }
-
-    final conn = DartSshHostConnection(endpoint);
+    final endpoint = SshEndpoint(host.user, host.host, host.port);
+    final conn = DartSshHostConnection(endpoint, password: _password);
     try {
       await conn.connect();
     } on DartSshException catch (e) {
@@ -252,6 +271,8 @@ class RemoteHostConnector {
         'mkdir -p ~/.cockpit/server/bin ~/.cockpit/server/lib && '
         'cat > $remote && chmod +x $remote',
         stdinBytes: bytes,
+        port: host.port,
+        password: _password,
       );
       if (code != 0) {
         throw RemoteHostException(
@@ -278,6 +299,8 @@ class RemoteHostConnector {
       '--socket \$HOME/.cockpit/cockpit-server.sock '
       '--exit-on-idle $_remoteIdleSeconds '
       '>/dev/null 2>&1 & echo started',
+      port: host.port,
+      password: _password,
     );
     if (code != 0) {
       throw RemoteHostException(

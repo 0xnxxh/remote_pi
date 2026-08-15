@@ -107,9 +107,12 @@ terminal da aba). "Não aparece retorno" é runtime.
       leak é harness/modo-específico (provável no mouse-reporting/alt-buffer,
       onde o touch fica sem caminho de scroll). PRECISA de repro no device pra
       corrigir sem regressão no desktop (plataforma primária)
-- [ ] C1 — seção de ajuda + chave pública na aba Remote hosts
-- [ ] C2 — campos separados user/host/porta (migração de hosts existentes)
-- [ ] C3 — auth por senha no Keychain (mobile + desktop via SSH_ASKPASS)
+- [x] C1 — seção de ajuda (requisito cockpit/server + chave) na aba Remote hosts
+- [x] C2 — campos separados user/host/porta; `port` na entidade (fromJson
+      retrocompat: legado `user@host:porta` migra; teste em remote_host_test)
+- [x] C3 — auth por senha no Keychain (mobile via dartssh2 onPasswordRequest;
+      desktop via SSH_ASKPASS + host key accept-new). Desktop PRECISA de repro
+      num host só-senha (não validável nesta sessão)
 - [x] D1 — causa do output de task remota diagnosticada (`TaskTerminalStore` só
       assinava o runner local; runner remoto nunca era observado)
 - [x] D2 — output de task remota aparece na aba no mobile (store observa N

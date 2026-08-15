@@ -61,12 +61,18 @@ class DartSshHostConnection {
     this._endpoint, {
     MobileSshKeyStore? keyStore,
     FlutterSecureStorage? storage,
+    String? password,
   }) : _keyStore = keyStore ?? MobileSshKeyStore(),
-       _storage = storage ?? const FlutterSecureStorage();
+       _storage = storage ?? const FlutterSecureStorage(),
+       _password = password; // ignore: prefer_initializing_formals
 
   final SshEndpoint _endpoint;
   final MobileSshKeyStore _keyStore;
   final FlutterSecureStorage _storage;
+
+  /// Senha (auth por senha, plano 60 Wave C). `null` = auth por chave do
+  /// dispositivo. Nunca logada; vem do Keychain via o connector.
+  final String? _password;
 
   SSHClient? _client;
 
@@ -92,7 +98,11 @@ class DartSshHostConnection {
       client = SSHClient(
         socket,
         username: _endpoint.user,
-        identities: identities,
+        // Auth por senha: sem identidades (evita tentar a chave do device e
+        // falhar antes de chegar na senha). Auth por chave: identidades do
+        // Keychain, sem callback de senha.
+        identities: _password != null ? const [] : identities,
+        onPasswordRequest: _password != null ? () => _password : null,
         onVerifyHostKey: (type, fingerprint) async {
           final printed = utf8.decode(fingerprint);
           final key = '$_hostKeyPrefix${_endpoint.endpoint}';

@@ -944,7 +944,13 @@ class _CockpitPageState extends State<CockpitPage> {
   Future<RemoteHost?> _addRemoteHost(CockpitViewModel vm) async {
     final draft = await showAddRemoteHostDialog(context);
     if (draft == null) return null;
-    await vm.addRemoteHost(name: draft.name, sshTarget: draft.sshTarget);
+    await vm.addRemoteHost(
+      name: draft.name,
+      sshTarget: draft.sshTarget,
+      port: draft.port,
+      auth: draft.auth,
+      password: draft.password,
+    );
     return vm.remoteHosts.hosts
         .where((h) => h.sshTarget == draft.sshTarget)
         .cast<RemoteHost?>()

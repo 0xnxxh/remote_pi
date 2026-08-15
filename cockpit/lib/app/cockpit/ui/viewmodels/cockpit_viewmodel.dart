@@ -2625,8 +2625,17 @@ class CockpitViewModel extends ChangeNotifier {
   Future<void> addRemoteHost({
     required String name,
     required String sshTarget,
+    int port = 22,
+    RemoteHostAuth auth = RemoteHostAuth.key,
+    String? password,
   }) async {
-    await _remoteHosts.addHost(name: name, sshTarget: sshTarget);
+    await _remoteHosts.addHost(
+      name: name,
+      sshTarget: sshTarget,
+      port: port,
+      auth: auth,
+      password: password,
+    );
     notifyListeners();
   }
 

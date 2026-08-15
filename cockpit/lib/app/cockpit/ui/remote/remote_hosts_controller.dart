@@ -1,5 +1,6 @@
 import 'package:cockpit/app/cockpit/data/remote/mobile_ssh_key_store.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_host_password_store.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
@@ -21,6 +22,7 @@ class RemoteHostsController extends ChangeNotifier {
   final RemoteHostsStore _store;
   final Map<String, RemoteHostConnector> _connectors = {};
   final MobileSshKeyStore _deviceKeys = MobileSshKeyStore();
+  final RemoteHostPasswordStore _passwords = RemoteHostPasswordStore();
 
   /// Linha `authorized_keys` da chave deste dispositivo (mobile): o usuário cola
   /// no `~/.ssh/authorized_keys` do host pra autorizar o iPad/Android. Gera a
@@ -34,6 +36,11 @@ class RemoteHostsController extends ChangeNotifier {
     () => RemoteHostConnector(
       host,
       localServerBinaryResolver: _resolveLocalServerBinary,
+      // Senha (auth por senha) lida do Keychain sob demanda; null pra auth por
+      // chave. Fica fora do JSON de hosts (decisão A).
+      passwordResolver: host.auth == RemoteHostAuth.password
+          ? () => _passwords.read(host.id)
+          : null,
     ),
   );
 
@@ -73,11 +80,29 @@ class RemoteHostsController extends ChangeNotifier {
   Future<void> addHost({
     required String name,
     required String sshTarget,
+    int port = 22,
+    RemoteHostAuth auth = RemoteHostAuth.key,
+    String? password,
   }) async {
-    final host = RemoteHost(id: _nextId(), name: name, sshTarget: sshTarget);
+    final id = _nextId();
+    final host = RemoteHost(
+      id: id,
+      name: name,
+      sshTarget: sshTarget,
+      port: port,
+      auth: auth,
+    );
+    if (auth == RemoteHostAuth.password) {
+      await _passwords.write(id, password);
+    }
     await _store.save(host);
     notifyListeners();
   }
+
+  /// Há senha guardada no Keychain para este host? (pro dialog de edição saber
+  /// se pode manter a atual sem re-digitar.)
+  Future<bool> hasStoredPassword(String hostId) async =>
+      (await _passwords.read(hostId))?.isNotEmpty ?? false;
 
   /// Pins de workspace remoto (pastas fixadas).
   List<RemoteWorkspacePin> get pins => _store.pins();
@@ -150,12 +175,16 @@ class RemoteHostsController extends ChangeNotifier {
     return idx < 0 ? trimmed : trimmed.substring(idx + 1);
   }
 
-  /// Edita nome e/ou destino SSH de um host (mesmo id). Trocar o `sshTarget`
-  /// derruba a conexão viva (o connector é recriado no próximo uso).
+  /// Edita nome, endpoint (host/porta) e/ou auth de um host (mesmo id). Qualquer
+  /// mudança de endpoint/auth derruba a conexão viva (recriada no próximo uso).
+  /// [password] `null` mantém a senha guardada; string nova a substitui.
   Future<void> editHost(
     String id, {
     String? name,
     String? sshTarget,
+    int? port,
+    RemoteHostAuth? auth,
+    String? password,
   }) async {
     RemoteHost? host;
     for (final h in _store.hosts()) {
@@ -165,15 +194,36 @@ class RemoteHostsController extends ChangeNotifier {
       }
     }
     if (host == null) return;
-    final newName = (name?.trim().isNotEmpty ?? false) ? name!.trim() : host.name;
-    final newTarget =
-        (sshTarget?.trim().isNotEmpty ?? false) ? sshTarget!.trim() : host.sshTarget;
-    if (newTarget != host.sshTarget) {
-      // Endpoint mudou → a conexão atual não vale mais.
+    final newName =
+        (name?.trim().isNotEmpty ?? false) ? name!.trim() : host.name;
+    final newTarget = (sshTarget?.trim().isNotEmpty ?? false)
+        ? sshTarget!.trim()
+        : host.sshTarget;
+    final newPort = port ?? host.port;
+    final newAuth = auth ?? host.auth;
+
+    // Senha: aplica a nova se veio; some do Keychain ao trocar pra chave.
+    if (newAuth == RemoteHostAuth.password) {
+      if (password != null && password.isNotEmpty) {
+        await _passwords.write(id, password);
+      }
+    } else {
+      await _passwords.remove(id);
+    }
+
+    if (newTarget != host.sshTarget ||
+        newPort != host.port ||
+        newAuth != host.auth) {
+      // Endpoint/auth mudou → a conexão atual não vale mais.
       await _connectors.remove(id)?.dispose();
     }
     await _store.save(
-      RemoteHost(id: id, name: newName, sshTarget: newTarget),
+      host.copyWith(
+        name: newName,
+        sshTarget: newTarget,
+        port: newPort,
+        auth: newAuth,
+      ),
     );
     notifyListeners();
   }
@@ -184,6 +234,7 @@ class RemoteHostsController extends ChangeNotifier {
       await _store.removePin(pin.id);
     }
     await _connectors.remove(id)?.dispose();
+    await _passwords.remove(id);
     await _store.remove(id);
     notifyListeners();
   }

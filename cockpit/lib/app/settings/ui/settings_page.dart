@@ -1944,6 +1944,16 @@ class _RemoteHostsPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Ajuda: a pessoa precisa saber que o host tem que ter o Cockpit
+              // (desktop) ou o cockpit-server instalado + a chave autorizada.
+              _Section(
+                label: tr.helpTitle,
+                child: _Card(
+                  children: [
+                    _Row(title: tr.helpTitle, description: tr.helpBody),
+                  ],
+                ),
+              ),
               // Chave do dispositivo (mobile): o iPad/Android não tem ~/.ssh,
               // então mostramos a pública gerada pra o usuário autorizar no host.
               if (isMobilePlatform) _DeviceKeySection(controller: controller),
@@ -2026,7 +2036,13 @@ class _RemoteHostsPanel extends StatelessWidget {
   ) async {
     final draft = await showAddRemoteHostDialog(context);
     if (draft == null) return;
-    await controller.addHost(name: draft.name, sshTarget: draft.sshTarget);
+    await controller.addHost(
+      name: draft.name,
+      sshTarget: draft.sshTarget,
+      port: draft.port,
+      auth: draft.auth,
+      password: draft.password,
+    );
   }
 
   Future<void> _edit(
@@ -2034,10 +2050,15 @@ class _RemoteHostsPanel extends StatelessWidget {
     RemoteHostsController controller,
     RemoteHost host,
   ) async {
+    final hasPassword = await controller.hasStoredPassword(host.id);
+    if (!context.mounted) return;
     final draft = await showAddRemoteHostDialog(
       context,
       initialName: host.name,
       initialSshTarget: host.sshTarget,
+      initialPort: host.port,
+      initialAuth: host.auth,
+      hasStoredPassword: hasPassword,
       edit: true,
     );
     if (draft == null) return;
@@ -2045,6 +2066,9 @@ class _RemoteHostsPanel extends StatelessWidget {
       host.id,
       name: draft.name,
       sshTarget: draft.sshTarget,
+      port: draft.port,
+      auth: draft.auth,
+      password: draft.password,
     );
   }
 
@@ -2215,10 +2239,10 @@ class _Card extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.title, required this.trailing, this.description});
+  const _Row({required this.title, this.trailing, this.description});
   final String title;
   final String? description;
-  final Widget trailing;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -2249,8 +2273,10 @@ class _Row extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          trailing,
+          if (trailing != null) ...[
+            const SizedBox(width: 16),
+            trailing!,
+          ],
         ],
       ),
     );
