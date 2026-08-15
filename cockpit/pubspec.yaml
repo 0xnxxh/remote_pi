@@ -239,6 +239,19 @@ dev_dependencies:
   # Codegen do i18n: lê lib/i18n/*.i18n.json (config em slang.yaml) e gera
   # lib/i18n/strings.g.dart. Rodar via `dart run slang`.
   slang: ^4.18.0
+  # Gera os ícones de app iOS/Android a partir do ícone único (plano 60, Wave
+  # E). Só mobile — macOS/Windows mantêm os próprios. Rodar via
+  # `dart run flutter_launcher_icons`.
+  flutter_launcher_icons: ^0.14.4
+
+# Ícone do app mobile (plano 60, Wave E). Fonte = o ícone real do desktop; o
+# mesmo símbolo, gerado nos tamanhos de iOS/Android. `remove_alpha_ios` porque
+# a App Store rejeita ícone com canal alfa.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

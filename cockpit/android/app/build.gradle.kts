@@ -40,6 +40,12 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+        debug {
+            // Espelha o `.debug` do macOS (plano 60, Wave E): o build debug
+            // instala lado a lado do release e isola dados (Keychain/storage),
+            // pra E2E no device nao colidir com o app instalado.
+            applicationIdSuffix = ".debug"
+        }
     }
 }
 
