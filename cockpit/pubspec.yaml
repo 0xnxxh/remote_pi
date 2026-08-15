@@ -319,17 +319,23 @@ dependency_overrides:
   #
   # Voltar pro pub.dev quando elias8/libghostty#119 e #120 forem merjados e
   # sair release.
-  # Tag unificada (mesma ref para os dois pacotes) = upstream main + scroll.
-  # Atualizada para o main atual do upstream: os fixes de IME (#126),
-  # git-isolation (#120) e CPU baseline (#132) JA foram merjados upstream, entao
-  # nao sao mais cherry-picks nossos; a ref agora e main + o unico pendente
-  # (scroll de TUI, PR #119 ainda aberto). Traz tambem as novidades do main
-  # (libghostty v0.0.12 / flterm v0.0.5, scrollback limits, notifications,
-  # progress reports, upgrade do ffigen, fixes de iOS). ghostty.version novo
-  # (4d605bf) recompila via source: compile (Zig 0.16.0, ja no CI).
+  # Tag unificada (mesma ref para os dois pacotes) = upstream main @611cf21 +
+  # 1 patch nosso. TODOS os nossos fixes antigos (scroll, IME, git-isolation,
+  # CPU baseline) ja estao no upstream main: o scroll foi absorvido pelo
+  # refactor #143 (scroll_gesture_region), os outros 3 merjados (#120/#126/#132).
+  # O main tras tambem o refactor de controller/view (#143/#144), suporte a
+  # Flutter 3.47 (#142) e novas APIs (notifications, progress reports).
   #
-  # Quando #119 merjar e sair uma release contendo scroll + IME + CPU baseline,
-  # trocar tudo isto por versoes do pub.dev e remover os overrides git.
+  # O unico patch que ainda carregamos: recuperacao do text input quando uma
+  # delta desincroniza do sentinel — no iOS, digitar um acento congelava toda a
+  # digitacao (setEditingState ignorado -> delta.apply estoura -> canal morre).
+  #
+  # ATENCAO CI: ao trocar esta ref muda o ghostty.version; o cache de native
+  # asset (.dart_tool/hooks_runner, build/native_assets) precisa ser invalidado,
+  # senao a dylib velha crasha o processo (exit -10) ao carregar os bindings novos.
+  #
+  # Quando sair release do flterm com o refactor + nosso patch de iOS (ou o
+  # patch for merjado upstream), trocar por versoes do pub.dev e remover os git.
   flterm:
     git:
       url: https://github.com/jacobaraujo7/libghostty.git
