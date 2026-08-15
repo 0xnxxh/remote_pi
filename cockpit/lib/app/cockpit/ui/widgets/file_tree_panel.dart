@@ -27,6 +27,7 @@ import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_modular/flutter_modular.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 typedef GenerateCommitMessage =
@@ -1688,10 +1689,9 @@ class _DirViewState extends State<_DirView> {
           if (node.isDirectory)
             // Arrastável (mover pra outra pasta / citar no composer) e também
             // alvo de drop (o DragTarget fica dentro do _Folder, na linha).
-            Draggable<String>(
-              data: node.path,
-              dragAnchorStrategy: pointerDragAnchorStrategy,
-              feedback: _FileChip(name: node.name),
+            _NodeDraggable(
+              path: node.path,
+              name: node.name,
               child: _Folder(
                 node: node,
                 depth: widget.depth,
@@ -1701,10 +1701,9 @@ class _DirViewState extends State<_DirView> {
             )
           else
             // Arrasta o arquivo até o input (vira `@<rel>`).
-            Draggable<String>(
-              data: node.path,
-              dragAnchorStrategy: pointerDragAnchorStrategy,
-              feedback: _FileChip(name: node.name),
+            _NodeDraggable(
+              path: node.path,
+              name: node.name,
               child: _Row(
                 depth: widget.depth,
                 isFolder: false,
@@ -3249,6 +3248,39 @@ class _HeaderIcon extends StatelessWidget {
 }
 
 /// Chip que segue o cursor ao arrastar um arquivo do painel pro input.
+/// Torna um nó da árvore arrastável (mover pra outra pasta / citar no
+/// composer). No DESKTOP o arraste é imediato; no MOBILE só após long-press,
+/// pra um swipe de scroll por toque não virar drag-drop (plano 60, Wave B1).
+class _NodeDraggable extends StatelessWidget {
+  const _NodeDraggable({
+    required this.path,
+    required this.name,
+    required this.child,
+  });
+
+  final String path;
+  final String name;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isMobilePlatform) {
+      return LongPressDraggable<String>(
+        data: path,
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: _FileChip(name: name),
+        child: child,
+      );
+    }
+    return Draggable<String>(
+      data: path,
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      feedback: _FileChip(name: name),
+      child: child,
+    );
+  }
+}
+
 class _FileChip extends StatelessWidget {
   const _FileChip({required this.name});
   final String name;

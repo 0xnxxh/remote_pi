@@ -5,6 +5,7 @@ import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/update_card.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/workspace_avatar.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -1714,27 +1715,47 @@ class _WorkspaceReorderableState extends State<_WorkspaceReorderable> {
       },
       builder: (context, candidate, rejected) {
         final caret = candidate.isNotEmpty ? _before : null;
+        final feedback = Transform.translate(
+          offset: const Offset(10, 8),
+          child: _WorkspaceDragChip(
+            title: widget.title,
+            colorValue: widget.colorValue,
+            initial: widget.initial,
+            imagePath: widget.imagePath,
+          ),
+        );
         return Stack(
           children: [
-            // Click-drag imediato pra reposicionar (sem segurar). No desktop a
-            // rolagem do rail é via roda/trackpad (PointerScroll, não gesto de
-            // arrasto), então o Draggable imediato não briga com o scroll; o tap
-            // continua selecionando e o botão de menu continua abrindo.
-            Draggable<String>(
-              data: widget.projectId,
-              dragAnchorStrategy: pointerDragAnchorStrategy,
-              feedback: Transform.translate(
-                offset: const Offset(10, 8),
-                child: _WorkspaceDragChip(
-                  title: widget.title,
-                  colorValue: widget.colorValue,
-                  initial: widget.initial,
-                  imagePath: widget.imagePath,
+            // No DESKTOP a rolagem do rail é via roda/trackpad (PointerScroll,
+            // não gesto de arrasto), então o Draggable imediato no item inteiro
+            // não briga com o scroll. No MOBILE (touch) isso brigaria: um swipe
+            // vertical pra rolar viraria drag-drop. Por isso, no mobile o item
+            // NÃO é arrastável — só rola/seleciona — e o reorder sai por um
+            // handle dedicado (plano 60, Wave B1, decisão B).
+            if (isMobilePlatform)
+              widget.child
+            else
+              Draggable<String>(
+                data: widget.projectId,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                feedback: feedback,
+                childWhenDragging: Opacity(opacity: 0.3, child: widget.child),
+                child: widget.child,
+              ),
+            if (isMobilePlatform)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Draggable<String>(
+                    data: widget.projectId,
+                    dragAnchorStrategy: pointerDragAnchorStrategy,
+                    feedback: feedback,
+                    child: _ReorderHandle(color: colors.text3),
+                  ),
                 ),
               ),
-              childWhenDragging: Opacity(opacity: 0.3, child: widget.child),
-              child: widget.child,
-            ),
             if (caret != null)
               Positioned(
                 left: 8,
@@ -1752,6 +1773,22 @@ class _WorkspaceReorderableState extends State<_WorkspaceReorderable> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Handle de reordenação (só mobile): a única região que inicia o drag-drop do
+/// workspace. Fica na borda direita do item; o resto rola/seleciona por toque.
+class _ReorderHandle extends StatelessWidget {
+  const _ReorderHandle({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(Icons.drag_indicator, size: 18, color: color),
     );
   }
 }

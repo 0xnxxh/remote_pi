@@ -99,8 +99,14 @@ terminal da aba). "Não aparece retorno" é runtime.
 
 - [x] A1 — dialog de add workspace abre em loading imediato
 - [x] A2 — abrir arquivo mostra aba com skeleton na hora
-- [ ] B1 — reorder de panes por handle no mobile (scroll livre)
-- [ ] B2 — scroll de 1 dedo no terminal sem virar seleção; long-press seleciona
+- [x] B1 — reorder por handle no rail (mobile); árvore de arquivos usa
+      long-press pra iniciar o move (swipe simples rola)
+- [ ] B2 — scroll de 1 dedo no terminal sem virar seleção. Investigado: as
+      camadas do Cockpit já ignoram touch pra seleção (`terminal_pane` retorna
+      cedo em `PointerDeviceKind.touch`; `CockpitTerminal` só rola no touch). O
+      leak é harness/modo-específico (provável no mouse-reporting/alt-buffer,
+      onde o touch fica sem caminho de scroll). PRECISA de repro no device pra
+      corrigir sem regressão no desktop (plataforma primária)
 - [ ] C1 — seção de ajuda + chave pública na aba Remote hosts
 - [ ] C2 — campos separados user/host/porta (migração de hosts existentes)
 - [ ] C3 — auth por senha no Keychain (mobile + desktop via SSH_ASKPASS)
