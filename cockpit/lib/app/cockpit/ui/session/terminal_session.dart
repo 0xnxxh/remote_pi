@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
+import 'package:cockpit/app/cockpit/domain/entities/terminal_harness.dart';
+import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
@@ -37,8 +39,10 @@ class TerminalSession extends PaneItem {
     String? replay,
     String? startupCommand,
     TerminalEngine engine = TerminalEngine.xterm,
+    TerminalHarnessMonitor? monitor,
   }) : _gateway = gateway,
        _scrollback = scrollbackStore,
+       _monitor = monitor,
        _title = title ?? 'New terminal' {
     // O `ShiftEnterInputHandler` (antes do padrão) faz Shift+Enter virar quebra
     // de linha nos harnesses (claude, codex, pi) em vez de submeter; ele lê o
@@ -91,6 +95,9 @@ class TerminalSession extends PaneItem {
         terminal.write(batch);
         _record(batch); // grava o scrollback pra replay no próximo boot.
         _trackCwd(batch); // rastreia o cwd vivo (OSC 7) pra restaurar nele.
+        // Saída do PTY costuma coincidir com spawn/troca de processo em
+        // foreground — reavalia o ícone sem esperar o timer de baseline.
+        _kickHarnessMonitor();
       },
     );
     _sub = _gateway.output
@@ -101,11 +108,18 @@ class TerminalSession extends PaneItem {
       final text = utf8.decode(data, allowMalformed: true);
       _maybeInterrupt(text);
       _gateway.write(data);
+      // Enter (e equivalentes) = comando submetido → processo pode nascer já.
+      if (text.contains('\r') || text.contains('\n')) {
+        _kickHarnessMonitor(burst: true);
+      }
     };
     terminal.onResize = (columns, rows) => _gateway.resize(rows, columns);
     // Programas mudam o título da janela via OSC 0/2 (ex.: shell mostra o cwd,
     // `vim`/`ssh` mostram o arquivo/host). Refletimos isso no nome da aba.
-    terminal.onTitleChanged = (osc) => rename(_shortTitle(osc));
+    terminal.onTitleChanged = (osc) {
+      rename(_shortTitle(osc));
+      _kickHarnessMonitor();
+    };
 
     // Restauração de aba que rodava um harness (ex.: `claude --resume <sid>`):
     // digita o comando no shell novo. Espera o shell de login (`-l`, que lê
@@ -115,8 +129,21 @@ class TerminalSession extends PaneItem {
     if (startupCommand != null && startupCommand.isNotEmpty) {
       _startupTimer = Timer(const Duration(milliseconds: 600), () {
         _gateway.write(utf8.encode('$startupCommand\r'));
+        _kickHarnessMonitor(burst: true);
       });
     }
+
+    _monitor?.registerSession(
+      sessionId: id,
+      rootPid: () => _gateway.rootProcessId,
+      wslDistro: profile.wslDistro,
+      onHarnessChanged: (newHarness) {
+        if (_activeHarness != newHarness) {
+          _activeHarness = newHarness;
+          notifyListeners();
+        }
+      },
+    );
   }
 
   /// Disparado quando o turno entra em `idle` ou `waiting` (terminou ou precisa
@@ -131,6 +158,9 @@ class TerminalSession extends PaneItem {
 
   TerminalStatus _status = TerminalStatus.idle;
   TerminalStatus get status => _status;
+
+  TerminalHarnessKind? _activeHarness;
+  TerminalHarnessKind? get activeHarness => _activeHarness;
 
   /// `true` enquanto o harness está processando um turno (acende o spinner).
   @override
@@ -274,6 +304,7 @@ class TerminalSession extends PaneItem {
   final String workingDirectory;
 
   final TerminalGateway _gateway;
+  final TerminalHarnessMonitor? _monitor;
   final KittyKeyboardTracker _kitty = KittyKeyboardTracker();
   late final PtyOutputCoalescer _coalescer;
 
@@ -290,6 +321,8 @@ class TerminalSession extends PaneItem {
     onQuiet: () => unawaited(_flush()),
   );
   Timer? _startupTimer;
+  final List<Timer> _harnessKickTimers = <Timer>[];
+  DateTime? _lastHarnessKickAt;
 
   /// ~2.5 MB ≈ 10000 linhas (casa com `maxLines`). Acima disso, corta a frente.
   static const int _kMaxRecordChars = 2500000;
@@ -389,6 +422,39 @@ class TerminalSession extends PaneItem {
     _saveDebounce.trigger();
   }
 
+  /// Pede ao monitor uma reavaliação imediata do harness. Com [burst], agenda
+  /// retries curtos para cobrir a corrida entre submit e o filho aparecer em
+  /// `/proc` (fork+exec ainda em andamento no 1º poll).
+  void _kickHarnessMonitor({bool burst = false}) {
+    final monitor = _monitor;
+    if (monitor == null) return;
+
+    final now = DateTime.now();
+    final last = _lastHarnessKickAt;
+    if (!burst &&
+        last != null &&
+        now.difference(last) < const Duration(milliseconds: 40)) {
+      return;
+    }
+    _lastHarnessKickAt = now;
+    monitor.requestPoll();
+
+    if (!burst) return;
+    for (final t in _harnessKickTimers) {
+      t.cancel();
+    }
+    _harnessKickTimers
+      ..clear()
+      ..addAll([
+        for (final delay in const [
+          Duration(milliseconds: 40),
+          Duration(milliseconds: 120),
+          Duration(milliseconds: 280),
+        ])
+          Timer(delay, monitor.requestPoll),
+      ]);
+  }
+
   /// Atualiza [_cwd] a partir de OSC 7 no chunk. Pega a ÚLTIMA ocorrência (o
   /// prompt mais recente). Notifica a VM quando muda → persiste no layout.
   void _trackCwd(String data) {
@@ -415,9 +481,14 @@ class TerminalSession extends PaneItem {
 
   @override
   Future<void> dispose() async {
+    _monitor?.unregisterSession(id);
     _notifyDebounce?.cancel();
     _saveDebounce.dispose();
     _startupTimer?.cancel();
+    for (final t in _harnessKickTimers) {
+      t.cancel();
+    }
+    _harnessKickTimers.clear();
     unawaited(
       _flush(),
     ); // best-effort: persiste o estado final (inclui app-quit).

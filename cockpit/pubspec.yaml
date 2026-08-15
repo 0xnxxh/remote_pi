@@ -249,6 +249,7 @@ flutter:
   assets:
     - assets/file_icons/
     - assets/db_icons/
+    - assets/harness_icons/
     - assets/sounds/
     - assets/branding/
 
