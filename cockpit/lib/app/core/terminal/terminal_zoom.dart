@@ -35,14 +35,19 @@ class TerminalUnzoomBox extends StatelessWidget {
     if ((scale - 1.0).abs() < 0.001) return child;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Sem caixa definida não há o que compensar (e o SizedBox abaixo daria
-        // infinito). Devolver o filho intacto degrada para o render de antes,
-        // que é ruim mas não quebrado.
-        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
-          return child;
-        }
-        final width = constraints.maxWidth;
-        final height = constraints.maxHeight;
+        // ESTRUTURA ESTÁVEL: sempre a mesma árvore (SizedBox > FittedBox >
+        // SizedBox > child), mesmo em constraints não-limitadas. Antes, o ramo
+        // unbounded devolvia `child` DIRETO (profundidade diferente): num pass
+        // de layout intermediário (unbounded → bounded, comum em Stack/Flex do
+        // shadcn) o [child] trocava de pai e o Flutter REMONTAVA o TerminalView
+        // — o flterm fazia attach antes do detach → "TerminalController already
+        // has an active view". Mantendo os mesmos widgets/profundidade, o
+        // elemento é REUSADO, sem remonte. Em unbounded caem `null` (shrink-wrap
+        // = o render de antes, degradado mas não quebrado).
+        final bounded =
+            constraints.hasBoundedWidth && constraints.hasBoundedHeight;
+        final width = bounded ? constraints.maxWidth : null;
+        final height = bounded ? constraints.maxHeight : null;
         return SizedBox(
           width: width,
           height: height,
@@ -50,8 +55,8 @@ class TerminalUnzoomBox extends StatelessWidget {
             fit: BoxFit.fill,
             alignment: Alignment.topLeft,
             child: SizedBox(
-              width: width * scale,
-              height: height * scale,
+              width: width == null ? null : width * scale,
+              height: height == null ? null : height * scale,
               child: child,
             ),
           ),

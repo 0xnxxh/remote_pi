@@ -5571,10 +5571,23 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Limpa a árvore restaurada: filtra abas cuja sessão não foi recriada e, se
   /// uma folha ficar vazia, põe um placeholder (preserva o layout).
-  PaneNode _sanitizeTree(PaneNode node, Set<String> present, String projectId) {
+  PaneNode _sanitizeTree(
+    PaneNode node,
+    Set<String> present,
+    String projectId, [
+    Set<String>? used,
+  ]) {
+    // `used`: ids de sessão já colocados num leaf ANTERIOR. Uma sessão só pode
+    // aparecer em UM leaf — senão dois panes renderizam o MESMO terminal
+    // (controller/buffer compartilhado → espelho: digitar/rolar num aparece no
+    // outro). Layouts salvos com essa duplicata (bug histórico) são saneados
+    // aqui na restauração.
+    used ??= <String>{};
     switch (node) {
       case LeafPane():
-        final tabs = node.tabs.where(present.contains).toList();
+        final tabs = node.tabs
+            .where((t) => present.contains(t) && used!.add(t))
+            .toList();
         if (tabs.isEmpty) {
           final e = _makeEmpty(projectId);
           return LeafPane(id: node.id, tabs: [e.id], active: e.id);
@@ -5583,8 +5596,8 @@ class CockpitViewModel extends ChangeNotifier {
         return LeafPane(id: node.id, tabs: tabs, active: active);
       case SplitPane():
         return node.copyWith(
-          a: _sanitizeTree(node.a, present, projectId),
-          b: _sanitizeTree(node.b, present, projectId),
+          a: _sanitizeTree(node.a, present, projectId, used),
+          b: _sanitizeTree(node.b, present, projectId, used),
         );
     }
   }
