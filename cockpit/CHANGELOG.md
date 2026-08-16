@@ -24,6 +24,22 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.26.1] - 2026-08-13
+
+Fixes a full window freeze on Windows when a terminal's shell stops reading input.
+
+### Fixed
+
+- **The window no longer freezes ("Not responding") on Windows when writing to
+  a terminal whose shell stopped draining input.** Every keystroke used to
+  flush the ConPTY input pipe synchronously on the UI thread — on a pipe that
+  call blocks until the child consumes everything, so a suspended or stuck
+  child process froze the whole app indefinitely (confirmed by minidump; bug
+  inherited from the absorbed kyroon_pty plugin). The flush is gone, and
+  terminal input is now written from a dedicated writer thread per terminal,
+  so even a full pipe buffer (e.g. a large paste into a suspended shell)
+  cannot block the UI. macOS/Linux terminals were never affected.
+
 ## [1.26.0] - 2026-08-11
 
 Codex tabs now report what they are doing, just like Claude Code tabs.

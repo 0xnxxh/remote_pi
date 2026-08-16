@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <Windows.h>
 
 #include "cockpit_pty.h"
@@ -302,6 +303,136 @@ static void start_wait_exit_thread(HANDLE pid, Dart_Port port, HANDLE mutex)
     }
 }
 
+// --- Writer thread ----------------------------------------------------------
+//
+// pty_write é FFI síncrono na thread de plataforma (= thread de UI no Flutter
+// Windows). Fazer I/O bloqueante ali congela a janela inteira: um
+// FlushFileBuffers herdado do kyroon_pty bloqueava até o ConPTY consumir TUDO
+// que foi escrito e travou a UI em produção (plano 58); e o próprio WriteFile
+// bloqueia quando o buffer do pipe enche e o filho não drena (mesma classe de
+// bug, só mais rara). Pipes anônimos não suportam overlapped I/O, então a
+// saída é uma writer thread por PTY com fila FIFO: pty_write só copia o
+// buffer, enfileira e sinaliza — nunca bloqueia.
+
+typedef struct WriteChunk
+{
+    struct WriteChunk *next;
+
+    int length;
+
+    char data[1]; // alocado com sizeof(WriteChunk) + length
+
+} WriteChunk;
+
+typedef struct WriteQueue
+{
+    HANDLE fd;
+
+    CRITICAL_SECTION lock;
+
+    CONDITION_VARIABLE hasData;
+
+    WriteChunk *head;
+
+    WriteChunk *tail;
+
+    // WriteFile falhou (pipe fechado) — writes futuros são descartados.
+    BOOL broken;
+
+} WriteQueue;
+
+static DWORD WINAPI write_loop(LPVOID arg)
+{
+    WriteQueue *queue = (WriteQueue *)arg;
+
+    while (1)
+    {
+        EnterCriticalSection(&queue->lock);
+
+        while (queue->head == NULL)
+        {
+            SleepConditionVariableCS(&queue->hasData, &queue->lock, INFINITE);
+        }
+
+        WriteChunk *chunk = queue->head;
+        queue->head = chunk->next;
+
+        if (queue->head == NULL)
+        {
+            queue->tail = NULL;
+        }
+
+        LeaveCriticalSection(&queue->lock);
+
+        DWORD bytesWritten;
+
+        BOOL ok = WriteFile(queue->fd, chunk->data, chunk->length, &bytesWritten, NULL);
+
+        free(chunk);
+
+        if (!ok)
+        {
+            // Pipe fechado (ConPTY/filho encerrou). Marca, descarta o que
+            // sobrou e sai. A WriteQueue em si vive até o fim do processo —
+            // mesmo ciclo de vida do PtyHandle e do read_loop, que também
+            // não têm caminho de destruição.
+            EnterCriticalSection(&queue->lock);
+
+            queue->broken = TRUE;
+
+            WriteChunk *pending = queue->head;
+            queue->head = NULL;
+            queue->tail = NULL;
+
+            LeaveCriticalSection(&queue->lock);
+
+            while (pending != NULL)
+            {
+                WriteChunk *next = pending->next;
+                free(pending);
+                pending = next;
+            }
+
+            return 0;
+        }
+    }
+}
+
+static WriteQueue *start_write_thread(HANDLE fd)
+{
+    WriteQueue *queue = malloc(sizeof(WriteQueue));
+
+    if (queue == NULL)
+    {
+        return NULL;
+    }
+
+    queue->fd = fd;
+    queue->head = NULL;
+    queue->tail = NULL;
+    queue->broken = FALSE;
+
+    InitializeCriticalSection(&queue->lock);
+    InitializeConditionVariable(&queue->hasData);
+
+    DWORD thread_id;
+
+    HANDLE thread = CreateThread(NULL, 0, write_loop, queue, 0, &thread_id);
+
+    if (thread == NULL)
+    {
+        DeleteCriticalSection(&queue->lock);
+        free(queue);
+        return NULL;
+    }
+
+    // Mesma razão do start_read_thread: a thread é dona da própria vida;
+    // reter o HANDLE só vazaria um objeto de kernel por terminal.
+    CloseHandle(thread);
+
+    return queue;
+}
+
 typedef struct PtyHandle
 {
     PHANDLE inputWriteSide;
@@ -315,6 +446,8 @@ typedef struct PtyHandle
     BOOL ackRead;
 
     HANDLE hMutex;
+
+    WriteQueue *writeQueue;
 
 } PtyHandle;
 
@@ -500,19 +633,70 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
     pty->dwProcessId = processInfo.dwProcessId;
     pty->ackRead = options->ackRead;
     pty->hMutex = mutex;
+    pty->writeQueue = start_write_thread(inputWriteSide);
 
     return pty;
 }
 
 FFI_PLUGIN_EXPORT void pty_write(PtyHandle *handle, char *buffer, int length)
 {
-    DWORD bytesWritten;
+    // NB: NADA de I/O síncrono aqui. Esta função roda na thread de plataforma
+    // (UI) via FFI — a escrita real acontece na writer thread (ver o bloco
+    // "Writer thread" acima). Em particular, NÃO reintroduza FlushFileBuffers:
+    // em pipe ele bloqueia até o consumidor ler tudo e congelou a UI em
+    // produção (plano 58).
 
-    WriteFile(handle->inputWriteSide, buffer, length, &bytesWritten, NULL);
+    if (length <= 0)
+    {
+        return;
+    }
 
-    FlushFileBuffers(handle->inputWriteSide);
+    WriteQueue *queue = handle->writeQueue;
 
-    return;
+    if (queue == NULL)
+    {
+        // Writer thread não subiu (falha rara no spawn): escreve direto em
+        // vez de perder input. Pode bloquear com o pipe cheio, mas é o
+        // degradê menos ruim.
+        DWORD bytesWritten;
+        WriteFile(handle->inputWriteSide, buffer, length, &bytesWritten, NULL);
+        return;
+    }
+
+    WriteChunk *chunk = malloc(sizeof(WriteChunk) + (size_t)length);
+
+    if (chunk == NULL)
+    {
+        return;
+    }
+
+    chunk->next = NULL;
+    chunk->length = length;
+    memcpy(chunk->data, buffer, (size_t)length);
+
+    EnterCriticalSection(&queue->lock);
+
+    if (queue->broken)
+    {
+        LeaveCriticalSection(&queue->lock);
+        free(chunk);
+        return;
+    }
+
+    if (queue->tail != NULL)
+    {
+        queue->tail->next = chunk;
+    }
+    else
+    {
+        queue->head = chunk;
+    }
+
+    queue->tail = chunk;
+
+    LeaveCriticalSection(&queue->lock);
+
+    WakeConditionVariable(&queue->hasData);
 }
 
 FFI_PLUGIN_EXPORT void pty_ack_read(PtyHandle *handle)
