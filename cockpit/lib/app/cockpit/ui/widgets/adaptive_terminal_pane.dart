@@ -129,6 +129,13 @@ class _GhosttyPane extends StatelessWidget {
     final ghosttyTheme = _ghosttyTheme(theme, textStyle, uiScale, fontWeight);
 
     final Widget terminalView = ghost.TerminalView(
+      // GlobalKey estável (pelo controller): o TerminalUnzoomBox troca a
+      // estrutura da subárvore conforme as constraints (child direto vs
+      // SizedBox/FittedBox), e sem a key o TerminalView REMONTARIA a cada
+      // mudança de layout — o flterm faria attach antes do detach do anterior
+      // ("TerminalController already has an active view"). Com a key, o elemento
+      // é reparentado (movido), não remontado. Plano 60, Wave F.
+      key: GlobalObjectKey(terminal.controller),
       controller: terminal.controller,
       focusNode: focusNode,
       showKeyboard: !readOnly,
