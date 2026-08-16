@@ -5,6 +5,8 @@ import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/window_controls.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
+import 'package:flutter/services.dart' show SystemChannels;
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
@@ -70,6 +72,20 @@ class CockpitTopbar extends StatelessWidget {
           projectName,
           style: context.typo.title.copyWith(fontSize: 14, color: colors.text),
         ),
+        // Mobile: baixar o teclado virtual. O terminal segura o foco pra
+        // receber teclas, então não some sozinho; este botão (sempre visível na
+        // barra, fora da área do teclado) tira o foco e força o SO a esconder.
+        if (isMobilePlatform) ...[
+          const SizedBox(width: 8),
+          _IconBtn(
+            icon: Icons.keyboard_hide_outlined,
+            tooltip: context.t.cockpit.topbar.hideKeyboard,
+            onTap: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+              SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+            },
+          ),
+        ],
         const Spacer(),
         _IconBtn(
           icon: Icons.view_sidebar_outlined,

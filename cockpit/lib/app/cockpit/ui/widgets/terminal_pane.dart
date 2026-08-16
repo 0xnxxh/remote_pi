@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/services.dart' show HardwareKeyboard, KeyEvent;
 import 'package:flutter/widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,8 +7,6 @@ import 'package:cockpit/app/core/terminal/xterm/xterm.dart';
 
 import 'package:cockpit/app/core/terminal/cockpit_terminal.dart';
 import 'package:cockpit/app/core/terminal/cockpit_terminal_render.dart';
-import 'package:cockpit/app/core/ui/themes/themes.dart';
-import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'terminal_link.dart';
 
 /// Envólucro do [CockpitTerminal] que adiciona **auto-scroll durante a
@@ -574,52 +571,9 @@ class _TerminalPaneState extends State<TerminalPane>
       ),
     );
 
-    // Desktop não tem teclado virtual — nada a esconder. No mobile o terminal
-    // segura o foco (campo escondido) pra receber teclas, então o teclado fica
-    // sempre aberto e ocupa meia tela. Um botão flutuante (só quando há foco)
-    // tira o foco → o iOS/Android baixa o teclado; tocar no terminal o traz de
-    // volta (requestKeyboard no _onTapDown).
-    if (!isMobilePlatform) return terminal;
-    return Stack(
-      children: [
-        terminal,
-        Positioned(
-          right: 10,
-          bottom: 10,
-          child: ListenableBuilder(
-            listenable: widget.focusNode,
-            builder: (context, _) => widget.focusNode.hasFocus
-                ? _HideKeyboardButton(onTap: widget.focusNode.unfocus)
-                : const SizedBox.shrink(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Botão flutuante (mobile) que baixa o teclado tirando o foco do terminal.
-class _HideKeyboardButton extends StatelessWidget {
-  const _HideKeyboardButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: colors.panel,
-          shape: BoxShape.circle,
-          border: Border.all(color: colors.border),
-        ),
-        child: Icon(Icons.keyboard_hide_outlined, size: 20, color: colors.text2),
-      ),
-    );
+    // O botão de baixar o teclado vive na top bar (sempre visível, fora da área
+    // do teclado) — ver CockpitTopbar. Aqui a pane é só o terminal.
+    return terminal;
   }
 }
 

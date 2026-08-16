@@ -982,6 +982,7 @@ class _Translations$cockpit$topbar$es extends Translations$cockpit$topbar$en {
 	@override String get collapseSidebar => 'Contraer barra lateral';
 	@override String get toggleFiles => 'Mostrar/ocultar archivos';
 	@override String get filesUnavailable => 'Archivos no disponibles en Cockpit';
+	@override String get hideKeyboard => 'Ocultar teclado';
 }
 
 // Path: cockpit.transcript
@@ -2166,6 +2167,7 @@ extension on TranslationsEs {
 			'cockpit.topbar.collapseSidebar' => 'Contraer barra lateral',
 			'cockpit.topbar.toggleFiles' => 'Mostrar/ocultar archivos',
 			'cockpit.topbar.filesUnavailable' => 'Archivos no disponibles en Cockpit',
+			'cockpit.topbar.hideKeyboard' => 'Ocultar teclado',
 			'cockpit.transcript.cancel' => 'Cancelar',
 			'cockpit.transcript.send' => 'Enviar',
 			'cockpit.transcript.typeYourAnswer' => 'Escribe tu respuesta',
@@ -2180,9 +2182,9 @@ extension on TranslationsEs {
 			'cockpit.notifications.open' => 'Abrir',
 			'cockpit.notifications.agentNeedsAction' => 'El agente necesita tu acción',
 			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
-			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			'cockpit.remoteHost.addHost' => 'Añadir host remoto',
 			'cockpit.remoteHost.hostName' => 'Nombre',
 			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuario@host)',

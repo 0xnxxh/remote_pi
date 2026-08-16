@@ -1977,6 +1977,9 @@ class Translations$cockpit$topbar$en {
 
 	/// en: 'Files unavailable in Cockpit'
 	String get filesUnavailable => 'Files unavailable in Cockpit';
+
+	/// en: 'Hide keyboard'
+	String get hideKeyboard => 'Hide keyboard';
 }
 
 // Path: cockpit.transcript
@@ -3964,6 +3967,7 @@ extension on Translations {
 			'cockpit.topbar.collapseSidebar' => 'Collapse sidebar',
 			'cockpit.topbar.toggleFiles' => 'Show/hide files',
 			'cockpit.topbar.filesUnavailable' => 'Files unavailable in Cockpit',
+			'cockpit.topbar.hideKeyboard' => 'Hide keyboard',
 			'cockpit.transcript.cancel' => 'Cancel',
 			'cockpit.transcript.send' => 'Send',
 			'cockpit.transcript.typeYourAnswer' => 'Type your answer',
@@ -3978,9 +3982,9 @@ extension on Translations {
 			'cockpit.notifications.open' => 'Open',
 			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
-			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'cockpit.remoteHost.addHost' => 'Add remote host',
 			'cockpit.remoteHost.hostName' => 'Name',
 			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',

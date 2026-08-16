@@ -982,6 +982,7 @@ class _Translations$cockpit$topbar$pt_BR extends Translations$cockpit$topbar$en 
 	@override String get collapseSidebar => 'Recolher barra lateral';
 	@override String get toggleFiles => 'Mostrar/ocultar arquivos';
 	@override String get filesUnavailable => 'Arquivos indisponíveis no Cockpit';
+	@override String get hideKeyboard => 'Baixar teclado';
 }
 
 // Path: cockpit.transcript
@@ -2166,6 +2167,7 @@ extension on TranslationsPtBr {
 			'cockpit.topbar.collapseSidebar' => 'Recolher barra lateral',
 			'cockpit.topbar.toggleFiles' => 'Mostrar/ocultar arquivos',
 			'cockpit.topbar.filesUnavailable' => 'Arquivos indisponíveis no Cockpit',
+			'cockpit.topbar.hideKeyboard' => 'Baixar teclado',
 			'cockpit.transcript.cancel' => 'Cancelar',
 			'cockpit.transcript.send' => 'Enviar',
 			'cockpit.transcript.typeYourAnswer' => 'Digite sua resposta',
@@ -2180,9 +2182,9 @@ extension on TranslationsPtBr {
 			'cockpit.notifications.open' => 'Abrir',
 			'cockpit.notifications.agentNeedsAction' => 'Agente precisa de você',
 			'cockpit.notifications.agentCrashed' => 'Agente parou inesperadamente',
-			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
 			'cockpit.remoteHost.addHost' => 'Adicionar host remoto',
 			'cockpit.remoteHost.hostName' => 'Nome',
 			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuário@host)',

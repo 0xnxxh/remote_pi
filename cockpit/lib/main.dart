@@ -22,11 +22,14 @@ Future<void> main() async {
   await runGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Mobile (iPad/Android) é sempre landscape: o shell multi-pane do Cockpit
-    // (rail | panes | arquivos) é pensado pra largura de desktop. Desktop não
-    // tem orientação; o guard evita chamar o canal em plataformas sem ele.
+    // Mobile (iPad/Android): todas as orientações liberadas (plano 60, Wave F).
+    // Em telas estreitas (portrait de celular) o shell colapsa as panes laterais
+    // em drawers por breakpoint de largura; landscape/tablet seguem inline.
+    // Desktop não tem orientação; o guard evita chamar o canal onde não há.
     if (Platform.isIOS || Platform.isAndroid) {
       await SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);

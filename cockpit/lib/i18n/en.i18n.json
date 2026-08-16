@@ -581,7 +581,8 @@
 		"topbar": {
 			"collapseSidebar": "Collapse sidebar",
 			"toggleFiles": "Show/hide files",
-			"filesUnavailable": "Files unavailable in Cockpit"
+			"filesUnavailable": "Files unavailable in Cockpit",
+			"hideKeyboard": "Hide keyboard"
 		},
 		"transcript": {
 			"cancel": "Cancel",

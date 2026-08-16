@@ -581,7 +581,8 @@
 		"topbar": {
 			"collapseSidebar": "Contraer barra lateral",
 			"toggleFiles": "Mostrar/ocultar archivos",
-			"filesUnavailable": "Archivos no disponibles en Cockpit"
+			"filesUnavailable": "Archivos no disponibles en Cockpit",
+			"hideKeyboard": "Ocultar teclado"
 		},
 		"transcript": {
 			"cancel": "Cancelar",
