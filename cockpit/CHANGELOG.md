@@ -24,6 +24,41 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.26.0] - 2026-08-11
+
+Codex tabs now report what they are doing, just like Claude Code tabs.
+
+### Added
+
+- **Turn status for the Codex CLI.** A tab running `codex` now shows the
+  spinner while it works, raises the attention badge when it asks for approval,
+  and plays the completion sound when the turn ends — the same treatment Claude
+  Code tabs already had. Notifications when the window is in the background work
+  too.
+- Cockpit sets this up on its own at startup, including Codex's hook trust, so
+  there is nothing to enable or approve by hand. Your own Codex hooks are left
+  untouched, and the rest of `config.toml` is never rewritten. Requires Codex
+  CLI 0.147 or newer; if Codex isn't installed, nothing is created.
+- **Restoring a tab reattaches the right session.** Cockpit now remembers which
+  agent a conversation belongs to, so a restored tab resumes with `codex resume`
+  or `claude --resume` accordingly.
+
+## [1.25.1] - 2026-08-11
+
+A smoother terminal under heavy output, and realm switching that remembers where you were.
+
+### Fixed
+
+- The window no longer freezes when a command floods the terminal with output.
+  PTY output now shares a frame-time budget across every terminal, and hidden
+  terminals stop painting entirely instead of competing for the frame. Thanks,
+  @pretodev.
+- Switching realms (keyboard shortcut or the realm picker) now brings you back to the
+  worktree you were working in, not to its main workspace. If that worktree is
+  gone, focus falls back to the workspace it belonged to.
+- The tab bar scrolls horizontally with the mouse wheel again when there are
+  more tabs than fit the panel. Thanks, @pretodev.
+
 ## [1.25.0] - 2026-08-09
 
 Sounds you can tell apart, worktrees you can configure, and one less crash.

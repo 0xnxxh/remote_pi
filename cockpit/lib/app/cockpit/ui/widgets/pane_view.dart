@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cockpit/app/cockpit/domain/entities/browser_capability.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
+import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/file_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
@@ -15,6 +17,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/setup_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_composer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_setup_checklist.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_transcript.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/browser_pane.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/active_listenable_builder.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
@@ -28,6 +31,7 @@ import 'package:cockpit/app/cockpit/ui/widgets/db_mongo_view.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/db_redis_table.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_viewer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/adaptive_terminal_pane.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/pane_tab_leading.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
@@ -288,17 +292,34 @@ class _TabStripState extends State<_TabStrip> {
   /// Dropdown com todas as abas (pular direto pra uma) — aparece no overflow.
   Future<void> _showTabList(BuildContext anchor) async {
     final pane = widget.pane;
+    final colors = context.colors;
     final picked = await showAppMenu<String>(
       anchor,
       minWidth: 220,
       items: [
         for (final id in pane.tabs)
-          AppMenuItem(
-            value: id,
-            label: widget.vm.session(id)?.displayTitle ?? '—',
-            icon: _tabIcon(widget.vm.session(id)),
-            selected: id == pane.active,
-          ),
+          () {
+            final s = widget.vm.session(id);
+            return AppMenuItem(
+              value: id,
+              label: s?.displayTitle ?? '—',
+              leading: s is TerminalSession
+                  ? ListenableBuilder(
+                      listenable: s,
+                      builder: (context, _) => PaneTabLeading(
+                        item: s,
+                        defaultIcon: _tabIcon(s),
+                        iconColor: colors.text2,
+                      ),
+                    )
+                  : PaneTabLeading(
+                      item: s,
+                      defaultIcon: _tabIcon(s),
+                      iconColor: colors.text2,
+                    ),
+              selected: id == pane.active,
+            );
+          }(),
       ],
     );
     if (picked != null) widget.vm.selectTab(pane.id, picked);
@@ -433,6 +454,11 @@ class _TabStripState extends State<_TabStrip> {
             _PaneTools(
               onSplitRight: () => widget.onSplit(SplitDir.vertical),
               onSplitDown: () => widget.onSplit(SplitDir.horizontal),
+              // Sem webview na plataforma (Linux) o botão nem aparece — regra
+              // de "zero UI órfã" do plano 58.
+              onOpenBrowser: BrowserCapability.resolve().isInline
+                  ? () => widget.vm.openWebBrowser('', inPane: widget.pane.id)
+                  : null,
               onClosePane: () => _confirmClosePane(context),
             ),
           ],
@@ -757,14 +783,17 @@ class _TabState extends State<_Tab> {
                   ],
                 ),
               )
-            : Text(
-                s.displayTitle,
-                overflow: TextOverflow.ellipsis,
-                style: context.typo.tab.copyWith(
-                  color: isFocusedActive || widget.active
-                      ? colors.text
-                      : colors.text3,
-                  fontStyle: isPreview ? FontStyle.italic : FontStyle.normal,
+            : AppTooltip(
+                message: s.displayTitle,
+                child: Text(
+                  s.displayTitle,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.typo.tab.copyWith(
+                    color: isFocusedActive || widget.active
+                        ? colors.text
+                        : colors.text3,
+                    fontStyle: isPreview ? FontStyle.italic : FontStyle.normal,
+                  ),
                 ),
               );
 
@@ -794,10 +823,11 @@ class _TabState extends State<_Tab> {
               else if (s is MongoBrowserSession)
                 const DbEngineIcon(DbEngine.mongo, size: 14)
               else
-                Icon(
-                  icon,
+                PaneTabLeading(
+                  item: s,
+                  defaultIcon: icon,
                   size: 13,
-                  color: isFocusedActive
+                  iconColor: isFocusedActive
                       ? colors.accentText
                       : (widget.active ? colors.text2 : colors.text3),
                 ),
@@ -1087,11 +1117,15 @@ class _PaneTools extends StatelessWidget {
   const _PaneTools({
     required this.onSplitRight,
     required this.onSplitDown,
+    required this.onOpenBrowser,
     required this.onClosePane,
   });
 
   final VoidCallback onSplitRight;
   final VoidCallback onSplitDown;
+
+  /// `null` = plataforma sem webview inline (Linux) — botão oculto.
+  final VoidCallback? onOpenBrowser;
   final VoidCallback onClosePane;
 
   @override
@@ -1117,6 +1151,12 @@ class _PaneTools extends StatelessWidget {
       child: Row(
         spacing: 12,
         children: [
+          if (onOpenBrowser != null)
+            btn(
+              Icon(Icons.public, size: spacing, color: iconColor),
+              tr.openBrowser,
+              onOpenBrowser!,
+            ),
           btn(
             _SplitterScreenIcon(
               type: _SplitterScreenIconType.horizontal,
@@ -1366,6 +1406,11 @@ class _PaneBodyState extends State<_PaneBody> {
         focused: widget.focused,
         workspaceRoot: vm.projectRootOf(item.projectId) ?? '',
       );
+    }
+
+    // Navegador embutido (plano 58): toolbar compacta + webview inline.
+    if (item is BrowserSession) {
+      return BrowserPane(session: item, active: widget.active);
     }
 
     // Tab de query `.dbq` (plano 51): editor SQL + grid de resultado. Reusa a

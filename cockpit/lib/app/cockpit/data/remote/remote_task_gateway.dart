@@ -64,6 +64,12 @@ class RemoteTaskRunner implements TaskRunnerGateway {
   @override
   Stream<TaskRun> runs() => _runs.stream;
 
+  // Detecção de dev-server URL (auto-open do navegador) é do runner LOCAL; no
+  // remoto o preview embutido não aponta pra localhost do host (plano 58/60).
+  @override
+  Stream<TaskPreviewUrl> previewUrls() =>
+      const Stream<TaskPreviewUrl>.empty();
+
   @override
   TaskRun runOf(String taskId) =>
       _running[taskId]?.state ??

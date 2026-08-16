@@ -89,30 +89,41 @@ final class GhosttyTerminalController implements CockpitTerminalController {
       if (_replaying) return;
       onOutput?.call(data);
     };
-    controller.onResize = (columns, rows) {
-      final isInitialResize = !_hasInitialResize;
-      _hasInitialResize = true;
-      if (isInitialResize &&
-          SchedulerBinding.instance.schedulerPhase ==
-              SchedulerPhase.persistentCallbacks) {
-        // flterm reports its grid size from performLayout. Restored OSC state
-        // can notify TerminalView, so applying it here would call setState
-        // while the render tree is still being laid out.
-        _deferWritesUntilPostFrame = true;
-      }
-      onResize?.call(columns, rows);
-
-      if (!isInitialResize) return;
-      if (_deferWritesUntilPostFrame) {
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          _flushPendingWrites();
-        });
-      } else {
-        _flushPendingWrites();
-      }
-    };
+    controller.onResize = _handleControllerResize;
     controller.onTitleChanged = () => onTitleChanged?.call(controller.title);
   }
+
+  void _handleControllerResize(int columns, int rows) {
+    final isInitialResize = !_hasInitialResize;
+    _hasInitialResize = true;
+    if (isInitialResize &&
+        SchedulerBinding.instance.schedulerPhase ==
+            SchedulerPhase.persistentCallbacks) {
+      // flterm reports its grid size from performLayout. Restored OSC state
+      // can notify TerminalView, so applying it here would call setState
+      // while the render tree is still being laid out.
+      _deferWritesUntilPostFrame = true;
+    }
+    onResize?.call(columns, rows);
+
+    if (!isInitialResize) return;
+    if (_deferWritesUntilPostFrame) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _flushPendingWrites();
+      });
+    } else {
+      _flushPendingWrites();
+    }
+  }
+
+  /// Drives the controller's resize handling directly.
+  ///
+  /// In production flterm's `TerminalView` reports its measured grid through
+  /// the (setter-only) `controller.onResize`. Tests have no view, so this hook
+  /// simulates that report to exercise the initial-resize replay flush.
+  @visibleForTesting
+  void handleResize(int columns, int rows) =>
+      _handleControllerResize(columns, rows);
 
   final ghost.TerminalController controller;
 

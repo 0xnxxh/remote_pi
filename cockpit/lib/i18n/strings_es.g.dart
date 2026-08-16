@@ -136,6 +136,7 @@ class _Translations$cockpit$es extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$notifications$es notifications = _Translations$cockpit$notifications$es._(_root);
 	@override late final _Translations$cockpit$terminal$es terminal = _Translations$cockpit$terminal$es._(_root);
 	@override late final _Translations$cockpit$remoteHost$es remoteHost = _Translations$cockpit$remoteHost$es._(_root);
+	@override late final _Translations$cockpit$browserPane$es browserPane = _Translations$cockpit$browserPane$es._(_root);
 }
 
 // Path: settings
@@ -578,6 +579,7 @@ class _Translations$cockpit$paneView$es extends Translations$cockpit$paneView$en
 	@override String get closePane => 'Cerrar panel';
 	@override String get dropHereToMove => 'Suelta aquí para mover la pestaña';
 	@override String get dockAsTab => 'Acoplar como pestaña';
+	@override String get openBrowser => 'Abrir navegador';
 }
 
 // Path: cockpit.fileTreePanel
@@ -1073,6 +1075,19 @@ class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHos
 	@override String get authPassword => 'Contraseña';
 	@override String get passwordLabel => 'Contraseña';
 	@override String get passwordKeep => 'Deja en blanco para mantener la actual';
+}
+
+// Path: cockpit.browserPane
+class _Translations$cockpit$browserPane$es extends Translations$cockpit$browserPane$en {
+	_Translations$cockpit$browserPane$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get back => 'Atrás';
+	@override String get forward => 'Adelante';
+	@override String get reload => 'Recargar';
+	@override String get urlHint => 'Escribe la URL o dirección';
 }
 
 // Path: settings.language
@@ -1895,6 +1910,7 @@ extension on TranslationsEs {
 			'cockpit.paneView.closePane' => 'Cerrar panel',
 			'cockpit.paneView.dropHereToMove' => 'Suelta aquí para mover la pestaña',
 			'cockpit.paneView.dockAsTab' => 'Acoplar como pestaña',
+			'cockpit.paneView.openBrowser' => 'Abrir navegador',
 			'cockpit.fileTreePanel.viewDiff' => 'Ver Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage y Commit',
@@ -2165,9 +2181,9 @@ extension on TranslationsEs {
 			'cockpit.notifications.agentNeedsAction' => 'El agente necesita tu acción',
 			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
-			'cockpit.remoteHost.addHost' => 'Añadir host remoto',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.addHost' => 'Añadir host remoto',
 			'cockpit.remoteHost.hostName' => 'Nombre',
 			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuario@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
@@ -2200,6 +2216,10 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.authPassword' => 'Contraseña',
 			'cockpit.remoteHost.passwordLabel' => 'Contraseña',
 			'cockpit.remoteHost.passwordKeep' => 'Deja en blanco para mantener la actual',
+			'cockpit.browserPane.back' => 'Atrás',
+			'cockpit.browserPane.forward' => 'Adelante',
+			'cockpit.browserPane.reload' => 'Recargar',
+			'cockpit.browserPane.urlHint' => 'Escribe la URL o dirección',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',

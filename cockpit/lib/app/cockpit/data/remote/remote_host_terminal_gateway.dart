@@ -39,6 +39,12 @@ class RemoteHostTerminalGateway implements TerminalGateway {
   @override
   Stream<List<int>> get output => _output.stream;
 
+  // pid do processo raiz do PTY REMOTO — usado pelo monitor de harness (turn
+  // status via árvore de processos), que é LOCAL. No remoto não vale (a árvore
+  // vive no host), então não expomos pid.
+  @override
+  int? get rootProcessId => null;
+
   // Sem fallback de pasta: o path é do filesystem remoto, resolvido lá.
   @override
   SpawnDirectory? get spawnDirectory => null;

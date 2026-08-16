@@ -26,6 +26,10 @@ abstract class TerminalGateway {
   /// `null` = gateway que não spawna processo (fakes de teste).
   SpawnDirectory? get spawnDirectory => null;
 
+  /// PID do processo raiz do PTY (geralmente o shell), disponível após [start].
+  /// `null` em gateways que não iniciam processo real ou antes de [start].
+  int? get rootProcessId => null;
+
   /// Bytes do stdout/stderr do shell.
   Stream<List<int>> get output;
 

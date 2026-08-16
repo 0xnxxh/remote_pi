@@ -25,6 +25,7 @@ import 'package:cockpit/app/cockpit/data/filesystem/folder_lister_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/git_binary.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/git_command_runner_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/git_diff_reader_impl.dart';
+import 'package:cockpit/app/cockpit/data/filesystem/git_head_baseline_reader_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/git_history_reader_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/git_status_reader_impl.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/session_history_impl.dart';
@@ -42,11 +43,15 @@ import 'package:cockpit/app/cockpit/data/setup/environment_installer_impl.dart';
 import 'package:cockpit/app/cockpit/data/hooks/terminal_status_server_impl.dart';
 import 'package:cockpit/app/cockpit/data/tasks/pty_task_runner.dart';
 import 'package:cockpit/app/cockpit/data/tasks/task_discovery_impl.dart';
+import 'package:cockpit/app/cockpit/data/process/process_tree_provider_factory.dart';
 import 'package:cockpit/app/cockpit/data/terminal/file_terminal_scrollback_store.dart';
 import 'package:cockpit/app/cockpit/data/remote/json_remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_gateway_factory.dart';
+import 'package:cockpit/app/cockpit/data/terminal/pty_terminal_gateway_factory.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/process_tree_provider.dart';
+import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/cockpit/data/update/auto_updater_self_updater.dart';
 import 'package:cockpit/app/cockpit/data/update/noop_self_updater.dart';
 import 'package:cockpit/app/cockpit/data/update/update_checker_impl.dart';
@@ -62,8 +67,11 @@ import 'package:cockpit/app/cockpit/domain/contracts/file_system_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/folder_lister.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_diff_reader.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/git_head_baseline_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_history_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_status_reader.dart';
+import 'package:cockpit/app/cockpit/domain/services/scm_baseline_cache.dart';
+import 'package:cockpit/app/cockpit/domain/services/scm_line_decoration_calculator.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/notifier.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/project_repository.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/realm_repository.dart';
@@ -196,6 +204,11 @@ Future<Module> buildCockpitModule() async {
         ..addLazySingleton<WorktreeManager>(WorktreeManagerImpl.new)
         ..addLazySingleton<GitCommandRunner>(GitCommandRunnerImpl.new)
         ..addLazySingleton<GitDiffReader>(GitDiffReaderImpl.new)
+        ..addLazySingleton<GitHeadBaselineReader>(GitHeadBaselineReaderImpl.new)
+        ..addLazySingleton<ScmBaselineCache>(ScmBaselineCache.new)
+        ..addInstance<ScmLineDecorationCalculator>(
+          const ScmLineDecorationCalculator(),
+        )
         ..addLazySingleton<GitHistoryReader>(GitHistoryReaderImpl.new)
         ..addInstance<SessionHistory>(const SessionHistoryImpl())
         // Terminais servidos pelo cockpit-server sidecar via loopback (plano
@@ -219,6 +232,10 @@ Future<Module> buildCockpitModule() async {
         ..addLazySingleton<RemoteHostsController>(RemoteHostsController.new)
         ..addInstance<TerminalScrollbackStore>(
           const FileTerminalScrollbackStore(),
+        )
+        ..addLazySingleton<ProcessTreeProvider>(createHostProcessTreeProvider)
+        ..addLazySingleton<TerminalHarnessMonitor>(
+          CockpitTerminalHarnessMonitor.new,
         )
         ..addLazySingleton<TerminalStatusServer>(TerminalStatusServerImpl.new)
         ..addLazySingleton<TaskRunnerGateway>(PtyTaskRunner.new)

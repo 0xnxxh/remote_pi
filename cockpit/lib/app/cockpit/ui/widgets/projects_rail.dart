@@ -790,7 +790,8 @@ class _ProjectItem extends StatelessWidget {
 /// **linha de árvore** (vertical contínua nos forks do meio, "└" no último),
 /// sem avatar (o branch é a identidade). À direita, o sinal combinado de
 /// dirtyCount + notificação (decisões 8, 16, 19) e o menu ⋮ "Remover". Hover
-/// mostra tooltip com branch + path. A linha fica **fora** do realce do item.
+/// no nome mostra tooltip com o rótulo completo (ellipsis corta nomes longos).
+/// A linha fica **fora** do realce do item.
 class _WorktreeItem extends StatelessWidget {
   const _WorktreeItem({
     required this.worktree,
@@ -827,6 +828,11 @@ class _WorktreeItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    // Rótulo completo pro tooltip — igual ao texto renderizado (com sufixo de
+    // root em multi-root), pra o hover revelar o que o ellipsis cortou.
+    final fullLabel = originName != null
+        ? '${worktree.name}  ($originName)'
+        : worktree.name;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -852,29 +858,32 @@ class _WorktreeItem extends StatelessWidget {
                     Icon(Icons.call_split, size: 12, color: colors.text3),
                     const SizedBox(width: 7),
                     Expanded(
-                      child: Text.rich(
-                        TextSpan(
-                          text: worktree.name,
-                          children: [
-                            // Sufixo `(root)` só em pai multi-root: diz de
-                            // qual repo o fork nasceu (branch pode repetir).
-                            if (originName != null)
-                              TextSpan(
-                                text: '  ($originName)',
-                                style: context.typo.mono.copyWith(
-                                  fontSize: 11,
-                                  color: colors.text3,
+                      child: AppTooltip(
+                        message: fullLabel,
+                        child: Text.rich(
+                          TextSpan(
+                            text: worktree.name,
+                            children: [
+                              // Sufixo `(root)` só em pai multi-root: diz de
+                              // qual repo o fork nasceu (branch pode repetir).
+                              if (originName != null)
+                                TextSpan(
+                                  text: '  ($originName)',
+                                  style: context.typo.mono.copyWith(
+                                    fontSize: 11,
+                                    color: colors.text3,
+                                  ),
                                 ),
-                              ),
-                          ],
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        style: context.typo.mono.copyWith(
-                          fontSize: 12,
-                          color: selected ? colors.text : colors.text2,
-                          fontWeight: selected
-                              ? FontWeight.w500
-                              : FontWeight.w400,
+                            ],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          style: context.typo.mono.copyWith(
+                            fontSize: 12,
+                            color: selected ? colors.text : colors.text2,
+                            fontWeight: selected
+                                ? FontWeight.w500
+                                : FontWeight.w400,
+                          ),
                         ),
                       ),
                     ),

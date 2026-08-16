@@ -283,7 +283,8 @@
 			"splitDown": "Split down",
 			"closePane": "Close pane",
 			"dropHereToMove": "Drop here to move the tab",
-			"dockAsTab": "Dock as tab"
+			"dockAsTab": "Dock as tab",
+			"openBrowser": "Open browser"
 		},
 		"fileTreePanel": {
 			"viewDiff": "View Diff",
@@ -639,6 +640,12 @@
 			"authPassword": "Password",
 			"passwordLabel": "Password",
 			"passwordKeep": "Leave blank to keep current"
+		},
+		"browserPane": {
+			"back": "Back",
+			"forward": "Forward",
+			"reload": "Reload",
+			"urlHint": "Enter URL or address"
 		}
 	},
 	"settings": {

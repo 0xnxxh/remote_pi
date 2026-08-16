@@ -11,6 +11,8 @@ import 'dart:io'
 import 'dart:math' show max;
 
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 import 'package:cockpit/app/cockpit/domain/contracts/app_launcher.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
@@ -23,7 +25,10 @@ import 'package:cockpit/app/cockpit/domain/contracts/folder_lister.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_diff_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_history_reader.dart';
+import 'package:cockpit/app/cockpit/domain/entities/scm_line_decorations.dart';
 import 'package:cockpit/app/cockpit/domain/exceptions/git_history_error.dart';
+import 'package:cockpit/app/cockpit/domain/services/scm_baseline_cache.dart';
+import 'package:cockpit/app/cockpit/domain/services/scm_line_decoration_calculator.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/layout_loader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/notifier.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/project_repository.dart';
@@ -59,6 +64,7 @@ import 'package:cockpit/app/cockpit/domain/value_objects/uid.dart';
 import 'package:cockpit/app/cockpit/domain/entities/session_info.dart';
 import 'package:cockpit/app/cockpit/domain/entities/thinking_level.dart';
 import 'package:cockpit/app/cockpit/domain/entities/worktree.dart';
+import 'package:cockpit/app/cockpit/ui/session/scm_line_decoration_coordinator.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
 import 'package:cockpit/app/core/domain/entities/lsp_diagnostic.dart';
@@ -73,12 +79,15 @@ import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/file_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/mongo_browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
+import 'package:cockpit/app/cockpit/domain/entities/browser_capability.dart';
+import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/redis_browser_session.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/task_discovery.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/session/task_output_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/task_terminal_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_scrollback_store.dart';
+import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
@@ -139,6 +148,9 @@ class CockpitViewModel extends ChangeNotifier {
     this._dbService,
     this._layoutLoader,
     this._remoteHosts,
+    this._scmBaselineCache,
+    this._scmCalculator,
+    this._harnessMonitor,
   ) {
     // Contexto do shell que o GitController precisa (page-scoped, mesma vida).
     git
@@ -149,8 +161,25 @@ class CockpitViewModel extends ChangeNotifier {
       ..pollTargets = _gitPollTargets
       ..onStructuralFsChange = _bumpFileTree
       ..onPoll = _reconcileOpenWorktrees;
-    git.addListener(notifyListeners);
+    _lastGitRevision = git.revision;
+    git.addListener(_onGitNotify);
     realmCtrl.addListener(notifyListeners);
+    // Auto-open do navegador quando uma task anuncia dev server (plano 58).
+    _previewSub = _taskRunner.previewUrls().listen(_onTaskPreviewUrl);
+  }
+
+  StreamSubscription<TaskPreviewUrl>? _previewSub;
+
+  /// Task emitiu URL local (`npm run dev` etc.): abre o navegador embutido
+  /// nela — reusando a aba já aberta na mesma origem — ou, sem webview inline
+  /// (Linux), o browser do SO.
+  void _onTaskPreviewUrl(TaskPreviewUrl preview) {
+    final url = normalizeBrowserUrl(preview.url);
+    if (BrowserCapability.resolve().isInline) {
+      openWebBrowser(url, reuse: true);
+    } else {
+      unawaited(openUrlExternally(url));
+    }
   }
 
   /// Alvos do poll de git: a família visível na rail (raiz do projeto
@@ -186,6 +215,7 @@ class CockpitViewModel extends ChangeNotifier {
   final DbQueryService _dbService;
   final LayoutLoader _layoutLoader;
   final RemoteHostsController _remoteHosts;
+  final TerminalHarnessMonitor _harnessMonitor;
   final RpcGatewayFactory _factory;
   final FolderLister _folders;
   final SessionHistory _history;
@@ -218,7 +248,48 @@ class CockpitViewModel extends ChangeNotifier {
   final GitDiffReader _gitDiff;
   final GitHistoryReader _gitHistory;
   final AutomationController _automation;
+  final ScmBaselineCache _scmBaselineCache;
+  final ScmLineDecorationCalculator _scmCalculator;
   AutomationSelection? _automationSelection;
+  int _lastGitRevision = 0;
+
+  void _onGitNotify() {
+    final rev = git.revision;
+    if (rev != _lastGitRevision) {
+      _lastGitRevision = rev;
+      for (final s in _sessions.values) {
+        if (s is FileViewerSession) {
+          s.scmCoordinator?.onGitRevisionChanged();
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Garante coordenador SCM na sessão (abertura, restore ou mount do FileViewer).
+  void ensureScmCoordinator(FileViewerSession session) =>
+      _ensureScmCoordinator(session);
+
+  void _ensureScmCoordinator(FileViewerSession session) {
+    final editable =
+        session.view is FileViewText ||
+        session.view is FileViewMarkdown ||
+        session.view is FileViewSvg;
+    if (session.scratch || !editable) {
+      session.clearScmDecorations();
+      return;
+    }
+    // Não recria se já existe — o FileViewer mantém o controller ligado.
+    if (session.scmCoordinator != null) return;
+    session.attachScmCoordinator(
+      ScmLineDecorationCoordinator(
+        session: session,
+        cache: _scmBaselineCache,
+        calculator: _scmCalculator,
+        resolveGitRoot: (path) => rootContaining(session.projectId, path),
+      ),
+    );
+  }
 
   void setAutomationSelection(AutomationSelection? selection) {
     _automationSelection = selection;
@@ -1170,9 +1241,6 @@ class CockpitViewModel extends ChangeNotifier {
     String? inPane,
     bool isPreview = true,
     int? revealLine,
-    Set<int>? addedLines,
-    Set<int>? modifiedLines,
-    Set<int>? removedLines,
   }) async {
     final projectId = _selectedProjectId;
     final tree = _activeTree;
@@ -1193,15 +1261,7 @@ class CockpitViewModel extends ChangeNotifier {
         // Se já aberto, só seleciona (mas transforma preview em normal se não é preview).
         if (s.path == path) {
           if (!isPreview && s.isPreview) s.pin();
-          if (addedLines != null &&
-              modifiedLines != null &&
-              removedLines != null) {
-            s.setGitChangeLines(
-              added: addedLines,
-              modified: modifiedLines,
-              removed: removedLines,
-            );
-          }
+          _ensureScmCoordinator(s);
           if (revealLine != null) s.reveal(revealLine, select: false);
           _trees[projectId] = updateLeaf(
             tree,
@@ -1231,9 +1291,6 @@ class CockpitViewModel extends ChangeNotifier {
         isPreview: isPreview,
         previewCandidate: previewCandidate,
         revealLine: revealLine,
-        addedLines: addedLines,
-        modifiedLines: modifiedLines,
-        removedLines: removedLines,
       );
       return;
     }
@@ -1247,13 +1304,9 @@ class CockpitViewModel extends ChangeNotifier {
       previewCandidate.view = view;
       previewCandidate.dirty = false;
       previewCandidate.revealLine = null;
-      if (addedLines != null && modifiedLines != null && removedLines != null) {
-        previewCandidate.setGitChangeLines(
-          added: addedLines,
-          modified: modifiedLines,
-          removed: removedLines,
-        );
-      }
+      previewCandidate.setScmDecorations(ScmLineDecorations.empty);
+      _ensureScmCoordinator(previewCandidate);
+      previewCandidate.scmCoordinator?.onSessionPathChanged();
       if (revealLine != null) {
         previewCandidate.reveal(revealLine, select: false);
       } else {
@@ -1276,13 +1329,7 @@ class CockpitViewModel extends ChangeNotifier {
       view: view,
       isPreview: isPreview,
     );
-    if (addedLines != null && modifiedLines != null && removedLines != null) {
-      viewer.setGitChangeLines(
-        added: addedLines,
-        modified: modifiedLines,
-        removed: removedLines,
-      );
-    }
+    _ensureScmCoordinator(viewer);
     if (revealLine != null) viewer.reveal(revealLine, select: false);
     _sessions[viewer.id] = viewer;
     _watchFileViewer(viewer);
@@ -1350,7 +1397,8 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Caminho remoto de [openFile]: cria a aba imediatamente em loading, lê o
   /// conteúdo pela rede e preenche (ou descarta se ilegível). Preserva a
-  /// semântica de preview.
+  /// semântica de preview. As decorações de SCM vêm do coordenador (buffer vs
+  /// `HEAD`), não injetadas aqui.
   Future<void> _openRemoteFileLoading({
     required String path,
     required String projectId,
@@ -1359,9 +1407,6 @@ class CockpitViewModel extends ChangeNotifier {
     required bool isPreview,
     required FileViewerSession? previewCandidate,
     int? revealLine,
-    Set<int>? addedLines,
-    Set<int>? modifiedLines,
-    Set<int>? removedLines,
   }) async {
     // Mídia é sempre unsupported no remoto (classificada por extensão em
     // _readFile) — filtra aqui pra não piscar uma aba que seria descartada.
@@ -1411,15 +1456,9 @@ class CockpitViewModel extends ChangeNotifier {
       }
       return;
     }
-    if (addedLines != null && modifiedLines != null && removedLines != null) {
-      target.setGitChangeLines(
-        added: addedLines,
-        modified: modifiedLines,
-        removed: removedLines,
-      );
-    }
     target.view = view;
     target.loading = false;
+    _ensureScmCoordinator(target);
     if (revealLine != null) {
       target.reveal(revealLine, select: false);
     } else {
@@ -1451,8 +1490,9 @@ class CockpitViewModel extends ChangeNotifier {
     return _kRemoteMediaExts.contains(ext);
   }
 
-  /// Abre uma mudanca no arquivo normal, revelando a primeira linha afetada.
-  /// Arquivos apagados nao existem mais no working tree e continuam no diff.
+  /// Abre uma mudança do Source Control no editor normal. Decorações vêm do
+  /// coordenador SCM (buffer vs `HEAD`), não de uma injeção pontual do diff.
+  /// Arquivos apagados não existem mais no working tree e continuam no diff.
   Future<void> openChangedFile(String path) async {
     final projectId = _selectedProjectId;
     if (projectId == null) return;
@@ -1463,66 +1503,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (_selectedProjectId != projectId || diff.kind == FileDiffKind.deleted) {
       return;
     }
-    final changes = _gitChangeLines(diff);
-    await openFile(
-      path,
-      isPreview: false,
-      revealLine: changes.firstLine,
-      addedLines: changes.added,
-      modifiedLines: changes.modified,
-      removedLines: changes.removed,
-    );
-  }
-
-  ({Set<int> added, Set<int> modified, Set<int> removed, int? firstLine})
-  _gitChangeLines(FileDiff diff) {
-    final added = <int>{};
-    final modified = <int>{};
-    final removed = <int>{};
-    int? firstLine;
-    final pendingRemoved = <DiffLine>[];
-    final pendingAdded = <DiffLine>[];
-
-    void flush() {
-      final pairs = pendingRemoved.length < pendingAdded.length
-          ? pendingRemoved.length
-          : pendingAdded.length;
-      for (var index = 0; index < pairs; index++) {
-        final line = pendingAdded[index].newLine;
-        if (line != null) modified.add(line);
-      }
-      for (final line in pendingAdded.skip(pairs)) {
-        if (line.newLine != null) added.add(line.newLine!);
-      }
-      for (final line in pendingRemoved.skip(pairs)) {
-        if (line.oldLine != null) removed.add(line.oldLine!);
-      }
-      pendingRemoved.clear();
-      pendingAdded.clear();
-    }
-
-    for (final hunk in diff.hunks) {
-      for (final line in hunk.lines) {
-        if (line.kind != DiffLineKind.context) {
-          firstLine ??= line.newLine ?? line.oldLine;
-        }
-        switch (line.kind) {
-          case DiffLineKind.removed:
-            pendingRemoved.add(line);
-          case DiffLineKind.added:
-            pendingAdded.add(line);
-          case DiffLineKind.context:
-            flush();
-        }
-      }
-      flush();
-    }
-    return (
-      added: added,
-      modified: modified,
-      removed: removed,
-      firstLine: firstLine,
-    );
+    await openFile(path, isPreview: false);
   }
 
   /// Abre uma tab `.dbq` **untitled** (scratch, VSCode-style): buffer em
@@ -1604,6 +1585,70 @@ class CockpitViewModel extends ChangeNotifier {
     if (session == null) return false;
     if (filter != null) (session as MongoBrowserSession).requestFilter(filter);
     return true;
+  }
+
+  /// Abre [url] no browser do SO — fallback das plataformas sem webview
+  /// inline (plano 58) e caminho do auto-open de task no Linux.
+  Future<bool> openUrlExternally(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    try {
+      return await url_launcher.launchUrl(uri);
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  /// Abre uma aba de **navegador** (plano 58). [url] vazia = aba em branco com
+  /// o campo de URL focado (botão da pane). [inPane] força a pane alvo (botão);
+  /// default = pane focada. Com [reuse], foca uma aba de navegador já aberta na
+  /// mesma origem (host:porta) e navega nela em vez de duplicar — é o caminho
+  /// do auto-open de task e do `cockpit browse`.
+  BrowserSession? openWebBrowser(
+    String url, {
+    String? projectId,
+    String? inPane,
+    bool reuse = false,
+  }) {
+    final pid = projectId ?? _selectedProjectId;
+    final tree = pid == null ? null : _trees[pid];
+    if (pid == null || tree == null) return null;
+    final paneId = inPane ?? _focused[pid] ?? leaves(tree).firstOrNull?.id;
+    if (paneId == null) return null;
+
+    if (reuse && url.isNotEmpty) {
+      final target = Uri.tryParse(url);
+      bool sameOrigin(BrowserSession s) {
+        final cur = Uri.tryParse(s.url);
+        return target != null &&
+            cur != null &&
+            cur.host == target.host &&
+            cur.port == target.port;
+      }
+
+      for (final s in _sessions.values) {
+        if (s is BrowserSession && s.projectId == pid && sameOrigin(s)) {
+          for (final leaf in leaves(tree)) {
+            if (leaf.tabs.contains(s.id)) {
+              if (pid == _selectedProjectId) selectTab(leaf.id, s.id);
+              s.requestUrl(url);
+              return s;
+            }
+          }
+        }
+      }
+    }
+
+    final session = BrowserSession(
+      id: _nid('v'),
+      projectId: pid,
+      workingDirectory: _projectById(pid)?.path ?? '',
+    );
+    if (url.isNotEmpty) session.seedUrl = url;
+    _sessions[session.id] = session;
+    _addLeafTab(pid, paneId, session.id);
+    notifyListeners();
+    return session;
   }
 
   /// Núcleo comum dos browsers de banco: foca a tab existente que [matches]
@@ -4885,6 +4930,8 @@ class CockpitViewModel extends ChangeNotifier {
       replay: replay,
       // Restauração: comando a digitar no shell novo (ex.: `claude --resume`).
       startupCommand: startupCommand,
+      // Detecção do harness interativo ativo (ícone da aba).
+      monitor: _harnessMonitor,
       // Injeta no env da PTY: roteamento (id da tab) + transporte (socket/porta).
       // O `cockpit-hook` do claude herda e reporta status de turno de volta.
       // `COCKPIT_TAB_ID` é o nome correto (o que a CLI endereça é uma tab);
@@ -5011,10 +5058,11 @@ class CockpitViewModel extends ChangeNotifier {
       isTurnStart: u.event == 'UserPromptSubmit',
       sessionId: u.sessionId,
       transcriptPath: u.transcriptPath,
+      harness: AgentHarness.fromWire(u.harness),
     );
-    // O session-id do claude chega assíncrono pelo hook (não numa mutação de
+    // O session-id do agente chega assíncrono pelo hook (não numa mutação de
     // layout), então persiste o layout quando ele MUDA — senão `claude_sid`
-    // nunca chega ao disco e o restore não consegue dar `claude --resume`.
+    // nunca chega ao disco e o restore não consegue retomar a sessão.
     if (s.claudeSessionId != hadSid && s.claudeSessionId != null) {
       _scheduleSave(s.projectId);
     }
@@ -5301,10 +5349,13 @@ class CockpitViewModel extends ChangeNotifier {
           projectId: project.id,
           sessionId: id,
         );
-        // Se a aba rodava um `claude`, re-executa `claude --resume <sid>` no
+        // Se a aba rodava um agente, re-executa o comando de resume dele no
         // shell novo (reanexa a conversa). O replay mostra o histórico até o
-        // claude redesenhar; nas demais abas (shell puro) só há o replay.
+        // agente redesenhar; nas demais abas (shell puro) só há o replay.
+        // `harness` ausente = layout salvo antes desta distinção, quando só o
+        // Claude tinha hooks.
         final claudeSid = desc['claude_sid'] as String?;
+        final harness = AgentHarness.fromWire(desc['harness'] as String?);
         // cwd vivo salvo (OSC 7, absoluto) vence o `sub` — restaura onde o
         // usuário parou, mesmo fora do projeto.
         final termCwd = desc['cwd'] as String? ?? cwdOf();
@@ -5316,7 +5367,7 @@ class CockpitViewModel extends ChangeNotifier {
           replay: raw == null ? null : 'c$raw\r\n',
           startupCommand: claudeSid == null || claudeSid.isEmpty
               ? null
-              : 'claude --resume $claudeSid',
+              : harness.resumeCommand(claudeSid),
           // Re-arma a trava ANTES de o shell subir e re-emitir OSC-title: o nome
           // manual continua vencendo o título dinâmico após o reinício.
           manualLabel: desc['label'] as String?,
@@ -5332,12 +5383,17 @@ class CockpitViewModel extends ChangeNotifier {
         if (path == null) return false;
         final view = await _fileReader.read(path);
         if (view is FileViewUnsupported) return false;
-        _sessions[id] = FileViewerSession(
+        final viewer = FileViewerSession(
           id: id,
           projectId: project.id,
           path: path,
           view: view,
         );
+        // Same pipeline as openFile: SCM coordinator + live-reload.
+        // Without this, restored tabs have no diff gutter until reopen.
+        _ensureScmCoordinator(viewer);
+        _sessions[id] = viewer;
+        _watchFileViewer(viewer);
         return true;
       case 'diff':
         final path = desc['path'] as String?;
@@ -5388,6 +5444,14 @@ class CockpitViewModel extends ChangeNotifier {
           connName: mConn,
           collection: mColl,
           workingDirectory: project.path,
+        );
+        return true;
+      case 'browser':
+        _sessions[id] = BrowserSession(
+          id: id,
+          projectId: project.id,
+          workingDirectory: project.path,
+          url: desc['url'] as String? ?? '',
         );
         return true;
       case 'empty':
@@ -5543,6 +5607,7 @@ class CockpitViewModel extends ChangeNotifier {
       desc
         ..remove('sessionPath')
         ..remove('claude_sid')
+        ..remove('harness') // só faz sentido junto do claude_sid
         ..remove('cwd');
       final newId = _nid(desc['type'] == 'terminal' ? 't' : 'a');
       tabIdMap[entry.key as String] = newId;
@@ -5610,9 +5675,12 @@ class CockpitViewModel extends ChangeNotifier {
         // usuário pode ter dado `cd` pra fora do projeto). `sub` segue como
         // fallback pra abas que nunca emitiram OSC 7.
         if (s.currentDirectory != null) 'cwd': s.currentDirectory,
-        // Se um `claude` rodava nesta aba, guarda o session-id (capturado pelo
-        // hook) pra re-executar `claude --resume <sid>` no restore.
+        // Se um agente rodava nesta aba, guarda o session-id (capturado pelo
+        // hook) pra reatar a sessão no restore. `harness` diz de quem é o id —
+        // sem ele o restore assumiria Claude e o `codex` daria "No conversation
+        // found". Chave `claude_sid` mantida por compat com layouts antigos.
         if (s.claudeSessionId != null) 'claude_sid': s.claudeSessionId,
+        if (s.claudeSessionId != null) 'harness': s.agentHarness.wire,
       };
     }
     if (s is FileViewerSession) {
@@ -5630,6 +5698,9 @@ class CockpitViewModel extends ChangeNotifier {
     }
     if (s is RedisBrowserSession) {
       return <String, dynamic>{'type': 'redis', 'conn': s.connName};
+    }
+    if (s is BrowserSession) {
+      return <String, dynamic>{'type': 'browser', 'url': s.url};
     }
     if (s is MongoBrowserSession) {
       return <String, dynamic>{
@@ -5861,9 +5932,10 @@ class CockpitViewModel extends ChangeNotifier {
   void dispose() {
     _remoteHosts.removeListener(_onRemoteHostsChanged);
     unawaited(_statusServer.stop());
+    unawaited(_previewSub?.cancel());
     // O GitController é dono dos próprios timers/watchers; o módulo o
     // descarta junto com a rota. Aqui só desligamos o repasse de notify.
-    git.removeListener(notifyListeners);
+    git.removeListener(_onGitNotify);
     realmCtrl.removeListener(notifyListeners);
     for (final t in _saveTimers.values) {
       t.cancel();
@@ -5884,6 +5956,7 @@ class CockpitViewModel extends ChangeNotifier {
       s.dispose();
     }
     _sessions.clear();
+    _harnessMonitor.dispose();
     super.dispose();
   }
 }

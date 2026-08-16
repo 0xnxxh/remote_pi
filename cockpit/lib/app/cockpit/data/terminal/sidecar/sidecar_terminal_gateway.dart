@@ -26,6 +26,7 @@ class SidecarTerminalGateway implements TerminalGateway {
   // Backend remoto (quando o sidecar respondeu).
   RemoteTerminalService? _service;
   String? _sessionId;
+  int? _rootPid;
   StreamSubscription<PtyEvent>? _attachment;
 
   /// Créditos de flow control por CONTADOR acumulado, não por fila de
@@ -48,6 +49,12 @@ class SidecarTerminalGateway implements TerminalGateway {
   @override
   SpawnDirectory? get spawnDirectory =>
       _local?.spawnDirectory ?? _spawnDirectory;
+
+  // pid do processo raiz do PTY. Sidecar é local (loopback), então o pid vale
+  // pro monitor de harness (turn status via árvore de processos). No fallback
+  // in-process, delega ao gateway local.
+  @override
+  int? get rootProcessId => _local?.rootProcessId ?? _rootPid;
 
   @override
   Stream<List<int>> get output => _output.stream;
@@ -110,6 +117,7 @@ class SidecarTerminalGateway implements TerminalGateway {
       }
       _service = service;
       _sessionId = info.id;
+      _rootPid = info.pid;
       _attachment = service
           .attach(info.id)
           .listen(

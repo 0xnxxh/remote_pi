@@ -283,7 +283,8 @@
 			"splitDown": "Dividir abaixo",
 			"closePane": "Fechar painel",
 			"dropHereToMove": "Solte aqui para mover a aba",
-			"dockAsTab": "Encaixar como aba"
+			"dockAsTab": "Encaixar como aba",
+			"openBrowser": "Abrir navegador"
 		},
 		"fileTreePanel": {
 			"viewDiff": "Ver Diff",
@@ -639,6 +640,12 @@
 			"authPassword": "Senha",
 			"passwordLabel": "Senha",
 			"passwordKeep": "Deixe em branco para manter a atual"
+		},
+		"browserPane": {
+			"back": "Voltar",
+			"forward": "Avançar",
+			"reload": "Recarregar",
+			"urlHint": "Digite a URL ou endereço"
 		}
 	},
 	"settings": {

@@ -83,6 +83,9 @@ class TasksJsonLoader {
       interactiveKeys: _keys(m['interactiveKeys']),
       watch: _watch(m['watch']),
       progressPatterns: _patterns(m['progressPatterns']),
+      // `preview`: false desliga o auto-open do navegador; string = URL fixa.
+      previewEnabled: m['preview'] != false,
+      previewUrl: m['preview'] is String ? m['preview'] as String : null,
     );
   }
 

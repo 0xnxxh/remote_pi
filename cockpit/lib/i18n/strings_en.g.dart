@@ -183,6 +183,7 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$notifications$en notifications = Translations$cockpit$notifications$en.internal(_root);
 	late final Translations$cockpit$terminal$en terminal = Translations$cockpit$terminal$en.internal(_root);
 	late final Translations$cockpit$remoteHost$en remoteHost = Translations$cockpit$remoteHost$en.internal(_root);
+	late final Translations$cockpit$browserPane$en browserPane = Translations$cockpit$browserPane$en.internal(_root);
 }
 
 // Path: settings
@@ -1061,6 +1062,9 @@ class Translations$cockpit$paneView$en {
 
 	/// en: 'Dock as tab'
 	String get dockAsTab => 'Dock as tab';
+
+	/// en: 'Open browser'
+	String get openBrowser => 'Open browser';
 }
 
 // Path: cockpit.fileTreePanel
@@ -2162,6 +2166,27 @@ class Translations$cockpit$remoteHost$en {
 
 	/// en: 'Leave blank to keep current'
 	String get passwordKeep => 'Leave blank to keep current';
+}
+
+// Path: cockpit.browserPane
+class Translations$cockpit$browserPane$en {
+	Translations$cockpit$browserPane$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Forward'
+	String get forward => 'Forward';
+
+	/// en: 'Reload'
+	String get reload => 'Reload';
+
+	/// en: 'Enter URL or address'
+	String get urlHint => 'Enter URL or address';
 }
 
 // Path: settings.language
@@ -3683,6 +3708,7 @@ extension on Translations {
 			'cockpit.paneView.closePane' => 'Close pane',
 			'cockpit.paneView.dropHereToMove' => 'Drop here to move the tab',
 			'cockpit.paneView.dockAsTab' => 'Dock as tab',
+			'cockpit.paneView.openBrowser' => 'Open browser',
 			'cockpit.fileTreePanel.viewDiff' => 'View Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage and Commit',
@@ -3953,9 +3979,9 @@ extension on Translations {
 			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
-			'cockpit.remoteHost.addHost' => 'Add remote host',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.remoteHost.addHost' => 'Add remote host',
 			'cockpit.remoteHost.hostName' => 'Name',
 			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',
 			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Connecting to ${host}…',
@@ -3988,6 +4014,10 @@ extension on Translations {
 			'cockpit.remoteHost.authPassword' => 'Password',
 			'cockpit.remoteHost.passwordLabel' => 'Password',
 			'cockpit.remoteHost.passwordKeep' => 'Leave blank to keep current',
+			'cockpit.browserPane.back' => 'Back',
+			'cockpit.browserPane.forward' => 'Forward',
+			'cockpit.browserPane.reload' => 'Reload',
+			'cockpit.browserPane.urlHint' => 'Enter URL or address',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
