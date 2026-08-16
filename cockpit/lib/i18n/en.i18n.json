@@ -641,7 +641,10 @@
 			"authKey": "SSH key",
 			"authPassword": "Password",
 			"passwordLabel": "Password",
-			"passwordKeep": "Leave blank to keep current"
+			"passwordKeep": "Leave blank to keep current",
+			"errUser": "Username required",
+			"errHost": "Host required",
+			"errPassword": "Password required"
 		},
 		"browserPane": {
 			"back": "Back",

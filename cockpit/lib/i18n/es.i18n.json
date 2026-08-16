@@ -641,7 +641,10 @@
 			"authKey": "Clave SSH",
 			"authPassword": "Contraseña",
 			"passwordLabel": "Contraseña",
-			"passwordKeep": "Deja en blanco para mantener la actual"
+			"passwordKeep": "Deja en blanco para mantener la actual",
+			"errUser": "Usuario obligatorio",
+			"errHost": "Host obligatorio",
+			"errPassword": "Contraseña obligatoria"
 		},
 		"browserPane": {
 			"back": "Atrás",

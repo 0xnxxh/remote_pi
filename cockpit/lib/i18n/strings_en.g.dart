@@ -2172,6 +2172,15 @@ class Translations$cockpit$remoteHost$en {
 
 	/// en: 'Leave blank to keep current'
 	String get passwordKeep => 'Leave blank to keep current';
+
+	/// en: 'Username required'
+	String get errUser => 'Username required';
+
+	/// en: 'Host required'
+	String get errHost => 'Host required';
+
+	/// en: 'Password required'
+	String get errPassword => 'Password required';
 }
 
 // Path: cockpit.browserPane
@@ -4025,6 +4034,9 @@ extension on Translations {
 			'cockpit.remoteHost.authPassword' => 'Password',
 			'cockpit.remoteHost.passwordLabel' => 'Password',
 			'cockpit.remoteHost.passwordKeep' => 'Leave blank to keep current',
+			'cockpit.remoteHost.errUser' => 'Username required',
+			'cockpit.remoteHost.errHost' => 'Host required',
+			'cockpit.remoteHost.errPassword' => 'Password required',
 			'cockpit.browserPane.back' => 'Back',
 			'cockpit.browserPane.forward' => 'Forward',
 			'cockpit.browserPane.reload' => 'Reload',

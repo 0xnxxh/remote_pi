@@ -1077,6 +1077,9 @@ class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHos
 	@override String get authPassword => 'Contraseña';
 	@override String get passwordLabel => 'Contraseña';
 	@override String get passwordKeep => 'Deja en blanco para mantener la actual';
+	@override String get errUser => 'Usuario obligatorio';
+	@override String get errHost => 'Host obligatorio';
+	@override String get errPassword => 'Contraseña obligatoria';
 }
 
 // Path: cockpit.browserPane
@@ -2221,6 +2224,9 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.authPassword' => 'Contraseña',
 			'cockpit.remoteHost.passwordLabel' => 'Contraseña',
 			'cockpit.remoteHost.passwordKeep' => 'Deja en blanco para mantener la actual',
+			'cockpit.remoteHost.errUser' => 'Usuario obligatorio',
+			'cockpit.remoteHost.errHost' => 'Host obligatorio',
+			'cockpit.remoteHost.errPassword' => 'Contraseña obligatoria',
 			'cockpit.browserPane.back' => 'Atrás',
 			'cockpit.browserPane.forward' => 'Adelante',
 			'cockpit.browserPane.reload' => 'Recargar',

@@ -641,7 +641,10 @@
 			"authKey": "Chave SSH",
 			"authPassword": "Senha",
 			"passwordLabel": "Senha",
-			"passwordKeep": "Deixe em branco para manter a atual"
+			"passwordKeep": "Deixe em branco para manter a atual",
+			"errUser": "Usuário obrigatório",
+			"errHost": "Host obrigatório",
+			"errPassword": "Senha obrigatória"
 		},
 		"browserPane": {
 			"back": "Voltar",
