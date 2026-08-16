@@ -167,13 +167,16 @@ no modo server de qualquer forma (`send`/`send-keys`/`list-panes` cross-pane),
 e já traz o `cockpit hook` — então instalar o hook no `~/.claude` do host e ter
 o receptor de status vira trivial. Sem redeploy só pra isso: entra junto do CLI.
 
-- [ ] G1 — server embarca/materializa o `cockpit-cli` no host; sobe socket local
-      de status + injeta `COCKPIT_STATUS_SOCK`/`COCKPIT_TAB_ID` nas PTYs; instala
-      o hook do claude/codex no `~/.claude`/`~/.codex` do host.
-- [ ] G2 — evento novo no protocolo `cockpit_remote` (stream do attach ou canal
-      global) `{tabId, status, event, sid, harness}`; bump de versão.
-- [ ] G3 — cliente traduz o evento em `applyClaudeStatus` (reusa spinner/chime).
-      Requer server novo no host (via bootstrap desktop ou redeploy).
+- [x] G1 — server sobe `TurnStatusReceiver` (socket `<sock>.status` no host) +
+      injeta `COCKPIT_STATUS_SOCK` nas PTYs + instala o hook do Claude no
+      `~/.claude` do host (`HostHookInstaller`, resolve a CLI ao lado do server).
+      `build_server.sh` embarca a `cockpit` CLI no bundle; o bootstrap desktop a
+      empurra pro host. Pendente: Codex hook server-side + host Windows.
+- [x] G2 — `TurnStatus {pane, st, ev, sid, tx, hn}` no protocolo (broadcast do
+      server); `fromJson` tolerante (UnknownMessage) → sem bump de versão.
+- [x] G3 — `RemoteTerminalService.turnStatus` → connector → controller → VM
+      `_onClaudeStatus` (reusa spinner/chime). Requer server novo + CLI no host
+      (redeploy: bootstrap desktop OU manual). Pendente E2E no device.
 
 ## Próximos planos
 

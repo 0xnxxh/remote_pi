@@ -41,6 +41,16 @@ Future<void> main(List<String> args) async {
 
   await server.bind(socketPath);
 
+  // Turn-status (plano 60, Wave G): instala o hook do agente no ~/.claude do
+  // HOST, apontando pra CLI `cockpit hook` (resolvida por --cli, ao lado do
+  // server, ou no PATH). Assim uma sessão no terminal remoto reporta o turno →
+  // socket de status do host → protocolo → cliente. Não-fatal.
+  unawaited(
+    HostHookInstaller(
+      cliPathOverride: _argValue(args, '--cli'),
+    ).ensureInstalled(),
+  );
+
   // Saída em inglês por decisão (CLI interna não se traduz).
   stdout.writeln('cockpit-server listening on $socketPath');
 

@@ -45,6 +45,15 @@ mv "$DEST/bin/cockpit_server" "$DEST/bin/cockpit-server"
 cp "$PTY" "$DEST/lib/libcockpit_pty.dylib"
 chmod +x "$DEST/bin/cockpit-server"
 
+# CLI `cockpit` embarcada AO LADO do server (plano 60, Wave G): o server instala
+# o hook do agente no ~/.claude do host apontando pra `cockpit hook`, e a acha
+# via _besideServer (mesma pasta bin/). Fatia única do host, como o server.
+CARGO="${CARGO:-cargo}"
+command -v "$CARGO" >/dev/null 2>&1 || CARGO="$HOME/.cargo/bin/cargo"
+( cd "$ROOT/cli" && "$CARGO" build --release >/dev/null )
+cp "$ROOT/cli/target/release/cockpit" "$DEST/bin/cockpit"
+chmod +x "$DEST/bin/cockpit"
+
 IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:-}"
 sign() {
   if [ -z "$IDENTITY" ] || [ "$IDENTITY" = "-" ]; then
@@ -58,4 +67,5 @@ sign() {
 # Assina as dylibs antes do exe.
 for f in "$DEST"/lib/*.dylib; do sign "$f"; done
 sign "$DEST/bin/cockpit-server"
+[ -f "$DEST/bin/cockpit" ] && sign "$DEST/bin/cockpit"
 echo "[build_server] bundle OK -> $DEST"

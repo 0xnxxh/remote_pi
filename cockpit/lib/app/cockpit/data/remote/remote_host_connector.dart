@@ -302,6 +302,13 @@ class RemoteHostConnector {
         await push(f.path, '~/.cockpit/server/lib/${f.uri.pathSegments.last}');
       }
     }
+    // CLI `cockpit` ao lado do server (plano 60, Wave G): o server a acha via
+    // _besideServer e instala o hook do agente no ~/.claude do host. Só se
+    // estiver no bundle local (build_server.sh a embarca).
+    final cliLocal = File('$bundleRoot/bin/cockpit');
+    if (cliLocal.existsSync()) {
+      await push(cliLocal.path, '~/.cockpit/server/bin/cockpit');
+    }
 
     final (code, stderrText) = await SshTunnel.run(
       host.sshTarget,
