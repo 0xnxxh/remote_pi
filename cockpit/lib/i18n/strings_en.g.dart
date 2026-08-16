@@ -2190,6 +2190,9 @@ class Translations$cockpit$browserPane$en {
 
 	/// en: 'Enter URL or address'
 	String get urlHint => 'Enter URL or address';
+
+	/// en: 'Go'
+	String get go => 'Go';
 }
 
 // Path: settings.language
@@ -4022,6 +4025,7 @@ extension on Translations {
 			'cockpit.browserPane.forward' => 'Forward',
 			'cockpit.browserPane.reload' => 'Reload',
 			'cockpit.browserPane.urlHint' => 'Enter URL or address',
+			'cockpit.browserPane.go' => 'Go',
 			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',

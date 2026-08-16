@@ -646,7 +646,8 @@
 			"back": "Back",
 			"forward": "Forward",
 			"reload": "Reload",
-			"urlHint": "Enter URL or address"
+			"urlHint": "Enter URL or address",
+			"go": "Go"
 		}
 	},
 	"settings": {

@@ -1089,6 +1089,7 @@ class _Translations$cockpit$browserPane$pt_BR extends Translations$cockpit$brows
 	@override String get forward => 'Avançar';
 	@override String get reload => 'Recarregar';
 	@override String get urlHint => 'Digite a URL ou endereço';
+	@override String get go => 'Ir';
 }
 
 // Path: settings.language
@@ -2222,6 +2223,7 @@ extension on TranslationsPtBr {
 			'cockpit.browserPane.forward' => 'Avançar',
 			'cockpit.browserPane.reload' => 'Recarregar',
 			'cockpit.browserPane.urlHint' => 'Digite a URL ou endereço',
+			'cockpit.browserPane.go' => 'Ir',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglês',

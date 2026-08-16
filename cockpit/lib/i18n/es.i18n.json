@@ -646,7 +646,8 @@
 			"back": "Atrás",
 			"forward": "Adelante",
 			"reload": "Recargar",
-			"urlHint": "Escribe la URL o dirección"
+			"urlHint": "Escribe la URL o dirección",
+			"go": "Ir"
 		}
 	},
 	"settings": {
