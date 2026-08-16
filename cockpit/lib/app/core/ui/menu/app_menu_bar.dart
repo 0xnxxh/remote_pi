@@ -7,6 +7,8 @@ import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/menu_model.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
+import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
+import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
@@ -313,7 +315,7 @@ PlatformProvidedMenuItemType? _providedType(MenuBarRole role) => switch (role) {
 ///
 /// O modelo ([MenuBarMenu]) não muda: só este renderer aninha um nível a mais.
 /// A barra nativa do macOS segue plana, como o SO espera.
-class WindowMenuBar extends StatelessWidget {
+class WindowMenuBar extends StatefulWidget {
   const WindowMenuBar({
     super.key,
     required this.menus,
@@ -328,84 +330,119 @@ class WindowMenuBar extends StatelessWidget {
   final bool renderOnMacOS;
 
   @override
+  State<WindowMenuBar> createState() => _WindowMenuBarState();
+}
+
+class _WindowMenuBarState extends State<WindowMenuBar> {
+  bool _open = false;
+
+  /// Momento em que o menu fechou por último. Se o MESMO toque que dismissou o
+  /// barrier também atinge o botão, ele reabriria — este guard descarta o toque
+  /// que chega logo após o fechamento (bug de "reabre em vez de fechar").
+  DateTime? _closedAt;
+
+  Future<void> _toggle(BuildContext anchor) async {
+    // Já aberto: o barrier fecha o menu; não reabrimos.
+    if (_open) return;
+    final closed = _closedAt;
+    if (closed != null &&
+        DateTime.now().difference(closed) < const Duration(milliseconds: 300)) {
+      return;
+    }
+    setState(() => _open = true);
+    final items = <AppMenuItem<VoidCallback>>[
+      for (final m in widget.menus)
+        AppMenuItem<VoidCallback>(
+          value: _noop,
+          label: m.label,
+          children: _toAppItems(context, m.items),
+        ),
+    ];
+    final action = await showAppMenu<VoidCallback>(anchor, items: items);
+    if (mounted) {
+      setState(() {
+        _open = false;
+        _closedAt = DateTime.now();
+      });
+    }
+    action?.call();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (Platform.isMacOS && !renderOnMacOS) return const SizedBox.shrink();
-    // O botão de menubar do shadcn embute um padding horizontal generoso
-    // (`baseContentPadding * 0.75` da densidade do tema), pensado pra itens de
-    // texto lado a lado — "File View Window". Aqui há um ícone só, e esse
-    // padding o empurrava pra dentro e o deixava fora da grade dos ícones
-    // vizinhos da topbar. Zerado, o botão fica do tamanho da caixa abaixo e o
-    // espaçamento passa a ser só o da topbar.
-    return ComponentTheme<MenubarButtonTheme>(
-      data: MenubarButtonTheme(
-        padding: (context, states, value) => EdgeInsets.zero,
-      ),
-      child: Menubar(
-        border: false,
-        children: <MenuItem>[
-          MenuButton(
-            subMenu: menus
-                .map((m) => _windowMenu(context, m))
-                .toList(growable: false),
-            // Mesma caixa de 28x28 dos `_IconBtn` da topbar, pro hambúrguer
-            // cair na mesma grade dos ícones vizinhos.
-            child: const SizedBox(
-              width: 28,
-              height: 28,
-              child: Icon(Icons.menu, size: 16),
-            ),
+    if (Platform.isMacOS && !widget.renderOnMacOS) {
+      return const SizedBox.shrink();
+    }
+    final colors = context.colors;
+    // Builder pra o showAppMenu ancorar no PRÓPRIO botão (abre logo abaixo).
+    return Builder(
+      builder: (btnContext) => HoverTap(
+        onTap: () => _toggle(btnContext),
+        color: _open ? colors.accentSoft : null,
+        hoverColor: colors.panel,
+        borderRadius: BorderRadius.circular(5),
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: Icon(
+            Icons.menu,
+            size: 16,
+            color: _open ? colors.accentText : colors.text3,
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-MenuButton _windowMenu(BuildContext context, MenuBarMenu menu) => MenuButton(
-  subMenu: _windowItems(context, menu.items),
-  child: Text(menu.label, style: context.typo.label.copyWith(fontSize: 13)),
-);
+void _noop() {}
 
-List<MenuItem> _windowItems(BuildContext context, List<MenuNode> items) {
-  final out = <MenuItem>[];
+/// Converte a árvore declarativa ([MenuNode]) pros itens do [showAppMenu] (nosso
+/// menu, com toggle correto). Cada folha carrega sua ação como `value`
+/// (VoidCallback), invocada quando o item é escolhido.
+List<AppMenuItem<VoidCallback>> _toAppItems(
+  BuildContext context,
+  List<MenuNode> items,
+) {
+  final out = <AppMenuItem<VoidCallback>>[];
   for (final node in items) {
     switch (node) {
       case MenuSeparator():
-        // Evita divisória inicial/duplicada (roles omitidos podem deixar buracos).
-        if (out.isNotEmpty && out.last is! MenuDivider) {
-          out.add(const MenuDivider());
+        if (out.isNotEmpty && !out.last.isDivider) {
+          out.add(const AppMenuItem<VoidCallback>.divider());
         }
       case MenuBarMenu():
-        out.add(_windowMenu(context, node));
+        out.add(
+          AppMenuItem<VoidCallback>(
+            value: _noop,
+            label: node.label,
+            children: _toAppItems(context, node.items),
+          ),
+        );
       case MenuAction():
         out.add(
-          MenuButton(
+          AppMenuItem<VoidCallback>(
+            value: node.onSelected ?? _noop,
+            label: node.label,
             enabled: node.onSelected != null,
-            trailing: node.accelerator == null
-                ? null
-                : MenuShortcut(activator: node.accelerator!.resolve()),
-            onPressed: node.onSelected == null
-                ? null
-                : (_) => node.onSelected!.call(),
-            child: Text(node.label),
           ),
         );
       case MenuRole():
         final action = _windowRole(node.role);
         if (action != null) {
           out.add(
-            MenuButton(
-              onPressed: (_) => action(),
-              child: Text(_roleLabel(context, node.role)),
+            AppMenuItem<VoidCallback>(
+              value: action,
+              label: _roleLabel(context, node.role),
             ),
           );
         }
     }
   }
-  // Remove divisória final pendente.
-  if (out.isNotEmpty && out.last is MenuDivider) out.removeLast();
+  if (out.isNotEmpty && out.last.isDivider) out.removeLast();
   return out;
 }
+
 
 /// Equivalente de janela dos papéis do SO. `null` = sem equivalente fora do
 /// macOS (about/services/hide/…) → item omitido. No mobile (iPad/Android) não
