@@ -1134,6 +1134,42 @@ class _PaneTools extends StatelessWidget {
   final VoidCallback? onOpenBrowser;
   final VoidCallback onClosePane;
 
+  /// Popup do kebab (mobile): as mesmas ações dos 4 ícones do desktop. Cada
+  /// item carrega sua ação como `value` (VoidCallback), invocada na escolha.
+  Future<void> _openMenu(BuildContext ctx) async {
+    final tr = ctx.t.cockpit.paneView;
+    final action = await showAppMenu<VoidCallback>(
+      ctx,
+      minWidth: 180,
+      items: <AppMenuItem<VoidCallback>>[
+        if (onOpenBrowser != null)
+          AppMenuItem(
+            value: onOpenBrowser!,
+            label: tr.openBrowser,
+            icon: Icons.public,
+          ),
+        AppMenuItem(
+          value: onSplitRight,
+          label: tr.splitRight,
+          icon: Icons.vertical_split_outlined,
+        ),
+        AppMenuItem(
+          value: onSplitDown,
+          label: tr.splitDown,
+          icon: Icons.horizontal_split_outlined,
+        ),
+        const AppMenuItem<VoidCallback>.divider(),
+        AppMenuItem(
+          value: onClosePane,
+          label: tr.closePane,
+          icon: Icons.close,
+          danger: true,
+        ),
+      ],
+    );
+    action?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -1148,6 +1184,25 @@ class _PaneTools extends StatelessWidget {
         child: SizedBox(width: spacing, height: spacing, child: icon),
       ),
     );
+    // Mobile: os 4 ícones não cabem/são pequenos demais pro toque → viram um
+    // kebab (3 pontos) que abre o popup com as mesmas opções.
+    if (isMobilePlatform) {
+      return Padding(
+        padding: const EdgeInsets.only(right: spacing),
+        child: Builder(
+          builder: (menuCtx) => HoverTap(
+            borderRadius: BorderRadius.circular(5),
+            onTap: () => _openMenu(menuCtx),
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: Icon(Icons.more_vert, size: 18, color: iconColor),
+            ),
+          ),
+        ),
+      );
+    }
+
     // Mesma base (splitscreen = dois painéis), pra ler "horizontal vs vertical"
     // num relance: empilhado = dividir abaixo; girado 90° (colunas lado-a-lado)
     // = dividir à direita. (Mockup.)
