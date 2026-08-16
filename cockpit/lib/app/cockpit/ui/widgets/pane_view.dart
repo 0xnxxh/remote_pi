@@ -881,14 +881,31 @@ class _TabState extends State<_Tab> {
           ),
         );
 
+        final data = TabDragData(paneId: widget.paneId, tabId: s.id);
+        final feedback = Transform.translate(
+          offset: const Offset(12, 8),
+          child: _DragFeedback(icon: icon, title: s.displayTitle),
+        );
+        final childWhenDragging = Opacity(opacity: 0.3, child: tabBody);
+
+        // Mobile: o Draggable imediato brigava com o scroll horizontal da strip
+        // — um swipe pra rolar entrava direto no arraste/multiplexação. Com o
+        // LongPressDraggable, swipe ROLA (o Scrollable ganha a arena) e SEGURAR
+        // inicia o drag (reordenar/mover entre panes). Desktop segue imediato.
+        if (isMobilePlatform) {
+          return LongPressDraggable<TabDragData>(
+            data: data,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: feedback,
+            childWhenDragging: childWhenDragging,
+            child: interactive,
+          );
+        }
         return Draggable<TabDragData>(
-          data: TabDragData(paneId: widget.paneId, tabId: s.id),
+          data: data,
           dragAnchorStrategy: pointerDragAnchorStrategy,
-          feedback: Transform.translate(
-            offset: const Offset(12, 8),
-            child: _DragFeedback(icon: icon, title: s.displayTitle),
-          ),
-          childWhenDragging: Opacity(opacity: 0.3, child: tabBody),
+          feedback: feedback,
+          childWhenDragging: childWhenDragging,
           child: interactive,
         );
       },
