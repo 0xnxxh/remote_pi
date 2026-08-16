@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/db_connection_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/db_driver.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/nosql_runner.dart';
@@ -152,15 +151,15 @@ Future<Module> buildCockpitModule() async {
   final appVersion = (await PackageInfo.fromPlatform()).version;
 
   // Notificações do SO — init pede permissão; falha não pode derrubar o boot.
-  // `local_notifier` é desktop-only (macOS/Windows/Linux); no mobile pula (o
-  // init lançaria "iOS settings must be set"). Notificação mobile é evolução.
+  // Init em TODAS as plataformas: o chime (media_kit) vale no mobile também (é
+  // o som de turno). O init do plugin de notificações do SO agora tem bloco iOS
+  // e é best-effort dentro do LocalNotifier (não derruba o chime). Plano 60,
+  // Wave G.
   final notifier = LocalNotifier();
-  if (!isMobilePlatform) {
-    try {
-      await notifier.init();
-    } catch (error) {
-      debugPrint('Falha ao iniciar notificações: $error');
-    }
+  try {
+    await notifier.init();
+  } catch (error) {
+    debugPrint('Falha ao iniciar notificações: $error');
   }
 
   return createModule(

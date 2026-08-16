@@ -5141,7 +5141,11 @@ class CockpitViewModel extends ChangeNotifier {
       notifyListeners();
     }
 
-    final windowFocused = await windowManager.isFocused();
+    // `window_manager` é desktop-only; no mobile `isFocused()` não vale (retorna
+    // false), o que jogaria pro caminho de notificação do SO e nunca tocaria o
+    // chime. Mobile em foreground = focado → chime (plano 60, Wave G). Em
+    // background o app é suspenso pelo SO, então não há evento a tocar.
+    final windowFocused = isMobilePlatform || await windowManager.isFocused();
     if (kDebugMode) {
       debugPrint(
         '[sound] ${DateTime.now().toIso8601String().substring(11, 23)} '
