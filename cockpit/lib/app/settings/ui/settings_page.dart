@@ -106,6 +106,11 @@ extension on _Category {
 class _SettingsPageState extends State<SettingsPage> {
   _Category _category = _Category.general;
 
+  /// Abaixo desta largura (mobile portrait) o nav de categorias vira DRAWER —
+  /// senão a lista à esquerda espreme o painel e fica ilegível (plano 60).
+  static const double _drawerBreakpoint = 600;
+  bool _navOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -131,37 +136,64 @@ class _SettingsPageState extends State<SettingsPage> {
         : (!remoteReady && _category.isRemote)
         ? _Category.appearance
         : _category;
+    final narrow =
+        isMobilePlatform &&
+        MediaQuery.sizeOf(context).width < _drawerBreakpoint;
+
+    final Widget panel = switch (category) {
+      _Category.general => const _GeneralPanel(),
+      _Category.appearance => const _AppearancePanel(),
+      _Category.terminal => const _TerminalPanel(),
+      _Category.languages => const _LanguagesPanel(),
+      _Category.automations => const _AutomationsPanel(),
+      _Category.shortcuts => const _ShortcutsPanel(),
+      _Category.notifications => const _NotificationsPanel(),
+      _Category.remoteHosts => const _RemoteHostsPanel(),
+      _Category.connectivity => const _ConnectivityPanel(),
+      _Category.daemons => const _DaemonsPanel(),
+      _Category.scheduling => const _AgendamentosPanel(),
+    };
+
+    final nav = _CategoryNav(
+      selected: category,
+      remoteReady: remoteReady,
+      // No estreito, escolher categoria fecha o drawer (revela o painel).
+      onSelect: (c) => setState(() {
+        _category = c;
+        _navOpen = false;
+      }),
+    );
+
     return Scaffold(
       backgroundColor: colors.bg,
       child: Column(
         children: [
-          const _SettingsHeader(),
+          _SettingsHeader(
+            onToggleNav: narrow
+                ? () => setState(() => _navOpen = !_navOpen)
+                : null,
+          ),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _CategoryNav(
-                  selected: category,
-                  remoteReady: remoteReady,
-                  onSelect: (c) => setState(() => _category = c),
-                ),
-                Expanded(
-                  child: switch (category) {
-                    _Category.general => const _GeneralPanel(),
-                    _Category.appearance => const _AppearancePanel(),
-                    _Category.terminal => const _TerminalPanel(),
-                    _Category.languages => const _LanguagesPanel(),
-                    _Category.automations => const _AutomationsPanel(),
-                    _Category.shortcuts => const _ShortcutsPanel(),
-                    _Category.notifications => const _NotificationsPanel(),
-                    _Category.remoteHosts => const _RemoteHostsPanel(),
-                    _Category.connectivity => const _ConnectivityPanel(),
-                    _Category.daemons => const _DaemonsPanel(),
-                    _Category.scheduling => const _AgendamentosPanel(),
-                  },
-                ),
-              ],
-            ),
+            child: narrow
+                ? Stack(
+                    children: [
+                      Positioned.fill(child: panel),
+                      if (_navOpen) ...[
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => setState(() => _navOpen = false),
+                            child: ColoredBox(color: colors.scrim),
+                          ),
+                        ),
+                        Positioned(left: 0, top: 0, bottom: 0, child: nav),
+                      ],
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [nav, Expanded(child: panel)],
+                  ),
           ),
         ],
       ),
@@ -171,7 +203,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
 /// Header da tela: window controls + voltar + título (a barra arrasta a janela).
 class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader();
+  const _SettingsHeader({this.onToggleNav});
+
+  /// Mobile portrait: abre/fecha o drawer de categorias. `null` = layout largo
+  /// (nav inline), sem botão.
+  final VoidCallback? onToggleNav;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +233,18 @@ class _SettingsHeader extends StatelessWidget {
           context.t.settings.page.header.title,
           style: context.typo.title.copyWith(fontSize: 14, color: colors.text),
         ),
+        if (onToggleNav != null) ...[
+          const SizedBox(width: 10),
+          HoverTap(
+            borderRadius: BorderRadius.circular(6),
+            onTap: onToggleNav,
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: Icon(Icons.menu, size: 18, color: colors.text2),
+            ),
+          ),
+        ],
         const Spacer(),
         const WindowControlsTrailing(),
       ],
@@ -221,7 +269,11 @@ class _CategoryNav extends StatelessWidget {
     final colors = context.colors;
     return Container(
       width: 210,
+      // Fundo opaco: no drawer (mobile portrait) o nav fica SOBRE o painel —
+      // sem cor, o painel apareceria através dele. No layout largo é a mesma cor
+      // do Scaffold, então nada muda.
       decoration: BoxDecoration(
+        color: colors.bg,
         border: Border(right: BorderSide(color: colors.border)),
       ),
       padding: const EdgeInsets.all(10),
