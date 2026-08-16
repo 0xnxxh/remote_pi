@@ -89,6 +89,13 @@ class _CockpitPageState extends State<CockpitPage> {
     });
   }
 
+  /// Preserva o subtree central (terminais/editores) ao alternar entre layout
+  /// largo (Row) e estreito (Stack/drawers) — ex.: rotação portrait↔landscape.
+  /// Sem um GlobalKey, a troca de tipo de pai REMONTA o subtree, e o novo
+  /// TerminalView do flterm faz attach antes do antigo desanexar → "controller
+  /// already has an active view". Com a key, o elemento é reparentado (movido).
+  final GlobalKey _centerKey = GlobalKey();
+
   /// Sobe a cada Cmd+Shift+F → o [ContentSearchPanel] foca o campo de busca.
   final ValueNotifier<int> _searchFocusSignal = ValueNotifier<int>(0);
 
@@ -1314,8 +1321,10 @@ class _CockpitPageState extends State<CockpitPage> {
                             ),
                           ],
                         ),
-                    center: vm.selectedProjectId == null
-                            ? WelcomeView(
+                    center: KeyedSubtree(
+                      key: _centerKey,
+                      child: vm.selectedProjectId == null
+                          ? WelcomeView(
                                 hasHosts: vm.remoteHosts.hosts.isNotEmpty,
                                 onCreateWorkspace: _createWorkspace,
                                 onConnectHost: (anchor) =>
@@ -1347,6 +1356,7 @@ class _CockpitPageState extends State<CockpitPage> {
                                     ),
                                 ],
                               ),
+                    ),
                     // Cockpit (sem pasta) nunca mostra a árvore; workspace
                     // remoto mostra a árvore do host (plano 58).
                     tree: Stack(
