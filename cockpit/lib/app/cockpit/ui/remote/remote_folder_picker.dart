@@ -122,12 +122,15 @@ class _RemoteFolderPickerState extends State<_RemoteFolderPicker> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final tr = context.t.cockpit.remoteHost;
-    // Responsivo: no desktop fica em 460x380; num iPhone (tela estreita e, em
-    // landscape, baixa) encolhe pra caber com folga, sem empurrar os botões
-    // pra fora do diálogo (plano 60).
+    // Responsivo: no desktop fica em 460x380; num iPhone encolhe pra caber. O
+    // AlertDialog do shadcn empilha [título+conteúdo | ações] numa Column — se o
+    // conteúdo for alto demais, a Column estoura a altura máxima e as ações são
+    // pintadas POR CIMA do fim da lista. Por isso reservamos ~240px (título +
+    // ações + padding do diálogo) da altura da tela antes de dimensionar a lista
+    // (plano 60).
     final media = MediaQuery.sizeOf(context);
-    final width = media.width * 0.9 < 460 ? media.width * 0.9 : 460.0;
-    final height = media.height * 0.7 < 380 ? media.height * 0.7 : 380.0;
+    final width = (media.width - 80).clamp(280.0, 460.0);
+    final height = (media.height - 240).clamp(160.0, 380.0);
     return AlertDialog(
       title: Text(
         tr.pickFolderTitle(host: widget.hostName),
