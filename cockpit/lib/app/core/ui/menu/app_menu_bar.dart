@@ -83,16 +83,20 @@ List<MenuBarMenu> buildAppMenus(
           tr.newAgent,
           onSelected: workspace.hasWorkspace ? workspace.newAgent : null,
         ),
-      MenuAction(
-        tr.newTerminal,
-        onSelected: workspace.hasWorkspace ? workspace.newTerminal : null,
-      ),
-      const MenuSeparator(),
-      MenuAction(
-        tr.openWorkspace,
-        accelerator: const MenuAccelerator(LogicalKeyboardKey.keyO),
-        onSelected: () => requestOpenProject?.call(),
-      ),
+      // No mobile o "+" da aba cria terminal e o "+" do rail abre workspace —
+      // esses itens de menu são redundantes (plano 60, Wave F).
+      if (!isMobilePlatform)
+        MenuAction(
+          tr.newTerminal,
+          onSelected: workspace.hasWorkspace ? workspace.newTerminal : null,
+        ),
+      if (!isMobilePlatform) const MenuSeparator(),
+      if (!isMobilePlatform)
+        MenuAction(
+          tr.openWorkspace,
+          accelerator: const MenuAccelerator(LogicalKeyboardKey.keyO),
+          onSelected: () => requestOpenProject?.call(),
+        ),
       const MenuSeparator(),
       // Save/Discard/Format só ficam ativos quando há uma aba de edição focada
       // que **de fato** pode a ação (dirty p/ Save/Discard; editável p/ Format) —
@@ -125,34 +129,40 @@ List<MenuBarMenu> buildAppMenus(
     MenuBarMenu(tr.view, <MenuNode>[
       // Layout do workspace (ativos só com workspace aberto). Aceleradores reais:
       // no macOS o menu nativo dispara; fora dele o `menuShortcuts` registra.
-      MenuAction(
-        tr.toggleWorkspacePanel,
-        accelerator: const MenuAccelerator(LogicalKeyboardKey.keyB),
-        onSelected: workspace.hasWorkspace ? workspace.toggleRail : null,
-      ),
-      MenuAction(
-        tr.toggleFiles,
-        accelerator: const MenuAccelerator(
-          LogicalKeyboardKey.keyB,
-          shift: true,
+      // No mobile os toggles viram os drawers (por largura) e o split fica no
+      // kebab da pane — itens de menu redundantes.
+      if (!isMobilePlatform)
+        MenuAction(
+          tr.toggleWorkspacePanel,
+          accelerator: const MenuAccelerator(LogicalKeyboardKey.keyB),
+          onSelected: workspace.hasWorkspace ? workspace.toggleRail : null,
         ),
-        onSelected: workspace.hasWorkspace ? workspace.toggleFiles : null,
-      ),
-      const MenuSeparator(),
-      MenuAction(
-        tr.splitRight,
-        accelerator: const MenuAccelerator(LogicalKeyboardKey.keyD),
-        onSelected: workspace.hasWorkspace ? workspace.splitRight : null,
-      ),
-      MenuAction(
-        tr.splitDown,
-        accelerator: const MenuAccelerator(
-          LogicalKeyboardKey.keyD,
-          shift: true,
+      if (!isMobilePlatform)
+        MenuAction(
+          tr.toggleFiles,
+          accelerator: const MenuAccelerator(
+            LogicalKeyboardKey.keyB,
+            shift: true,
+          ),
+          onSelected: workspace.hasWorkspace ? workspace.toggleFiles : null,
         ),
-        onSelected: workspace.hasWorkspace ? workspace.splitDown : null,
-      ),
-      const MenuSeparator(),
+      if (!isMobilePlatform) const MenuSeparator(),
+      if (!isMobilePlatform)
+        MenuAction(
+          tr.splitRight,
+          accelerator: const MenuAccelerator(LogicalKeyboardKey.keyD),
+          onSelected: workspace.hasWorkspace ? workspace.splitRight : null,
+        ),
+      if (!isMobilePlatform)
+        MenuAction(
+          tr.splitDown,
+          accelerator: const MenuAccelerator(
+            LogicalKeyboardKey.keyD,
+            shift: true,
+          ),
+          onSelected: workspace.hasWorkspace ? workspace.splitDown : null,
+        ),
+      if (!isMobilePlatform) const MenuSeparator(),
       // Seleção de aba (⌘1…⌘9) vive no menu de propósito: no macOS só o menu
       // **nativo** captura atalho de forma confiável quando o terminal/campo tem
       // foco (um `CallbackShortcuts` de página é engolido pelo widget focado).
@@ -161,40 +171,44 @@ List<MenuBarMenu> buildAppMenus(
       // antes do menu), então quem trata a tecla é um handler global do
       // HardwareKeyboard no `CockpitPage`. Aqui ficam só os itens clicáveis (com
       // o hint da tecla no rótulo, já que o menu não desenha acelerador nenhum).
-      MenuBarMenu(tr.focusPane, <MenuNode>[
-        MenuAction(
-          tr.focusLeft,
-          onSelected: workspace.hasWorkspace ? workspace.focusPaneLeft : null,
-        ),
-        MenuAction(
-          tr.focusRight,
-          onSelected: workspace.hasWorkspace ? workspace.focusPaneRight : null,
-        ),
-        MenuAction(
-          tr.focusUp,
-          onSelected: workspace.hasWorkspace ? workspace.focusPaneUp : null,
-        ),
-        MenuAction(
-          tr.focusDown,
-          onSelected: workspace.hasWorkspace ? workspace.focusPaneDown : null,
-        ),
-      ]),
-      MenuBarMenu(tr.selectTab, <MenuNode>[
-        for (var i = 0; i < _tabDigitKeys.length; i++)
+      // Focar painel e Selecionar aba: só fazem sentido com teclado/atalho —
+      // no mobile o toque já seleciona painel/aba direto.
+      if (!isMobilePlatform)
+        MenuBarMenu(tr.focusPane, <MenuNode>[
           MenuAction(
-            tr.tabN(n: i + 1),
-            accelerator: MenuAccelerator(_tabDigitKeys[i]),
-            onSelected: workspace.hasWorkspace
-                ? () => workspace.selectTab(i)
-                : null,
+            tr.focusLeft,
+            onSelected: workspace.hasWorkspace ? workspace.focusPaneLeft : null,
           ),
-        MenuAction(
-          tr.lastTab,
-          accelerator: const MenuAccelerator(LogicalKeyboardKey.digit9),
-          onSelected: workspace.hasWorkspace ? workspace.selectLastTab : null,
-        ),
-      ]),
-      const MenuSeparator(),
+          MenuAction(
+            tr.focusRight,
+            onSelected: workspace.hasWorkspace ? workspace.focusPaneRight : null,
+          ),
+          MenuAction(
+            tr.focusUp,
+            onSelected: workspace.hasWorkspace ? workspace.focusPaneUp : null,
+          ),
+          MenuAction(
+            tr.focusDown,
+            onSelected: workspace.hasWorkspace ? workspace.focusPaneDown : null,
+          ),
+        ]),
+      if (!isMobilePlatform)
+        MenuBarMenu(tr.selectTab, <MenuNode>[
+          for (var i = 0; i < _tabDigitKeys.length; i++)
+            MenuAction(
+              tr.tabN(n: i + 1),
+              accelerator: MenuAccelerator(_tabDigitKeys[i]),
+              onSelected: workspace.hasWorkspace
+                  ? () => workspace.selectTab(i)
+                  : null,
+            ),
+          MenuAction(
+            tr.lastTab,
+            accelerator: const MenuAccelerator(LogicalKeyboardKey.digit9),
+            onSelected: workspace.hasWorkspace ? workspace.selectLastTab : null,
+          ),
+        ]),
+      if (!isMobilePlatform) const MenuSeparator(),
       MenuAction(
         tr.zoomIn,
         accelerator: const MenuAccelerator(LogicalKeyboardKey.equal),
