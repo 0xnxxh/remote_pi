@@ -580,6 +580,7 @@ class _Translations$cockpit$paneView$es extends Translations$cockpit$paneView$en
 	@override String get dropHereToMove => 'Suelta aquí para mover la pestaña';
 	@override String get dockAsTab => 'Acoplar como pestaña';
 	@override String get openBrowser => 'Abrir navegador';
+	@override String get openTerminal => 'Abrir terminal';
 }
 
 // Path: cockpit.fileTreePanel
@@ -1913,6 +1914,7 @@ extension on TranslationsEs {
 			'cockpit.paneView.dropHereToMove' => 'Suelta aquí para mover la pestaña',
 			'cockpit.paneView.dockAsTab' => 'Acoplar como pestaña',
 			'cockpit.paneView.openBrowser' => 'Abrir navegador',
+			'cockpit.paneView.openTerminal' => 'Abrir terminal',
 			'cockpit.fileTreePanel.viewDiff' => 'Ver Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage y Commit',
@@ -2182,9 +2184,9 @@ extension on TranslationsEs {
 			'cockpit.notifications.agentFinished' => 'El agente terminó',
 			'cockpit.notifications.open' => 'Abrir',
 			'cockpit.notifications.agentNeedsAction' => 'El agente necesita tu acción',
-			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
 			'cockpit.remoteHost.addHost' => 'Añadir host remoto',
 			'cockpit.remoteHost.hostName' => 'Nombre',

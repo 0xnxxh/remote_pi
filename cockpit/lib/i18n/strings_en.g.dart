@@ -1065,6 +1065,9 @@ class Translations$cockpit$paneView$en {
 
 	/// en: 'Open browser'
 	String get openBrowser => 'Open browser';
+
+	/// en: 'Open terminal'
+	String get openTerminal => 'Open terminal';
 }
 
 // Path: cockpit.fileTreePanel
@@ -3715,6 +3718,7 @@ extension on Translations {
 			'cockpit.paneView.dropHereToMove' => 'Drop here to move the tab',
 			'cockpit.paneView.dockAsTab' => 'Dock as tab',
 			'cockpit.paneView.openBrowser' => 'Open browser',
+			'cockpit.paneView.openTerminal' => 'Open terminal',
 			'cockpit.fileTreePanel.viewDiff' => 'View Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage and Commit',
@@ -3984,9 +3988,9 @@ extension on Translations {
 			'cockpit.notifications.agentFinished' => 'Agent finished',
 			'cockpit.notifications.open' => 'Open',
 			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
-			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'cockpit.remoteHost.addHost' => 'Add remote host',
 			'cockpit.remoteHost.hostName' => 'Name',

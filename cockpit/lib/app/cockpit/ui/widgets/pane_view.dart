@@ -455,6 +455,11 @@ class _TabStripState extends State<_TabStrip> {
             _PaneTools(
               onSplitRight: () => widget.onSplit(SplitDir.vertical),
               onSplitDown: () => widget.onSplit(SplitDir.horizontal),
+              // Terminal na raiz do workspace, nesta pane (kebab mobile).
+              onOpenTerminal: () => widget.vm.newTerminalTab(
+                cwd: widget.vm.treeRootPath,
+                inPane: widget.pane.id,
+              ),
               // Sem webview na plataforma (Linux) o botão nem aparece — regra
               // de "zero UI órfã" do plano 58.
               onOpenBrowser: BrowserCapability.resolve().isInline
@@ -1140,12 +1145,16 @@ class _PaneTools extends StatelessWidget {
   const _PaneTools({
     required this.onSplitRight,
     required this.onSplitDown,
+    required this.onOpenTerminal,
     required this.onOpenBrowser,
     required this.onClosePane,
   });
 
   final VoidCallback onSplitRight;
   final VoidCallback onSplitDown;
+
+  /// Abre um terminal na pane (item do kebab mobile).
+  final VoidCallback onOpenTerminal;
 
   /// `null` = plataforma sem webview inline (Linux) — botão oculto.
   final VoidCallback? onOpenBrowser;
@@ -1159,6 +1168,11 @@ class _PaneTools extends StatelessWidget {
       ctx,
       minWidth: 180,
       items: <AppMenuItem<VoidCallback>>[
+        AppMenuItem(
+          value: onOpenTerminal,
+          label: tr.openTerminal,
+          icon: Icons.terminal,
+        ),
         if (onOpenBrowser != null)
           AppMenuItem(
             value: onOpenBrowser!,

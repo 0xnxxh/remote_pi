@@ -580,6 +580,7 @@ class _Translations$cockpit$paneView$pt_BR extends Translations$cockpit$paneView
 	@override String get dropHereToMove => 'Solte aqui para mover a aba';
 	@override String get dockAsTab => 'Encaixar como aba';
 	@override String get openBrowser => 'Abrir navegador';
+	@override String get openTerminal => 'Abrir terminal';
 }
 
 // Path: cockpit.fileTreePanel
@@ -1913,6 +1914,7 @@ extension on TranslationsPtBr {
 			'cockpit.paneView.dropHereToMove' => 'Solte aqui para mover a aba',
 			'cockpit.paneView.dockAsTab' => 'Encaixar como aba',
 			'cockpit.paneView.openBrowser' => 'Abrir navegador',
+			'cockpit.paneView.openTerminal' => 'Abrir terminal',
 			'cockpit.fileTreePanel.viewDiff' => 'Ver Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage e Commit',
@@ -2182,9 +2184,9 @@ extension on TranslationsPtBr {
 			'cockpit.notifications.agentFinished' => 'Agente terminou',
 			'cockpit.notifications.open' => 'Abrir',
 			'cockpit.notifications.agentNeedsAction' => 'Agente precisa de você',
-			'cockpit.notifications.agentCrashed' => 'Agente parou inesperadamente',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.notifications.agentCrashed' => 'Agente parou inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
 			'cockpit.remoteHost.addHost' => 'Adicionar host remoto',
 			'cockpit.remoteHost.hostName' => 'Nome',

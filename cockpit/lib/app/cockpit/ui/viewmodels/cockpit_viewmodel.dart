@@ -4530,6 +4530,17 @@ class CockpitViewModel extends ChangeNotifier {
     return active is TerminalSession;
   }
 
+  /// `true` se a aba ativa da pane é um AGENTE de verdade (não placeholder). Só
+  /// nesse caso o split pergunta a subpasta — as demais abas (terminal, browser,
+  /// viewer, db) abrem direto na raiz do workspace, sem modal.
+  bool paneActiveIsAgent(String paneId) {
+    final tree = _activeTree;
+    if (tree == null) return false;
+    final leaf = findLeaf(tree, paneId);
+    final active = leaf == null ? null : _sessions[leaf.active];
+    return active is AgentSession && active.status != AgentStatus.empty;
+  }
+
   /// `true` se a aba ativa da pane [paneId] é um placeholder "Novo" (ainda não
   /// virou agente nem terminal). O split usa isso pra criar outro placeholder
   /// — que mostra o seletor Agent/Terminal — em vez de espelhar um tipo que

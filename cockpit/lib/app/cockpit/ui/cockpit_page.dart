@@ -318,10 +318,13 @@ class _CockpitPageState extends State<CockpitPage> {
     if (projectId == null) return;
     final paneId = vm.focusedPaneId(projectId);
     if (paneId == null) return;
-    if (vm.paneActiveIsTerminal(paneId)) {
-      vm.splitPane(paneId, dir, '');
-    } else {
+    // Só agente pergunta a subpasta; terminal/browser/viewer/db abrem na raiz.
+    if (vm.paneActiveIsEmpty(paneId)) {
+      vm.splitPaneEmpty(paneId, dir);
+    } else if (vm.paneActiveIsAgent(paneId)) {
       unawaited(_pickSubfolderThen((sub) => vm.splitPane(paneId, dir, sub)));
+    } else {
+      vm.splitPane(paneId, dir, '');
     }
   }
 
@@ -1575,10 +1578,12 @@ class _CockpitPageState extends State<CockpitPage> {
           onSplit: (dir) {
             if (vm.paneActiveIsEmpty(node.id)) {
               vm.splitPaneEmpty(node.id, dir);
-            } else if (vm.paneActiveIsTerminal(node.id)) {
-              vm.splitPane(node.id, dir, '');
-            } else {
+            } else if (vm.paneActiveIsAgent(node.id)) {
+              // Só agente pergunta a subpasta; terminal/browser/viewer/db abrem
+              // direto na raiz do workspace (sem modal).
               _pickSubfolderThen((sub) => vm.splitPane(node.id, dir, sub));
+            } else {
+              vm.splitPane(node.id, dir, '');
             }
           },
           onFillEmpty: (emptyId, terminal) => terminal

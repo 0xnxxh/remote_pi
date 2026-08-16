@@ -284,7 +284,8 @@
 			"closePane": "Fechar painel",
 			"dropHereToMove": "Solte aqui para mover a aba",
 			"dockAsTab": "Encaixar como aba",
-			"openBrowser": "Abrir navegador"
+			"openBrowser": "Abrir navegador",
+			"openTerminal": "Abrir terminal"
 		},
 		"fileTreePanel": {
 			"viewDiff": "Ver Diff",

@@ -284,7 +284,8 @@
 			"closePane": "Cerrar panel",
 			"dropHereToMove": "Suelta aquí para mover la pestaña",
 			"dockAsTab": "Acoplar como pestaña",
-			"openBrowser": "Abrir navegador"
+			"openBrowser": "Abrir navegador",
+			"openTerminal": "Abrir terminal"
 		},
 		"fileTreePanel": {
 			"viewDiff": "Ver Diff",

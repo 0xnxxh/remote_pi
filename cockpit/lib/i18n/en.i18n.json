@@ -284,7 +284,8 @@
 			"closePane": "Close pane",
 			"dropHereToMove": "Drop here to move the tab",
 			"dockAsTab": "Dock as tab",
-			"openBrowser": "Open browser"
+			"openBrowser": "Open browser",
+			"openTerminal": "Open terminal"
 		},
 		"fileTreePanel": {
 			"viewDiff": "View Diff",
