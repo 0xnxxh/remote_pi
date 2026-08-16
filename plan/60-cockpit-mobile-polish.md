@@ -121,6 +121,55 @@ terminal da aba). "Não aparece retorno" é runtime.
 - [ ] E2 — nome/ícone "Cockpit Remote" no mobile
 - [ ] E3 — validado em tablet Android real
 
+## Ciclo 2 — testes no device (notas)
+
+Funcionou: conexão remota, terminal remoto (Ghostty reabilitado após casar
+ABI flterm/libghostty), arquivos de texto, restauração de layout remoto.
+
+Não funcionou (a reabrir):
+- **Controle do teclado (mobile)**: o teclado não some, clicar fora não ajuda.
+  O botão flutuante no canto da pane ou ficava sob o teclado ou não bastava.
+  DECISÃO: botão dedicado **ao lado do nome do workspace** (top bar mobile),
+  sempre visível/alcançável, que tira o foco (unfocus + `TextInput.hide`).
+- **Som/turn-status no terminal remoto**: confirmado que é gap de transporte
+  (hook roda no host, socket é local do host). Precisa do caminho server-side
+  (cockpit-server detecta o hook e emite evento no protocolo RPC). É a Wave G.
+
+Medidas a decidir (este ciclo):
+- **Portrait + drawers (F)**: reabilitar portrait no iOS/Android e, quando a
+  largura for pequena, colapsar as panes de workspaces (esquerda) e files
+  (direita) em **drawers**. Detecção recomendada: **breakpoint de largura**
+  (ex.: < ~600dp) em vez de orientação estrita — cobre portrait de celular E
+  janela estreita, e mantém inline no tablet portrait (que tem largura).
+- **Tasks como modo do painel direito**: Tasks **já é** sub-modo do
+  `FileTreePanel` (junto de Files/Search/Database) — o trabalho é garantir que
+  o drawer mobile exponha todos os modos. Recomendação: manter para todas as
+  plataformas (consistência), sem divergência mobile-only.
+
+### Wave F — Portrait + drawers (decidido 2026-08-15)
+
+Detecção: **breakpoint de largura** (`< ~600dp`), não orientação estrita.
+
+- [ ] F0 — botão de dispensar teclado na **top bar mobile** (ao lado do nome do
+      workspace), sempre visível: `focusNode.unfocus()` + `TextInput.hide`.
+- [ ] F1 — reabilitar **portrait** no iOS/Android (Info.plist, AndroidManifest
+      `sensorPortrait`+landscape, `SystemChrome` com as 4 orientações no mobile).
+- [ ] F2 — layout responsivo: com largura `< 600dp`, a rail (workspaces) e o
+      painel direito (files/search/db/tasks) viram **drawers** com toggles;
+      largura maior mantém inline (comportamento atual). Pane central preenche.
+- [ ] F3 — garantir que o drawer direito expõe **todos os modos** incluindo
+      **Tasks** (já é sub-modo do FileTreePanel); mantido para todas as
+      plataformas (sem divergência mobile-only).
+
+### Wave G — Turn-status remoto (som/spinner)
+
+- [ ] G1 — `cockpit-server` detecta o hook (socket local do host) + instala os
+      hooks no `~/.claude`/`~/.codex` do host + injeta `COCKPIT_STATUS_SOCK`.
+- [ ] G2 — evento novo no protocolo `cockpit_remote` (no stream do attach)
+      carregando `{tabId, status, event, sid, harness}`; bump de versão.
+- [ ] G3 — cliente traduz o evento em `applyClaudeStatus` (reusa spinner/chime).
+      Requer redeploy do cockpit-server no host.
+
 ## Próximos planos
 
 - Auto-update / versionamento de protocolo do `cockpit-server` remoto (pendência
