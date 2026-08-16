@@ -150,16 +150,15 @@ Medidas a decidir (este ciclo):
 
 Detecção: **breakpoint de largura** (`< ~600dp`), não orientação estrita.
 
-- [ ] F0 — botão de dispensar teclado na **top bar mobile** (ao lado do nome do
-      workspace), sempre visível: `focusNode.unfocus()` + `TextInput.hide`.
-- [ ] F1 — reabilitar **portrait** no iOS/Android (Info.plist, AndroidManifest
-      `sensorPortrait`+landscape, `SystemChrome` com as 4 orientações no mobile).
-- [ ] F2 — layout responsivo: com largura `< 600dp`, a rail (workspaces) e o
-      painel direito (files/search/db/tasks) viram **drawers** com toggles;
-      largura maior mantém inline (comportamento atual). Pane central preenche.
-- [ ] F3 — garantir que o drawer direito expõe **todos os modos** incluindo
-      **Tasks** (já é sub-modo do FileTreePanel); mantido para todas as
-      plataformas (sem divergência mobile-only).
+- [x] F0 — botão de dispensar teclado na top bar mobile (FocusManager.
+      primaryFocus.unfocus() + TextInput.hide); botão flutuante antigo removido.
+- [x] F1 — portrait reabilitado (Info.plist, AndroidManifest fullSensor,
+      SystemChrome com as 4 orientações no mobile).
+- [x] F2 — `_PanelScaffold`: largura `< 600dp` (mobile) → rail e painel direito
+      viram drawers (scrim + toggles da top bar); largura maior mantém inline.
+      Selecionar workspace / abrir arquivo fecha o drawer. Pendente E2E no device.
+- [x] F3 — `tasksPanel` já é modo do FileTreePanel (Files/Search/DB/Tasks), sem
+      gate de remoto → exposto no drawer mobile. Comentário obsoleto atualizado.
 
 ### Wave G — Turn-status remoto (som/spinner)
 

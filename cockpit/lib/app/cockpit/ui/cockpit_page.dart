@@ -70,6 +70,24 @@ class _CockpitPageState extends State<CockpitPage> {
   static const double _railMin = 190;
   static const double _railMax = 420;
 
+  /// Abaixo deste valor de largura (mobile) as panes laterais (workspaces e
+  /// arquivos) viram DRAWERS sobrepostos, em vez de dividir a Row (plano 60,
+  /// Wave F). Cobre portrait de celular; landscape/tablet largo seguem inline.
+  static const double _drawerBreakpoint = 600;
+
+  /// Estado dos drawers no modo estreito (default fechados). No modo largo a
+  /// visibilidade das panes segue `vm.railVisible`/`vm.treeVisible`.
+  bool _leftDrawer = false;
+  bool _rightDrawer = false;
+
+  void _dismissDrawers() {
+    if (!_leftDrawer && !_rightDrawer) return;
+    setState(() {
+      _leftDrawer = false;
+      _rightDrawer = false;
+    });
+  }
+
   /// Sobe a cada Cmd+Shift+F → o [ContentSearchPanel] foca o campo de busca.
   final ValueNotifier<int> _searchFocusSignal = ValueNotifier<int>(0);
 
@@ -1164,6 +1182,15 @@ class _CockpitPageState extends State<CockpitPage> {
       );
     }
 
+    // Modo estreito (mobile portrait): panes laterais viram drawers. No largo, a
+    // visibilidade segue vm.railVisible/treeVisible (comportamento desktop).
+    final narrow =
+        isMobilePlatform &&
+        MediaQuery.sizeOf(context).width < _drawerBreakpoint;
+    final railVisibleEff = narrow ? _leftDrawer : vm.railVisible;
+    final treeVisibleEff =
+        (narrow ? _rightDrawer : vm.treeVisible) && vm.activeHasFileTree;
+
     return Listener(
       onPointerDown: _onPointerDown,
       child: CallbackShortcuts(
@@ -1179,20 +1206,28 @@ class _CockpitPageState extends State<CockpitPage> {
               children: [
                 CockpitTopbar(
                   projectName: vm.selectedDisplayTitle ?? 'Cockpit',
-                  railVisible: vm.railVisible,
-                  treeVisible: vm.treeVisible,
-                  onToggleRail: vm.toggleRail,
-                  onToggleTree: vm.toggleTree,
+                  // No modo estreito os toggles abrem/fecham os drawers; no largo
+                  // seguem alternando a visibilidade inline da VM.
+                  railVisible: railVisibleEff,
+                  treeVisible: treeVisibleEff,
+                  onToggleRail: narrow
+                      ? () => setState(() => _leftDrawer = !_leftDrawer)
+                      : vm.toggleRail,
+                  onToggleTree: narrow
+                      ? () => setState(() => _rightDrawer = !_rightDrawer)
+                      : vm.toggleTree,
                   // Remoto TEM árvore (a pasta do host); só o Cockpit
                   // (systemTerminal) não. `activeHasFileTree` cobre os dois —
                   // `!isPathless` desabilitava indevidamente o remoto (path='').
                   filesEnabled: vm.activeHasFileTree,
                 ),
                 Expanded(
-                  child: Row(
-                    children: [
-                      if (vm.railVisible)
-                        Stack(
+                  child: _PanelScaffold(
+                    narrow: narrow,
+                    railOpen: railVisibleEff,
+                    treeOpen: treeVisibleEff,
+                    onDismiss: _dismissDrawers,
+                    rail: Stack(
                           children: [
                             ProjectsRail(
                               width: _railWidth,
@@ -1211,7 +1246,10 @@ class _CockpitPageState extends State<CockpitPage> {
                                     git: vm.gitInfoForRoot(r),
                                   ),
                               ],
-                              onSelect: vm.selectProject,
+                              onSelect: (id) {
+                                vm.selectProject(id);
+                                _dismissDrawers(); // fecha o drawer no mobile
+                              },
                               onAdd: _createWorkspace,
                               onConfigure: _configureProject,
                               onDelete: _deleteProject,
@@ -1243,11 +1281,16 @@ class _CockpitPageState extends State<CockpitPage> {
                                 vm.moveWorkspaceToRealm(projectId, realmId),
                               ),
                               cockpit: vm.cockpitWorkspace,
-                              onSelectCockpit: () =>
-                                  vm.selectProject(Project.cockpitId),
+                              onSelectCockpit: () {
+                                vm.selectProject(Project.cockpitId);
+                                _dismissDrawers();
+                              },
                               onNewWorkspace: (anchor) =>
                                   _newWorkspaceMenu(vm, anchor),
-                              onSelectRemote: vm.selectProject,
+                              onSelectRemote: (id) {
+                                vm.selectProject(id);
+                                _dismissDrawers();
+                              },
                               onRemoveRemoteWorkspace: (wsId) =>
                                   unawaited(vm.removeRemoteWorkspace(wsId)),
                               remoteGitInfoOf: vm.remoteGitInfoOf,
@@ -1270,8 +1313,7 @@ class _CockpitPageState extends State<CockpitPage> {
                             ),
                           ],
                         ),
-                      Expanded(
-                        child: vm.selectedProjectId == null
+                    center: vm.selectedProjectId == null
                             ? WelcomeView(
                                 hasHosts: vm.remoteHosts.hosts.isNotEmpty,
                                 onCreateWorkspace: _createWorkspace,
@@ -1304,11 +1346,9 @@ class _CockpitPageState extends State<CockpitPage> {
                                     ),
                                 ],
                               ),
-                      ),
-                      // Cockpit (sem pasta) nunca mostra a árvore; workspace
-                      // remoto mostra a árvore do host (plano 58).
-                      if (vm.treeVisible && vm.activeHasFileTree)
-                        Stack(
+                    // Cockpit (sem pasta) nunca mostra a árvore; workspace
+                    // remoto mostra a árvore do host (plano 58).
+                    tree: Stack(
                           children: [
                             FileTreePanel(
                               // Pasta do workspace; reseta ao trocar de workspace.
@@ -1359,10 +1399,15 @@ class _CockpitPageState extends State<CockpitPage> {
                               selectedPath: vm.selectedFileInTree,
                               listChildren: vm.listChildren,
                               gitStatusOf: vm.gitStatusForPath,
-                              onOpenFile: (path) =>
-                                  vm.openFile(path, isPreview: false),
+                              onOpenFile: (path) {
+                                vm.openFile(path, isPreview: false);
+                                _dismissDrawers(); // fecha o drawer no mobile
+                              },
                               onOpenChangedFile: vm.openChangedFile,
-                              onTapFile: vm.openFile, // clique único = preview
+                              onTapFile: (path) {
+                                vm.openFile(path); // clique único = preview
+                                _dismissDrawers();
+                              },
                               onSelectFile:
                                   vm.selectFileInTree, // atualiza highlight
                               onClearSelection: vm.clearFileSelection,
@@ -1422,11 +1467,12 @@ class _CockpitPageState extends State<CockpitPage> {
                                       // (project.path é vazio).
                                       workspaceRoot: vm.treeRootPath,
                                     ),
-                              // Task Run é local-only por ora: descoberta lê o
-                              // tasks.json do disco local e execução spawna PTY
-                              // local (cwd/launchctl locais). Num workspace
-                              // remoto rodaria na máquina errada, então some até
-                              // ganharmos um caminho remoto (plano 58, pendente).
+                              // Task Run funciona local E remoto: no remoto a
+                              // descoberta lê o tasks.json do host (RemoteTask
+                              // Discovery) e a execução spawna PTY no host
+                              // (RemoteTaskRunner). É um dos modos do painel
+                              // direito (Files/Search/DB/Tasks), exposto também
+                              // no drawer do mobile (plano 60, Wave F3).
                               tasksPanel: vm.selectedProject == null
                                   ? null
                                   : TasksPanel(
@@ -1462,7 +1508,6 @@ class _CockpitPageState extends State<CockpitPage> {
                             ),
                           ],
                         ),
-                    ],
                   ),
                 ),
               ],
@@ -1594,6 +1639,60 @@ class _CockpitPageState extends State<CockpitPage> {
 /// Alça fina pra redimensionar um painel lateral. Hit-area de 8px (cursor de
 /// resize); o visual fica por conta da borda do próprio painel. Quem usa decide
 /// o sinal do delta (borda esquerda vs direita).
+/// Arranja as três panes (workspaces | centro | arquivos). Largo: uma Row com
+/// as laterais inline (comportamento clássico do desktop). Estreito (mobile
+/// portrait): as laterais viram DRAWERS sobrepostos ao centro, com um scrim que
+/// fecha ao tocar (plano 60, Wave F). As panes já trazem sua própria largura
+/// (ProjectsRail/FileTreePanel) e fundo.
+class _PanelScaffold extends StatelessWidget {
+  const _PanelScaffold({
+    required this.narrow,
+    required this.railOpen,
+    required this.treeOpen,
+    required this.rail,
+    required this.center,
+    required this.tree,
+    required this.onDismiss,
+  });
+
+  final bool narrow;
+  final bool railOpen;
+  final bool treeOpen;
+  final Widget rail;
+  final Widget center;
+  final Widget tree;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!narrow) {
+      return Row(
+        children: [
+          if (railOpen) rail,
+          Expanded(child: center),
+          if (treeOpen) tree,
+        ],
+      );
+    }
+    return Stack(
+      children: [
+        Positioned.fill(child: center),
+        if (railOpen || treeOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onDismiss,
+              child: ColoredBox(color: context.colors.scrim),
+            ),
+          ),
+        // top/bottom = 0 estica a pane em altura total; a largura vem da própria.
+        if (railOpen) Positioned(left: 0, top: 0, bottom: 0, child: rail),
+        if (treeOpen) Positioned(right: 0, top: 0, bottom: 0, child: tree),
+      ],
+    );
+  }
+}
+
 class _ResizeHandle extends StatelessWidget {
   const _ResizeHandle({required this.onDelta});
 
