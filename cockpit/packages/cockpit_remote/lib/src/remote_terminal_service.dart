@@ -6,6 +6,27 @@ import 'package:cockpit_protocol/cockpit_protocol.dart';
 
 import 'remote_connection.dart';
 
+/// Status de turno de um agente numa PTY do host (plano 60, Wave G), tipo
+/// neutro pro cliente — não expõe a mensagem do protocolo. [paneId] é o
+/// `COCKPIT_PANE_ID` da aba (roteamento); [status] é `working`/`idle`/`waiting`.
+class RemoteTurnStatus {
+  const RemoteTurnStatus({
+    required this.paneId,
+    required this.status,
+    this.event,
+    this.sid,
+    this.transcriptPath,
+    this.harness,
+  });
+
+  final String paneId;
+  final String status;
+  final String? event;
+  final String? sid;
+  final String? transcriptPath;
+  final String? harness;
+}
+
 /// Proxy do [TerminalService] falando o protocolo com um cockpit-server.
 ///
 /// A UI consome este e o nativo pelo MESMO contrato; a diferença é só a
@@ -14,6 +35,22 @@ class RemoteTerminalService implements TerminalService {
   RemoteTerminalService(this._connection);
 
   final RemoteConnection _connection;
+
+  /// Eventos de status de turno vindos do host (broadcast do protocolo). Fora
+  /// do contrato [TerminalService]; consumido pelo connector/gateway remoto.
+  Stream<RemoteTurnStatus> get turnStatus => _connection.messages
+      .where((m) => m is TurnStatus)
+      .cast<TurnStatus>()
+      .map(
+        (m) => RemoteTurnStatus(
+          paneId: m.paneId,
+          status: m.status,
+          event: m.event,
+          sid: m.sid,
+          transcriptPath: m.transcriptPath,
+          harness: m.harness,
+        ),
+      );
 
   @override
   Future<PtySessionInfo> open(PtySpawnSpec spec) async {

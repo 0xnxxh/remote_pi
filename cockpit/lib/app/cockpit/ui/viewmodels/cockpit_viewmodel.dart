@@ -97,7 +97,8 @@ import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_worktree_gateway.dart';
 import 'package:cockpit_core/cockpit_core.dart' show GitRunResult;
-import 'package:cockpit_remote/cockpit_remote.dart' show RemoteGitService;
+import 'package:cockpit_remote/cockpit_remote.dart'
+    show RemoteGitService, RemoteTurnStatus;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
@@ -169,6 +170,9 @@ class CockpitViewModel extends ChangeNotifier {
   }
 
   StreamSubscription<TaskPreviewUrl>? _previewSub;
+
+  /// Assinatura do turn-status remoto (Wave G); cancelada no dispose.
+  StreamSubscription<RemoteTurnStatus>? _remoteTurnSub;
 
   /// Task emitiu URL local (`npm run dev` etc.): abre o navegador embutido
   /// nela — reusando a aba já aberta na mesma origem — ou, sem webview inline
@@ -2507,6 +2511,22 @@ class CockpitViewModel extends ChangeNotifier {
     // Await: no Windows o `hookEnv` depende da porta ligada antes de spawnar abas.
     // O mesmo socket atende a CLI interna `cockpit` (`_onCockpitCommand`).
     await _statusServer.start(_onClaudeStatus, onCommand: _cli.handle);
+    // Turn-status REMOTO (plano 60, Wave G): o hook roda no host, o cockpit-
+    // server o reenvia pelo protocolo, e aqui cai no MESMO caminho do local
+    // (roteado por paneId → spinner/chime). Sem isso, terminal remoto não tem
+    // som/spinner (o socket local do cliente é inalcançável do host).
+    _remoteTurnSub = _remoteHosts.turnStatus.listen((s) {
+      _onClaudeStatus(
+        ClaudeStatusUpdate(
+          paneId: s.paneId,
+          status: s.status,
+          event: s.event,
+          sessionId: s.sid,
+          transcriptPath: s.transcriptPath,
+          harness: s.harness,
+        ),
+      );
+    });
     // Realms antes dos projetos: o filtro do rail e a seleção inicial dependem
     // do realm ativo. `all()` garante o Default.
     await realmCtrl.load();
@@ -5946,6 +5966,7 @@ class CockpitViewModel extends ChangeNotifier {
     _remoteHosts.removeListener(_onRemoteHostsChanged);
     unawaited(_statusServer.stop());
     unawaited(_previewSub?.cancel());
+    unawaited(_remoteTurnSub?.cancel());
     // O GitController é dono dos próprios timers/watchers; o módulo o
     // descarta junto com a rota. Aqui só desligamos o repasse de notify.
     git.removeListener(_onGitNotify);

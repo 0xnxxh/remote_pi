@@ -162,12 +162,18 @@ Detecção: **breakpoint de largura** (`< ~600dp`), não orientação estrita.
 
 ### Wave G — Turn-status remoto (som/spinner)
 
-- [ ] G1 — `cockpit-server` detecta o hook (socket local do host) + instala os
-      hooks no `~/.claude`/`~/.codex` do host + injeta `COCKPIT_STATUS_SOCK`.
-- [ ] G2 — evento novo no protocolo `cockpit_remote` (no stream do attach)
-      carregando `{tabId, status, event, sid, harness}`; bump de versão.
+Decisão (2026-08-16): **embarcar o `cockpit-cli` no server**. Ele é necessário
+no modo server de qualquer forma (`send`/`send-keys`/`list-panes` cross-pane),
+e já traz o `cockpit hook` — então instalar o hook no `~/.claude` do host e ter
+o receptor de status vira trivial. Sem redeploy só pra isso: entra junto do CLI.
+
+- [ ] G1 — server embarca/materializa o `cockpit-cli` no host; sobe socket local
+      de status + injeta `COCKPIT_STATUS_SOCK`/`COCKPIT_TAB_ID` nas PTYs; instala
+      o hook do claude/codex no `~/.claude`/`~/.codex` do host.
+- [ ] G2 — evento novo no protocolo `cockpit_remote` (stream do attach ou canal
+      global) `{tabId, status, event, sid, harness}`; bump de versão.
 - [ ] G3 — cliente traduz o evento em `applyClaudeStatus` (reusa spinner/chime).
-      Requer redeploy do cockpit-server no host.
+      Requer server novo no host (via bootstrap desktop ou redeploy).
 
 ## Próximos planos
 

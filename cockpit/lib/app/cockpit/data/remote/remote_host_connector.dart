@@ -69,6 +69,17 @@ class RemoteHostConnector {
   SshTunnel? _tunnel;
   DartSshHostConnection? _dartConn;
 
+  /// Status de turno (spinner/chime) vindo do host pelo protocolo (Wave G).
+  /// Reassina a cada (re)conexão; broadcast pra o controller repassar à VM.
+  final _turnStatus = StreamController<RemoteTurnStatus>.broadcast();
+  StreamSubscription<RemoteTurnStatus>? _turnSub;
+  Stream<RemoteTurnStatus> get turnStatus => _turnStatus.stream;
+
+  void _bindTurnStatus() {
+    _turnSub?.cancel();
+    _turnSub = _service?.turnStatus.listen(_turnStatus.add);
+  }
+
   /// Senha resolvida na abertura atual (auth por senha); só em memória.
   String? _password;
   RemoteConnection? _connection;
@@ -157,6 +168,7 @@ class RemoteHostConnector {
     }
     _connection = connection;
     _service = RemoteTerminalService(connection);
+    _bindTurnStatus();
     _setPhase(RemoteHostPhase.connected);
     return _service!;
   }
@@ -198,6 +210,7 @@ class RemoteHostConnector {
       );
       _connection = connection;
       _service = RemoteTerminalService(connection);
+    _bindTurnStatus();
       _setPhase(RemoteHostPhase.connected);
       return _service!;
     } on TerminalException catch (e) {
@@ -317,6 +330,8 @@ class RemoteHostConnector {
   }
 
   Future<void> dispose() async {
+    await _turnSub?.cancel();
+    await _turnStatus.close();
     await _connection?.close();
     await _tunnel?.close();
     await _dartConn?.close();

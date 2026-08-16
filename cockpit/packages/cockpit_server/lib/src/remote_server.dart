@@ -33,6 +33,12 @@ class RemoteServer {
   ServerSocket? _listener;
   final Set<_Connection> _connections = {};
 
+  /// Receptor do status de turno (socket local do host onde o hook do agente
+  /// escreve). `null` até o [bind]. Cada linha vira um [TurnStatus] broadcast
+  /// pras conexões (plano 60, Wave G).
+  TurnStatusReceiver? _statusReceiver;
+  String? get _statusSocketPath => _statusReceiver?.socketPath;
+
   /// Modo sidecar: quando > Duration.zero, o servidor se encerra sozinho se
   /// ficar esse tempo sem NENHUM cliente conectado (evita órfão quando a GUI
   /// morre sem conseguir matar o filho). Zero = nunca (modo serviço).
@@ -56,13 +62,30 @@ class RemoteServer {
       0,
     );
     _listener!.listen(_accept);
+    // Socket de status ao lado do socket principal. Falha ao bindar (ex.: path
+    // longo demais) é não-fatal: o servidor segue sem turn-status.
+    _statusReceiver = TurnStatusReceiver(_broadcastTurnStatus);
+    try {
+      await _statusReceiver!.bind('$socketPath.status');
+    } catch (_) {
+      _statusReceiver = null;
+    }
     _armIdleTimer();
+  }
+
+  /// Reenvia um status de turno (vindo do hook no host) pra todos os clientes
+  /// conectados. O cliente roteia por `paneId` — típico 1 cliente por host.
+  void _broadcastTurnStatus(TurnStatus status) {
+    for (final connection in _connections) {
+      connection._send(status);
+    }
   }
 
   Future<void> close() async {
     for (final connection in _connections.toList()) {
       await connection.close();
     }
+    await _statusReceiver?.close();
     await _listener?.close();
     await _terminals.dispose();
   }
@@ -75,6 +98,7 @@ class RemoteServer {
       _git,
       _db,
       serverVersion,
+      _statusSocketPath,
     );
     _connections.add(connection);
     _idleTimer?.cancel();
@@ -93,6 +117,7 @@ class _Connection {
     this._git,
     this._db,
     this._serverVersion,
+    this._statusSocketPath,
   ) {
     RemoteServer._codec
         .decodeStream(_socket)
@@ -114,6 +139,11 @@ class _Connection {
   final GitService _git;
   final DbService _db;
   final String _serverVersion;
+
+  /// Socket local (no host) onde o hook do agente escreve o status de turno. É
+  /// injetado como `COCKPIT_STATUS_SOCK` no env de cada PTY, pra o hook alcançar
+  /// (plano 60, Wave G). `null` = turn-status desligado.
+  final String? _statusSocketPath;
 
   final Map<String, StreamSubscription<PtyEvent>> _attachments = {};
   final Completer<void> _done = Completer();
@@ -150,12 +180,23 @@ class _Connection {
 
       switch (message) {
         case PtyOpen():
+          // Injeta o socket de status do HOST no env da PTY (o cliente já
+          // manda COCKPIT_PANE_ID); assim o hook do agente no host alcança o
+          // servidor, que reenvia o turno pelo protocolo (Wave G). O env do
+          // cliente NÃO sobrescreve isto (o socket do cliente é inalcançável do
+          // host).
+          final env = _statusSocketPath == null
+              ? message.environment
+              : {
+                  ...message.environment,
+                  'COCKPIT_STATUS_SOCK': _statusSocketPath!,
+                };
           final info = await _terminals.open(
             PtySpawnSpec(
               executable: message.executable,
               arguments: message.arguments,
               workingDirectory: message.workingDirectory,
-              environment: message.environment,
+              environment: env,
               rows: message.rows,
               columns: message.columns,
             ),
@@ -223,12 +264,17 @@ class _Connection {
         case RpcRequest():
           await _handleRpc(message);
 
+        // Tipo desconhecido (cliente mais novo): ignora — forward-compat.
+        case UnknownMessage():
+          break;
+
         case Hello() ||
             HelloAck() ||
             PtyOpened() ||
             PtySessions() ||
             PtyOutput() ||
             PtyExited() ||
+            TurnStatus() ||
             RpcResponse() ||
             RemoteError():
           _send(const RemoteError(code: 'bad_message'));
@@ -387,5 +433,82 @@ class _Connection {
     _attachments.clear();
     _socket.destroy();
     if (!_done.isCompleted) _done.complete();
+  }
+}
+
+/// Receptor do status de turno no HOST (plano 60, Wave G). Espelha o
+/// `TerminalStatusServerImpl` do cliente, mas do lado do servidor: um socket
+/// UNIX local onde o `cockpit hook` (rodando junto do agente na PTY) escreve
+/// UMA linha JSON por evento e fecha. Cada linha vira um [TurnStatus] entregue
+/// ao [onStatus] (que o [RemoteServer] faz broadcast pros clientes).
+///
+/// Só POSIX: no host remoto (macOS/Linux) o transporte é UDS. O envelope do
+/// hook é `{paneId, st, ev, sid, tx, hn, tid?, tok?}` (ver cli/src/hook.rs).
+class TurnStatusReceiver {
+  TurnStatusReceiver(this.onStatus);
+
+  final void Function(TurnStatus status) onStatus;
+
+  ServerSocket? _listener;
+  String? socketPath;
+
+  Future<void> bind(String path) async {
+    final file = File(path);
+    if (file.existsSync()) file.deleteSync();
+    _listener = await ServerSocket.bind(
+      InternetAddress(path, type: InternetAddressType.unix),
+      0,
+    );
+    socketPath = path;
+    _listener!.listen(_accept);
+  }
+
+  void _accept(Socket socket) {
+    // Uma linha JSON por conexão; o hook fecha logo após escrever.
+    socket
+        .cast<List<int>>()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(
+          _handleLine,
+          onError: (Object _) => socket.destroy(),
+          onDone: socket.destroy,
+        );
+  }
+
+  void _handleLine(String line) {
+    if (line.trim().isEmpty) return;
+    Object? decoded;
+    try {
+      decoded = jsonDecode(line);
+    } catch (_) {
+      return;
+    }
+    if (decoded is! Map) return;
+    final json = decoded.cast<String, Object?>();
+    final paneId = json['paneId'];
+    final status = json['st'];
+    if (paneId is! String || status is! String) return;
+    onStatus(
+      TurnStatus(
+        paneId: paneId,
+        status: status,
+        event: json['ev'] as String?,
+        sid: json['sid'] as String?,
+        transcriptPath: json['tx'] as String?,
+        harness: json['hn'] as String?,
+      ),
+    );
+  }
+
+  Future<void> close() async {
+    await _listener?.close();
+    final path = socketPath;
+    if (path != null) {
+      try {
+        final f = File(path);
+        if (f.existsSync()) f.deleteSync();
+      } catch (_) {}
+    }
   }
 }

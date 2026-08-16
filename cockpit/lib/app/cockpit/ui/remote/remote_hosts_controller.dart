@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cockpit/app/cockpit/data/remote/mobile_ssh_key_store.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_password_store.dart';
@@ -31,17 +33,26 @@ class RemoteHostsController extends ChangeNotifier {
 
   List<RemoteHost> get hosts => _store.hosts();
 
+  /// Status de turno (spinner/chime) de TODOS os hosts remotos, mesclado. A VM
+  /// assina e roteia por `paneId` pro mesmo caminho do status local (Wave G).
+  final _turnStatus = StreamController<RemoteTurnStatus>.broadcast();
+  Stream<RemoteTurnStatus> get turnStatus => _turnStatus.stream;
+
   RemoteHostConnector _connectorFor(RemoteHost host) => _connectors.putIfAbsent(
     host.id,
-    () => RemoteHostConnector(
-      host,
-      localServerBinaryResolver: _resolveLocalServerBinary,
-      // Senha (auth por senha) lida do Keychain sob demanda; null pra auth por
-      // chave. Fica fora do JSON de hosts (decisão A).
-      passwordResolver: host.auth == RemoteHostAuth.password
-          ? () => _passwords.read(host.id)
-          : null,
-    ),
+    () {
+      final connector = RemoteHostConnector(
+        host,
+        localServerBinaryResolver: _resolveLocalServerBinary,
+        // Senha (auth por senha) lida do Keychain sob demanda; null pra auth por
+        // chave. Fica fora do JSON de hosts (decisão A).
+        passwordResolver: host.auth == RemoteHostAuth.password
+            ? () => _passwords.read(host.id)
+            : null,
+      );
+      connector.turnStatus.listen(_turnStatus.add);
+      return connector;
+    },
   );
 
   /// Fase de conexão atual de um host (pro badge do rail). `idle` se nunca
@@ -257,6 +268,7 @@ class RemoteHostsController extends ChangeNotifier {
       connector.dispose();
     }
     _connectors.clear();
+    unawaited(_turnStatus.close());
     super.dispose();
   }
 }

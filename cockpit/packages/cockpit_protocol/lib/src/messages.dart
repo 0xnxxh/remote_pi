@@ -30,12 +30,28 @@ sealed class RemoteMessage {
       PtyResize.kType => PtyResize.fromJson(json),
       PtyKill.kType => PtyKill.fromJson(json),
       PtyExited.kType => PtyExited.fromJson(json),
+      TurnStatus.kType => TurnStatus.fromJson(json),
       RpcRequest.kType => RpcRequest.fromJson(json),
       RpcResponse.kType => RpcResponse.fromJson(json),
       RemoteError.kType => RemoteError.fromJson(json),
-      _ => throw FormatException('unknown message type: $t'),
+      // Tolerante a tipos desconhecidos (forward-compat): um cliente/servidor
+      // mais antigo simplesmente ignora um `t` que não conhece, em vez de
+      // derrubar o stream. Assim dá pra adicionar eventos (ex.: turn.status)
+      // sem bump de versão nem quebrar conexões existentes.
+      _ => UnknownMessage(t),
     };
   }
+}
+
+/// Mensagem de tipo desconhecido (versão do outro lado é mais nova). Ignorada
+/// pelos dispatchers; existe só pra não quebrar o stream.
+class UnknownMessage extends RemoteMessage {
+  const UnknownMessage(this.rawType);
+  final Object? rawType;
+  @override
+  String get type => 'unknown';
+  @override
+  Map<String, Object?> toJson() => {'t': rawType};
 }
 
 // ---------------------------------------------------------------------------
@@ -341,6 +357,62 @@ class PtyExited extends RemoteMessage {
     't': kType,
     'id': sessionId,
     'code': exitCode,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Turn status (spinner/chime do agente — plano 60, Wave G)
+// ---------------------------------------------------------------------------
+
+/// Evento server→cliente de status de turno de um agente (Claude Code/Codex)
+/// rodando numa PTY do host. Nasce do hook do agente (no host), que escreve num
+/// socket local; o servidor o converte nesta mensagem e a envia pelo protocolo.
+/// O cliente roteia por [paneId] (o `COCKPIT_PANE_ID` da aba) e reusa o mesmo
+/// caminho do status local (`applyClaudeStatus`) → spinner + som.
+class TurnStatus extends RemoteMessage {
+  const TurnStatus({
+    required this.paneId,
+    required this.status,
+    this.event,
+    this.sid,
+    this.transcriptPath,
+    this.harness,
+  });
+  static const kType = 'turn.status';
+
+  /// Aba dona (o `COCKPIT_PANE_ID` que o cliente injetou e o host reportou).
+  final String paneId;
+
+  /// `working` | `idle` | `waiting`.
+  final String status;
+
+  /// Evento cru do harness (ex.: `UserPromptSubmit`, `Stop`) — a UI usa pra
+  /// saber se é início de turno.
+  final String? event;
+  final String? sid;
+  final String? transcriptPath;
+  final String? harness;
+
+  factory TurnStatus.fromJson(Map<String, Object?> j) => TurnStatus(
+    paneId: j['pane'] as String,
+    status: j['st'] as String,
+    event: j['ev'] as String?,
+    sid: j['sid'] as String?,
+    transcriptPath: j['tx'] as String?,
+    harness: j['hn'] as String?,
+  );
+
+  @override
+  String get type => kType;
+  @override
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'pane': paneId,
+    'st': status,
+    if (event != null) 'ev': event,
+    if (sid != null) 'sid': sid,
+    if (transcriptPath != null) 'tx': transcriptPath,
+    if (harness != null) 'hn': harness,
   };
 }
 
