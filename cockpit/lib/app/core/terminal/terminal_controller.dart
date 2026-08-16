@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/terminal/ghostty_sgr_weight_normalizer.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/terminal/xterm/xterm.dart' as xterm;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -241,9 +242,13 @@ final class GhosttyTerminalController implements CockpitTerminalController {
 /// Windows via a branch/override do fork.
 bool get terminalEngineIsSelectable => true;
 
-/// Resolve o engine efetivo pra plataforma — hoje passa direto (sem gate de
-/// plataforma). Mantido como ponto único caso precise re-travar alguma engine.
-TerminalEngine resolveTerminalEngine(TerminalEngine engine) => engine;
+/// Resolve o engine efetivo pra plataforma. No **mobile (iOS/Android)** o
+/// `libghostty` faz `EXC_BAD_ACCESS` ao inicializar o terminal (crash nativo em
+/// `terminal.zig`, setter de `kitty_image_medium_shared_mem` — shared memory não
+/// disponível no sandbox mobile), então travamos no **xterm** (Dart puro, zero
+/// nativo). Desktop segue com a escolha do usuário. Ponto único de gate.
+TerminalEngine resolveTerminalEngine(TerminalEngine engine) =>
+    isMobilePlatform ? TerminalEngine.xterm : engine;
 
 CockpitTerminalController createTerminalController(
   TerminalEngine engine, {
