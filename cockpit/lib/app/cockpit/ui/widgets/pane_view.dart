@@ -13,6 +13,7 @@ import 'package:cockpit/app/cockpit/ui/session/task_output_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/setup_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_composer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_setup_checklist.dart';
@@ -871,6 +872,11 @@ class _TabState extends State<_Tab> {
             onTapUp: (_) => _handleTap(),
             onSecondaryTapUp: isEmpty ? null : (_) => _showTabMenu(menuCtx),
             onTertiaryTapUp: (_) => _requestClose(),
+            // Mobile: duplo-toque abre o menu da aba (equivalente ao clique
+            // direito do desktop, que não existe no touch).
+            onDoubleTap: (isMobilePlatform && !isEmpty)
+                ? () => _showTabMenu(menuCtx)
+                : null,
             child: tabBody,
           ),
         );
