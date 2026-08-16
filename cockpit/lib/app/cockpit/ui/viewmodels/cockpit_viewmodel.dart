@@ -1470,6 +1470,27 @@ class CockpitViewModel extends ChangeNotifier {
     }
   }
 
+  /// Sessão de terminal da aba ATIVA na pane focada, ou `null` (nenhuma aba, ou
+  /// a aba ativa não é terminal). Usado pela barra de teclas do mobile.
+  TerminalSession? _activeTerminal() {
+    final projectId = _selectedProjectId;
+    final tree = _activeTree;
+    if (projectId == null || tree == null) return null;
+    final paneId = _focused[projectId];
+    if (paneId == null) return null;
+    final activeId = findLeaf(tree, paneId)?.active;
+    final s = activeId == null ? null : _sessions[activeId];
+    return s is TerminalSession ? s : null;
+  }
+
+  /// A aba ativa (pane focada) é um terminal? Gate da barra de teclas mobile.
+  bool get activeTabIsTerminal => _activeTerminal() != null;
+
+  /// Envia bytes crus (ESC, setas, F-keys, Ctrl+C...) ao terminal ativo. No-op
+  /// se a aba ativa não for terminal.
+  void sendKeysToActiveTerminal(List<int> bytes) =>
+      _activeTerminal()?.sendKeys(bytes);
+
   /// Id da pane (folha) que contém a aba [tabId] na árvore ativa, ou `null`.
   String? _leafOf(String tabId) {
     final tree = _activeTree;

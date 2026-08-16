@@ -23,6 +23,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/git_process_dialog.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/terminal_key_bar.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/widgets.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
@@ -1510,6 +1511,12 @@ class _CockpitPageState extends State<CockpitPage> {
                         ),
                   ),
                 ),
+                // Barra de teclas do terminal (mobile): aparece acima do teclado
+                // virtual quando a aba ativa é terminal (plano 60, Wave F).
+                if (isMobilePlatform &&
+                    MediaQuery.viewInsetsOf(context).bottom > 0 &&
+                    vm.activeTabIsTerminal)
+                  TerminalKeyBar(onKeys: vm.sendKeysToActiveTerminal),
               ],
             ),
           ),

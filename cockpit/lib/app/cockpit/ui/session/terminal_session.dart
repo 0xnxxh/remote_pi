@@ -356,6 +356,10 @@ class TerminalSession extends PaneItem {
   /// (ex.: caminho de arquivo arrastado até o terminal).
   void insertText(String text) => _gateway.write(utf8.encode(text));
 
+  /// Envia bytes CRUS ao PTY (sequências de controle: ESC, setas, F-keys,
+  /// Ctrl+C...). Usado pela barra de teclas do mobile — plano 60, Wave F.
+  void sendKeys(List<int> bytes) => _gateway.write(bytes);
+
   /// Cola do clipboard no terminal, com suporte a **imagem**.
   ///
   /// Se há uma imagem no clipboard, manda o byte de Ctrl+V (`\x16`) pro harness
