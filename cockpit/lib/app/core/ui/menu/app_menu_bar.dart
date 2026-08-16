@@ -350,14 +350,20 @@ class _WindowMenuBarState extends State<WindowMenuBar> {
       return;
     }
     setState(() => _open = true);
-    final items = <AppMenuItem<VoidCallback>>[
-      for (final m in widget.menus)
-        AppMenuItem<VoidCallback>(
-          value: _noop,
-          label: m.label,
-          children: _toAppItems(context, m.items),
-        ),
-    ];
+    // ACHATADO (não submenus): no touch, submenu aninhado é ruim de acertar E
+    // a escolha de uma folha de submenu se perde na corrida com o `closeAll` do
+    // shadcn (a ação não dispararia). Os grupos (Cockpit/File/View/Window) viram
+    // seções separadas por divisória, e cada item é folha de topo — que fecha o
+    // menu raiz com o valor certo e executa a ação.
+    final items = <AppMenuItem<VoidCallback>>[];
+    for (final m in widget.menus) {
+      final section = _toAppItems(context, m.items);
+      if (section.isEmpty) continue;
+      if (items.isNotEmpty && !items.last.isDivider) {
+        items.add(const AppMenuItem<VoidCallback>.divider());
+      }
+      items.addAll(section);
+    }
     final action = await showAppMenu<VoidCallback>(anchor, items: items);
     if (mounted) {
       setState(() {
