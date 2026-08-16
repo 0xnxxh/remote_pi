@@ -122,14 +122,22 @@ class _RemoteFolderPickerState extends State<_RemoteFolderPicker> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final tr = context.t.cockpit.remoteHost;
+    // Responsivo: no desktop fica em 460x380; num iPhone (tela estreita e, em
+    // landscape, baixa) encolhe pra caber com folga, sem empurrar os botões
+    // pra fora do diálogo (plano 60).
+    final media = MediaQuery.sizeOf(context);
+    final width = media.width * 0.9 < 460 ? media.width * 0.9 : 460.0;
+    final height = media.height * 0.7 < 380 ? media.height * 0.7 : 380.0;
     return AlertDialog(
       title: Text(
         tr.pickFolderTitle(host: widget.hostName),
         style: context.typo.title.copyWith(fontSize: 15, color: colors.text),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
       content: SizedBox(
-        width: 460,
-        height: 380,
+        width: width,
+        height: height,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
