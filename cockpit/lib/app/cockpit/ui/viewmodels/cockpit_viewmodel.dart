@@ -2524,6 +2524,15 @@ class CockpitViewModel extends ChangeNotifier {
     // seleção inicial (que pode cair nele no 1º boot).
     if (_cockpitEnabled) _injectCockpit();
     _syncRemoteWorkspaces();
+    // Os workspaces REMOTOS entram na lista só agora (_syncRemoteWorkspaces),
+    // depois do load de layouts acima (que só viu os locais). Sem isto o layout
+    // salvo do remoto nunca é carregado e o workspace reabre vazio — abas de
+    // arquivo/terminal não voltam. Carrega os que ainda faltam.
+    for (final project in _projectList) {
+      if (!_savedLayouts.containsKey(project.id)) {
+        _savedLayouts[project.id] = await _layoutStore.load(project.id);
+      }
+    }
     _selectedProjectId = await _initialSelection();
     // Só o projeto selecionado é ativado (sobe os processos) no boot.
     final selected = _selectedProjectId;
@@ -5381,7 +5390,11 @@ class CockpitViewModel extends ChangeNotifier {
       case 'viewer':
         final path = desc['path'] as String?;
         if (path == null) return false;
-        final view = await _fileReader.read(path);
+        // `_readFile` roteia pro host quando o workspace ativo é remoto (o
+        // restore no boot roda só pro projeto selecionado); local usa o
+        // `_fileReader`. Sem isto, aba de arquivo de workspace remoto tentava
+        // ler no disco do cliente e caía fora (não restaurava).
+        final view = await _readFile(path);
         if (view is FileViewUnsupported) return false;
         final viewer = FileViewerSession(
           id: id,
