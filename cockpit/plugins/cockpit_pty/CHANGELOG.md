@@ -17,7 +17,9 @@
   signals. Anonymous pipes don't support overlapped I/O, so a writer thread is
   the canonical fix. If the pipe breaks (child/ConPTY gone) the thread drains
   the queue and exits; later writes are discarded. POSIX backends (`forkpty`)
-  are untouched — they never had the flush.
+  are untouched — they never had the flush. The Windows-only repro harness
+  that proved the hang (old `FlushFileBuffers` blocks; new `pty_write` does
+  not) lives in `test/windows/`.
 
 ## 1.0.6
 

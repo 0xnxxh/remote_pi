@@ -130,7 +130,8 @@ cenário que antes travava.
       (`WriteFile`+`FlushFileBuffers`) **bloqueou** no 1º write; `pty_write`
       novo fez 500×4KB em 1,5ms (pior chamada 0,13ms). Benchmark no app real
       (1.26.1): throughput de output a +14% do Windows Terminal (1,97s vs
-      1,72s em 20k linhas) — paridade prática.
+      1,72s em 20k linhas) — paridade prática. Harness versionado em
+      `cockpit/plugins/cockpit_pty/test/windows/` (`build.ps1`).
 - [x] Build + analyze + testes verdes **no que o fix toca**. Build Windows
       release OK (exigiu instalar Zig 0.16 e o componente ATL do VS Build
       Tools); `flutter analyze` sem issues novos; `flutter test`: 881 pass /
