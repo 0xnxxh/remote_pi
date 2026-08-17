@@ -1,6 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+// Hosts remotos (plano 58): RemoteHostsController é infra compartilhada (como
+// AutomationController), provida app-scoped no bootstrapper. A aba os gerencia.
+import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart'
+    show RemoteHostPhase;
+import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/cockpit/ui/remote/add_remote_host_dialog.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/domain/entities/setup_check.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
@@ -14,7 +22,9 @@ import 'package:cockpit/app/core/ui/widgets/error_report_dialog.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_command.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_launchers.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
+import 'package:flutter/services.dart';
 import 'package:cockpit/app/core/utils/native_folder_picker.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
 import 'package:cockpit/app/core/terminal/terminal_controller.dart'
     show terminalEngineIsSelectable;
@@ -44,6 +54,7 @@ import 'package:cockpit/app/core/ui/font_catalog.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/app/settings/ui/font_picker_dialog.dart';
 import 'package:cockpit/i18n/strings.g.dart';
+import 'package:cockpit/app/core/routes.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
@@ -53,7 +64,10 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// Conectividade) e o conteúdo à direita. Por ora só **Aparência** está
 /// implementada; Conectividade chega na próxima fase.
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.initialTab});
+
+  /// Aba a abrir de cara (deep-link via `pushNamed(arguments:)`). `null` = padrão.
+  final SettingsTab? initialTab;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -67,6 +81,7 @@ enum _Category {
   automations,
   shortcuts,
   notifications,
+  remoteHosts,
   connectivity,
   daemons,
   scheduling,
@@ -78,14 +93,32 @@ extension on _Category {
       this == _Category.connectivity ||
       this == _Category.daemons ||
       this == _Category.scheduling;
+
+  /// Abas escondidas no mobile (plano 59): motor-local ou desktop-only. Sobram
+  /// General, Appearance, Shortcuts, Notifications e Remote hosts.
+  bool get hiddenOnMobile =>
+      this == _Category.terminal ||
+      this == _Category.languages ||
+      this == _Category.automations ||
+      isRemote;
 }
 
 class _SettingsPageState extends State<SettingsPage> {
   _Category _category = _Category.general;
 
+  /// Abaixo desta largura (mobile portrait) o nav de categorias vira DRAWER —
+  /// senão a lista à esquerda espreme o painel e fica ilegível (plano 60).
+  static const double _drawerBreakpoint = 600;
+  bool _navOpen = false;
+
   @override
   void initState() {
     super.initState();
+    // Deep-link: abrir já numa aba (ex.: WelcomeView do mobile → Remote hosts,
+    // onde mora a chave do device). O argumento vem do pushNamed.
+    if (widget.initialTab == SettingsTab.remoteHosts) {
+      _category = _Category.remoteHosts;
+    }
     // Sonda o ambiente para decidir se as abas remotas aparecem.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<SettingsEnvGate>().check();
@@ -97,39 +130,70 @@ class _SettingsPageState extends State<SettingsPage> {
     final colors = context.colors;
     final remoteReady = context.watch<SettingsEnvGate>().remoteReady;
     // Categoria selecionada caiu (ambiente sumiu) → volta pra Aparência.
-    final category = (!remoteReady && _category.isRemote)
+    // No mobile, abas motor-local/desktop-only não existem → cai pra General.
+    final category = (isMobilePlatform && _category.hiddenOnMobile)
+        ? _Category.general
+        : (!remoteReady && _category.isRemote)
         ? _Category.appearance
         : _category;
+    final narrow =
+        isMobilePlatform &&
+        MediaQuery.sizeOf(context).width < _drawerBreakpoint;
+
+    final Widget panel = switch (category) {
+      _Category.general => const _GeneralPanel(),
+      _Category.appearance => const _AppearancePanel(),
+      _Category.terminal => const _TerminalPanel(),
+      _Category.languages => const _LanguagesPanel(),
+      _Category.automations => const _AutomationsPanel(),
+      _Category.shortcuts => const _ShortcutsPanel(),
+      _Category.notifications => const _NotificationsPanel(),
+      _Category.remoteHosts => const _RemoteHostsPanel(),
+      _Category.connectivity => const _ConnectivityPanel(),
+      _Category.daemons => const _DaemonsPanel(),
+      _Category.scheduling => const _AgendamentosPanel(),
+    };
+
+    final nav = _CategoryNav(
+      selected: category,
+      remoteReady: remoteReady,
+      // No estreito, escolher categoria fecha o drawer (revela o painel).
+      onSelect: (c) => setState(() {
+        _category = c;
+        _navOpen = false;
+      }),
+    );
+
     return Scaffold(
       backgroundColor: colors.bg,
       child: Column(
         children: [
-          const _SettingsHeader(),
+          _SettingsHeader(
+            onToggleNav: narrow
+                ? () => setState(() => _navOpen = !_navOpen)
+                : null,
+          ),
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _CategoryNav(
-                  selected: category,
-                  remoteReady: remoteReady,
-                  onSelect: (c) => setState(() => _category = c),
-                ),
-                Expanded(
-                  child: switch (category) {
-                    _Category.general => const _GeneralPanel(),
-                    _Category.appearance => const _AppearancePanel(),
-                    _Category.terminal => const _TerminalPanel(),
-                    _Category.languages => const _LanguagesPanel(),
-                    _Category.automations => const _AutomationsPanel(),
-                    _Category.shortcuts => const _ShortcutsPanel(),
-                    _Category.notifications => const _NotificationsPanel(),
-                    _Category.connectivity => const _ConnectivityPanel(),
-                    _Category.daemons => const _DaemonsPanel(),
-                    _Category.scheduling => const _AgendamentosPanel(),
-                  },
-                ),
-              ],
-            ),
+            child: narrow
+                ? Stack(
+                    children: [
+                      Positioned.fill(child: panel),
+                      if (_navOpen) ...[
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => setState(() => _navOpen = false),
+                            child: ColoredBox(color: colors.scrim),
+                          ),
+                        ),
+                        Positioned(left: 0, top: 0, bottom: 0, child: nav),
+                      ],
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [nav, Expanded(child: panel)],
+                  ),
           ),
         ],
       ),
@@ -139,7 +203,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
 /// Header da tela: window controls + voltar + título (a barra arrasta a janela).
 class _SettingsHeader extends StatelessWidget {
-  const _SettingsHeader();
+  const _SettingsHeader({this.onToggleNav});
+
+  /// Mobile portrait: abre/fecha o drawer de categorias. `null` = layout largo
+  /// (nav inline), sem botão.
+  final VoidCallback? onToggleNav;
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +233,18 @@ class _SettingsHeader extends StatelessWidget {
           context.t.settings.page.header.title,
           style: context.typo.title.copyWith(fontSize: 14, color: colors.text),
         ),
+        if (onToggleNav != null) ...[
+          const SizedBox(width: 10),
+          HoverTap(
+            borderRadius: BorderRadius.circular(6),
+            onTap: onToggleNav,
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: Icon(Icons.menu, size: 18, color: colors.text2),
+            ),
+          ),
+        ],
         const Spacer(),
         const WindowControlsTrailing(),
       ],
@@ -189,7 +269,11 @@ class _CategoryNav extends StatelessWidget {
     final colors = context.colors;
     return Container(
       width: 210,
+      // Fundo opaco: no drawer (mobile portrait) o nav fica SOBRE o painel —
+      // sem cor, o painel apareceria através dele. No layout largo é a mesma cor
+      // do Scaffold, então nada muda.
       decoration: BoxDecoration(
+        color: colors.bg,
         border: Border(right: BorderSide(color: colors.border)),
       ),
       padding: const EdgeInsets.all(10),
@@ -207,24 +291,27 @@ class _CategoryNav extends StatelessWidget {
             selected: selected == _Category.appearance,
             onTap: () => onSelect(_Category.appearance),
           ),
-          _NavItem(
-            icon: Icons.terminal_outlined,
-            label: context.t.settings.page.nav.terminal,
-            selected: selected == _Category.terminal,
-            onTap: () => onSelect(_Category.terminal),
-          ),
-          _NavItem(
-            icon: Icons.code,
-            label: context.t.settings.page.nav.language,
-            selected: selected == _Category.languages,
-            onTap: () => onSelect(_Category.languages),
-          ),
-          _NavItem(
-            icon: Icons.auto_awesome_outlined,
-            label: context.t.settings.page.nav.automations,
-            selected: selected == _Category.automations,
-            onTap: () => onSelect(_Category.automations),
-          ),
+          // Terminal / Languages / Automations: motor-local, ocultos no mobile.
+          if (!isMobilePlatform) ...[
+            _NavItem(
+              icon: Icons.terminal_outlined,
+              label: context.t.settings.page.nav.terminal,
+              selected: selected == _Category.terminal,
+              onTap: () => onSelect(_Category.terminal),
+            ),
+            _NavItem(
+              icon: Icons.code,
+              label: context.t.settings.page.nav.language,
+              selected: selected == _Category.languages,
+              onTap: () => onSelect(_Category.languages),
+            ),
+            _NavItem(
+              icon: Icons.auto_awesome_outlined,
+              label: context.t.settings.page.nav.automations,
+              selected: selected == _Category.automations,
+              onTap: () => onSelect(_Category.automations),
+            ),
+          ],
           _NavItem(
             icon: Icons.keyboard_outlined,
             label: context.t.settings.page.nav.shortcuts,
@@ -236,6 +323,14 @@ class _CategoryNav extends StatelessWidget {
             label: context.t.settings.page.nav.notifications,
             selected: selected == _Category.notifications,
             onTap: () => onSelect(_Category.notifications),
+          ),
+          // Hosts remotos (plano 58, SSH) — sempre disponível, não depende do
+          // ambiente remote-pi (extensão/supervisor).
+          _NavItem(
+            icon: Icons.cloud_outlined,
+            label: context.t.settings.page.nav.remoteHosts,
+            selected: selected == _Category.remoteHosts,
+            onTap: () => onSelect(_Category.remoteHosts),
           ),
           // Abas que dependem do ambiente remote-pi — ocultas até instalá-lo
           // (via checklist da aba de agente).
@@ -376,60 +471,72 @@ class _GeneralPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Section(
-                label: tr.sectionAgent,
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.enableAgentsTitle,
-                      description: tr.enableAgentsDesc,
-                      // Mantém o switch clicável: tentar DESLIGAR com um agente em
-                      // uso mostra um erro explicando o porquê (em vez de um switch
-                      // inerte, sem feedback). Ligar é sempre permitido.
-                      trailing: Switch(
-                        value: s.enableAgent,
-                        onChanged: (value) {
-                          if (!value && agentsInUse) {
-                            _notifyAgentsInUse(context);
-                            return;
-                          }
-                          controller.setEnableAgent(value);
-                        },
+              // Agent / Cockpit / Updates: motor-local + self-update = desktop.
+              // No mobile some tudo; sobram Idioma/Storage/Diagnostics.
+              if (!isMobilePlatform) ...[
+                _Section(
+                  label: tr.sectionAgent,
+                  child: _Card(
+                    children: [
+                      _Row(
+                        title: tr.enableAgentsTitle,
+                        description: tr.enableAgentsDesc,
+                        // Mantém o switch clicável: tentar DESLIGAR com um agente
+                        // em uso mostra um erro explicando o porquê (em vez de um
+                        // switch inerte, sem feedback). Ligar é sempre permitido.
+                        trailing: Switch(
+                          value: s.enableAgent,
+                          onChanged: (value) {
+                            if (!value && agentsInUse) {
+                              _notifyAgentsInUse(context);
+                              return;
+                            }
+                            controller.setEnableAgent(value);
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              _Section(
-                label: 'Cockpit',
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.showCockpitTitle,
-                      description: tr.showCockpitDesc,
-                      trailing: Switch(
-                        value: s.showCockpit,
-                        onChanged: controller.setShowCockpit,
+                _Section(
+                  label: 'Cockpit',
+                  child: _Card(
+                    children: [
+                      _Row(
+                        title: tr.showCockpitTitle,
+                        description: tr.showCockpitDesc,
+                        trailing: Switch(
+                          value: s.showCockpit,
+                          onChanged: controller.setShowCockpit,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                label: tr.sectionUpdates,
-                child: _Card(
-                  children: [
-                    _Row(
-                      title: tr.checkUpdatesTitle,
-                      description: tr.checkUpdatesDesc,
-                      trailing: _UpdateCheckDropdown(
-                        value: s.updateCheckFrequency,
-                        onChanged: controller.setUpdateCheckFrequency,
+                      _Row(
+                        title: tr.launchAtStartupTitle,
+                        description: tr.launchAtStartupDesc,
+                        trailing: Switch(
+                          value: s.launchAtStartup,
+                          onChanged: controller.setLaunchAtStartup,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                _Section(
+                  label: tr.sectionUpdates,
+                  child: _Card(
+                    children: [
+                      _Row(
+                        title: tr.checkUpdatesTitle,
+                        description: tr.checkUpdatesDesc,
+                        trailing: _UpdateCheckDropdown(
+                          value: s.updateCheckFrequency,
+                          onChanged: controller.setUpdateCheckFrequency,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               _Section(
                 label: context.t.settings.language.title,
                 child: _Card(
@@ -444,7 +551,9 @@ class _GeneralPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              const _StorageSection(),
+              // Local de Armazenamento: escolher pasta/relocar não se aplica ao
+              // mobile (sandbox do app, sem pastas do usuário como no desktop).
+              if (!isMobilePlatform) const _StorageSection(),
               const _DiagnosticsSection(),
             ],
           ),
@@ -1866,6 +1975,259 @@ class _ShortcutKeys extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Remote hosts (plano 58)
+// ---------------------------------------------------------------------------
+
+class _RemoteHostsPanel extends StatelessWidget {
+  const _RemoteHostsPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<RemoteHostsController>();
+    final tr = context.t.settings.remoteHosts;
+    final colors = context.colors;
+    final hosts = controller.hosts;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Ajuda: a pessoa precisa saber que o host tem que ter o Cockpit
+              // (desktop) ou o cockpit-server instalado + a chave autorizada.
+              _Section(
+                label: tr.helpTitle,
+                child: _Card(
+                  children: [
+                    _Row(title: tr.helpTitle, description: tr.helpBody),
+                  ],
+                ),
+              ),
+              // Chave do dispositivo (mobile): o iPad/Android não tem ~/.ssh,
+              // então mostramos a pública gerada pra o usuário autorizar no host.
+              if (isMobilePlatform) _DeviceKeySection(controller: controller),
+              _Section(
+                label: tr.title,
+                child: _Card(
+                  children: [
+                    _Row(
+                      title: tr.title,
+                      description: tr.description,
+                      trailing: PrimaryButton(
+                        onPressed: () => _add(context, controller),
+                        child: Text(tr.add),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (hosts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    tr.empty,
+                    textAlign: TextAlign.center,
+                    style: context.typo.body.copyWith(color: colors.text3),
+                  ),
+                )
+              else
+                _Card(
+                  children: [
+                    for (final h in hosts)
+                      _Row(
+                        title: h.name,
+                        description:
+                            '${h.sshTarget}  ·  ${_statusLabel(context, controller.phaseOf(h.id))}'
+                            '  ·  ${tr.workspacesCount(count: controller.pins.where((p) => p.hostId == h.id).length)}',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GhostButton(
+                              onPressed: () => _edit(context, controller, h),
+                              child: Text(tr.edit),
+                            ),
+                            const SizedBox(width: 4),
+                            GhostButton(
+                              onPressed: () => _remove(context, controller, h),
+                              child: Text(
+                                tr.remove,
+                                style: TextStyle(color: colors.error),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _statusLabel(BuildContext context, RemoteHostPhase phase) {
+    final tr = context.t.settings.remoteHosts;
+    return switch (phase) {
+      RemoteHostPhase.connected => tr.statusConnected,
+      RemoteHostPhase.openingTunnel ||
+      RemoteHostPhase.installingServer ||
+      RemoteHostPhase.connecting ||
+      RemoteHostPhase.reconnecting => tr.statusConnecting,
+      RemoteHostPhase.failed => tr.statusOffline,
+      RemoteHostPhase.idle => tr.statusIdle,
+    };
+  }
+
+  Future<void> _add(
+    BuildContext context,
+    RemoteHostsController controller,
+  ) async {
+    final draft = await showAddRemoteHostDialog(context);
+    if (draft == null) return;
+    await controller.addHost(
+      name: draft.name,
+      sshTarget: draft.sshTarget,
+      port: draft.port,
+      auth: draft.auth,
+      password: draft.password,
+    );
+  }
+
+  Future<void> _edit(
+    BuildContext context,
+    RemoteHostsController controller,
+    RemoteHost host,
+  ) async {
+    final hasPassword = await controller.hasStoredPassword(host.id);
+    if (!context.mounted) return;
+    final draft = await showAddRemoteHostDialog(
+      context,
+      initialName: host.name,
+      initialSshTarget: host.sshTarget,
+      initialPort: host.port,
+      initialAuth: host.auth,
+      hasStoredPassword: hasPassword,
+      edit: true,
+    );
+    if (draft == null) return;
+    await controller.editHost(
+      host.id,
+      name: draft.name,
+      sshTarget: draft.sshTarget,
+      port: draft.port,
+      auth: draft.auth,
+      password: draft.password,
+    );
+  }
+
+  Future<void> _remove(
+    BuildContext context,
+    RemoteHostsController controller,
+    RemoteHost host,
+  ) async {
+    final tr = context.t.settings.remoteHosts;
+    final ok = await showConfirmDialog(
+      context,
+      title: tr.removeTitle,
+      message: tr.removeMessage(name: host.name),
+      confirmLabel: context.t.common.remove,
+      danger: true,
+    );
+    if (!ok) return;
+    await controller.removeHost(host.id);
+  }
+}
+
+/// Chave pública deste dispositivo (mobile): mono-box + copiar. Gera a chave na
+/// 1ª renderização (via controller → MobileSshKeyStore, guardada no Keychain).
+class _DeviceKeySection extends StatelessWidget {
+  const _DeviceKeySection({required this.controller});
+
+  final RemoteHostsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = context.t.settings.remoteHosts;
+    final colors = context.colors;
+    return _Section(
+      label: tr.deviceKeyTitle,
+      child: _Card(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  tr.deviceKeyDesc,
+                  style: context.typo.body.copyWith(color: colors.text2),
+                ),
+                const SizedBox(height: 12),
+                FutureBuilder<String>(
+                  future: controller.devicePublicKey(),
+                  builder: (context, snap) {
+                    final key = snap.data ?? '';
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: colors.panel3,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: colors.border),
+                          ),
+                          child: SelectableText(
+                            key.isEmpty ? '…' : key,
+                            style: context.typo.mono.copyWith(
+                              fontSize: 12,
+                              color: colors.text,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: SecondaryButton(
+                            onPressed: key.isEmpty
+                                ? null
+                                : () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(text: key),
+                                    );
+                                    if (!context.mounted) return;
+                                    showToast(
+                                      context: context,
+                                      location: ToastLocation.bottomRight,
+                                      builder: (context, _) => SurfaceCard(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Text(tr.deviceKeyCopied),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                            leading: const Icon(Icons.copy, size: 15),
+                            child: Text(tr.deviceKeyCopy),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Section extends StatelessWidget {
   const _Section({required this.label, required this.child, this.trailing});
   final String label;
@@ -1929,10 +2291,10 @@ class _Card extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.title, required this.trailing, this.description});
+  const _Row({required this.title, this.trailing, this.description});
   final String title;
   final String? description;
-  final Widget trailing;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1963,8 +2325,10 @@ class _Row extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          trailing,
+          if (trailing != null) ...[
+            const SizedBox(width: 16),
+            trailing!,
+          ],
         ],
       ),
     );

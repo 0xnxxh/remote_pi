@@ -163,7 +163,6 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$welcomeView$en welcomeView = Translations$cockpit$welcomeView$en.internal(_root);
 	late final Translations$cockpit$modelPicker$en modelPicker = Translations$cockpit$modelPicker$en.internal(_root);
 	late final Translations$cockpit$paneView$en paneView = Translations$cockpit$paneView$en.internal(_root);
-	late final Translations$cockpit$browserPane$en browserPane = Translations$cockpit$browserPane$en.internal(_root);
 	late final Translations$cockpit$fileTreePanel$en fileTreePanel = Translations$cockpit$fileTreePanel$en.internal(_root);
 	late final Translations$cockpit$fileViewer$en fileViewer = Translations$cockpit$fileViewer$en.internal(_root);
 	late final Translations$cockpit$workspaceSettingsDialog$en workspaceSettingsDialog = Translations$cockpit$workspaceSettingsDialog$en.internal(_root);
@@ -183,6 +182,8 @@ class Translations$cockpit$en {
 	late final Translations$cockpit$tasks$en tasks = Translations$cockpit$tasks$en.internal(_root);
 	late final Translations$cockpit$notifications$en notifications = Translations$cockpit$notifications$en.internal(_root);
 	late final Translations$cockpit$terminal$en terminal = Translations$cockpit$terminal$en.internal(_root);
+	late final Translations$cockpit$remoteHost$en remoteHost = Translations$cockpit$remoteHost$en.internal(_root);
+	late final Translations$cockpit$browserPane$en browserPane = Translations$cockpit$browserPane$en.internal(_root);
 }
 
 // Path: settings
@@ -196,6 +197,7 @@ class Translations$settings$en {
 	late final Translations$settings$revokeDialog$en revokeDialog = Translations$settings$revokeDialog$en.internal(_root);
 	late final Translations$settings$pairingDialog$en pairingDialog = Translations$settings$pairingDialog$en.internal(_root);
 	late final Translations$settings$page$en page = Translations$settings$page$en.internal(_root);
+	late final Translations$settings$remoteHosts$en remoteHosts = Translations$settings$remoteHosts$en.internal(_root);
 }
 
 // Path: automation
@@ -971,11 +973,23 @@ class Translations$cockpit$welcomeView$en {
 	/// en: 'Welcome to Cockpit'
 	String get title => 'Welcome to Cockpit';
 
-	/// en: 'Open a folder to start a workspace.'
-	String get subtitle => 'Open a folder to start a workspace.';
+	/// en: 'Open a folder or connect to a remote host to start.'
+	String get subtitle => 'Open a folder or connect to a remote host to start.';
 
 	/// en: 'Create workspace'
 	String get createWorkspace => 'Create workspace';
+
+	/// en: 'Open local folder'
+	String get openLocalFolder => 'Open local folder';
+
+	/// en: 'Connect to host'
+	String get connectHost => 'Connect to host';
+
+	/// en: 'Configure host'
+	String get configureHost => 'Configure host';
+
+	/// en: 'Add workspace'
+	String get addWorkspace => 'Add workspace';
 }
 
 // Path: cockpit.modelPicker
@@ -1040,9 +1054,6 @@ class Translations$cockpit$paneView$en {
 	/// en: 'Split down'
 	String get splitDown => 'Split down';
 
-	/// en: 'Open browser'
-	String get openBrowser => 'Open browser';
-
 	/// en: 'Close pane'
 	String get closePane => 'Close pane';
 
@@ -1051,27 +1062,12 @@ class Translations$cockpit$paneView$en {
 
 	/// en: 'Dock as tab'
 	String get dockAsTab => 'Dock as tab';
-}
 
-// Path: cockpit.browserPane
-class Translations$cockpit$browserPane$en {
-	Translations$cockpit$browserPane$en.internal(this._root);
+	/// en: 'Open browser'
+	String get openBrowser => 'Open browser';
 
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Back'
-	String get back => 'Back';
-
-	/// en: 'Forward'
-	String get forward => 'Forward';
-
-	/// en: 'Reload'
-	String get reload => 'Reload';
-
-	/// en: 'Enter URL or address'
-	String get urlHint => 'Enter URL or address';
+	/// en: 'Open terminal'
+	String get openTerminal => 'Open terminal';
 }
 
 // Path: cockpit.fileTreePanel
@@ -1847,6 +1843,9 @@ class Translations$cockpit$projectsRail$en {
 	/// en: 'Copy workspace id'
 	String get copyWorkspaceId => 'Copy workspace id';
 
+	/// en: 'Rename'
+	String get rename => 'Rename';
+
 	/// en: 'Close'
 	String get close => 'Close';
 
@@ -1981,6 +1980,9 @@ class Translations$cockpit$topbar$en {
 
 	/// en: 'Files unavailable in Cockpit'
 	String get filesUnavailable => 'Files unavailable in Cockpit';
+
+	/// en: 'Hide keyboard'
+	String get hideKeyboard => 'Hide keyboard';
 }
 
 // Path: cockpit.transcript
@@ -2062,6 +2064,147 @@ class Translations$cockpit$terminal$en {
 
 	/// en: 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".'
 	String cwdFallbackWarning({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".';
+}
+
+// Path: cockpit.remoteHost
+class Translations$cockpit$remoteHost$en {
+	Translations$cockpit$remoteHost$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Add remote host'
+	String get addHost => 'Add remote host';
+
+	/// en: 'Name'
+	String get hostName => 'Name';
+
+	/// en: 'SSH target (user@host)'
+	String get sshTarget => 'SSH target (user@host)';
+
+	/// en: 'Connecting to ${host}…'
+	String connecting({required Object host}) => 'Connecting to ${host}…';
+
+	/// en: 'SSH tunnel'
+	String get openingTunnel => 'SSH tunnel';
+
+	/// en: 'Installing server'
+	String get installingServer => 'Installing server';
+
+	/// en: 'Server ${version}'
+	String handshake({required Object version}) => 'Server ${version}';
+
+	/// en: 'Loading workspace…'
+	String get loadingWorkspace => 'Loading workspace…';
+
+	/// en: 'Reconnecting to ${host}…'
+	String reconnecting({required Object host}) => 'Reconnecting to ${host}…';
+
+	/// en: '${host} offline'
+	String offline({required Object host}) => '${host} offline';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Reconnect'
+	String get reconnect => 'Reconnect';
+
+	/// en: 'Install server'
+	String get installServer => 'Install server';
+
+	/// en: 'Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?'
+	String errSshUnreachable({required Object host}) => 'Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?';
+
+	/// en: 'Could not install the server on ${host}.'
+	String errInstallFailed({required Object host}) => 'Could not install the server on ${host}.';
+
+	/// en: 'Server version incompatible; update it.'
+	String get errVersionMismatch => 'Server version incompatible; update it.';
+
+	/// en: 'Details: ${detail}'
+	String errDetail({required Object detail}) => 'Details: ${detail}';
+
+	/// en: 'Open folder on ${host}'
+	String pickFolderTitle({required Object host}) => 'Open folder on ${host}';
+
+	/// en: 'Open here'
+	String get openHere => 'Open here';
+
+	/// en: 'No subfolders'
+	String get emptyFolder => 'No subfolders';
+
+	/// en: 'New local workspace'
+	String get newLocal => 'New local workspace';
+
+	/// en: 'New remote workspace'
+	String get newRemote => 'New remote workspace';
+
+	/// en: 'Choose a host'
+	String get chooseHost => 'Choose a host';
+
+	/// en: 'New host…'
+	String get newHostEntry => 'New host…';
+
+	/// en: 'Edit host'
+	String get editHost => 'Edit host';
+
+	/// en: 'Username'
+	String get userLabel => 'Username';
+
+	/// en: 'Host / IP'
+	String get hostLabel => 'Host / IP';
+
+	/// en: 'Port'
+	String get portLabel => 'Port';
+
+	/// en: 'Authentication'
+	String get authLabel => 'Authentication';
+
+	/// en: 'SSH key'
+	String get authKey => 'SSH key';
+
+	/// en: 'Password'
+	String get authPassword => 'Password';
+
+	/// en: 'Password'
+	String get passwordLabel => 'Password';
+
+	/// en: 'Leave blank to keep current'
+	String get passwordKeep => 'Leave blank to keep current';
+
+	/// en: 'Username required'
+	String get errUser => 'Username required';
+
+	/// en: 'Host required'
+	String get errHost => 'Host required';
+
+	/// en: 'Password required'
+	String get errPassword => 'Password required';
+}
+
+// Path: cockpit.browserPane
+class Translations$cockpit$browserPane$en {
+	Translations$cockpit$browserPane$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Back'
+	String get back => 'Back';
+
+	/// en: 'Forward'
+	String get forward => 'Forward';
+
+	/// en: 'Reload'
+	String get reload => 'Reload';
+
+	/// en: 'Enter URL or address'
+	String get urlHint => 'Enter URL or address';
+
+	/// en: 'Go'
+	String get go => 'Go';
 }
 
 // Path: settings.language
@@ -2178,6 +2321,72 @@ class Translations$settings$page$en {
 	late final Translations$settings$page$schedules$en schedules = Translations$settings$page$schedules$en.internal(_root);
 	late final Translations$settings$page$daemons$en daemons = Translations$settings$page$daemons$en.internal(_root);
 	late final Translations$settings$page$automations$en automations = Translations$settings$page$automations$en.internal(_root);
+}
+
+// Path: settings.remoteHosts
+class Translations$settings$remoteHosts$en {
+	Translations$settings$remoteHosts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Remote hosts'
+	String get title => 'Remote hosts';
+
+	/// en: 'Machines you reach over SSH. Adding a host here is the same as adding one from the workspace "+" menu.'
+	String get description => 'Machines you reach over SSH. Adding a host here is the same as adding one from the workspace "+" menu.';
+
+	/// en: 'No remote hosts yet.'
+	String get empty => 'No remote hosts yet.';
+
+	/// en: 'Add host'
+	String get add => 'Add host';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Remove host'
+	String get removeTitle => 'Remove host';
+
+	/// en: 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.'
+	String removeMessage({required Object name}) => 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.';
+
+	/// en: '${count} workspace(s)'
+	String workspacesCount({required Object count}) => '${count} workspace(s)';
+
+	/// en: 'This device's key'
+	String get deviceKeyTitle => 'This device\'s key';
+
+	/// en: 'Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.'
+	String get deviceKeyDesc => 'Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.';
+
+	/// en: 'Copy public key'
+	String get deviceKeyCopy => 'Copy public key';
+
+	/// en: 'Public key copied'
+	String get deviceKeyCopied => 'Public key copied';
+
+	/// en: 'Connected'
+	String get statusConnected => 'Connected';
+
+	/// en: 'Connecting…'
+	String get statusConnecting => 'Connecting…';
+
+	/// en: 'Offline'
+	String get statusOffline => 'Offline';
+
+	/// en: 'Not connected'
+	String get statusIdle => 'Not connected';
+
+	/// en: 'How it works'
+	String get helpTitle => 'How it works';
+
+	/// en: 'Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys.'
+	String get helpBody => 'Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys.';
 }
 
 // Path: automation.error
@@ -2397,6 +2606,9 @@ class Translations$settings$page$nav$en {
 
 	/// en: 'Automations'
 	String get automations => 'Automations';
+
+	/// en: 'Remote hosts'
+	String get remoteHosts => 'Remote hosts';
 }
 
 // Path: settings.page.general
@@ -2421,6 +2633,12 @@ class Translations$settings$page$general$en {
 
 	/// en: 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.'
 	String get showCockpitDesc => 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.';
+
+	/// en: 'Launch at login'
+	String get launchAtStartupTitle => 'Launch at login';
+
+	/// en: 'Start Cockpit automatically when you sign in to your computer.'
+	String get launchAtStartupDesc => 'Start Cockpit automatically when you sign in to your computer.';
 
 	/// en: 'Updates'
 	String get sectionUpdates => 'Updates';
@@ -3484,8 +3702,12 @@ extension on Translations {
 			'cockpit.cockpitPage.lspRunning' => 'running',
 			'cockpit.cockpitPage.lspStopped' => 'stopped',
 			'cockpit.welcomeView.title' => 'Welcome to Cockpit',
-			'cockpit.welcomeView.subtitle' => 'Open a folder to start a workspace.',
+			'cockpit.welcomeView.subtitle' => 'Open a folder or connect to a remote host to start.',
 			'cockpit.welcomeView.createWorkspace' => 'Create workspace',
+			'cockpit.welcomeView.openLocalFolder' => 'Open local folder',
+			'cockpit.welcomeView.connectHost' => 'Connect to host',
+			'cockpit.welcomeView.configureHost' => 'Configure host',
+			'cockpit.welcomeView.addWorkspace' => 'Add workspace',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Search model (${count})',
 			'cockpit.paneView.closePaneTitle' => 'Close pane?',
 			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'This closes all ${count} tab(s) in this pane and ends the agents/terminals in it.',
@@ -3501,14 +3723,11 @@ extension on Translations {
 			'cockpit.paneView.newTerminal' => 'New terminal…',
 			'cockpit.paneView.splitRight' => 'Split right',
 			'cockpit.paneView.splitDown' => 'Split down',
-			'cockpit.paneView.openBrowser' => 'Open browser',
 			'cockpit.paneView.closePane' => 'Close pane',
 			'cockpit.paneView.dropHereToMove' => 'Drop here to move the tab',
 			'cockpit.paneView.dockAsTab' => 'Dock as tab',
-			'cockpit.browserPane.back' => 'Back',
-			'cockpit.browserPane.forward' => 'Forward',
-			'cockpit.browserPane.reload' => 'Reload',
-			'cockpit.browserPane.urlHint' => 'Enter URL or address',
+			'cockpit.paneView.openBrowser' => 'Open browser',
+			'cockpit.paneView.openTerminal' => 'Open terminal',
 			'cockpit.fileTreePanel.viewDiff' => 'View Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage and Commit',
@@ -3730,6 +3949,7 @@ extension on Translations {
 			'cockpit.projectsRail.remove' => 'Remove',
 			'cockpit.projectsRail.moveToRealm' => 'Move to realm',
 			'cockpit.projectsRail.copyWorkspaceId' => 'Copy workspace id',
+			'cockpit.projectsRail.rename' => 'Rename',
 			'cockpit.projectsRail.close' => 'Close',
 			'cockpit.projectsRail.newRealm' => 'New realm…',
 			'cockpit.projectsRail.manageRealms' => 'Manage realms…',
@@ -3763,6 +3983,7 @@ extension on Translations {
 			'cockpit.topbar.collapseSidebar' => 'Collapse sidebar',
 			'cockpit.topbar.toggleFiles' => 'Show/hide files',
 			'cockpit.topbar.filesUnavailable' => 'Files unavailable in Cockpit',
+			'cockpit.topbar.hideKeyboard' => 'Hide keyboard',
 			'cockpit.transcript.cancel' => 'Cancel',
 			'cockpit.transcript.send' => 'Send',
 			'cockpit.transcript.typeYourAnswer' => 'Type your answer',
@@ -3776,11 +3997,52 @@ extension on Translations {
 			'cockpit.notifications.agentFinished' => 'Agent finished',
 			'cockpit.notifications.open' => 'Open',
 			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
-			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
-			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
-			'settings.language.title' => 'Language',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
+			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
+			'cockpit.remoteHost.addHost' => 'Add remote host',
+			'cockpit.remoteHost.hostName' => 'Name',
+			'cockpit.remoteHost.sshTarget' => 'SSH target (user@host)',
+			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Connecting to ${host}…',
+			'cockpit.remoteHost.openingTunnel' => 'SSH tunnel',
+			'cockpit.remoteHost.installingServer' => 'Installing server',
+			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Server ${version}',
+			'cockpit.remoteHost.loadingWorkspace' => 'Loading workspace…',
+			'cockpit.remoteHost.reconnecting' => ({required Object host}) => 'Reconnecting to ${host}…',
+			'cockpit.remoteHost.offline' => ({required Object host}) => '${host} offline',
+			'cockpit.remoteHost.remove' => 'Remove',
+			'cockpit.remoteHost.reconnect' => 'Reconnect',
+			'cockpit.remoteHost.installServer' => 'Install server',
+			'cockpit.remoteHost.errSshUnreachable' => ({required Object host}) => 'Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?',
+			'cockpit.remoteHost.errInstallFailed' => ({required Object host}) => 'Could not install the server on ${host}.',
+			'cockpit.remoteHost.errVersionMismatch' => 'Server version incompatible; update it.',
+			'cockpit.remoteHost.errDetail' => ({required Object detail}) => 'Details: ${detail}',
+			'cockpit.remoteHost.pickFolderTitle' => ({required Object host}) => 'Open folder on ${host}',
+			'cockpit.remoteHost.openHere' => 'Open here',
+			'cockpit.remoteHost.emptyFolder' => 'No subfolders',
+			'cockpit.remoteHost.newLocal' => 'New local workspace',
+			'cockpit.remoteHost.newRemote' => 'New remote workspace',
+			'cockpit.remoteHost.chooseHost' => 'Choose a host',
+			'cockpit.remoteHost.newHostEntry' => 'New host…',
+			'cockpit.remoteHost.editHost' => 'Edit host',
+			'cockpit.remoteHost.userLabel' => 'Username',
+			'cockpit.remoteHost.hostLabel' => 'Host / IP',
+			'cockpit.remoteHost.portLabel' => 'Port',
+			'cockpit.remoteHost.authLabel' => 'Authentication',
+			'cockpit.remoteHost.authKey' => 'SSH key',
+			'cockpit.remoteHost.authPassword' => 'Password',
+			'cockpit.remoteHost.passwordLabel' => 'Password',
+			'cockpit.remoteHost.passwordKeep' => 'Leave blank to keep current',
+			'cockpit.remoteHost.errUser' => 'Username required',
+			'cockpit.remoteHost.errHost' => 'Host required',
+			'cockpit.remoteHost.errPassword' => 'Password required',
+			'cockpit.browserPane.back' => 'Back',
+			'cockpit.browserPane.forward' => 'Forward',
+			'cockpit.browserPane.reload' => 'Reload',
+			'cockpit.browserPane.urlHint' => 'Enter URL or address',
+			'cockpit.browserPane.go' => 'Go',
+			'settings.language.title' => 'Language',
 			'settings.language.system' => 'System',
 			'settings.language.english' => 'English',
 			'settings.language.portugueseBr' => 'Português (BR)',
@@ -3814,11 +4076,14 @@ extension on Translations {
 			'settings.page.nav.daemonAgents' => 'Daemon Agents',
 			'settings.page.nav.schedules' => 'Schedules',
 			'settings.page.nav.automations' => 'Automations',
+			'settings.page.nav.remoteHosts' => 'Remote hosts',
 			'settings.page.general.sectionAgent' => 'Agent',
 			'settings.page.general.enableAgentsTitle' => 'Enable agents',
 			'settings.page.general.enableAgentsDesc' => 'Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.',
 			'settings.page.general.showCockpitTitle' => 'Show Cockpit terminal',
 			'settings.page.general.showCockpitDesc' => 'Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.',
+			'settings.page.general.launchAtStartupTitle' => 'Launch at login',
+			'settings.page.general.launchAtStartupDesc' => 'Start Cockpit automatically when you sign in to your computer.',
 			'settings.page.general.sectionUpdates' => 'Updates',
 			'settings.page.general.checkUpdatesTitle' => 'Check for updates',
 			'settings.page.general.checkUpdatesDesc' => 'How often Cockpit should look for new versions.',
@@ -4061,6 +4326,25 @@ extension on Translations {
 			'settings.page.automations.discoveryFailed' => 'Could not discover installed automation harnesses.',
 			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'Model "${model}" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.',
 			'settings.page.automations.recommendedSuffix' => 'Recommended',
+			'settings.remoteHosts.title' => 'Remote hosts',
+			'settings.remoteHosts.description' => 'Machines you reach over SSH. Adding a host here is the same as adding one from the workspace "+" menu.',
+			'settings.remoteHosts.empty' => 'No remote hosts yet.',
+			'settings.remoteHosts.add' => 'Add host',
+			'settings.remoteHosts.edit' => 'Edit',
+			'settings.remoteHosts.remove' => 'Remove',
+			'settings.remoteHosts.removeTitle' => 'Remove host',
+			'settings.remoteHosts.removeMessage' => ({required Object name}) => 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.',
+			'settings.remoteHosts.workspacesCount' => ({required Object count}) => '${count} workspace(s)',
+			'settings.remoteHosts.deviceKeyTitle' => 'This device\'s key',
+			'settings.remoteHosts.deviceKeyDesc' => 'Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.',
+			'settings.remoteHosts.deviceKeyCopy' => 'Copy public key',
+			'settings.remoteHosts.deviceKeyCopied' => 'Public key copied',
+			'settings.remoteHosts.statusConnected' => 'Connected',
+			'settings.remoteHosts.statusConnecting' => 'Connecting…',
+			'settings.remoteHosts.statusOffline' => 'Offline',
+			'settings.remoteHosts.statusIdle' => 'Not connected',
+			'settings.remoteHosts.helpTitle' => 'How it works',
+			'settings.remoteHosts.helpBody' => 'Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys.',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} is not installed or is not on PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'Model "${model}" is not available for ${harness}. Choose another model in Settings.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

@@ -3,7 +3,6 @@ import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/i18n/strings.g.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -22,6 +21,9 @@ class BrowserPane extends StatefulWidget {
   State<BrowserPane> createState() => _BrowserPaneState();
 }
 
+/// Página inicial das abas de navegador novas (sem URL/seed).
+const String _kHomeUrl = 'https://google.com';
+
 class _BrowserPaneState extends State<BrowserPane> {
   InAppWebViewController? _web;
   late final TextEditingController _urlCtrl;
@@ -39,12 +41,8 @@ class _BrowserPaneState extends State<BrowserPane> {
     widget.session.addListener(_onSession);
     final seed = widget.session.takeSeedUrl();
     if (seed != null) _pendingUrl = seed;
-    // Aba nova em branco: foco direto no campo de URL.
-    if (widget.session.url.isEmpty && _pendingUrl == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.active) _urlFocus.requestFocus();
-      });
-    }
+    // Aba nova em branco não foca mais o campo de URL: agora carrega a home
+    // (Google), então mostramos a página em vez de abrir o teclado por cima.
   }
 
   @override
@@ -119,8 +117,9 @@ class _BrowserPaneState extends State<BrowserPane> {
           ),
         );
 
+    // Aba nova (sem URL e sem seed) abre no Google por padrão.
     final initial = widget.session.url.isEmpty
-        ? (_pendingUrl ?? 'about:blank')
+        ? (_pendingUrl ?? _kHomeUrl)
         : widget.session.url;
 
     return ColoredBox(
@@ -146,30 +145,45 @@ class _BrowserPaneState extends State<BrowserPane> {
                 navBtn(Icons.refresh, tr.reload, true, () => _web?.reload()),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: CallbackShortcuts(
-                    bindings: {
-                      const SingleActivator(LogicalKeyboardKey.enter): () =>
-                          _go(_urlCtrl.text),
-                    },
-                    child: TextField(
-                      controller: _urlCtrl,
-                      focusNode: _urlFocus,
-                      placeholder: Text(
-                        tr.urlHint,
-                        style: typo.body.copyWith(
-                          fontSize: 12,
-                          color: colors.text4,
-                        ),
-                      ),
+                  // `onSubmitted` (Enter) é o caminho confiável: o CallbackShortcuts
+                  // em volta não pegava o Enter (a TextField do shadcn consome a
+                  // tecla internamente) e a página não abria.
+                  child: TextField(
+                    controller: _urlCtrl,
+                    focusNode: _urlFocus,
+                    onSubmitted: (value) => _go(value),
+                    placeholder: Text(
+                      tr.urlHint,
                       style: typo.body.copyWith(
                         fontSize: 12,
-                        color: colors.text,
+                        color: colors.text4,
                       ),
-                      border: Border.all(color: colors.border),
-                      borderRadius: BorderRadius.circular(6),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                    ),
+                    style: typo.body.copyWith(fontSize: 12, color: colors.text),
+                    border: Border.all(color: colors.border),
+                    borderRadius: BorderRadius.circular(6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // Botão "Ir": abre a URL digitada (à direita da barra).
+                HoverTap(
+                  borderRadius: BorderRadius.circular(6),
+                  color: colors.accentSoft,
+                  onTap: () => _go(_urlCtrl.text),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    child: Text(
+                      tr.go,
+                      style: typo.label.copyWith(
+                        fontSize: 12,
+                        color: colors.accentText,
                       ),
                     ),
                   ),

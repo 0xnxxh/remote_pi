@@ -5,6 +5,7 @@ import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/update_card.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/workspace_avatar.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -74,6 +75,11 @@ class ProjectsRail extends StatefulWidget {
     required this.onMoveToRealm,
     this.cockpit,
     required this.onSelectCockpit,
+    required this.onNewWorkspace,
+    required this.onSelectRemote,
+    required this.onRemoveRemoteWorkspace,
+    required this.remoteGitInfoOf,
+    required this.onRemoteWorkspaceAction,
     this.width = 252,
   });
 
@@ -89,6 +95,24 @@ class ProjectsRail extends StatefulWidget {
 
   /// Seleciona o workspace de sistema "Cockpit".
   final VoidCallback onSelectCockpit;
+
+  /// Seleciona um host remoto (pelo id do workspace).
+  final void Function(String workspaceId) onSelectRemote;
+
+  /// "+": abre o menu Local vs Remoto, ancorado no [anchorContext] do botão.
+  final void Function(BuildContext anchorContext) onNewWorkspace;
+
+  /// Remove um workspace remoto (pin) pelo id do workspace.
+  final void Function(String workspaceId) onRemoveRemoteWorkspace;
+
+  /// Git status do workspace remoto (badge abaixo do nome + branch do menu);
+  /// `null` = sem git ou ainda carregando (lazy).
+  final GitInfo? Function(String workspaceId) remoteGitInfoOf;
+
+  /// Ação do menu do workspace remoto (Camada A): 'pull'|'push'|'sync'|'rename'|
+  /// 'close'. Copiar branch/id é resolvido no próprio slot.
+  final void Function(String workspaceId, String action)
+  onRemoteWorkspaceAction;
 
   /// Worktrees (forks) de um workspace raiz, na ordem do git.
   final List<Project> Function(String rootId) worktreesOf;
@@ -189,11 +213,33 @@ class _ProjectsRailState extends State<ProjectsRail> {
     ];
   }
 
+  /// Forks (worktrees) de um workspace remoto — mesmo `_WorktreeItem` do local,
+  /// mas o git vem do cache remoto (lazy) e as ações roteiam pros handlers que
+  /// já ramificam por `isRemoteTerminal`.
+  List<Widget> _remoteForks(Project ws) {
+    final forks = widget.worktreesOf(ws.id);
+    return [
+      for (var i = 0; i < forks.length; i++)
+        _WorktreeItem(
+          worktree: forks[i],
+          originName: null,
+          isLast: i == forks.length - 1,
+          selected: forks[i].id == widget.selectedId,
+          notifications: widget.notificationCount(forks[i].id),
+          git: widget.remoteGitInfoOf(forks[i].id),
+          onTap: () => widget.onSelectRemote(forks[i].id),
+          onRemove: () => widget.onRemoveWorktree(forks[i]),
+          onMerge: () => widget.onMergeWorktree(forks[i]),
+          onUpdate: () => widget.onUpdateWorktree(forks[i]),
+          onFork: () => widget.onForkWorktree(forks[i]),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final projects = widget.projects;
-    final onAdd = widget.onAdd;
     return Container(
       width: widget.width,
       decoration: BoxDecoration(
@@ -213,12 +259,14 @@ class _ProjectsRailState extends State<ProjectsRail> {
                   style: context.typo.title.copyWith(color: colors.text),
                 ),
                 const Spacer(),
-                // "+" sempre visível: com o Cockpit fixo no topo o rail nunca
-                // fica realmente vazio, e criar workspace precisa estar à mão.
-                _SmallIcon(
-                  icon: Icons.add,
-                  tooltip: context.t.cockpit.projectsRail.newWorkspace,
-                  onTap: () => onAdd(),
+                // "+" abre um menu Local vs Remoto (plano 58). Builder pra
+                // ancorar o popover no próprio botão.
+                Builder(
+                  builder: (btnContext) => _SmallIcon(
+                    icon: Icons.add,
+                    tooltip: context.t.cockpit.projectsRail.newWorkspace,
+                    onTap: () => widget.onNewWorkspace(btnContext),
+                  ),
                 ),
               ],
             ),
@@ -233,6 +281,9 @@ class _ProjectsRailState extends State<ProjectsRail> {
                 onTap: widget.onSelectCockpit,
               ),
             ),
+          // Workspaces remotos (plano 58) NÃO têm mais um bloco fixo aqui: eles
+          // entram na lista `projects` abaixo, no realm ativo, reordenáveis e
+          // arrastáveis igual aos locais (o loop ramifica por isRemoteTerminal).
           Expanded(
             child: projects.isEmpty
                 ? const _EmptyRail()
@@ -248,6 +299,33 @@ class _ProjectsRailState extends State<ProjectsRail> {
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         children: [
                           for (final project in projects) ...[
+                            // Remoto (plano 58): mesmo lugar/realm/reorder que o
+                            // local, mas com o slot SSH + forks remotos.
+                            if (project.isRemoteTerminal) ...[
+                              _WorkspaceReorderable(
+                                projectId: project.id,
+                                title: project.name,
+                                colorValue: project.colorValue,
+                                initial: project.initial,
+                                imagePath: project.imagePath,
+                                onReorder: widget.onReorder,
+                                child: _RemoteSlot(
+                                  workspaceId: project.id,
+                                  name: project.name,
+                                  colorValue: project.colorValue,
+                                  imagePath: project.imagePath,
+                                  selected: project.id == widget.selectedId,
+                                  git: widget.remoteGitInfoOf(project.id),
+                                  moveTargets: widget.moveTargetsOf(project.id),
+                                  onTap: () => widget.onSelectRemote(project.id),
+                                  onAction: (action) => widget
+                                      .onRemoteWorkspaceAction(project.id, action),
+                                  onRemove: () =>
+                                      widget.onRemoveRemoteWorkspace(project.id),
+                                ),
+                              ),
+                              ..._remoteForks(project),
+                            ] else ...[
                             _WorkspaceReorderable(
                               projectId: project.id,
                               title: project.name,
@@ -286,6 +364,7 @@ class _ProjectsRailState extends State<ProjectsRail> {
                             // Worktrees (forks) penduradas abaixo do workspace,
                             // sempre expandidas (plan/42, decisões 5, 12).
                             ..._forkItems(project),
+                            ],
                           ],
                         ],
                       ),
@@ -368,6 +447,204 @@ class _CockpitSlot extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Slot de um host remoto: badge com o nome do host + glifo de nuvem/terminal.
+/// Botão-direito (long-press no menu) remove o pin. Terminal-only via SSH.
+class _RemoteSlot extends StatelessWidget {
+  const _RemoteSlot({
+    required this.workspaceId,
+    required this.name,
+    required this.colorValue,
+    required this.imagePath,
+    required this.selected,
+    required this.git,
+    required this.moveTargets,
+    required this.onTap,
+    required this.onAction,
+    required this.onRemove,
+  });
+
+  final String workspaceId;
+  final String name;
+  final int colorValue;
+
+  /// Realms de destino do "Move to realm" (vazio esconde o item).
+  final List<RealmTarget> moveTargets;
+
+  /// Imagem de fundo do avatar (personalizada nas Configurações), ou `null`.
+  final String? imagePath;
+  final bool selected;
+
+  /// Git status do workspace remoto (branch + sujeira), ou `null` se sem git /
+  /// ainda carregando. Alimenta o badge abaixo do nome E o gate das ações de
+  /// git no menu (a branch sai daqui).
+  final GitInfo? git;
+
+  String? get branch {
+    final b = git?.branch;
+    return (b == null || b.isEmpty) ? null : b;
+  }
+  final VoidCallback onTap;
+
+  /// Ações roteadas pra página: 'pull' | 'push' | 'sync' | 'rename' | 'close'.
+  final void Function(String action) onAction;
+  final VoidCallback onRemove;
+
+  Future<void> _showMenu(BuildContext context) async {
+    final tr = context.t.cockpit.projectsRail;
+    final hasGit = branch != null;
+    final pick = await showAppMenu<String>(
+      context,
+      items: [
+        if (hasGit) ...[
+          AppMenuItem(value: 'sync', label: tr.sync, icon: Icons.sync),
+          AppMenuItem(value: 'pull', label: tr.pull, icon: Icons.arrow_downward),
+          AppMenuItem(value: 'push', label: tr.push, icon: Icons.arrow_upward),
+          AppMenuItem(
+            value: 'worktree',
+            label: tr.createWorktree,
+            icon: Icons.call_split,
+          ),
+          AppMenuItem(
+            value: 'copy-branch',
+            label: tr.copyBranch,
+            icon: Icons.content_copy,
+          ),
+        ],
+        AppMenuItem(
+          value: 'copy-id',
+          label: tr.copyWorkspaceId,
+          icon: Icons.content_copy,
+        ),
+        if (moveTargets.isNotEmpty)
+          AppMenuItem(
+            value: 'realm', // nunca devolvido — só os filhos
+            label: tr.moveToRealm,
+            icon: Icons.public,
+            children: [
+              for (final t in moveTargets)
+                AppMenuItem(
+                  value: 'realm|${t.id}',
+                  label: t.name,
+                  enabled: t.enabled,
+                ),
+            ],
+          ),
+        AppMenuItem(
+          value: 'config',
+          label: tr.settings,
+          icon: Icons.settings_outlined,
+        ),
+        AppMenuItem(
+          value: 'close',
+          label: tr.close,
+          icon: Icons.close,
+          danger: true,
+        ),
+      ],
+    );
+    if (pick == null) return;
+    // Copiar resolve aqui (dado já em mãos); o resto vai pra página.
+    if (pick == 'copy-branch') {
+      final b = branch;
+      if (b != null) await Clipboard.setData(ClipboardData(text: b));
+      return;
+    }
+    if (pick == 'copy-id') {
+      await Clipboard.setData(ClipboardData(text: workspaceId));
+      return;
+    }
+    onAction(pick);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = Color(colorValue);
+    return GestureDetector(
+      // Botão-direito remove o pin (o registro do host sai; nada apagado no
+      // servidor). Tooltip via AppTooltip explica.
+      onSecondaryTap: onRemove,
+      child: HoverTap(
+        color: selected ? colors.panel2 : Colors.transparent,
+        borderRadius: BorderRadius.circular(7),
+        onTap: onTap,
+        padding: const EdgeInsets.fromLTRB(9, 7, 9, 7),
+        child: Row(
+          children: [
+            // Mesmo avatar do workspace local: imagem de fundo quando houver,
+            // senão a inicial sobre a cor. A afordância "remoto" fica no badge
+            // "SSH" à direita.
+            WorkspaceAvatar(
+              imagePath: imagePath,
+              colorValue: colorValue,
+              initial: name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.typo.body.copyWith(
+                      fontSize: 13.5,
+                      color: colors.text,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                  ),
+                  // Mesmo badge do local: branch + contador de sujeira, quando
+                  // o git remoto já foi lido (lazy). Sem git → nada.
+                  if (git != null) ...[
+                    const SizedBox(height: 4),
+                    _GitBadge(info: git!),
+                  ],
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'SSH',
+                style: context.typo.label.copyWith(
+                  fontSize: 9,
+                  color: accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            // Builder: o menu ancora no RenderBox do context passado a
+            // showAppMenu. Sem isto, o context do slot inteiro faria o popup
+            // abrir na largura toda (aparecia "embaixo"); com o Builder o
+            // context é o do ícone, igual ao workspace local.
+            Builder(
+              builder: (iconContext) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (_) => _showMenu(iconContext),
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: Icon(
+                    Icons.more_vert,
+                    size: 14,
+                    color: context.colors.text3,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1447,27 +1724,47 @@ class _WorkspaceReorderableState extends State<_WorkspaceReorderable> {
       },
       builder: (context, candidate, rejected) {
         final caret = candidate.isNotEmpty ? _before : null;
+        final feedback = Transform.translate(
+          offset: const Offset(10, 8),
+          child: _WorkspaceDragChip(
+            title: widget.title,
+            colorValue: widget.colorValue,
+            initial: widget.initial,
+            imagePath: widget.imagePath,
+          ),
+        );
         return Stack(
           children: [
-            // Click-drag imediato pra reposicionar (sem segurar). No desktop a
-            // rolagem do rail é via roda/trackpad (PointerScroll, não gesto de
-            // arrasto), então o Draggable imediato não briga com o scroll; o tap
-            // continua selecionando e o botão de menu continua abrindo.
-            Draggable<String>(
-              data: widget.projectId,
-              dragAnchorStrategy: pointerDragAnchorStrategy,
-              feedback: Transform.translate(
-                offset: const Offset(10, 8),
-                child: _WorkspaceDragChip(
-                  title: widget.title,
-                  colorValue: widget.colorValue,
-                  initial: widget.initial,
-                  imagePath: widget.imagePath,
+            // No DESKTOP a rolagem do rail é via roda/trackpad (PointerScroll,
+            // não gesto de arrasto), então o Draggable imediato no item inteiro
+            // não briga com o scroll. No MOBILE (touch) isso brigaria: um swipe
+            // vertical pra rolar viraria drag-drop. Por isso, no mobile o item
+            // NÃO é arrastável — só rola/seleciona — e o reorder sai por um
+            // handle dedicado (plano 60, Wave B1, decisão B).
+            if (isMobilePlatform)
+              widget.child
+            else
+              Draggable<String>(
+                data: widget.projectId,
+                dragAnchorStrategy: pointerDragAnchorStrategy,
+                feedback: feedback,
+                childWhenDragging: Opacity(opacity: 0.3, child: widget.child),
+                child: widget.child,
+              ),
+            if (isMobilePlatform)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Draggable<String>(
+                    data: widget.projectId,
+                    dragAnchorStrategy: pointerDragAnchorStrategy,
+                    feedback: feedback,
+                    child: _ReorderHandle(color: colors.text3),
+                  ),
                 ),
               ),
-              childWhenDragging: Opacity(opacity: 0.3, child: widget.child),
-              child: widget.child,
-            ),
             if (caret != null)
               Positioned(
                 left: 8,
@@ -1485,6 +1782,22 @@ class _WorkspaceReorderableState extends State<_WorkspaceReorderable> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Handle de reordenação (só mobile): a única região que inicia o drag-drop do
+/// workspace. Fica na borda direita do item; o resto rola/seleciona por toque.
+class _ReorderHandle extends StatelessWidget {
+  const _ReorderHandle({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(Icons.drag_indicator, size: 18, color: color),
     );
   }
 }

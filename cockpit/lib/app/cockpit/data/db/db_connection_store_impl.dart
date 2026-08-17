@@ -80,9 +80,19 @@ class DbConnectionStoreImpl implements DbConnectionStore {
     File file,
     DbConnectionOrigin origin,
   ) async {
+    if (!await file.exists()) return const [];
+    return parseDatabasesJson(await file.readAsString(), origin);
+  }
+
+  /// Parseia o conteúdo de um `databases.json` (`{databases:[...]}` ou lista
+  /// crua) em conexões. Reusado pela leitura local e pela remota (plano 58,
+  /// Wave 4: o arquivo vive no host).
+  static List<DbConnection> parseDatabasesJson(
+    String content,
+    DbConnectionOrigin origin,
+  ) {
     try {
-      if (!await file.exists()) return const [];
-      final decoded = jsonDecode(await file.readAsString());
+      final decoded = jsonDecode(content);
       final list = decoded is Map ? decoded['databases'] : decoded;
       if (list is! List) return const [];
       final out = <DbConnection>[];
@@ -93,16 +103,12 @@ class DbConnectionStoreImpl implements DbConnectionStore {
             DbConnection.fromJson(Map<String, Object?>.from(e), origin: origin),
           );
         } on FormatException {
-          // Entrada inválida (URL de engine desconhecido, edição manual) não
-          // pode derrubar as demais conexões do arquivo — pula só ela.
-          continue;
+          continue; // entrada inválida não derruba as demais.
         }
       }
       return out;
     } on FormatException {
-      // JSON quebrado (edição manual) não pode derrubar o painel — lista
-      // vazia; o usuário corrige o arquivo no próprio editor.
-      return const [];
+      return const []; // JSON quebrado → vazio; o usuário corrige no editor.
     }
   }
 

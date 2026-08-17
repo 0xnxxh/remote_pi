@@ -52,6 +52,7 @@ class AppSettings {
     this.railVisible = false,
     this.treeVisible = false,
     this.showCockpit = true,
+    this.launchAtStartup = false,
     this.defaultTerminalProfileId,
     this.terminalEngine = TerminalEngine.ghostty,
     this.locale,
@@ -170,6 +171,11 @@ class AppSettings {
   /// `HiveSettingsStore.load`).
   final bool showCockpit;
 
+  /// Inicia o Cockpit junto com o login do sistema (item de login do SO).
+  /// Persistido; a aplicação real no SO é feita pelo [LaunchAtStartupService]
+  /// quando o valor muda.
+  final bool launchAtStartup;
+
   /// `id` do [TerminalProfile] padrão do `+` (plano 50), persistido sob
   /// `terminal.default_profile_id`. `null` = **comportamento atual**: o
   /// resolver cai no fallback de plataforma (Windows: PowerShell — cmd no ARM;
@@ -248,6 +254,7 @@ class AppSettings {
     bool? railVisible,
     bool? treeVisible,
     bool? showCockpit,
+    bool? launchAtStartup,
     String? defaultTerminalProfileId,
     bool clearDefaultTerminalProfileId = false,
     TerminalEngine? terminalEngine,
@@ -294,6 +301,7 @@ class AppSettings {
       railVisible: railVisible ?? this.railVisible,
       treeVisible: treeVisible ?? this.treeVisible,
       showCockpit: showCockpit ?? this.showCockpit,
+      launchAtStartup: launchAtStartup ?? this.launchAtStartup,
       defaultTerminalProfileId: clearDefaultTerminalProfileId
           ? null
           : (defaultTerminalProfileId ?? this.defaultTerminalProfileId),
@@ -353,6 +361,7 @@ class AppSettings {
     // Sempre gravado: a migração distingue "install novo" (chave presente) de
     // "upgrade sem a flag" (chave ausente → liga automático).
     'showCockpit': showCockpit,
+    'launchAtStartup': launchAtStartup,
     // Só quando escolhido: a AUSÊNCIA da chave é o "sem padrão" → fallback de
     // plataforma. Nada a migrar (plano 50).
     if (defaultTerminalProfileId != null)
@@ -427,6 +436,7 @@ class AppSettings {
       railVisible: json['railVisible'] as bool? ?? false,
       treeVisible: json['treeVisible'] as bool? ?? false,
       showCockpit: json['showCockpit'] as bool? ?? true,
+      launchAtStartup: json['launchAtStartup'] as bool? ?? false,
       defaultTerminalProfileId: str(json['terminal.default_profile_id']),
       terminalEngine: _enumByName(
         TerminalEngine.values,

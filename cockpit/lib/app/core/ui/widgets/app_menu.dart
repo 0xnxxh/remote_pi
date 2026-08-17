@@ -170,7 +170,15 @@ Future<T?> showAppMenu<T>(
     offset: anchored ? const Offset(0, 4) : null,
     regionGroupId: groupId,
     builder: (menuContext) => ConstrainedBox(
-      constraints: BoxConstraints(minWidth: minWidth, maxWidth: 320),
+      // maxHeight: sem teto o menu crescia além da tela e as últimas opções
+      // ficavam inalcançáveis (comum no mobile/tela pequena). O MenuPopup do
+      // shadcn tem SingleChildScrollView interno, então limitar a altura já liga
+      // o scroll. ~78% da tela deixa margem pro trigger/bordas.
+      constraints: BoxConstraints(
+        minWidth: minWidth,
+        maxWidth: 320,
+        maxHeight: MediaQuery.sizeOf(menuContext).height * 0.78,
+      ),
       // DropdownMenu embrulha os MenuButton num MenuGroup (exigido) + MenuPopup.
       child: DropdownMenu(
         children: [

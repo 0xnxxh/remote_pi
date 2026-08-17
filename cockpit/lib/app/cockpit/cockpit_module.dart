@@ -44,6 +44,10 @@ import 'package:cockpit/app/cockpit/data/tasks/pty_task_runner.dart';
 import 'package:cockpit/app/cockpit/data/tasks/task_discovery_impl.dart';
 import 'package:cockpit/app/cockpit/data/process/process_tree_provider_factory.dart';
 import 'package:cockpit/app/cockpit/data/terminal/file_terminal_scrollback_store.dart';
+import 'package:cockpit/app/cockpit/data/remote/json_remote_hosts_store.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
+import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
+import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/data/terminal/pty_terminal_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/process_tree_provider.dart';
 import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
@@ -85,8 +89,12 @@ import 'package:cockpit/app/cockpit/domain/contracts/worktree_manager.dart';
 import 'package:cockpit/app/cockpit/domain/value_objects/update_target.dart';
 import 'package:cockpit/app/cockpit/ui/cockpit_page.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
+import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/file_ops_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/realm_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/session_notifications_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/remote_workspace_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/session/task_terminal_store.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/setup_viewmodel.dart';
@@ -146,6 +154,10 @@ Future<Module> buildCockpitModule() async {
   final appVersion = (await PackageInfo.fromPlatform()).version;
 
   // Notificações do SO — init pede permissão; falha não pode derrubar o boot.
+  // Init em TODAS as plataformas: o chime (media_kit) vale no mobile também (é
+  // o som de turno). O init do plugin de notificações do SO agora tem bloco iOS
+  // e é best-effort dentro do LocalNotifier (não derruba o chime). Plano 60,
+  // Wave G.
   final notifier = LocalNotifier();
   try {
     await notifier.init();
@@ -201,7 +213,34 @@ Future<Module> buildCockpitModule() async {
         )
         ..addLazySingleton<GitHistoryReader>(GitHistoryReaderImpl.new)
         ..addInstance<SessionHistory>(const SessionHistoryImpl())
-        ..addInstance<TerminalGatewayFactory>(const PtyTerminalGatewayFactory())
+        // Terminais servidos pelo cockpit-server sidecar via loopback (plano
+        // 58, Wave 1); sem sidecar disponível, o gateway cai pro PTY
+        // in-process sozinho — comportamento idêntico ao anterior.
+        ..addLazySingleton<SidecarTerminalConnector>(
+          SidecarTerminalConnector.new,
+        )
+        // MESMA instância sob o contrato de turn-status: o PTY nasce no
+        // sidecar, então é ele quem recebe o report do hook do agente e o
+        // repassa à VM (spinner/chime). Dois binds separados dariam dois
+        // connectors — e o status viria de um sidecar que ninguém usa.
+        // Parâmetro TIPADO (não `inject<T>()`): é assim que o auto_injector
+        // resolve o grafo — ver a regra de injeção no CLAUDE.md.
+        ..addLazySingleton<TurnStatusSource>(
+          (SidecarTerminalConnector sidecar) => sidecar,
+        )
+        ..addLazySingleton<TerminalGatewayFactory>(
+          SidecarTerminalGatewayFactory.new,
+        )
+        // Hosts remotos (plano 58, Wave 2): registro persistido no store de
+        // settings + resolvedor do binário local usado no bootstrap "Install
+        // server" (mesmo do sidecar). A UI dos pins consome o RemoteHostsStore.
+        ..addInstance<RemoteHostsStore>(JsonRemoteHostsStore(settingsStore))
+        // App-scoped (não page-scoped): o CockpitViewModel injeta e a aba
+        // "Remote hosts" das Configurações (outra rota) observa a MESMA
+        // instância — add/remove de host reflete nos dois na hora. Espelha o
+        // padrão do AutomationController (singleton aqui + addChangeNotifier no
+        // ModularApp.provide).
+        ..addLazySingleton<RemoteHostsController>(RemoteHostsController.new)
         ..addInstance<TerminalScrollbackStore>(
           const FileTerminalScrollbackStore(),
         )
@@ -232,7 +271,16 @@ Future<Module> buildCockpitModule() async {
             // Estado git extraído do CockpitViewModel (mesma vida da rota);
             // o VM o recebe no construtor e injeta o contexto de shell.
             ..addChangeNotifier<GitController>(GitController.new)
+            ..addChangeNotifier<FileOpsController>(FileOpsController.new)
             ..addChangeNotifier<RealmController>(RealmController.new)
+            ..addChangeNotifier<SessionNotificationsController>(
+              SessionNotificationsController.new,
+            )
+            // Motor dos workspaces remotos (git do host + worktrees remotos),
+            // mesmo contrato do GitController.
+            ..addChangeNotifier<RemoteWorkspaceController>(
+              RemoteWorkspaceController.new,
+            )
             ..addChangeNotifier<CockpitViewModel>(CockpitViewModel.new)
             ..addChangeNotifier<SetupViewModel>(SetupViewModel.new)
             ..addChangeNotifier<TasksViewModel>(TasksViewModel.new)

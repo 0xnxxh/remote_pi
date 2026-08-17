@@ -243,6 +243,13 @@ bool get terminalEngineIsSelectable => true;
 
 /// Resolve o engine efetivo pra plataforma — hoje passa direto (sem gate de
 /// plataforma). Mantido como ponto único caso precise re-travar alguma engine.
+///
+/// Histórico: o mobile chegou a ser travado no xterm por um `EXC_BAD_ACCESS` na
+/// init do Ghostty no iOS. A causa era mismatch de ABI do enum de options entre
+/// `flterm 0.0.4` e `libghostty 0.0.11` (versões descasadas), não um bug de
+/// iOS. Com o pin casado (`cockpit-pin-flterm-ios-recover`: flterm 0.0.5 +
+/// libghostty 0.0.12 na mesma ref) o Ghostty voltou a rodar no iOS, então o
+/// gate saiu.
 TerminalEngine resolveTerminalEngine(TerminalEngine engine) => engine;
 
 CockpitTerminalController createTerminalController(

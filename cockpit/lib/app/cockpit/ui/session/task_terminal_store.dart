@@ -22,13 +22,26 @@ import 'package:cockpit/app/core/utils/quiet_period_debouncer.dart';
 /// App-scoped (bind no `cockpit_module`); criado já no mount da `CockpitViewModel`
 /// (que o injeta), então escuta desde o boot.
 class TaskTerminalStore {
-  TaskTerminalStore(this._runner, this._scrollback) {
-    _sub = _runner.runs().listen(_onRun);
+  TaskTerminalStore(this._localRunner, this._scrollback) {
+    registerRunner(_localRunner);
   }
 
-  final TaskRunnerGateway _runner;
+  final TaskRunnerGateway _localRunner;
   final TerminalScrollbackStore _scrollback;
-  StreamSubscription<TaskRun>? _sub;
+
+  /// Runners que o store observa. Além do local, cada workspace REMOTO tem seu
+  /// próprio [TaskRunnerGateway] (um `RemoteTaskRunner` por host, criado sob
+  /// demanda) — sem registrá-lo aqui, o output das tasks remotas não alimenta o
+  /// terminal e a aba fica vazia (plano 60, Wave D).
+  final _runners = <TaskRunnerGateway>{};
+  final _runSubs = <StreamSubscription<TaskRun>>[];
+
+  /// Passa a observar os runs/output de [runner] (idempotente). Chamado no boot
+  /// para o runner local e a cada `RemoteTaskRunner` novo.
+  void registerRunner(TaskRunnerGateway runner) {
+    if (!_runners.add(runner)) return;
+    _runSubs.add(runner.runs().listen((run) => _onRun(runner, run)));
+  }
 
   /// `projectId` sintético sob o qual os logs de task vivem no scrollback store
   /// (`.../terminal_scrollback/__tasks__/<taskId>.log`). Não colide com ids de
@@ -41,6 +54,10 @@ class TaskTerminalStore {
   final _terminals = <String, CockpitTerminalController>{};
   final _outSubs = <String, StreamSubscription<String>>{};
   final _lastPid = <String, int?>{};
+
+  /// Runner que produziu o último run de cada task — roteia `resize` (e futuros
+  /// comandos) pro runner certo (local vs host remoto).
+  final _runnerOf = <String, TaskRunnerGateway>{};
   final _record = <String, StringBuffer>{};
   final _flushDebouncers = <String, QuietPeriodDebouncer>{};
 
@@ -63,7 +80,8 @@ class TaskTerminalStore {
     TerminalEngine? engine,
   }) => _terminals.putIfAbsent(taskId, () {
     final term = createTerminalController(engine ?? _defaultEngine);
-    term.onResize = (columns, rows) => _runner.resize(taskId, rows, columns);
+    term.onResize = (columns, rows) =>
+        (_runnerOf[taskId] ?? _localRunner).resize(taskId, rows, columns);
     unawaited(_seed(taskId, term));
     return term;
   });
@@ -83,12 +101,13 @@ class TaskTerminalStore {
     (_record[taskId] ??= StringBuffer()).write(raw);
   }
 
-  void _onRun(TaskRun run) {
+  void _onRun(TaskRunnerGateway runner, TaskRun run) {
     if (!run.isActive) return;
     // Só (re)liga quando é um run NOVO (pid mudou) — building↔running do mesmo
     // processo não re-subscreve.
     if (_lastPid[run.taskId] == run.pid) return;
     _lastPid[run.taskId] = run.pid;
+    _runnerOf[run.taskId] = runner;
 
     final term = terminalFor(run.taskId);
     // Restart (já houve run): limpa tela + scrollback e volta o cursor ao topo
@@ -99,7 +118,7 @@ class TaskTerminalStore {
       _record[run.taskId]?.clear();
     }
     _outSubs.remove(run.taskId)?.cancel();
-    _outSubs[run.taskId] = _runner.output(run.taskId).listen((data) {
+    _outSubs[run.taskId] = runner.output(run.taskId).listen((data) {
       term.write(data);
       _append(run.taskId, data);
     });
@@ -147,7 +166,10 @@ class TaskTerminalStore {
   }
 
   void dispose() {
-    _sub?.cancel();
+    for (final sub in _runSubs) {
+      sub.cancel();
+    }
+    _runSubs.clear();
     for (final debouncer in _flushDebouncers.values) {
       debouncer.dispose();
     }
