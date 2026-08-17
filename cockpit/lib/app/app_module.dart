@@ -30,9 +30,8 @@ Future<Module> buildAppModule({
   final core = buildCoreModule(
     config: config,
     terminalProfiles: terminalProfiles,
-    windowActivity: windowActivity,
   );
-  final cockpit = await buildCockpitModule();
+  final cockpit = await buildCockpitModule(windowActivity: windowActivity);
   final settings = buildSettingsModule();
   return createModule(
     register: (c) => c

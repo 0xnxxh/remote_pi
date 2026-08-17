@@ -427,8 +427,8 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
         provide: (s) => s
           ..addChangeNotifier<SettingsController>(() => _settings!)
           ..addChangeNotifier<WindowActivityController>(() => _windowActivity)
-          // A mesma instância root-owned é observada por Settings e Source
-          // Control e também injetada no CockpitViewModel.
+          // A mesma instância bootstrap-owned é observada por Settings e Source
+          // Control e injetada nos controllers da feature Cockpit.
           ..addChangeNotifier<AutomationController>(
             () => inject<AutomationController>(),
           )

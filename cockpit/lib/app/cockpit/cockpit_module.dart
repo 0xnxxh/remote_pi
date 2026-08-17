@@ -48,7 +48,6 @@ import 'package:cockpit/app/cockpit/data/remote/json_remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_gateway_factory.dart';
-import 'package:cockpit/app/cockpit/data/terminal/pty_terminal_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/process_tree_provider.dart';
 import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/cockpit/data/update/auto_updater_self_updater.dart';
@@ -103,6 +102,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
 import 'package:cockpit/app/core/data/repositories/json_settings_store.dart';
 import 'package:cockpit/app/core/data/setup/json_state_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
+import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -125,7 +125,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// Como o shell fica em `/` e o Settings é **empilhado** por cima (não substitui),
 /// a rota `/` nunca deixa a pilha em navegação normal → estes binds
 /// feature-scoped vivem o app inteiro na prática.
-Future<Module> buildCockpitModule() async {
+Future<Module> buildCockpitModule({
+  required WindowActivityController windowActivity,
+}) async {
   // Bootstrap async: abre os próprios stores (privados no closure), resolve a
   // versão e inicia o notifier. A migração Hive→JSON já rodou no bootstrapper.
   final stateDir = await StorageLocation.stateDir();
@@ -169,6 +171,9 @@ Future<Module> buildCockpitModule() async {
     path: '/',
     register: (c) {
       c
+        // O provider da rota resolve apenas no injector desta feature. Mantém
+        // a instância criada no bootstrap; o ModularApp.provide é seu owner.
+        ..addInstance<WindowActivityController>(windowActivity)
         ..addInstance<ProjectRepository>(JsonProjectRepository(projectStore))
         ..addInstance<RealmRepository>(JsonRealmRepository(realmStore))
         ..addInstance<WorkspaceLayoutStore>(

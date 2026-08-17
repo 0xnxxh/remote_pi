@@ -2,7 +2,6 @@ import 'package:cockpit/app/core/core_module.dart';
 import 'package:cockpit/app/core/data/terminal/terminal_profile_resolver_impl.dart';
 import 'package:cockpit/app/core/env.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
-import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,12 +18,9 @@ void main() {
   testWidgets('AutomationController root instance is observable from routes', (
     tester,
   ) async {
-    final activity = WindowActivityController();
-    addTearDown(activity.dispose);
     final core = buildCoreModule(
       config: const PiSpawnConfig(executable: 'pi'),
       terminalProfiles: TerminalProfileResolverImpl(),
-      windowActivity: activity,
     );
     final feature = createModule(
       path: '/',

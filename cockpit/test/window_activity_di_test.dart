@@ -2,28 +2,28 @@ import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_status_reader.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_info.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
-import 'package:cockpit/app/core/core_module.dart';
-import 'package:cockpit/app/core/data/terminal/terminal_profile_resolver_impl.dart';
-import 'package:cockpit/app/core/env.dart';
 import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _Root extends StatelessWidget {
+  const _Root();
+
+  @override
+  Widget build(BuildContext context) =>
+      MaterialApp.router(routerConfig: ModularApp.routerConfigOf(context));
+}
+
 void main() {
   testWidgets(
-    'core instance resolves into route-scoped GitController with identity',
+    'feature instance resolves into route-scoped GitController with identity',
     (tester) async {
       final activity = WindowActivityController();
-      addTearDown(activity.dispose);
-      final core = buildCoreModule(
-        config: const PiSpawnConfig(executable: 'pi'),
-        terminalProfiles: TerminalProfileResolverImpl(),
-        windowActivity: activity,
-      );
       final feature = createModule(
         path: '/',
         register: (c) => c
+          ..addInstance<WindowActivityController>(activity)
           ..addInstance<GitStatusReader>(_FakeGitStatusReader())
           ..addInstance<GitCommandRunner>(_FakeGitCommandRunner())
           ..route(
@@ -41,29 +41,19 @@ void main() {
             ),
           ),
       );
-      final app = createModule(
-        register: (c) => c
-          ..module(core)
-          ..module(feature),
-      );
-      final boot = bootstrapModule(app);
+      final app = createModule(register: (c) => c.module(feature));
 
       await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: modularRouterConfig(
-            boot.routes,
-            injector: boot.injector,
-            manager: boot.manager,
-          ),
+        ModularApp(
+          module: app,
+          provide: (services) => services
+              .addChangeNotifier<WindowActivityController>(() => activity),
+          child: const _Root(),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.text('git:0;same:true'), findsOneWidget);
-      expect(
-        identical(boot.injector.get<WindowActivityController>(), activity),
-        isTrue,
-      );
       expect(tester.takeException(), isNull);
     },
   );

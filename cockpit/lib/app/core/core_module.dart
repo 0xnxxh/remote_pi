@@ -13,7 +13,6 @@ import 'package:cockpit/app/core/domain/contracts/system_permissions.dart';
 import 'package:cockpit/app/core/domain/contracts/terminal_profile_resolver.dart';
 import 'package:cockpit/app/core/env.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
-import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 
 /// Kernel transversal — módulo **sem `path`** → binds root-owned (vivem o app
@@ -53,7 +52,6 @@ import 'package:flutter_modular/flutter_modular.dart';
 Module buildCoreModule({
   required PiSpawnConfig config,
   required TerminalProfileResolver terminalProfiles,
-  required WindowActivityController windowActivity,
 }) {
   const lspFactory = LspClientFactoryImpl();
   final automation = AutomationController(CliAutomationGateway());
@@ -61,7 +59,6 @@ Module buildCoreModule({
     register: (c) => c
       ..addInstance<PiSpawnConfig>(config)
       ..addInstance<TerminalProfileResolver>(terminalProfiles)
-      ..addInstance<WindowActivityController>(windowActivity)
       ..addInstance<LspClientFactory>(lspFactory)
       ..addInstance<AutomationController>(automation)
       ..addLazySingleton<LspServerPool>(LspServerPool.new)
