@@ -41,6 +41,13 @@ Cockpit tabs (it is not on the global PATH).
   (tab next to the terminal). `cockpit <file>` is the shortcut. The path is
   resolved against the tab cwd (relative, `~` and absolute all work). Any type
   opens as text — including extensionless ones (`.zprofile`, `Makefile`).
+- `cockpit browse <url> [--json]` — open the app's built-in **browser tab** at
+  `<url>` (e.g. a dev server you just started: `cockpit browse
+  http://localhost:3000`). A browser tab already open on the same host:port is
+  reused (it navigates/reloads instead of duplicating). Schemeless URLs get
+  `http://` for localhost targets and `https://` otherwise. On platforms
+  without an inline webview (Linux) the URL opens in the system browser —
+  `--json` output tells you which happened: `{"mode":"inline"|"system","url":…}`.
 - `cockpit db <list|schema|query|run|execute>` — query the workspace's
   databases. Connections are registered in `.cockpit/databases.json` (Database
   panel); SQLite files in the repo are auto-detected. Output is **one JSON

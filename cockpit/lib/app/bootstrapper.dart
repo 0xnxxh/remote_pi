@@ -12,11 +12,13 @@ import 'package:cockpit/app/cockpit/domain/contracts/hook_installer.dart';
 import 'package:cockpit/app/core/data/diagnostics/diagnostics_log.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_process_registry.dart';
 import 'package:cockpit/app/core/data/repositories/json_settings_store.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/core/data/setup/hive_migration.dart';
 import 'package:cockpit/app/core/data/setup/json_state_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
 import 'package:cockpit/app/core/data/theme_store.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
+import 'package:cockpit/app/core/domain/services/window_placement.dart';
 import 'package:cockpit/app/core/env.dart';
 import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
@@ -33,6 +35,7 @@ import 'package:cockpit/app/cockpit/ui/widgets/confirm_dialog.dart';
 import 'package:cockpit/app/core/utils/login_shell.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -149,7 +152,9 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
         // Finder/Dock não há `$SHELL` (launchd não tem shell-pai) — a
         // resolução consulta o SO (dscl/getent) e o spawn de PTY, síncrono,
         // lê do cache. Ver login_shell.dart / issue #42.
-        await resolveLoginShell();
+        // Mobile: sem shell local (e `Process.run` é proibido no iOS real, só
+        // funciona no simulador que é macOS por baixo) → pula.
+        if (!isMobilePlatform) await resolveLoginShell();
 
         // Mata filhos órfãos desta instância ou de instâncias já encerradas,
         // preservando agents/LSP/tasks de outros Cockpits ainda vivos.
@@ -162,17 +167,19 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
         // Hooks do Cockpit nos harnesses suportados (idempotente) pra sessões
         // de agente nas abas reportarem status de turno: Claude Code em
         // ~/.claude/settings.json, Codex CLI em ~/.codex/hooks.json (+ trust no
-        // config.toml). Não-fatal e independentes: falha de um não impede o
-        // outro.
-        for (final installer in const <HookInstaller>[
-          ClaudeHookInstallerImpl(),
-          CodexHookInstallerImpl(),
-        ]) {
-          unawaited(
-            installer.ensureInstalled().then((r) {
-              r.fold((_) {}, (e) => debugPrint('[hook] install falhou: $e'));
-            }),
-          );
+        // config.toml). Não-fatal e independentes. Desktop-only (mobile não tem
+        // ~/.claude nem ~/.codex, plano 59).
+        if (!isMobilePlatform) {
+          for (final installer in const <HookInstaller>[
+            ClaudeHookInstallerImpl(),
+            CodexHookInstallerImpl(),
+          ]) {
+            unawaited(
+              installer.ensureInstalled().then((r) {
+                r.fold((_) {}, (e) => debugPrint('[hook] install falhou: $e'));
+              }),
+            );
+          }
         }
 
         final config = await PiSpawnConfig.resolve();
@@ -297,14 +304,32 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
   Future<void> _setupWindow(JsonStateStore winStore) async {
     if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
     await windowManager.ensureInitialized();
-    final w = (winStore.get('width') as num?)?.toDouble() ?? 1280;
-    final h = (winStore.get('height') as num?)?.toDouble() ?? 720;
-    final x = (winStore.get('x') as num?)?.toDouble();
-    final y = (winStore.get('y') as num?)?.toDouble();
+    const minSize = Size(720, 480);
+    var w = (winStore.get('width') as num?)?.toDouble() ?? 1280;
+    var h = (winStore.get('height') as num?)?.toDouble() ?? 720;
+    var x = (winStore.get('x') as num?)?.toDouble();
+    var y = (winStore.get('y') as num?)?.toDouble();
+
+    // Os bounds salvos descrevem o arranjo de telas do último encerramento.
+    // Reencaixa no arranjo de agora (ver [fitWindowBounds]) — desacoplar um
+    // monitor externo, ou vir de um maior pra um menor, senão faz a janela
+    // reabrir fora da vista.
+    if (x != null && y != null) {
+      final fitted = fitWindowBounds(
+        saved: Rect.fromLTWH(x, y, w, h),
+        workAreas: await _workAreas(),
+        minSize: minSize,
+      );
+      x = fitted.left;
+      y = fitted.top;
+      w = fitted.width;
+      h = fitted.height;
+    }
+
     final options = WindowOptions(
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
-      minimumSize: const Size(720, 480),
+      minimumSize: minSize,
       size: Size(w, h),
       // Sem posição salva (1ª execução): centraliza.
       center: x == null || y == null,
@@ -317,13 +342,40 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
     // Ligado aqui, e não no listener, porque a janela já é fechável antes de o
     // shell montar — um fechamento nessa janela de tempo escaparia.
     await windowManager.setPreventClose(true);
+    final wasMaximized = winStore.get('maximized') == true;
     await windowManager.waitUntilReadyToShow(options, () async {
       if (x != null && y != null) {
         await windowManager.setBounds(Rect.fromLTWH(x, y, w, h));
       }
+      // Maximizada é um ESTADO, não um tamanho: restaurar por bounds daria uma
+      // janela do tamanho da tela sem estar maximizada (no Win/Linux os bounds
+      // de uma janela maximizada extrapolam a work area pelas bordas
+      // invisíveis, então ela ainda cobriria a barra de tarefas, e o botão
+      // restaurar não teria o que restaurar). Os bounds salvos acima são os do
+      // último estado NÃO maximizado — é pra eles que o restaurar volta.
+      if (wasMaximized) await windowManager.maximize();
       await windowManager.show();
       await windowManager.focus();
     });
+  }
+
+  /// Áreas úteis (sem barra de tarefas/dock) de cada monitor, a primária
+  /// primeiro — a ordem que [fitWindowBounds] usa como desempate. Falha do
+  /// plugin devolve lista vazia, e o encaixe vira no-op (melhor abrir na
+  /// posição salva do que travar o boot por causa de geometria).
+  Future<List<Rect>> _workAreas() async {
+    try {
+      final primary = await screenRetriever.getPrimaryDisplay();
+      final displays = await screenRetriever.getAllDisplays();
+      final ordered = [primary, ...displays.where((d) => d.id != primary.id)];
+      return [
+        for (final d in ordered)
+          (d.visiblePosition ?? Offset.zero) & (d.visibleSize ?? d.size),
+      ];
+    } on Object catch (e, stack) {
+      DiagnosticsLog.instance.logError('window-displays', e, stack);
+      return const [];
+    }
   }
 
   /// Shell mínimo (tema resolvido) pras fases pré-ModularApp.
@@ -453,6 +505,12 @@ class WindowStateKeeperState extends State<WindowStateKeeper>
   @override
   void onWindowRestore() => _activitySync.restore();
 
+  @override
+  void onWindowMaximize() => _persistMaximized(true);
+
+  @override
+  void onWindowUnmaximize() => _persistMaximized(false);
+
   /// Fechamento da janela: **este** é o encerramento limpo do Cockpit.
   ///
   /// Só chega aqui porque o boot liga `setPreventClose(true)`. Sem isso, tanto
@@ -503,6 +561,11 @@ class WindowStateKeeperState extends State<WindowStateKeeper>
   }
 
   Future<void> _persistBoundsNow() async {
+    // Maximizada, os bounds são os da tela — gravá-los apagaria o tamanho
+    // "normal" pro qual o restaurar volta, e o boot seguinte abriria uma janela
+    // de tela cheia que não desmaximiza. Só o flag muda nesse estado; os bounds
+    // ficam congelados no último tamanho normal.
+    if (await windowManager.isMaximized()) return;
     final bounds = await windowManager.getBounds();
     await widget.store.putAll({
       'x': bounds.left,
@@ -510,6 +573,15 @@ class WindowStateKeeperState extends State<WindowStateKeeper>
       'width': bounds.width,
       'height': bounds.height,
     });
+  }
+
+  /// Grava o estado maximizado na hora (sem debounce): é um evento discreto,
+  /// não um fluxo contínuo como resize/move.
+  void _persistMaximized(bool maximized) {
+    // Um maximize dispara resize junto; cancelar o debounce pendente evita que
+    // ele grave bounds de tela cheia por chegar antes do flag valer.
+    _debounce?.cancel();
+    unawaited(widget.store.put('maximized', maximized));
   }
 
   @override

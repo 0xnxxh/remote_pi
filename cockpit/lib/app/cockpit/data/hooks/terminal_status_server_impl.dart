@@ -56,6 +56,11 @@ class TerminalStatusServerImpl implements TerminalStatusServer {
     void Function(ClaudeStatusUpdate update) onUpdate, {
     Future<CockpitCommandResult> Function(CockpitCommand command)? onCommand,
   }) async {
+    // Mobile (iPad/Android): o status-server é o socket do cockpit-hook do
+    // desktop (som/chime de fim de turno via Claude Code local). No mobile não
+    // há hook local — e o path do container do iOS estoura o limite de UDS.
+    // No-op; o status remoto do host virá pelo protocolo (ver plano 58/59).
+    if (Platform.isIOS || Platform.isAndroid) return;
     if (_server != null) return;
     _onUpdate = onUpdate;
     _onCommand = onCommand;

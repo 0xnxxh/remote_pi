@@ -89,30 +89,41 @@ final class GhosttyTerminalController implements CockpitTerminalController {
       if (_replaying) return;
       onOutput?.call(data);
     };
-    controller.onResize = (columns, rows) {
-      final isInitialResize = !_hasInitialResize;
-      _hasInitialResize = true;
-      if (isInitialResize &&
-          SchedulerBinding.instance.schedulerPhase ==
-              SchedulerPhase.persistentCallbacks) {
-        // flterm reports its grid size from performLayout. Restored OSC state
-        // can notify TerminalView, so applying it here would call setState
-        // while the render tree is still being laid out.
-        _deferWritesUntilPostFrame = true;
-      }
-      onResize?.call(columns, rows);
-
-      if (!isInitialResize) return;
-      if (_deferWritesUntilPostFrame) {
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          _flushPendingWrites();
-        });
-      } else {
-        _flushPendingWrites();
-      }
-    };
+    controller.onResize = _handleControllerResize;
     controller.onTitleChanged = () => onTitleChanged?.call(controller.title);
   }
+
+  void _handleControllerResize(int columns, int rows) {
+    final isInitialResize = !_hasInitialResize;
+    _hasInitialResize = true;
+    if (isInitialResize &&
+        SchedulerBinding.instance.schedulerPhase ==
+            SchedulerPhase.persistentCallbacks) {
+      // flterm reports its grid size from performLayout. Restored OSC state
+      // can notify TerminalView, so applying it here would call setState
+      // while the render tree is still being laid out.
+      _deferWritesUntilPostFrame = true;
+    }
+    onResize?.call(columns, rows);
+
+    if (!isInitialResize) return;
+    if (_deferWritesUntilPostFrame) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _flushPendingWrites();
+      });
+    } else {
+      _flushPendingWrites();
+    }
+  }
+
+  /// Drives the controller's resize handling directly.
+  ///
+  /// In production flterm's `TerminalView` reports its measured grid through
+  /// the (setter-only) `controller.onResize`. Tests have no view, so this hook
+  /// simulates that report to exercise the initial-resize replay flush.
+  @visibleForTesting
+  void handleResize(int columns, int rows) =>
+      _handleControllerResize(columns, rows);
 
   final ghost.TerminalController controller;
 
@@ -232,6 +243,13 @@ bool get terminalEngineIsSelectable => true;
 
 /// Resolve o engine efetivo pra plataforma — hoje passa direto (sem gate de
 /// plataforma). Mantido como ponto único caso precise re-travar alguma engine.
+///
+/// Histórico: o mobile chegou a ser travado no xterm por um `EXC_BAD_ACCESS` na
+/// init do Ghostty no iOS. A causa era mismatch de ABI do enum de options entre
+/// `flterm 0.0.4` e `libghostty 0.0.11` (versões descasadas), não um bug de
+/// iOS. Com o pin casado (`cockpit-pin-flterm-ios-recover`: flterm 0.0.5 +
+/// libghostty 0.0.12 na mesma ref) o Ghostty voltou a rodar no iOS, então o
+/// gate saiu.
 TerminalEngine resolveTerminalEngine(TerminalEngine engine) => engine;
 
 CockpitTerminalController createTerminalController(

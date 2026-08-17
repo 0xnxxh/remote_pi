@@ -71,9 +71,49 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
 
+  # Fatia x86_64 do cockpit-server (plano 58). `dart build cli` NÃO cross-compila,
+  # e o runner do job macOS é Apple Silicon (arm64), então o bundle sairia
+  # arm64-only e o Mac Intel cairia no fallback in-process (sem sidecar/host
+  # remoto). Este job roda num runner Intel só pra produzir a fatia x64 do
+  # bundle (leve: só `dart build cli` + a dylib do PTY, sem ghostty/Flutter app);
+  # o job macOS funde as duas com `lipo`.
+  server-x64:
+    name: cockpit-server (fatia x86_64)
+    needs: meta
+    runs-on: macos-13
+    defaults: { run: { working-directory: cockpit } }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Rust (native assets do anaki)
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update || true
+          rustup default stable
+          cargo --version
+      - name: Build do bundle x86_64
+        run: |
+          flutter pub get
+          ./tool/build-sidecar.sh
+          # Sanidade: o exe TEM que ser x86_64 (o runner é Intel). Se sair arm64
+          # é sinal de dart/emulação errada — aborta antes de enganar o merge.
+          lipo -archs build/server-bundle/bin/cockpit-server
+          lipo -archs build/server-bundle/bin/cockpit-server | grep -q x86_64 || {
+            echo "::error::cockpit-server x64 saiu sem a fatia x86_64"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cockpit-server-x64
+          path: cockpit/build/server-bundle
+          retention-days: 1
+
   macos:
     name: macOS dmg (universal, notarizado)
-    needs: meta
+    needs: [meta, server-x64]
     runs-on: macos-latest
     defaults: { run: { working-directory: cockpit } }
     env:
@@ -111,6 +151,12 @@ jobs:
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
           cargo --version
 
+      - name: Baixa a fatia x86_64 do cockpit-server
+        uses: actions/download-artifact@v4
+        with:
+          name: cockpit-server-x64
+          path: cockpit/build/server-x64
+
       - name: Importa certificado Developer ID em keychain temporário
         env:
           MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
@@ -138,6 +184,31 @@ jobs:
           flutter pub get
           flutter build macos --release
           APP="build/macos/Build/Products/Release/Cockpit.app"
+          # Funde a fatia x86_64 do cockpit-server (job server-x64) no bundle
+          # arm64 do .app → universal. Reassina cada Mach-O fundido com o SIGN_ID
+          # (lipo invalida a assinatura). Feito ANTES das assinaturas do app pra
+          # o --deep/verify já verem o bundle universal e assinado.
+          SERVER_BUNDLE="$APP/Contents/Resources/cockpit-server-bundle"
+          # Merge sem assinar (o lipo invalida a assinatura de qualquer jeito);
+          # a assinatura vem logo abaixo, com as entitlements certas.
+          ./tool/lipo-server-bundle.sh "$SERVER_BUNDLE" build/server-x64
+          # Reassina o bundle do servidor igual ao build_server.sh: as dylibs
+          # primeiro; o exe (Dart AOT) com cockpit_hook.entitlements — sob
+          # hardened runtime sem allow-jit o macOS o mata (mesma classe do
+          # cockpit-hook/cli). O --deep abaixo não toca Mach-O solto em
+          # Resources/, então esta assinatura é a que vale.
+          for f in "$SERVER_BUNDLE"/lib/*.dylib; do
+            codesign --force --options runtime --timestamp -s "$SIGN_ID" "$f"
+          done
+          codesign --force --options runtime --timestamp \
+            --entitlements macos/cockpit_hook.entitlements \
+            --sign "$SIGN_ID" "$SERVER_BUNDLE/bin/cockpit-server"
+          # Gate do Intel (mesmo espírito do cockpit-cli): sem a fatia x86_64 o
+          # sidecar/host remoto não sobem em Mac Intel.
+          lipo -archs "$SERVER_BUNDLE/bin/cockpit-server" | grep -q x86_64 || {
+            echo "::error::cockpit-server saiu sem a fatia x86_64 (Mac Intel ficaria no fallback)"
+            exit 1
+          }
           # Assina o .app (Developer ID + Hardened Runtime + timestamp). --deep
           # cobre os componentes do Sparkle aninhados (Sparkle.framework,
           # Autoupdate, Updater.app, XPCServices), exigência da notarização.

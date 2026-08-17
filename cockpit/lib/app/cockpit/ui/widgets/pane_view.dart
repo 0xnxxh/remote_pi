@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:cockpit/app/cockpit/domain/entities/browser_capability.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
+import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/diff_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/file_viewer_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/pane_item.dart';
@@ -11,10 +13,12 @@ import 'package:cockpit/app/cockpit/ui/session/task_output_session.dart';
 import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/setup_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_composer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_setup_checklist.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/agent_transcript.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/browser_pane.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/active_listenable_builder.dart';
 import 'package:cockpit/app/core/domain/entities/terminal_profile.dart';
 import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
@@ -28,6 +32,7 @@ import 'package:cockpit/app/cockpit/ui/widgets/db_mongo_view.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/db_redis_table.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/file_viewer.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/adaptive_terminal_pane.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/pane_tab_leading.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
@@ -288,17 +293,34 @@ class _TabStripState extends State<_TabStrip> {
   /// Dropdown com todas as abas (pular direto pra uma) — aparece no overflow.
   Future<void> _showTabList(BuildContext anchor) async {
     final pane = widget.pane;
+    final colors = context.colors;
     final picked = await showAppMenu<String>(
       anchor,
       minWidth: 220,
       items: [
         for (final id in pane.tabs)
-          AppMenuItem(
-            value: id,
-            label: widget.vm.session(id)?.displayTitle ?? '—',
-            icon: _tabIcon(widget.vm.session(id)),
-            selected: id == pane.active,
-          ),
+          () {
+            final s = widget.vm.session(id);
+            return AppMenuItem(
+              value: id,
+              label: s?.displayTitle ?? '—',
+              leading: s is TerminalSession
+                  ? ListenableBuilder(
+                      listenable: s,
+                      builder: (context, _) => PaneTabLeading(
+                        item: s,
+                        defaultIcon: _tabIcon(s),
+                        iconColor: colors.text2,
+                      ),
+                    )
+                  : PaneTabLeading(
+                      item: s,
+                      defaultIcon: _tabIcon(s),
+                      iconColor: colors.text2,
+                    ),
+              selected: id == pane.active,
+            );
+          }(),
       ],
     );
     if (picked != null) widget.vm.selectTab(pane.id, picked);
@@ -332,7 +354,8 @@ class _TabStripState extends State<_TabStrip> {
                 onExit: (_) => _setHover(false),
                 child: Listener(
                   onPointerSignal: (pointerSignal) {
-                    if (pointerSignal is PointerScrollEvent && _scroll.hasClients) {
+                    if (pointerSignal is PointerScrollEvent &&
+                        _scroll.hasClients) {
                       final dy = pointerSignal.scrollDelta.dy;
                       final dx = pointerSignal.scrollDelta.dx;
                       final delta = (dx != 0) ? dx : dy;
@@ -352,9 +375,7 @@ class _TabStripState extends State<_TabStrip> {
                     thickness: 3,
                     radius: const Radius.circular(3),
                     child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(
-                        context,
-                      ).copyWith(
+                      behavior: ScrollConfiguration.of(context).copyWith(
                         scrollbars: false,
                         dragDevices: {
                           PointerDeviceKind.touch,
@@ -367,57 +388,61 @@ class _TabStripState extends State<_TabStrip> {
                         controller: _scroll,
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                        children: [
-                          for (var i = 0; i < pane.tabs.length; i++)
-                            _TabDropSlot(
-                              index: i,
-                              onInsert: (data, index) =>
-                                  widget.vm.moveTabToIndex(
-                                    data.paneId,
-                                    data.tabId,
+                          children: [
+                            for (var i = 0; i < pane.tabs.length; i++)
+                              _TabDropSlot(
+                                index: i,
+                                onInsert: (data, index) =>
+                                    widget.vm.moveTabToIndex(
+                                      data.paneId,
+                                      data.tabId,
+                                      pane.id,
+                                      index,
+                                    ),
+                                child: _Tab(
+                                  item: widget.vm.session(pane.tabs[i]),
+                                  paneId: pane.id,
+                                  visible: widget.visible,
+                                  active: pane.tabs[i] == pane.active,
+                                  focused: widget.focused,
+                                  onSelect: () => widget.vm.selectTab(
                                     pane.id,
-                                    index,
+                                    pane.tabs[i],
                                   ),
-                              child: _Tab(
-                                item: widget.vm.session(pane.tabs[i]),
-                                paneId: pane.id,
-                                visible: widget.visible,
-                                active: pane.tabs[i] == pane.active,
-                                focused: widget.focused,
-                                onSelect: () =>
-                                    widget.vm.selectTab(pane.id, pane.tabs[i]),
-                                onClose: () =>
-                                    widget.vm.closeTab(pane.id, pane.tabs[i]),
-                                onRename: (name) =>
-                                    widget.onRenameAgent(pane.tabs[i], name),
-                                onSetLabel: (label) =>
-                                    widget.vm.setPaneLabel(pane.tabs[i], label),
-                                onResetLabel: () =>
-                                    widget.vm.resetPaneLabel(pane.tabs[i]),
-                                onToggleRelay: () =>
-                                    widget.onToggleRelayAgent(pane.tabs[i]),
-                                onHistory: () =>
-                                    widget.onHistoryAgent(pane.tabs[i]),
+                                  onClose: () =>
+                                      widget.vm.closeTab(pane.id, pane.tabs[i]),
+                                  onRename: (name) =>
+                                      widget.onRenameAgent(pane.tabs[i], name),
+                                  onSetLabel: (label) => widget.vm.setPaneLabel(
+                                    pane.tabs[i],
+                                    label,
+                                  ),
+                                  onResetLabel: () =>
+                                      widget.vm.resetPaneLabel(pane.tabs[i]),
+                                  onToggleRelay: () =>
+                                      widget.onToggleRelayAgent(pane.tabs[i]),
+                                  onHistory: () =>
+                                      widget.onHistoryAgent(pane.tabs[i]),
+                                ),
                               ),
+                            // Windows: "+" e a seta formam um grupo — a divisória
+                            // fica só no fim dele. Ausente no POSIX (lá só existe
+                            // o login shell, sem escolha a fazer).
+                            _TabAdd(
+                              onTap: widget.onCreateTab,
+                              trailingBorder:
+                                  !widget.vm.showTerminalProfilePicker,
                             ),
-                          // Windows: "+" e a seta formam um grupo — a divisória
-                          // fica só no fim dele. Ausente no POSIX (lá só existe
-                          // o login shell, sem escolha a fazer).
-                          _TabAdd(
-                            onTap: widget.onCreateTab,
-                            trailingBorder:
-                                !widget.vm.showTerminalProfilePicker,
-                          ),
-                          if (widget.vm.showTerminalProfilePicker)
-                            _TabProfilePicker(vm: widget.vm),
-                        ],
+                            if (widget.vm.showTerminalProfilePicker)
+                              _TabProfilePicker(vm: widget.vm),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
             // Overflow: lista todas as abas pra pular direto (só quando estoura).
             if (_overflowing)
               Builder(
@@ -430,6 +455,16 @@ class _TabStripState extends State<_TabStrip> {
             _PaneTools(
               onSplitRight: () => widget.onSplit(SplitDir.vertical),
               onSplitDown: () => widget.onSplit(SplitDir.horizontal),
+              // Terminal na raiz do workspace, nesta pane (kebab mobile).
+              onOpenTerminal: () => widget.vm.newTerminalTab(
+                cwd: widget.vm.treeRootPath,
+                inPane: widget.pane.id,
+              ),
+              // Sem webview na plataforma (Linux) o botão nem aparece — regra
+              // de "zero UI órfã" do plano 58.
+              onOpenBrowser: BrowserCapability.resolve().isInline
+                  ? () => widget.vm.openWebBrowser('', inPane: widget.pane.id)
+                  : null,
               onClosePane: () => _confirmClosePane(context),
             ),
           ],
@@ -754,14 +789,17 @@ class _TabState extends State<_Tab> {
                   ],
                 ),
               )
-            : Text(
-                s.displayTitle,
-                overflow: TextOverflow.ellipsis,
-                style: context.typo.tab.copyWith(
-                  color: isFocusedActive || widget.active
-                      ? colors.text
-                      : colors.text3,
-                  fontStyle: isPreview ? FontStyle.italic : FontStyle.normal,
+            : AppTooltip(
+                message: s.displayTitle,
+                child: Text(
+                  s.displayTitle,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.typo.tab.copyWith(
+                    color: isFocusedActive || widget.active
+                        ? colors.text
+                        : colors.text3,
+                    fontStyle: isPreview ? FontStyle.italic : FontStyle.normal,
+                  ),
                 ),
               );
 
@@ -791,10 +829,11 @@ class _TabState extends State<_Tab> {
               else if (s is MongoBrowserSession)
                 const DbEngineIcon(DbEngine.mongo, size: 14)
               else
-                Icon(
-                  icon,
+                PaneTabLeading(
+                  item: s,
+                  defaultIcon: icon,
                   size: 13,
-                  color: isFocusedActive
+                  iconColor: isFocusedActive
                       ? colors.accentText
                       : (widget.active ? colors.text2 : colors.text3),
                 ),
@@ -838,18 +877,40 @@ class _TabState extends State<_Tab> {
             onTapUp: (_) => _handleTap(),
             onSecondaryTapUp: isEmpty ? null : (_) => _showTabMenu(menuCtx),
             onTertiaryTapUp: (_) => _requestClose(),
+            // Mobile: duplo-toque abre o menu da aba (equivalente ao clique
+            // direito do desktop, que não existe no touch).
+            onDoubleTap: (isMobilePlatform && !isEmpty)
+                ? () => _showTabMenu(menuCtx)
+                : null,
             child: tabBody,
           ),
         );
 
+        final data = TabDragData(paneId: widget.paneId, tabId: s.id);
+        final feedback = Transform.translate(
+          offset: const Offset(12, 8),
+          child: _DragFeedback(icon: icon, title: s.displayTitle),
+        );
+        final childWhenDragging = Opacity(opacity: 0.3, child: tabBody);
+
+        // Mobile: o Draggable imediato brigava com o scroll horizontal da strip
+        // — um swipe pra rolar entrava direto no arraste/multiplexação. Com o
+        // LongPressDraggable, swipe ROLA (o Scrollable ganha a arena) e SEGURAR
+        // inicia o drag (reordenar/mover entre panes). Desktop segue imediato.
+        if (isMobilePlatform) {
+          return LongPressDraggable<TabDragData>(
+            data: data,
+            dragAnchorStrategy: pointerDragAnchorStrategy,
+            feedback: feedback,
+            childWhenDragging: childWhenDragging,
+            child: interactive,
+          );
+        }
         return Draggable<TabDragData>(
-          data: TabDragData(paneId: widget.paneId, tabId: s.id),
+          data: data,
           dragAnchorStrategy: pointerDragAnchorStrategy,
-          feedback: Transform.translate(
-            offset: const Offset(12, 8),
-            child: _DragFeedback(icon: icon, title: s.displayTitle),
-          ),
-          childWhenDragging: Opacity(opacity: 0.3, child: tabBody),
+          feedback: feedback,
+          childWhenDragging: childWhenDragging,
           child: interactive,
         );
       },
@@ -1084,12 +1145,61 @@ class _PaneTools extends StatelessWidget {
   const _PaneTools({
     required this.onSplitRight,
     required this.onSplitDown,
+    required this.onOpenTerminal,
+    required this.onOpenBrowser,
     required this.onClosePane,
   });
 
   final VoidCallback onSplitRight;
   final VoidCallback onSplitDown;
+
+  /// Abre um terminal na pane (item do kebab mobile).
+  final VoidCallback onOpenTerminal;
+
+  /// `null` = plataforma sem webview inline (Linux) — botão oculto.
+  final VoidCallback? onOpenBrowser;
   final VoidCallback onClosePane;
+
+  /// Popup do kebab (mobile): as mesmas ações dos 4 ícones do desktop. Cada
+  /// item carrega sua ação como `value` (VoidCallback), invocada na escolha.
+  Future<void> _openMenu(BuildContext ctx) async {
+    final tr = ctx.t.cockpit.paneView;
+    final action = await showAppMenu<VoidCallback>(
+      ctx,
+      minWidth: 180,
+      items: <AppMenuItem<VoidCallback>>[
+        AppMenuItem(
+          value: onOpenTerminal,
+          label: tr.openTerminal,
+          icon: Icons.terminal,
+        ),
+        if (onOpenBrowser != null)
+          AppMenuItem(
+            value: onOpenBrowser!,
+            label: tr.openBrowser,
+            icon: Icons.public,
+          ),
+        AppMenuItem(
+          value: onSplitRight,
+          label: tr.splitRight,
+          icon: Icons.vertical_split_outlined,
+        ),
+        AppMenuItem(
+          value: onSplitDown,
+          label: tr.splitDown,
+          icon: Icons.horizontal_split_outlined,
+        ),
+        const AppMenuItem<VoidCallback>.divider(),
+        AppMenuItem(
+          value: onClosePane,
+          label: tr.closePane,
+          icon: Icons.close,
+          danger: true,
+        ),
+      ],
+    );
+    action?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1105,6 +1215,25 @@ class _PaneTools extends StatelessWidget {
         child: SizedBox(width: spacing, height: spacing, child: icon),
       ),
     );
+    // Mobile: os 4 ícones não cabem/são pequenos demais pro toque → viram um
+    // kebab (3 pontos) que abre o popup com as mesmas opções.
+    if (isMobilePlatform) {
+      return Padding(
+        padding: const EdgeInsets.only(right: spacing),
+        child: Builder(
+          builder: (menuCtx) => HoverTap(
+            borderRadius: BorderRadius.circular(5),
+            onTap: () => _openMenu(menuCtx),
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: Icon(Icons.more_vert, size: 18, color: iconColor),
+            ),
+          ),
+        ),
+      );
+    }
+
     // Mesma base (splitscreen = dois painéis), pra ler "horizontal vs vertical"
     // num relance: empilhado = dividir abaixo; girado 90° (colunas lado-a-lado)
     // = dividir à direita. (Mockup.)
@@ -1114,6 +1243,12 @@ class _PaneTools extends StatelessWidget {
       child: Row(
         spacing: 12,
         children: [
+          if (onOpenBrowser != null)
+            btn(
+              Icon(Icons.public, size: spacing, color: iconColor),
+              tr.openBrowser,
+              onOpenBrowser!,
+            ),
           btn(
             _SplitterScreenIcon(
               type: _SplitterScreenIconType.horizontal,
@@ -1363,6 +1498,11 @@ class _PaneBodyState extends State<_PaneBody> {
         focused: widget.focused,
         workspaceRoot: vm.projectRootOf(item.projectId) ?? '',
       );
+    }
+
+    // Navegador embutido (plano 58): toolbar compacta + webview inline.
+    if (item is BrowserSession) {
+      return BrowserPane(session: item, active: widget.active);
     }
 
     // Tab de query `.dbq` (plano 51): editor SQL + grid de resultado. Reusa a

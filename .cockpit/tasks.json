@@ -42,10 +42,15 @@
       ]
     },
     {
-      "label": "Site", // NextJS dev server (hot reload é do próprio Next)
+      // NextJS dev server em "modo server" (serve, sem build/export) e SEM abrir
+      // navegador: `next dev` já não abre por si; `BROWSER=none` garante que
+      // nenhum wrapper abra. Envolto num shell só pra fixar o env sem depender de
+      // suporte a `env` na task; `exec` faz o pnpm ser o filho direto do PTY
+      // (stop/restart batem nele).
+      "label": "Site",
       "cwd": "site",
-      "command": "pnpm",
-      "args": ["dev"],
+      "command": "sh",
+      "args": ["-c", "BROWSER=none exec pnpm dev"],
       "kind": "watch",
       "progressPatterns": [
         { "begin": "Compiling", "end": "Compiled" }

@@ -208,6 +208,28 @@ fn mongo_browse_leva_collection_e_database() {
 }
 
 #[test]
+fn browse_manda_a_url_no_wire() {
+    let (req, stdout, _, code) = run_against_fake_app(
+        &["browse", "http://localhost:3000"],
+        r#"{"ok":true,"data":{"mode":"inline","url":"http://localhost:3000"}}"#,
+    );
+    assert_eq!(req["cmd"], "browse");
+    assert_eq!(req["args"]["url"], "http://localhost:3000");
+    assert_eq!(stdout, "ok\n");
+    assert_eq!(code, 0);
+}
+
+#[test]
+fn browse_json_ecoa_o_data() {
+    let (_, stdout, _, _) = run_against_fake_app(
+        &["browse", "--json", "http://localhost:3000"],
+        r#"{"ok":true,"data":{"mode":"system","url":"http://localhost:3000"}}"#,
+    );
+    let parsed: Value = serde_json::from_str(stdout.trim()).unwrap();
+    assert_eq!(parsed["mode"], "system");
+}
+
+#[test]
 fn open_resolve_caminho_relativo_para_absoluto() {
     let (req, _, _, _) = run_against_fake_app(&["open", "arquivo.txt"], r#"{"ok":true}"#);
     assert_eq!(req["cmd"], "open");

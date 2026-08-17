@@ -135,6 +135,8 @@ class _Translations$cockpit$es extends Translations$cockpit$en {
 	@override late final _Translations$cockpit$tasks$es tasks = _Translations$cockpit$tasks$es._(_root);
 	@override late final _Translations$cockpit$notifications$es notifications = _Translations$cockpit$notifications$es._(_root);
 	@override late final _Translations$cockpit$terminal$es terminal = _Translations$cockpit$terminal$es._(_root);
+	@override late final _Translations$cockpit$remoteHost$es remoteHost = _Translations$cockpit$remoteHost$es._(_root);
+	@override late final _Translations$cockpit$browserPane$es browserPane = _Translations$cockpit$browserPane$es._(_root);
 }
 
 // Path: settings
@@ -148,6 +150,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$revokeDialog$es revokeDialog = _Translations$settings$revokeDialog$es._(_root);
 	@override late final _Translations$settings$pairingDialog$es pairingDialog = _Translations$settings$pairingDialog$es._(_root);
 	@override late final _Translations$settings$page$es page = _Translations$settings$page$es._(_root);
+	@override late final _Translations$settings$remoteHosts$es remoteHosts = _Translations$settings$remoteHosts$es._(_root);
 }
 
 // Path: automation
@@ -534,8 +537,12 @@ class _Translations$cockpit$welcomeView$es extends Translations$cockpit$welcomeV
 
 	// Translations
 	@override String get title => 'Bienvenido a Cockpit';
-	@override String get subtitle => 'Abre una carpeta para iniciar un workspace.';
+	@override String get subtitle => 'Abre una carpeta o conéctate a un host remoto para empezar.';
 	@override String get createWorkspace => 'Crear workspace';
+	@override String get openLocalFolder => 'Abrir carpeta local';
+	@override String get connectHost => 'Conectar a un host';
+	@override String get configureHost => 'Configurar host';
+	@override String get addWorkspace => 'Añadir workspace';
 }
 
 // Path: cockpit.modelPicker
@@ -572,6 +579,8 @@ class _Translations$cockpit$paneView$es extends Translations$cockpit$paneView$en
 	@override String get closePane => 'Cerrar panel';
 	@override String get dropHereToMove => 'Suelta aquí para mover la pestaña';
 	@override String get dockAsTab => 'Acoplar como pestaña';
+	@override String get openBrowser => 'Abrir navegador';
+	@override String get openTerminal => 'Abrir terminal';
 }
 
 // Path: cockpit.fileTreePanel
@@ -904,6 +913,7 @@ class _Translations$cockpit$projectsRail$es extends Translations$cockpit$project
 	@override String get remove => 'Quitar';
 	@override String get moveToRealm => 'Mover a realm';
 	@override String get copyWorkspaceId => 'Copiar id del workspace';
+	@override String get rename => 'Renombrar';
 	@override String get close => 'Cerrar';
 	@override String get newRealm => 'Nuevo realm…';
 	@override String get manageRealms => 'Gestionar realms…';
@@ -973,6 +983,7 @@ class _Translations$cockpit$topbar$es extends Translations$cockpit$topbar$en {
 	@override String get collapseSidebar => 'Contraer barra lateral';
 	@override String get toggleFiles => 'Mostrar/ocultar archivos';
 	@override String get filesUnavailable => 'Archivos no disponibles en Cockpit';
+	@override String get hideKeyboard => 'Ocultar teclado';
 }
 
 // Path: cockpit.transcript
@@ -1024,6 +1035,65 @@ class _Translations$cockpit$terminal$es extends Translations$cockpit$terminal$en
 
 	// Translations
 	@override String cwdFallbackWarning({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".';
+}
+
+// Path: cockpit.remoteHost
+class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHost$en {
+	_Translations$cockpit$remoteHost$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get addHost => 'Añadir host remoto';
+	@override String get hostName => 'Nombre';
+	@override String get sshTarget => 'Destino SSH (usuario@host)';
+	@override String connecting({required Object host}) => 'Conectando a ${host}…';
+	@override String get openingTunnel => 'Túnel SSH';
+	@override String get installingServer => 'Instalando servidor';
+	@override String handshake({required Object version}) => 'Servidor ${version}';
+	@override String get loadingWorkspace => 'Cargando workspace…';
+	@override String reconnecting({required Object host}) => 'Reconectando a ${host}…';
+	@override String offline({required Object host}) => '${host} sin conexión';
+	@override String get remove => 'Quitar';
+	@override String get reconnect => 'Reconectar';
+	@override String get installServer => 'Instalar servidor';
+	@override String errSshUnreachable({required Object host}) => 'No se puede llegar a ${host} por SSH. ¿Está encendido y con Inicio de sesión remoto activado?';
+	@override String errInstallFailed({required Object host}) => 'No se pudo instalar el servidor en ${host}.';
+	@override String get errVersionMismatch => 'Versión del servidor incompatible; actualízalo.';
+	@override String errDetail({required Object detail}) => 'Detalles: ${detail}';
+	@override String pickFolderTitle({required Object host}) => 'Abrir carpeta en ${host}';
+	@override String get openHere => 'Abrir aquí';
+	@override String get emptyFolder => 'Sin subcarpetas';
+	@override String get newLocal => 'Nuevo workspace local';
+	@override String get newRemote => 'Nuevo workspace remoto';
+	@override String get chooseHost => 'Elegir un host';
+	@override String get newHostEntry => 'Nuevo host…';
+	@override String get editHost => 'Editar host';
+	@override String get userLabel => 'Usuario';
+	@override String get hostLabel => 'Host / IP';
+	@override String get portLabel => 'Puerto';
+	@override String get authLabel => 'Autenticación';
+	@override String get authKey => 'Clave SSH';
+	@override String get authPassword => 'Contraseña';
+	@override String get passwordLabel => 'Contraseña';
+	@override String get passwordKeep => 'Deja en blanco para mantener la actual';
+	@override String get errUser => 'Usuario obligatorio';
+	@override String get errHost => 'Host obligatorio';
+	@override String get errPassword => 'Contraseña obligatoria';
+}
+
+// Path: cockpit.browserPane
+class _Translations$cockpit$browserPane$es extends Translations$cockpit$browserPane$en {
+	_Translations$cockpit$browserPane$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get back => 'Atrás';
+	@override String get forward => 'Adelante';
+	@override String get reload => 'Recargar';
+	@override String get urlHint => 'Escribe la URL o dirección';
+	@override String get go => 'Ir';
 }
 
 // Path: settings.language
@@ -1096,6 +1166,34 @@ class _Translations$settings$page$es extends Translations$settings$page$en {
 	@override late final _Translations$settings$page$schedules$es schedules = _Translations$settings$page$schedules$es._(_root);
 	@override late final _Translations$settings$page$daemons$es daemons = _Translations$settings$page$daemons$es._(_root);
 	@override late final _Translations$settings$page$automations$es automations = _Translations$settings$page$automations$es._(_root);
+}
+
+// Path: settings.remoteHosts
+class _Translations$settings$remoteHosts$es extends Translations$settings$remoteHosts$en {
+	_Translations$settings$remoteHosts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Hosts remotos';
+	@override String get description => 'Máquinas a las que accedes por SSH. Añadir un host aquí es lo mismo que hacerlo desde el menú "+" del workspace.';
+	@override String get empty => 'Aún no hay hosts remotos.';
+	@override String get add => 'Añadir host';
+	@override String get edit => 'Editar';
+	@override String get remove => 'Eliminar';
+	@override String get removeTitle => 'Eliminar host';
+	@override String removeMessage({required Object name}) => '¿Eliminar "${name}" y todos sus workspaces? No se borra nada en el host.';
+	@override String workspacesCount({required Object count}) => '${count} workspace(s)';
+	@override String get deviceKeyTitle => 'Clave de este dispositivo';
+	@override String get deviceKeyDesc => 'Añade esta clave pública a ~/.ssh/authorized_keys del host para que este dispositivo pueda conectarse.';
+	@override String get deviceKeyCopy => 'Copiar clave pública';
+	@override String get deviceKeyCopied => 'Clave pública copiada';
+	@override String get statusConnected => 'Conectado';
+	@override String get statusConnecting => 'Conectando…';
+	@override String get statusOffline => 'Sin conexión';
+	@override String get statusIdle => 'No conectado';
+	@override String get helpTitle => 'Cómo funciona';
+	@override String get helpBody => 'Cockpit se conecta a tu máquina por SSH y habla con un pequeño servidor que ejecuta las terminales, archivos y git allí. El host debe tener Cockpit (escritorio) o el cockpit-server instalado y en ejecución, y la clave pública de este dispositivo añadida en su ~/.ssh/authorized_keys.';
 }
 
 // Path: automation.error
@@ -1199,6 +1297,7 @@ class _Translations$settings$page$nav$es extends Translations$settings$page$nav$
 	@override String get daemonAgents => 'Agentes Daemon';
 	@override String get schedules => 'Programaciones';
 	@override String get automations => 'Automatizaciones';
+	@override String get remoteHosts => 'Hosts remotos';
 }
 
 // Path: settings.page.general
@@ -1213,6 +1312,8 @@ class _Translations$settings$page$general$es extends Translations$settings$page$
 	@override String get enableAgentsDesc => 'Muestra la opción de abrir pestañas de agente (pi). Cuando está desactivado, Cockpit funciona solo como workspace de terminal.';
 	@override String get showCockpitTitle => 'Mostrar terminal de Cockpit';
 	@override String get showCockpitDesc => 'Mantiene un workspace sin carpeta, solo de terminal, fijado en la parte superior de la barra lateral. Desactivarlo cierra sus terminales.';
+	@override String get launchAtStartupTitle => 'Iniciar al arrancar';
+	@override String get launchAtStartupDesc => 'Inicia Cockpit automáticamente cuando inicias sesión en tu computadora.';
 	@override String get sectionUpdates => 'Actualizaciones';
 	@override String get checkUpdatesTitle => 'Buscar actualizaciones';
 	@override String get checkUpdatesDesc => 'Con qué frecuencia Cockpit debe buscar nuevas versiones.';
@@ -1791,8 +1892,12 @@ extension on TranslationsEs {
 			'cockpit.cockpitPage.lspRunning' => 'en ejecución',
 			'cockpit.cockpitPage.lspStopped' => 'detenido',
 			'cockpit.welcomeView.title' => 'Bienvenido a Cockpit',
-			'cockpit.welcomeView.subtitle' => 'Abre una carpeta para iniciar un workspace.',
+			'cockpit.welcomeView.subtitle' => 'Abre una carpeta o conéctate a un host remoto para empezar.',
 			'cockpit.welcomeView.createWorkspace' => 'Crear workspace',
+			'cockpit.welcomeView.openLocalFolder' => 'Abrir carpeta local',
+			'cockpit.welcomeView.connectHost' => 'Conectar a un host',
+			'cockpit.welcomeView.configureHost' => 'Configurar host',
+			'cockpit.welcomeView.addWorkspace' => 'Añadir workspace',
 			'cockpit.modelPicker.search' => ({required Object count}) => 'Buscar modelo (${count})',
 			'cockpit.paneView.closePaneTitle' => '¿Cerrar panel?',
 			'cockpit.paneView.closePaneMessage' => ({required Object count}) => 'Esto cierra todas las ${count} pestaña(s) de este panel y finaliza los agentes/terminales en él.',
@@ -1811,6 +1916,8 @@ extension on TranslationsEs {
 			'cockpit.paneView.closePane' => 'Cerrar panel',
 			'cockpit.paneView.dropHereToMove' => 'Suelta aquí para mover la pestaña',
 			'cockpit.paneView.dockAsTab' => 'Acoplar como pestaña',
+			'cockpit.paneView.openBrowser' => 'Abrir navegador',
+			'cockpit.paneView.openTerminal' => 'Abrir terminal',
 			'cockpit.fileTreePanel.viewDiff' => 'Ver Diff',
 			'cockpit.fileTreePanel.commit' => 'Commit',
 			'cockpit.fileTreePanel.stageAndCommit' => 'Stage y Commit',
@@ -2032,6 +2139,7 @@ extension on TranslationsEs {
 			'cockpit.projectsRail.remove' => 'Quitar',
 			'cockpit.projectsRail.moveToRealm' => 'Mover a realm',
 			'cockpit.projectsRail.copyWorkspaceId' => 'Copiar id del workspace',
+			'cockpit.projectsRail.rename' => 'Renombrar',
 			'cockpit.projectsRail.close' => 'Cerrar',
 			'cockpit.projectsRail.newRealm' => 'Nuevo realm…',
 			'cockpit.projectsRail.manageRealms' => 'Gestionar realms…',
@@ -2065,6 +2173,7 @@ extension on TranslationsEs {
 			'cockpit.topbar.collapseSidebar' => 'Contraer barra lateral',
 			'cockpit.topbar.toggleFiles' => 'Mostrar/ocultar archivos',
 			'cockpit.topbar.filesUnavailable' => 'Archivos no disponibles en Cockpit',
+			'cockpit.topbar.hideKeyboard' => 'Ocultar teclado',
 			'cockpit.transcript.cancel' => 'Cancelar',
 			'cockpit.transcript.send' => 'Enviar',
 			'cockpit.transcript.typeYourAnswer' => 'Escribe tu respuesta',
@@ -2078,16 +2187,57 @@ extension on TranslationsEs {
 			'cockpit.notifications.agentFinished' => 'El agente terminó',
 			'cockpit.notifications.open' => 'Abrir',
 			'cockpit.notifications.agentNeedsAction' => 'El agente necesita tu acción',
+			_ => null,
+		} ?? switch (path) {
 			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
+			'cockpit.remoteHost.addHost' => 'Añadir host remoto',
+			'cockpit.remoteHost.hostName' => 'Nombre',
+			'cockpit.remoteHost.sshTarget' => 'Destino SSH (usuario@host)',
+			'cockpit.remoteHost.connecting' => ({required Object host}) => 'Conectando a ${host}…',
+			'cockpit.remoteHost.openingTunnel' => 'Túnel SSH',
+			'cockpit.remoteHost.installingServer' => 'Instalando servidor',
+			'cockpit.remoteHost.handshake' => ({required Object version}) => 'Servidor ${version}',
+			'cockpit.remoteHost.loadingWorkspace' => 'Cargando workspace…',
+			'cockpit.remoteHost.reconnecting' => ({required Object host}) => 'Reconectando a ${host}…',
+			'cockpit.remoteHost.offline' => ({required Object host}) => '${host} sin conexión',
+			'cockpit.remoteHost.remove' => 'Quitar',
+			'cockpit.remoteHost.reconnect' => 'Reconectar',
+			'cockpit.remoteHost.installServer' => 'Instalar servidor',
+			'cockpit.remoteHost.errSshUnreachable' => ({required Object host}) => 'No se puede llegar a ${host} por SSH. ¿Está encendido y con Inicio de sesión remoto activado?',
+			'cockpit.remoteHost.errInstallFailed' => ({required Object host}) => 'No se pudo instalar el servidor en ${host}.',
+			'cockpit.remoteHost.errVersionMismatch' => 'Versión del servidor incompatible; actualízalo.',
+			'cockpit.remoteHost.errDetail' => ({required Object detail}) => 'Detalles: ${detail}',
+			'cockpit.remoteHost.pickFolderTitle' => ({required Object host}) => 'Abrir carpeta en ${host}',
+			'cockpit.remoteHost.openHere' => 'Abrir aquí',
+			'cockpit.remoteHost.emptyFolder' => 'Sin subcarpetas',
+			'cockpit.remoteHost.newLocal' => 'Nuevo workspace local',
+			'cockpit.remoteHost.newRemote' => 'Nuevo workspace remoto',
+			'cockpit.remoteHost.chooseHost' => 'Elegir un host',
+			'cockpit.remoteHost.newHostEntry' => 'Nuevo host…',
+			'cockpit.remoteHost.editHost' => 'Editar host',
+			'cockpit.remoteHost.userLabel' => 'Usuario',
+			'cockpit.remoteHost.hostLabel' => 'Host / IP',
+			'cockpit.remoteHost.portLabel' => 'Puerto',
+			'cockpit.remoteHost.authLabel' => 'Autenticación',
+			'cockpit.remoteHost.authKey' => 'Clave SSH',
+			'cockpit.remoteHost.authPassword' => 'Contraseña',
+			'cockpit.remoteHost.passwordLabel' => 'Contraseña',
+			'cockpit.remoteHost.passwordKeep' => 'Deja en blanco para mantener la actual',
+			'cockpit.remoteHost.errUser' => 'Usuario obligatorio',
+			'cockpit.remoteHost.errHost' => 'Host obligatorio',
+			'cockpit.remoteHost.errPassword' => 'Contraseña obligatoria',
+			'cockpit.browserPane.back' => 'Atrás',
+			'cockpit.browserPane.forward' => 'Adelante',
+			'cockpit.browserPane.reload' => 'Recargar',
+			'cockpit.browserPane.urlHint' => 'Escribe la URL o dirección',
+			'cockpit.browserPane.go' => 'Ir',
 			'settings.language.title' => 'Idioma',
 			'settings.language.system' => 'Sistema',
 			'settings.language.english' => 'Inglés',
 			'settings.language.portugueseBr' => 'Portugués (BR)',
 			'settings.language.spanish' => 'Español',
 			'settings.revokeDialog.deviceRemoved' => 'Dispositivo eliminado.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.revokeDialog.failedToRevoke' => 'No se pudo revocar el dispositivo.',
 			'settings.revokeDialog.revoking' => 'Revocando…',
 			'settings.revokeDialog.revokingDevice' => ({required Object name}) => 'Revocando ${name}…',
@@ -2116,11 +2266,14 @@ extension on TranslationsEs {
 			'settings.page.nav.daemonAgents' => 'Agentes Daemon',
 			'settings.page.nav.schedules' => 'Programaciones',
 			'settings.page.nav.automations' => 'Automatizaciones',
+			'settings.page.nav.remoteHosts' => 'Hosts remotos',
 			'settings.page.general.sectionAgent' => 'Agente',
 			'settings.page.general.enableAgentsTitle' => 'Activar agentes',
 			'settings.page.general.enableAgentsDesc' => 'Muestra la opción de abrir pestañas de agente (pi). Cuando está desactivado, Cockpit funciona solo como workspace de terminal.',
 			'settings.page.general.showCockpitTitle' => 'Mostrar terminal de Cockpit',
 			'settings.page.general.showCockpitDesc' => 'Mantiene un workspace sin carpeta, solo de terminal, fijado en la parte superior de la barra lateral. Desactivarlo cierra sus terminales.',
+			'settings.page.general.launchAtStartupTitle' => 'Iniciar al arrancar',
+			'settings.page.general.launchAtStartupDesc' => 'Inicia Cockpit automáticamente cuando inicias sesión en tu computadora.',
 			'settings.page.general.sectionUpdates' => 'Actualizaciones',
 			'settings.page.general.checkUpdatesTitle' => 'Buscar actualizaciones',
 			'settings.page.general.checkUpdatesDesc' => 'Con qué frecuencia Cockpit debe buscar nuevas versiones.',
@@ -2363,6 +2516,25 @@ extension on TranslationsEs {
 			'settings.page.automations.discoveryFailed' => 'No se pudieron descubrir los harnesses de automatización instalados.',
 			'settings.page.automations.staleModel' => ({required Object model, required Object harness}) => 'El modelo "${model}" ya no está disponible para ${harness}. Se usará el predeterminado de la CLI; elige otro modelo en Configuración si lo necesitas.',
 			'settings.page.automations.recommendedSuffix' => 'Recomendado',
+			'settings.remoteHosts.title' => 'Hosts remotos',
+			'settings.remoteHosts.description' => 'Máquinas a las que accedes por SSH. Añadir un host aquí es lo mismo que hacerlo desde el menú "+" del workspace.',
+			'settings.remoteHosts.empty' => 'Aún no hay hosts remotos.',
+			'settings.remoteHosts.add' => 'Añadir host',
+			'settings.remoteHosts.edit' => 'Editar',
+			'settings.remoteHosts.remove' => 'Eliminar',
+			'settings.remoteHosts.removeTitle' => 'Eliminar host',
+			'settings.remoteHosts.removeMessage' => ({required Object name}) => '¿Eliminar "${name}" y todos sus workspaces? No se borra nada en el host.',
+			'settings.remoteHosts.workspacesCount' => ({required Object count}) => '${count} workspace(s)',
+			'settings.remoteHosts.deviceKeyTitle' => 'Clave de este dispositivo',
+			'settings.remoteHosts.deviceKeyDesc' => 'Añade esta clave pública a ~/.ssh/authorized_keys del host para que este dispositivo pueda conectarse.',
+			'settings.remoteHosts.deviceKeyCopy' => 'Copiar clave pública',
+			'settings.remoteHosts.deviceKeyCopied' => 'Clave pública copiada',
+			'settings.remoteHosts.statusConnected' => 'Conectado',
+			'settings.remoteHosts.statusConnecting' => 'Conectando…',
+			'settings.remoteHosts.statusOffline' => 'Sin conexión',
+			'settings.remoteHosts.statusIdle' => 'No conectado',
+			'settings.remoteHosts.helpTitle' => 'Cómo funciona',
+			'settings.remoteHosts.helpBody' => 'Cockpit se conecta a tu máquina por SSH y habla con un pequeño servidor que ejecuta las terminales, archivos y git allí. El host debe tener Cockpit (escritorio) o el cockpit-server instalado y en ejecución, y la clave pública de este dispositivo añadida en su ~/.ssh/authorized_keys.',
 			'automation.error.unavailable' => ({required Object harness}) => '${harness} no está instalado o no está en el PATH.',
 			'automation.error.modelUnavailable' => ({required Object model, required Object harness}) => 'El modelo "${model}" no está disponible para ${harness}. Elige otro modelo en Configuración.',
 			'automation.error.authentication' => ({required Object harness, required Object detail}) => '${harness}: ${detail}',

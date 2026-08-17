@@ -13,6 +13,9 @@ class _NoopGateway implements TerminalGateway {
   @override
   SpawnDirectory? get spawnDirectory => null;
 
+  @override
+  int? get rootProcessId => null;
+
   final _out = StreamController<List<int>>();
 
   @override
