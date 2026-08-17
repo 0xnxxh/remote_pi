@@ -122,8 +122,9 @@ void main() {
       await tester.pump();
       await tester.pumpWidget(host(panel('/repo-b', 'repo-b')));
       await tester.pump();
-      expect(calls, ['/repo-a', '/repo-b']);
-      expect(find.text('Second repository commit'), findsOneWidget);
+      expect(calls, [
+        '/repo-a',
+      ], reason: 'the newer root waits for single-flight');
 
       firstLoad.complete(
         const Success([
@@ -138,11 +139,90 @@ void main() {
         ]),
       );
       await tester.pump();
+      await tester.pump();
 
+      expect(calls, ['/repo-a', '/repo-b']);
       expect(find.text('Second repository commit'), findsOneWidget);
       expect(find.text('First repository commit'), findsNothing);
     },
   );
+
+  testWidgets('periodic history load is single-flight with one rerun', (
+    tester,
+  ) async {
+    final releases = <Completer<void>>[];
+    var calls = 0;
+    var concurrent = 0;
+    var maxConcurrent = 0;
+
+    Future<Result<List<GitHistoryCommit>, GitHistoryError>> load(
+      String _,
+    ) async {
+      calls++;
+      concurrent++;
+      if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+      final release = Completer<void>();
+      releases.add(release);
+      await release.future;
+      concurrent--;
+      return const Success([]);
+    }
+
+    await tester.pumpWidget(
+      host(
+        GitHistoryPanel(
+          roots: const [GitHistoryRoot(path: '/repo', name: 'repo')],
+          refreshToken: 0,
+          loadHistory: load,
+          loadFiles: (_, _) async => const Success([]),
+          onOpenFileDiff: (_, _, _) async {},
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 15));
+    expect(calls, 1);
+
+    releases.first.complete();
+    await tester.pump();
+    expect(calls, 2, reason: 'periodic burst schedules one rerun');
+
+    await tester.pump(const Duration(seconds: 10));
+    releases.last.complete();
+    await tester.pump();
+    expect(maxConcurrent, 1);
+    expect(calls, 2, reason: 'calls during rerun do not schedule a third load');
+  });
+
+  testWidgets('pending history rerun is discarded when panel is disposed', (
+    tester,
+  ) async {
+    final firstLoad =
+        Completer<Result<List<GitHistoryCommit>, GitHistoryError>>();
+    var calls = 0;
+    await tester.pumpWidget(
+      host(
+        GitHistoryPanel(
+          roots: const [GitHistoryRoot(path: '/repo', name: 'repo')],
+          refreshToken: 0,
+          loadHistory: (_) {
+            calls++;
+            return firstLoad.future;
+          },
+          loadFiles: (_, _) async => const Success([]),
+          onOpenFileDiff: (_, _, _) async {},
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 5));
+    expect(calls, 1, reason: 'the timer queued one coalesced rerun');
+
+    await tester.pumpWidget(const SizedBox());
+    firstLoad.complete(const Success([]));
+    await tester.pump();
+
+    expect(calls, 1, reason: 'dispose cancels the pending rerun');
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('labels an empty commit subject instead of showing a blank row', (
     tester,

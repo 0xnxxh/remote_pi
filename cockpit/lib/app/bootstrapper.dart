@@ -22,6 +22,7 @@ import 'package:cockpit/app/core/ui/automation_controller.dart';
 import 'package:cockpit/app/core/ui/menu/editor_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
+import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/bootstrap_error_view.dart';
@@ -63,6 +64,7 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
   JsonStateStore? _winStore;
 
   AppLifecycleListener? _lifecycle;
+  final WindowActivityController _windowActivity = WindowActivityController();
 
   /// Chave do Navigator raiz (dentro do `ModularApp`). O `context` deste
   /// State fica **acima** do `ShadcnApp`, então `showDialog` a partir dele
@@ -174,7 +176,10 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
         }
 
         final config = await PiSpawnConfig.resolve();
-        _appModule = await buildAppModule(config: config);
+        _appModule = await buildAppModule(
+          config: config,
+          windowActivity: _windowActivity,
+        );
       })();
 
       await Future.wait([initTask, Future.delayed(_splashFloor)]);
@@ -363,11 +368,13 @@ class _CockpitBootstrapperState extends State<CockpitBootstrapper> {
 
     return WindowStateKeeper(
       store: _winStore!,
+      activity: _windowActivity,
       child: ModularApp(
         module: _appModule!,
         navigatorKey: _navigatorKey,
         provide: (s) => s
           ..addChangeNotifier<SettingsController>(() => _settings!)
+          ..addChangeNotifier<WindowActivityController>(() => _windowActivity)
           // A mesma instância root-owned é observada por Settings e Source
           // Control e também injetada no CockpitViewModel.
           ..addChangeNotifier<AutomationController>(
@@ -386,9 +393,11 @@ class WindowStateKeeper extends StatefulWidget {
   const WindowStateKeeper({
     super.key,
     required this.store,
+    required this.activity,
     required this.child,
   });
   final JsonStateStore store;
+  final WindowActivityController activity;
   final Widget child;
 
   @override
@@ -398,12 +407,26 @@ class WindowStateKeeper extends StatefulWidget {
 class WindowStateKeeperState extends State<WindowStateKeeper>
     with WindowListener {
   Timer? _debounce;
+  late final WindowActivitySynchronizer _activitySync;
 
   @override
   void initState() {
     super.initState();
+    _activitySync = WindowActivitySynchronizer(
+      activity: widget.activity,
+      readSnapshot: _readNativeActivity,
+    );
+    // O listener entra antes do snapshot: se a janela mudar durante os awaits,
+    // o synchronizer preserva o evento mais novo e descarta a leitura obsoleta.
     windowManager.addListener(this);
+    unawaited(_activitySync.synchronize());
   }
+
+  Future<WindowActivitySnapshot> _readNativeActivity() async =>
+      WindowActivitySnapshot(
+        focused: await windowManager.isFocused(),
+        minimized: await windowManager.isMinimized(),
+      );
 
   @override
   void dispose() {
@@ -417,6 +440,18 @@ class WindowStateKeeperState extends State<WindowStateKeeper>
 
   @override
   void onWindowMove() => _persistBounds();
+
+  @override
+  void onWindowFocus() => _activitySync.focus();
+
+  @override
+  void onWindowBlur() => _activitySync.blur();
+
+  @override
+  void onWindowMinimize() => _activitySync.minimize();
+
+  @override
+  void onWindowRestore() => _activitySync.restore();
 
   /// Fechamento da janela: **este** é o encerramento limpo do Cockpit.
   ///
@@ -478,5 +513,6 @@ class WindowStateKeeperState extends State<WindowStateKeeper>
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) =>
+      WindowActivityBoundary(activity: widget.activity, child: widget.child);
 }

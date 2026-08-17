@@ -3,6 +3,7 @@ import 'package:cockpit/app/core/data/terminal/terminal_profile_resolver_impl.da
 import 'package:cockpit/app/core/domain/contracts/pairing_gateway.dart';
 import 'package:cockpit/app/core/domain/contracts/revoke_gateway.dart';
 import 'package:cockpit/app/core/env.dart';
+import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,11 +21,14 @@ void main() {
     'core add<T>(Impl.new) resolve PiSpawnConfig (core→core), incl. create()',
     () {
       const config = PiSpawnConfig(executable: 'pi');
+      final activity = WindowActivityController();
+      addTearDown(activity.dispose);
       final boot = bootstrapModule(
         buildCoreModule(
           config: config,
           // Irrelevante aqui; só satisfaz o grafo (cache frio, sem uso).
           terminalProfiles: TerminalProfileResolverImpl(),
+          windowActivity: activity,
         ),
       );
 

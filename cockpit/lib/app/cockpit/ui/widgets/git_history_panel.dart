@@ -1,10 +1,11 @@
-import 'dart:async';
-
 import 'package:cockpit/app/cockpit/domain/entities/git_history_commit.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_history_file_change.dart';
 import 'package:cockpit/app/cockpit/domain/exceptions/git_history_error.dart';
+import 'package:cockpit/app/cockpit/domain/utils/coalescing_single_flight.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+import 'package:cockpit/app/core/ui/activity_periodic_timer.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/material.dart';
@@ -57,23 +58,45 @@ class _GitHistoryPanelState extends State<GitHistoryPanel> {
   final Map<String, GitHistoryError> _fileErrorsByHash = {};
   GitHistoryCommit? _selectedCommit;
   String? _loadingFilesHash;
-  Timer? _autoRefresh;
+  ActivityPeriodicTimer? _autoRefresh;
+  WindowActivityController? _activity;
+  WindowActivityController? _fallbackActivity;
   var _loading = false;
+  var _disposed = false;
   var _historyLoadGeneration = 0;
+  final CoalescingSingleFlight<void> _historyLoads =
+      CoalescingSingleFlight<void>();
 
   @override
   void initState() {
     super.initState();
     _root = widget.roots.firstOrNull?.path;
     _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final activity =
+        WindowActivityScope.maybeOf(context) ??
+        (_fallbackActivity ??= WindowActivityController());
+    if (identical(activity, _activity)) return;
+    _autoRefresh?.dispose();
+    _activity = activity;
     // `git log` e uma leitura local: atualiza commits feitos fora do Cockpit
     // sem depender de watcher de refs ou de conexao com a internet.
-    _autoRefresh = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+    _autoRefresh = ActivityPeriodicTimer(
+      activity: activity,
+      interval: const Duration(seconds: 5),
+      onTick: _load,
+    )..start();
   }
 
   @override
   void dispose() {
-    _autoRefresh?.cancel();
+    _disposed = true;
+    _autoRefresh?.dispose();
+    _fallbackActivity?.dispose();
     super.dispose();
   }
 
@@ -89,9 +112,16 @@ class _GitHistoryPanelState extends State<GitHistoryPanel> {
     }
   }
 
-  Future<void> _load() async {
+  Future<void> _load() {
     final root = _root;
-    if (root == null) return;
+    if (_disposed || root == null) return Future<void>.value();
+    return _historyLoads.run(null, () async {
+      if (!_disposed) await _loadOnce(root);
+    });
+  }
+
+  Future<void> _loadOnce(String root) async {
+    if (_disposed || !mounted) return;
     final generation = ++_historyLoadGeneration;
     setState(() {
       _loading = true;
