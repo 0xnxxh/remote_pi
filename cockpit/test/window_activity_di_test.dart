@@ -20,22 +20,27 @@ void main() {
     'feature instance resolves into route-scoped GitController with identity',
     (tester) async {
       final activity = WindowActivityController();
+      WindowActivityController? controllerActivity;
       final feature = createModule(
         path: '/',
         register: (c) => c
-          ..addInstance<WindowActivityController>(activity)
           ..addInstance<GitStatusReader>(_FakeGitStatusReader())
           ..addInstance<GitCommandRunner>(_FakeGitCommandRunner())
           ..route(
             '/',
-            provide: (s) =>
-                s..addChangeNotifier<GitController>(GitController.new),
+            provide: (s) => s
+              ..addChangeNotifier<GitController>((
+                GitStatusReader reader,
+                GitCommandRunner runner,
+              ) {
+                controllerActivity = activity;
+                return GitController(reader, runner, activity);
+              }),
             child: (context, state) => Builder(
               builder: (context) {
                 final git = context.watch<GitController>();
-                final injected = inject<WindowActivityController>();
                 return Text(
-                  'git:${git.revision};same:${identical(injected, activity)}',
+                  'git:${git.revision};same:${identical(controllerActivity, activity)}',
                 );
               },
             ),

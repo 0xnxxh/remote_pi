@@ -171,9 +171,6 @@ Future<Module> buildCockpitModule({
     path: '/',
     register: (c) {
       c
-        // O provider da rota resolve apenas no injector desta feature. Mantém
-        // a instância criada no bootstrap; o ModularApp.provide é seu owner.
-        ..addInstance<WindowActivityController>(windowActivity)
         ..addInstance<ProjectRepository>(JsonProjectRepository(projectStore))
         ..addInstance<RealmRepository>(JsonRealmRepository(realmStore))
         ..addInstance<WorkspaceLayoutStore>(
@@ -269,13 +266,16 @@ Future<Module> buildCockpitModule({
         ..addInstance<SelfUpdater>(_buildSelfUpdater(_updateTarget(appVersion)))
         ..route(
           '/',
-          // ViewModels page-scoped via tear-off `.new` → o auto_injector resolve
-          // o construtor a partir dos binds acima. Os `init()`/`check()` (que
-          // antes encadeavam no factory) agora rodam no `CockpitPage.initState`.
+          // ViewModels page-scoped. O auto_injector resolve os parâmetros
+          // tipados a partir dos binds acima; WindowActivityController vem
+          // direto do bootstrap porque não atravessa os injectors da rota.
           provide: (s) => s
             // Estado git extraído do CockpitViewModel (mesma vida da rota);
             // o VM o recebe no construtor e injeta o contexto de shell.
-            ..addChangeNotifier<GitController>(GitController.new)
+            ..addChangeNotifier<GitController>(
+              (GitStatusReader reader, GitCommandRunner runner) =>
+                  GitController(reader, runner, windowActivity),
+            )
             ..addChangeNotifier<FileOpsController>(FileOpsController.new)
             ..addChangeNotifier<RealmController>(RealmController.new)
             ..addChangeNotifier<SessionNotificationsController>(
