@@ -1602,58 +1602,74 @@ class _CockpitPageState extends State<CockpitPage> {
     // Largura da região de arraste (a linha visual continua 1px, centralizada).
     const handle = 12.0;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final total = isRow ? constraints.maxWidth : constraints.maxHeight;
-        final aSize = total * split.frac;
-        final bSize = total - aSize;
-        final first = SizedBox(
-          width: isRow ? aSize : null,
-          height: isRow ? null : aSize,
+    // Panes dimensionados por PESO (flex), NÃO por LayoutBuilder. Crítico: um
+    // LayoutBuilder envolvendo os panes reconstrói a subárvore a cada mudança de
+    // constraint (abrir/fechar/redimensionar pane), e a TerminalView do flterm
+    // faz attach de view no initState — reconstruir = novo attach antes do
+    // detach do antigo → "already has an active view", e no restore (mount
+    // simultâneo) cruza a State entre panes → terminais ESPELHADOS. Com Flex os
+    // panes são filhos diretos e estáveis; só o RenderFlex recalcula tamanhos.
+    final fa = (split.frac * 100000).round().clamp(1, 99999);
+    final fb = 100000 - fa;
+    final panes = Flex(
+      direction: isRow ? Axis.horizontal : Axis.vertical,
+      children: [
+        Expanded(
+          flex: fa,
           child: _renderNode(vm, projectId, split.a, active: active),
-        );
-        final second = SizedBox(
-          width: isRow ? bSize : null,
-          height: isRow ? null : bSize,
+        ),
+        Expanded(
+          flex: fb,
           child: _renderNode(vm, projectId, split.b, active: active),
-        );
-        final divider = PaneDivider(
-          dir: split.dir,
-          onDelta: (delta) {
-            if (total <= 0) return;
-            // Delta incremental → fração; acumula sobre o frac ATUAL da árvore
-            // (não o `aSize` do build, que fica velho entre eventos do mesmo
-            // frame e fazia o divisor atrasar em relação ao mouse). `total` é
-            // estável durante o arraste (o container não muda de tamanho).
-            vm.resizeSplitBy(split.id, delta / total);
-          },
-        );
-        return Stack(
-          children: [
-            // Base: as duas panes adjacentes (a linha vem do handle por cima).
-            isRow
-                ? Row(children: [first, second])
-                : Column(children: [first, second]),
-            // Overlay: handle largo centralizado na divisória (hit-test real).
-            if (isRow)
-              Positioned(
-                left: aSize - handle / 2,
-                width: handle,
-                top: 0,
-                bottom: 0,
-                child: divider,
-              )
-            else
-              Positioned(
-                top: aSize - handle / 2,
-                height: handle,
-                left: 0,
-                right: 0,
-                child: divider,
-              ),
-          ],
-        );
-      },
+        ),
+      ],
+    );
+
+    return Stack(
+      children: [
+        // Base: as duas panes adjacentes (a linha vem do handle por cima).
+        panes,
+        // Overlay do divisor. O LayoutBuilder AQUI é seguro: envolve só o handle
+        // (stateless, barato de remontar), NUNCA os panes — precisa do tamanho
+        // total pra posicionar a linha e converter o arraste px→fração.
+        Positioned.fill(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final total = isRow ? constraints.maxWidth : constraints.maxHeight;
+              final pos = total * split.frac;
+              final divider = PaneDivider(
+                dir: split.dir,
+                onDelta: (delta) {
+                  if (total <= 0) return;
+                  // Delta incremental → fração, acumulado sobre o frac ATUAL da
+                  // árvore. `total` é estável durante o arraste.
+                  vm.resizeSplitBy(split.id, delta / total);
+                },
+              );
+              return Stack(
+                children: [
+                  if (isRow)
+                    Positioned(
+                      left: pos - handle / 2,
+                      width: handle,
+                      top: 0,
+                      bottom: 0,
+                      child: divider,
+                    )
+                  else
+                    Positioned(
+                      top: pos - handle / 2,
+                      height: handle,
+                      left: 0,
+                      right: 0,
+                      child: divider,
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

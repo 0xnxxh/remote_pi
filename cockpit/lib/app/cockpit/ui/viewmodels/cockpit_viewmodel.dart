@@ -2584,19 +2584,31 @@ class CockpitViewModel extends ChangeNotifier {
     // PTY, git, FS) e é a que de fato quebrou em produção. Falhando, seguimos
     // com o shell montado: melhor um workspace vazio, onde o usuário consegue
     // trocar de projeto ou remover o quebrado, do que um app travado.
-    try {
-      if (selected != null) await _activateProject(selected);
-      git.watchProject(selected); // watcher ao vivo do projeto inicial
-      // Workspace remoto como seleção inicial: carrega o git status do host
-      // (senão a aba de Source Control não aparece até trocar de workspace).
-      if (_projectById(selected)?.isRemoteTerminal ?? false) {
-        unawaited(_refreshRemoteGit());
-      }
-    } catch (error, stack) {
-      debugPrint('[boot] falha ao ativar o workspace inicial: $error\n$stack');
-    } finally {
-      _ready = true;
-      notifyListeners();
+    // Marca pronto e mostra a tela (vazia) ANTES de ativar o workspace inicial.
+    // A ativação (que monta a árvore de panes + sobe os terminais) é adiada pro
+    // PÓS-primeiro-frame: montar todos os panes no first-frame FRIO faz as
+    // TerminalView irmãs cruzarem a State/attach → terminais ESPELHADOS, e isso
+    // só acontecia no primeiro workspace justamente porque era o único montado
+    // no frame de boot. Adiando um frame, ele monta QUENTE — igual à troca de
+    // workspace, que nunca espelhou.
+    _ready = true;
+    notifyListeners();
+    if (selected != null) {
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        try {
+          await _activateProject(selected);
+          git.watchProject(selected); // watcher ao vivo do projeto inicial
+          // Workspace remoto como seleção inicial: carrega o git status do host
+          // (senão a aba de Source Control não aparece até trocar de workspace).
+          if (_projectById(selected)?.isRemoteTerminal ?? false) {
+            unawaited(_refreshRemoteGit());
+          }
+        } catch (error, stack) {
+          debugPrint(
+            '[boot] falha ao ativar o workspace inicial: $error\n$stack',
+          );
+        }
+      });
     }
     // Mudanças de host/pin vindas de OUTRA rota (aba "Remote hosts" das
     // Configurações opera o mesmo RemoteHostsController) re-sincronizam a rail.
@@ -5410,6 +5422,14 @@ class CockpitViewModel extends ChangeNotifier {
         // `\x1bc` (RIS) prepended limpa qualquer modo residual (alt-screen) em
         // que o processo morreu; o `\r\n` final põe o prompt novo numa linha
         // fresca abaixo do histórico.
+        //
+        // `\x1b[<9u` (pop do kitty keyboard protocol) DEPOIS do histórico: o
+        // RIS reseta no início, mas o replay reaplica o PUSH do kitty gravado no
+        // scrollback (claude/pi ligam o protocolo). Como o processo foi morto ao
+        // fechar o app, o POP nunca veio — o emulador ficava preso em modo
+        // kitty e toda tecla do shell novo virava `CSI…u` (incl. eventos de
+        // release). O pop no fim zera a pilha (clamp: 9 cobre qualquer
+        // profundidade real), devolvendo o teclado legado pro shell.
         final raw = await _scrollback.load(
           projectId: project.id,
           sessionId: id,
@@ -5429,7 +5449,7 @@ class CockpitViewModel extends ChangeNotifier {
           project.id,
           termCwd,
           title: desc['title'] as String?,
-          replay: raw == null ? null : 'c$raw\r\n',
+          replay: raw == null ? null : 'c$raw\x1b[<9u\r\n',
           startupCommand: claudeSid == null || claudeSid.isEmpty
               ? null
               : harness.resumeCommand(claudeSid),

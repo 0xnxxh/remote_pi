@@ -153,18 +153,6 @@ class PaneView extends StatelessWidget {
   Widget _keyedBody(String tabId) {
     final session = vm.session(tabId);
     if (session == null) return SizedBox.shrink(key: ValueKey('body-$tabId'));
-    // DIAGNÓSTICO (espelho de terminais): loga a identidade da sessão montada
-    // por pane/aba ativa. Se duas linhas mostram o MESMO `sess=` (identityHash)
-    // em panes diferentes, dois panes compartilham UM controller → espelho.
-    assert(() {
-      if (tabId == pane.active) {
-        debugPrint(
-          '[mirror-diag] pane=${pane.id} tab=$tabId '
-          'sess=${identityHashCode(session)} type=${session.runtimeType}',
-        );
-      }
-      return true;
-    }());
     return _PaneBody(
       key: ValueKey('body-$tabId'),
       item: session,
