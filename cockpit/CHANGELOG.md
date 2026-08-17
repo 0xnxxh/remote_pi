@@ -24,6 +24,38 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.27.0] - 2026-08-17
+
+A built-in browser, git change marks in the editor, and a fix for agents
+stalling while the window sat in the background.
+
+### Added
+
+- **Built-in browser pane**: open a web page right inside Cockpit, with a
+  compact toolbar (back, forward, reload, address). The tab is persisted and
+  reopens on the last URL.
+- **Markdown and HTML preview**: `.md`, `.mdx` and `.html` files render in a
+  themed preview, with relative images resolved inside the workspace.
+- **Auto-open on tasks**: the first local URL a task prints opens the browser
+  automatically. Control it per task in `tasks.json` with `"preview"`.
+- **`cockpit browse <url>`**: open (or reuse) a browser tab from the CLI.
+- **Git change marks in the code editor**: added, modified and removed lines
+  show in the gutter and as ticks in the scrollbar lane; clicking a tick jumps
+  to that line.
+- **Harness icons on terminal tabs**: Claude Code, Codex, Cursor, GitHub
+  Copilot, Antigravity and OpenCode each get their own icon.
+- **Full name on hover**: truncated tab and worktree labels reveal the complete
+  text in a tooltip.
+
+### Fixed
+
+- Agents no longer stall mid-request when the window is in the background:
+  macOS App Nap was throttling the terminal's child processes. The machine can
+  still sleep on idle as usual.
+- A maximized window reopens maximized instead of merely screen-sized, and a
+  window saved on a monitor you no longer have is pulled back into view.
+- The last line of a file is no longer hidden under the horizontal scrollbar.
+
 ## [1.26.0] - 2026-08-11
 
 Codex tabs now report what they are doing, just like Claude Code tabs.
