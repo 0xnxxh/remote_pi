@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit_remote/cockpit_remote.dart';
 import 'package:flutter/foundation.dart';
@@ -16,11 +17,40 @@ import 'package:flutter/foundation.dart';
 ///   se encerra sozinho ao ficar sem clientes).
 /// - `null` = sidecar indisponível (binário não empacotado/ambiente mínimo);
 ///   o chamador faz fallback pro PTY in-process e o app segue como antes.
-class SidecarTerminalConnector {
+class SidecarTerminalConnector implements TurnStatusSource {
   RemoteConnection? _connection;
   RemoteTerminalService? _service;
   Future<RemoteTerminalService?>? _inflight;
   Process? _child;
+
+  /// Status de turno (spinner/chime/notificação) dos agentes rodando nas PTYs
+  /// do sidecar. Mesmo mecanismo do [RemoteHostConnector], e pela mesma razão:
+  /// o PTY não nasce mais dentro do app, e o SERVIDOR injeta o socket de
+  /// status DELE no env (ver `remote_server.dart`, caso `PtyOpen`),
+  /// sobrescrevendo o do cliente. Logo o hook do agente reporta ao sidecar, e
+  /// o único caminho de volta é este broadcast do protocolo — sem assiná-lo, o
+  /// turn-status local simplesmente sumia.
+  final _turnStatus = StreamController<ClaudeStatusUpdate>.broadcast();
+  StreamSubscription<RemoteTurnStatus>? _turnSub;
+
+  @override
+  Stream<ClaudeStatusUpdate> get turnStatus => _turnStatus.stream;
+
+  void _bindTurnStatus() {
+    _turnSub?.cancel();
+    _turnSub = _service?.turnStatus.listen(
+      (s) => _turnStatus.add(
+        ClaudeStatusUpdate(
+          paneId: s.paneId,
+          status: s.status,
+          event: s.event,
+          sessionId: s.sid,
+          transcriptPath: s.transcriptPath,
+          harness: s.harness,
+        ),
+      ),
+    );
+  }
 
   /// Serviço conectado, reusando a conexão viva; reconecta (ou respawna) se
   /// o sidecar caiu. Nunca lança: falha vira `null` (fallback local).
@@ -80,7 +110,9 @@ class SidecarTerminalConnector {
 
   RemoteTerminalService _adopt(RemoteConnection connection) {
     _connection = connection;
-    return _service = RemoteTerminalService(connection);
+    _service = RemoteTerminalService(connection);
+    _bindTurnStatus(); // reassina a cada (re)conexão/respawn do sidecar.
+    return _service!;
   }
 
   Future<RemoteConnection?> _tryConnect(String socketPath) async {
@@ -129,6 +161,8 @@ class SidecarTerminalConnector {
   }
 
   Future<void> dispose() async {
+    await _turnSub?.cancel();
+    await _turnStatus.close();
     await _connection?.close();
     _connection = null;
     _service = null;

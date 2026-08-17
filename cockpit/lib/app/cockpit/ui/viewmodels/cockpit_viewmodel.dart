@@ -1,13 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io'
-    show
-        Directory,
-        File,
-        FileSystemEntity,
-        FileSystemEntityType,
-        FileSystemException,
-        Platform;
+    show Directory, File, FileSystemEntity, FileSystemException, Platform;
 import 'dart:math' show max;
 
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
@@ -19,7 +13,6 @@ import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/content_searcher.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/file_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/file_searcher.dart';
-import 'package:cockpit/app/cockpit/domain/contracts/file_system_mutator.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/file_system_reader.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/folder_lister.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
@@ -30,7 +23,6 @@ import 'package:cockpit/app/cockpit/domain/exceptions/git_history_error.dart';
 import 'package:cockpit/app/cockpit/domain/services/scm_baseline_cache.dart';
 import 'package:cockpit/app/cockpit/domain/services/scm_line_decoration_calculator.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/layout_loader.dart';
-import 'package:cockpit/app/cockpit/domain/contracts/notifier.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/project_repository.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/rpc_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/session_history.dart';
@@ -92,20 +84,20 @@ import 'package:cockpit/app/cockpit/ui/session/terminal_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_cli_handler.dart';
 import 'package:cockpit/app/cockpit/data/filesystem/unified_diff_parser.dart';
-import 'package:cockpit/app/cockpit/data/remote/remote_git_adapter.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
-import 'package:cockpit/app/cockpit/data/remote/remote_worktree_gateway.dart';
 import 'package:cockpit_core/cockpit_core.dart' show GitRunResult;
 import 'package:cockpit_remote/cockpit_remote.dart'
     show RemoteGitService, RemoteTurnStatus;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/file_ops_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/realm_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/session_notifications_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/remote_workspace_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:window_manager/window_manager.dart';
 
 /// Controlador do shell: projetos, árvore de splits **por projeto**, sessões de
 /// agente, foco.
@@ -123,9 +115,9 @@ class CockpitViewModel extends ChangeNotifier {
     this._factory,
     this._folders,
     this._history,
-    this._notifier,
     this._fileSystem,
     this._terminalFactory,
+    this._sidecar,
     this._terminalProfiles,
     this._fileReader,
     this._layoutStore,
@@ -133,7 +125,6 @@ class CockpitViewModel extends ChangeNotifier {
     this._fileSearcher,
     this._launcher,
     this._worktreeMgr,
-    this._fileMutator,
     this._lsp,
     this._statusServer,
     this._contentSearcher,
@@ -152,6 +143,9 @@ class CockpitViewModel extends ChangeNotifier {
     this._scmBaselineCache,
     this._scmCalculator,
     this._harnessMonitor,
+    this.remote,
+    this.files,
+    this.notifications,
   ) {
     // Contexto do shell que o GitController precisa (page-scoped, mesma vida).
     git
@@ -162,6 +156,26 @@ class CockpitViewModel extends ChangeNotifier {
       ..pollTargets = _gitPollTargets
       ..onStructuralFsChange = _bumpFileTree
       ..onPoll = _reconcileOpenWorktrees;
+    // Mesmo contrato do GitController: o motor remoto recebe o contexto do
+    // shell (projetos/seleção) e devolve os forks pro VM reconciliar.
+    remote
+      ..resolveProject = _projectById
+      ..remoteWorkspaces = (() => remoteWorkspaces)
+      ..selectedId = (() => _selectedProjectId)
+      ..selectProject = selectProject
+      ..forkOrigin = ((forkId) => _forkOrigin[forkId])
+      ..applyForks = _applyRemoteForks;
+    files
+      ..openFile = openFile
+      ..retargetSessions = _retargetSessions
+      ..closeSessionsUnder = _closeSessionsUnder
+      ..onTreeChanged = _bumpFileTree;
+    notifications
+      ..focusedTabId = (() => _focusedAgentId)
+      ..workspaceName = ((projectId) => _projectById(projectId)?.name ?? '');
+    notifications.addListener(notifyListeners);
+    files.addListener(notifyListeners);
+    remote.addListener(notifyListeners);
     _lastGitRevision = git.revision;
     git.addListener(_onGitNotify);
     realmCtrl.addListener(notifyListeners);
@@ -173,6 +187,10 @@ class CockpitViewModel extends ChangeNotifier {
 
   /// Assinatura do turn-status remoto (Wave G); cancelada no dispose.
   StreamSubscription<RemoteTurnStatus>? _remoteTurnSub;
+
+  /// Idem para o sidecar LOCAL — desde que o PTY nasce nele, é por aqui que o
+  /// turn-status do agente local chega (ver [init]).
+  StreamSubscription<ClaudeStatusUpdate>? _sidecarTurnSub;
 
   /// Task emitiu URL local (`npm run dev` etc.): abre o navegador embutido
   /// nela — reusando a aba já aberta na mesma origem — ou, sem webview inline
@@ -223,9 +241,12 @@ class CockpitViewModel extends ChangeNotifier {
   final RpcGatewayFactory _factory;
   final FolderLister _folders;
   final SessionHistory _history;
-  final Notifier _notifier;
   final FileSystemReader _fileSystem;
   final TerminalGatewayFactory _terminalFactory;
+
+  /// Fonte de turn-status das PTYs que nascem FORA do app (hoje: o sidecar
+  /// local). O spawn continua indo pelo [_terminalFactory].
+  final TurnStatusSource _sidecar;
   final TerminalProfileResolver _terminalProfiles;
   final FileReader _fileReader;
   final WorkspaceLayoutStore _layoutStore;
@@ -233,10 +254,19 @@ class CockpitViewModel extends ChangeNotifier {
   /// Estado git extraído (info/roots/watcher/poll/comandos). O VM delega as
   /// leituras pra manter a API pública da UI e re-emite os notify dele.
   final GitController git;
+
+  /// Motor dos workspaces remotos (git do host, worktrees remotos). Mesmo
+  /// contrato do [git]: estado próprio, contexto injetado pelo VM.
+  final RemoteWorkspaceController remote;
+
+  /// Mutação de arquivos + clipboard da árvore (mesmo contrato).
+  final FileOpsController files;
+
+  /// Badge/notificação do SO/chime de fim de turno (mesmo contrato).
+  final SessionNotificationsController notifications;
   final FileSearcher _fileSearcher;
   final AppLauncherGateway _launcher;
   final WorktreeManager _worktreeMgr;
-  final FileSystemMutator _fileMutator;
   final LspServerPool _lsp;
   final TerminalStatusServer _statusServer;
   final ContentSearcher _contentSearcher;
@@ -432,31 +462,23 @@ class CockpitViewModel extends ChangeNotifier {
       onPanelVisibilityChanged?.call(_railVisible, _treeVisible);
   int _seq = 0;
 
-  /// Espelha `AppSettings.notificationsEnabled` (app-scoped, fora do grafo desta
-  /// VM page-scoped). A `CockpitPage` empurra o valor do `SettingsController`.
-  /// Gateia o disparo de notificação de fim de turno.
-  bool _notificationsEnabled = true;
-  void setNotificationsEnabled(bool value) => _notificationsEnabled = value;
+  /// Espelham as preferências de notificação/som do `SettingsController`
+  /// app-scoped (a `CockpitPage` empurra; a VM é page-scoped e não o enxerga).
+  /// O motor mora no [SessionNotificationsController].
+  void setNotificationsEnabled(bool value) =>
+      notifications.notificationsEnabled = value;
 
-  /// Espelham `AppSettings.soundEvents`/`soundOverrides` (toggle e áudio custom
-  /// por [SoundEvent]). A `CockpitPage` empurra os valores do controller.
-  Map<SoundEvent, bool> _soundEvents = const <SoundEvent, bool>{};
-  Map<SoundEvent, String> _soundOverrides = const <SoundEvent, String>{};
-  Map<SoundEvent, bool> _soundOnActiveTab = const <SoundEvent, bool>{};
-  double _soundVolume = 50;
   void setSoundPrefs({
     required Map<SoundEvent, bool> events,
     required Map<SoundEvent, String> overrides,
     required Map<SoundEvent, bool> onActiveTab,
     required double volume,
-  }) {
-    _soundEvents = events;
-    _soundOverrides = overrides;
-    _soundOnActiveTab = onActiveTab;
-    _soundVolume = volume;
-  }
-
-  bool _soundEnabledFor(SoundEvent event) => _soundEvents[event] ?? true;
+  }) => notifications.setSoundPrefs(
+    events: events,
+    overrides: overrides,
+    onActiveTab: onActiveTab,
+    volume: volume,
+  );
 
   /// Espelha `AppSettings.defaultTerminalProfileId` (plano 50). A `CockpitPage`
   /// empurra o valor do controller app-scoped. `null` = sem escolha → o resolver
@@ -666,7 +688,7 @@ class CockpitViewModel extends ChangeNotifier {
       if (absolutePath == rootPath) {
         return remote.files.isEmpty ? null : GitFileStatus.modified;
       }
-      final rel = _subOf(absolutePath, rootPath);
+      final rel = relativeUnder(absolutePath, rootPath);
       // Match exato (arquivo).
       final exact = remote.files[rel];
       if (exact != null) return exact;
@@ -686,7 +708,7 @@ class CockpitViewModel extends ChangeNotifier {
     // A própria pasta da root (multi-root): o rel seria vazio e sumiria — usa
     // o agregado da root inteira pra pasta acender visto de fora.
     if (absolutePath == root) return git.statusForRoot(root);
-    return git.statusForRelPath(root, _subOf(absolutePath, root));
+    return git.statusForRelPath(root, relativeUnder(absolutePath, root));
   }
 
   /// Aba que o usuário está olhando.
@@ -785,7 +807,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// houver mudança no working tree), parseado com o mesmo parser do local.
   /// Untracked (index 'A' vindo do status) → `--cached` mostra o conteúdo novo.
   Future<FileDiff> _remoteFileDiff(String root, String absPath) async {
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     try {
       final service = await _activeRemoteGit();
       var raw = await service.diff(root, rel);
@@ -803,157 +825,62 @@ class CockpitViewModel extends ChangeNotifier {
     }
   }
 
+  // === Motor remoto (plano 58) ===========================================
+  // Cache do `git status` por host, worktrees remotos e as ops que rodam via
+  // SSH moram no [RemoteWorkspaceController]. O VM só delega e mantém a
+  // reconciliação de forks (que mexe em projetos/sessões).
+
   /// O [RemoteHost] do workspace ativo, ou `null` se o ativo é local.
-  RemoteHost? _activeRemoteHost() => remoteHostForWorkspace(_selectedProjectId);
+  RemoteHost? _activeRemoteHost() => remote.activeHost;
 
   /// O [RemoteHost] dono do workspace [workspaceId], ou `null` se local. Usado
   /// pelo roteamento de DB remoto (o DbQueryService pergunta por workspace).
-  RemoteHost? remoteHostForWorkspace(String? workspaceId) {
-    final project = _projectById(workspaceId);
-    final hostId = project?.remoteHostId;
-    if (project == null || !project.isRemoteTerminal || hostId == null) {
-      return null;
-    }
-    return _remoteHosts.hosts
-        .where((h) => h.id == hostId)
-        .cast<RemoteHost?>()
-        .firstWhere((_) => true, orElse: () => null);
-  }
+  RemoteHost? remoteHostForWorkspace(String? workspaceId) =>
+      remote.hostForWorkspace(workspaceId);
 
-  // === Source control remoto (plano 58) ==================================
-  // Cache do GitInfo por (workspace remoto → pasta). O painel de Source
-  // Control lê os getters git do VM; quando o workspace é remoto, eles
-  // roteiam para este cache em vez do GitController local.
-  final Map<String, GitInfo> _remoteGitInfo = <String, GitInfo>{};
+  /// GitInfo remoto de um workspace [wsId] (pro badge do rail).
+  GitInfo? remoteGitInfoOf(String wsId) => remote.gitInfoOf(wsId);
 
-  /// Recarrega o `git status` remoto do workspace ativo (se remoto) e
-  /// notifica a UI. Chamado ao selecionar e após cada mutação.
-  Future<void> _refreshRemoteGit() async {
-    final p = selectedProject;
-    final host = _activeRemoteHost();
-    final root = p?.remotePath;
-    if (p == null || host == null || root == null || root.isEmpty) return;
-    try {
-      final service = await _remoteHosts.gitServiceFor(host);
-      final status = await service.status(root);
-      _remoteGitInfo[p.id] = remoteGitInfo(status);
-    } catch (_) {
-      // Pasta não é repo git (ou conexão caiu) → sem source control remoto.
-      _remoteGitInfo.remove(p.id);
-    }
-    notifyListeners();
-  }
+  /// GitInfo remoto da pasta do workspace ativo (ou null).
+  GitInfo? get _activeRemoteGitInfo => remote.activeGitInfo;
 
-  /// Workspaces remotos cujo git está sendo carregado agora (evita disparos
-  /// duplicados do lazy-load do badge).
-  final Set<String> _remoteGitLoading = <String>{};
+  Future<void> _refreshRemoteGit() => remote.refreshActive();
 
-  /// GitInfo remoto de um workspace [wsId] (pro badge do rail). Pode ser `null`
-  /// enquanto o lazy-load não terminou, ou se a pasta não é repo git.
-  GitInfo? remoteGitInfoOf(String wsId) => _remoteGitInfo[wsId];
+  Future<RemoteGitService> _activeRemoteGit() => remote.activeGitService();
 
-  /// Carrega o `git status` de UM workspace remoto (background, best-effort) e
-  /// cacheia — é o que preenche o badge de slots que não são o ativo. Conexão
-  /// por host é reusada; host offline apenas não mostra badge (sem travar).
-  Future<void> _loadRemoteGitFor(Project p) async {
-    if (!p.isRemoteTerminal || _remoteGitLoading.contains(p.id)) return;
-    final host = remoteHostForWorkspace(p.id);
-    final root = p.remotePath;
-    if (host == null || root == null || root.isEmpty) return;
-    _remoteGitLoading.add(p.id);
-    try {
-      final service = await _remoteHosts.gitServiceFor(host);
-      final status = await service.status(root);
-      _remoteGitInfo[p.id] = remoteGitInfo(status);
-    } catch (_) {
-      _remoteGitInfo.remove(p.id);
-    } finally {
-      _remoteGitLoading.remove(p.id);
-      notifyListeners();
-    }
-  }
+  void _ensureRemoteGitLoaded() => remote.ensureLoaded();
 
-  /// Dispara o lazy-load do git de todos os workspaces remotos ainda sem info
-  /// (badge da Opção 2). Chamado após [_syncRemoteWorkspaces]; roda em
-  /// background, um por workspace (hosts iguais reusam a conexão).
-  void _ensureRemoteGitLoaded() {
-    for (final p in remoteWorkspaces) {
-      if (_remoteGitInfo.containsKey(p.id) ||
-          _remoteGitLoading.contains(p.id)) {
-        continue;
-      }
-      unawaited(_loadRemoteGitFor(p));
-    }
-    // Camada B: lista os worktrees de cada workspace remoto (mesma janela lazy).
-    for (final p in remoteWorkspaces) {
-      unawaited(_refreshRemoteWorktrees(p.id));
-    }
-  }
+  /// Namespace (branches/worktrees/base) do host — valida o dialog de criar.
+  Future<WorktreeNamespace> remoteWorktreeNamespace(String wsId) =>
+      remote.worktreeNamespace(wsId);
 
-  // === Worktrees remotos (plano 58, Camada B) ============================
-  // Um worktree remoto é só mais um workspace remoto (isRemoteTerminal +
-  // remoteHostId + remotePath) com parentId apontando pro workspace de origem,
-  // derivado do `git worktree list` do host. Ops via `git.run` (sem RPC novo).
+  WorktreeAddRun<Project> createRemoteWorktree(
+    String wsId,
+    String name, {
+    String? baseRef,
+  }) => remote.createWorktree(wsId, name, baseRef: baseRef);
 
-  Future<RemoteWorktreeGateway?> _remoteWorktreeGatewayFor(String wsId) async {
-    final host = remoteHostForWorkspace(wsId);
-    if (host == null) return null;
-    final git = await _remoteHosts.gitServiceFor(host);
-    final files = await _remoteHosts.fileServiceFor(host);
-    return RemoteWorktreeGateway(git, files);
-  }
+  Future<Result<void, WorktreeOpError>> removeRemoteWorktree(String forkId) =>
+      remote.removeWorktree(forkId);
 
-  /// Lista e reconcilia os worktrees remotos de [wsId] (slots-fork do rail).
-  /// Best-effort: host offline / pasta não-git → sem forks.
-  /// Token do último refresh de worktrees por workspace remoto (anti-corrida).
-  final Map<String, int> _remoteWorktreeToken = <String, int>{};
+  /// `true` se a branch do fork remoto já foi mergeada — aviso antes de remover.
+  Future<bool> isRemoteWorktreeBranchMerged(String forkId) =>
+      remote.isWorktreeBranchMerged(forkId);
 
-  Future<void> _refreshRemoteWorktrees(String wsId) async {
-    final parent = _projectById(wsId);
-    final root = parent?.remotePath;
-    if (parent == null ||
-        !parent.isRemoteTerminal ||
-        parent.parentId != null ||
-        root == null ||
-        root.isEmpty) {
-      return;
-    }
-    final gw = await _remoteWorktreeGatewayFor(wsId);
-    if (gw == null) return;
-    // Token anti-corrida: a listagem SSH leva ~s. Um refresh disparado no boot
-    // (lista vazia, antes do worktree existir) pode voltar DEPOIS do create e
-    // sobrescrever, apagando o fork recém-criado. Só o resultado do refresh
-    // mais recente por workspace é aplicado.
-    final token = (_remoteWorktreeToken[wsId] ?? 0) + 1;
-    _remoteWorktreeToken[wsId] = token;
-    List<RemoteWorktreeEntry> entries;
-    try {
-      entries = await gw.list(root);
-    } catch (_) {
-      return;
-    }
-    if (_remoteWorktreeToken[wsId] != token) return; // obsoleto → descarta
-    final forks = <Project>[
-      for (final e in entries)
-        Project(
-          id: '$wsId::${e.path}',
-          name: e.branch,
-          path: '',
-          colorValue: parent.colorValue,
-          createdAt: parent.createdAt,
-          realmId: parent.realmId,
-          parentId: wsId,
-          order: parent.order,
-          kind: WorkspaceKind.remoteTerminal,
-          remoteHostId: parent.remoteHostId,
-          remotePath: e.path,
-        ),
-    ];
+  GitMergeOutcome mergeRemoteWorktreeToParent(Project fork) =>
+      remote.mergeWorktreeToParent(fork);
+
+  GitRun updateRemoteWorktreeFromParent(Project fork) =>
+      remote.updateWorktreeFromParent(fork);
+
+  /// Aplica a lista de forks remotos reconciliada pelo [RemoteWorkspaceController]:
+  /// tira da UI os que sumiram (encerrando o runtime no fim do frame), insere ou
+  /// atualiza os que ficaram e registra a origem de cada um.
+  void _applyRemoteForks(String wsId, List<Project> forks, String origin) {
     for (final f in forks) {
-      _forkOrigin[f.id] = root; // origem = repo do pai no host
+      _forkOrigin[f.id] = origin; // origem = repo do pai no host
     }
     final newIds = forks.map((f) => f.id).toSet();
-    // Forks que sumiram → tira da UI e encerra runtime no fim do frame.
     for (final f in _worktrees[wsId] ?? const <Project>[]) {
       if (newIds.contains(f.id)) continue;
       _projectList.removeWhere((p) => p.id == f.id);
@@ -968,205 +895,7 @@ class CockpitViewModel extends ChangeNotifier {
       } else {
         _projectList[idx] = f;
       }
-      if (!_remoteGitInfo.containsKey(f.id) &&
-          !_remoteGitLoading.contains(f.id)) {
-        unawaited(_loadRemoteGitFor(f));
-      }
     }
-    notifyListeners();
-  }
-
-  /// Namespace (branches/worktrees/base) do host — valida o dialog de criar.
-  Future<WorktreeNamespace> remoteWorktreeNamespace(String wsId) async {
-    final parent = _projectById(wsId);
-    final root = parent?.remotePath;
-    if (root == null || root.isEmpty) return const WorktreeNamespace.empty();
-    final gw = await _remoteWorktreeGatewayFor(wsId);
-    if (gw == null) return const WorktreeNamespace.empty();
-    try {
-      return await gw.namespace(root);
-    } catch (_) {
-      return const WorktreeNamespace.empty();
-    }
-  }
-
-  /// Cria um worktree no host de [wsId] (branch nova [name], de [baseRef] no
-  /// fork-of-fork). Devolve o handle ao vivo (a saída do `git.run` sai de uma
-  /// vez); em sucesso, reconcilia, auto-seleciona o fork e o devolve.
-  WorktreeAddRun<Project> createRemoteWorktree(
-    String wsId,
-    String name, {
-    String? baseRef,
-  }) {
-    final controller = StreamController<String>();
-    final result = () async {
-      try {
-        final parent = _projectById(wsId);
-        final root = parent?.remotePath;
-        if (parent == null || root == null || root.isEmpty) {
-          return const Failure<Project, WorktreeOpError>(
-            WorktreeOpError('Workspace not found.'),
-          );
-        }
-        final gw = await _remoteWorktreeGatewayFor(wsId);
-        if (gw == null) {
-          return const Failure<Project, WorktreeOpError>(
-            WorktreeOpError('Host unavailable.'),
-          );
-        }
-        final r = await gw.add(root, name, baseRef: baseRef);
-        if (r.stdout.isNotEmpty) controller.add(r.stdout);
-        if (r.stderr.isNotEmpty) controller.add(r.stderr);
-        if (r.code != 0) {
-          return Failure<Project, WorktreeOpError>(
-            WorktreeOpError(
-              r.stderr.isEmpty ? 'git worktree add failed.' : r.stderr,
-            ),
-          );
-        }
-        await _refreshRemoteWorktrees(wsId);
-        final fork = _projectById(
-          '$wsId::${RemoteWorktreeGateway.pathFor(root, name)}',
-        );
-        if (fork == null) {
-          return const Failure<Project, WorktreeOpError>(
-            WorktreeOpError('Worktree created, but did not appear.'),
-          );
-        }
-        selectProject(fork.id);
-        return Success<Project, WorktreeOpError>(fork);
-      } catch (e) {
-        controller.add('$e');
-        return Failure<Project, WorktreeOpError>(WorktreeOpError('$e'));
-      } finally {
-        await controller.close();
-      }
-    }();
-    return WorktreeAddRun<Project>(output: controller.stream, result: result);
-  }
-
-  /// Remove um worktree remoto (`git worktree remove` + `git branch -D` no
-  /// host) e reconcilia; se era o selecionado, volta pro pai.
-  Future<Result<void, WorktreeOpError>> removeRemoteWorktree(
-    String forkId,
-  ) async {
-    final fork = _projectById(forkId);
-    final parentId = fork?.parentId;
-    final origin = _forkOrigin[forkId];
-    final path = fork?.remotePath;
-    if (fork == null || parentId == null || origin == null || path == null) {
-      return const Failure(WorktreeOpError('Worktree not found.'));
-    }
-    final gw = await _remoteWorktreeGatewayFor(parentId);
-    if (gw == null) return const Failure(WorktreeOpError('Host unavailable.'));
-    final r = await gw.remove(origin, path, fork.name);
-    if (r.code != 0) {
-      return Failure(
-        WorktreeOpError(r.stderr.isEmpty ? 'git worktree remove failed.' : r.stderr),
-      );
-    }
-    if (_selectedProjectId == forkId) selectProject(parentId);
-    await _refreshRemoteWorktrees(parentId);
-    return const Success(null);
-  }
-
-  /// `true` se a branch do fork remoto já foi mergeada — aviso antes de remover.
-  Future<bool> isRemoteWorktreeBranchMerged(String forkId) async {
-    final fork = _projectById(forkId);
-    final parentId = fork?.parentId;
-    final origin = _forkOrigin[forkId];
-    if (fork == null || parentId == null || origin == null) return false;
-    final gw = await _remoteWorktreeGatewayFor(parentId);
-    if (gw == null) return false;
-    try {
-      return await gw.isMerged(origin, fork.name);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Mergeia a branch do fork remoto no pai (no host). Em sucesso, remove o
-  /// worktree e volta pro pai. Bloqueia se o pai tem mudanças não commitadas.
-  GitMergeOutcome mergeRemoteWorktreeToParent(Project fork) {
-    final controller = StreamController<String>();
-    final status = () async {
-      final parentId = fork.parentId;
-      final origin = parentId == null ? null : _forkOrigin[fork.id];
-      if (parentId == null || origin == null) {
-        controller.add('Not a worktree.');
-        await controller.close();
-        return GitMergeStatus.error;
-      }
-      if ((_remoteGitInfo[parentId]?.dirtyCount ?? 0) > 0) {
-        controller.add('Parent has uncommitted changes.');
-        await controller.close();
-        return GitMergeStatus.dirtyWorktree;
-      }
-      final gw = await _remoteWorktreeGatewayFor(parentId);
-      if (gw == null) {
-        controller.add('Host unavailable.');
-        await controller.close();
-        return GitMergeStatus.error;
-      }
-      final r = await gw.merge(origin, fork.name);
-      if (r.stdout.isNotEmpty) controller.add(r.stdout);
-      if (r.stderr.isNotEmpty) controller.add(r.stderr);
-      await controller.close();
-      if (r.code != 0) return GitMergeStatus.conflict;
-      await removeRemoteWorktree(fork.id);
-      selectProject(parentId);
-      unawaited(_refreshRemoteGit());
-      return GitMergeStatus.merged;
-    }();
-    return GitMergeOutcome(status: status, output: controller.stream);
-  }
-
-  /// "Update from parent" remoto: mergeia a branch do pai no checkout do fork
-  /// (no host). Conflito fica no fork (exit ≠ 0), o pai nunca é tocado.
-  GitRun updateRemoteWorktreeFromParent(Project fork) {
-    final controller = StreamController<String>();
-    final exit = () async {
-      final parentId = fork.parentId;
-      final parentBranch = parentId == null
-          ? null
-          : _remoteGitInfo[parentId]?.branch;
-      final root = fork.remotePath;
-      final host = parentId == null ? null : remoteHostForWorkspace(parentId);
-      if (parentBranch == null ||
-          parentBranch.isEmpty ||
-          root == null ||
-          host == null) {
-        controller.add('Parent branch not found.');
-        await controller.close();
-        return 1;
-      }
-      try {
-        final git = await _remoteHosts.gitServiceFor(host);
-        final r = await git.run(root, ['merge', '--no-edit', parentBranch]);
-        if (r.stdout.isNotEmpty) controller.add(r.stdout);
-        if (r.stderr.isNotEmpty) controller.add(r.stderr);
-        await controller.close();
-        if (r.code == 0) unawaited(_refreshRemoteGit());
-        return r.code;
-      } catch (e) {
-        controller.add('$e');
-        await controller.close();
-        return 1;
-      }
-    }();
-    return GitRun(output: controller.stream, exitCode: exit);
-  }
-
-  /// GitInfo remoto da pasta do workspace ativo (ou null).
-  GitInfo? get _activeRemoteGitInfo {
-    final p = selectedProject;
-    return p == null ? null : _remoteGitInfo[p.id];
-  }
-
-  /// Serviço git remoto do host ativo (para as mutações). Lança se não remoto.
-  Future<RemoteGitService> _activeRemoteGit() async {
-    final host = _activeRemoteHost()!;
-    return _remoteHosts.gitServiceFor(host);
   }
 
   /// Arquivos de [cwd] que casam com [query] (autocomplete do `@`). Caminhos
@@ -1729,7 +1458,7 @@ class CockpitViewModel extends ChangeNotifier {
       );
     }
     if (!name.toLowerCase().endsWith('.dbq')) name = '$name.dbq';
-    final invalid = _validateName(name);
+    final invalid = files.validateName(name);
     if (invalid != null) return Failure(invalid);
     final root = _projectById(s.projectId)?.path;
     if (root == null) {
@@ -1737,7 +1466,7 @@ class CockpitViewModel extends ChangeNotifier {
         FileOperationError(FileOperationErrorKind.noWorkspace),
       );
     }
-    final path = _join(root, name);
+    final path = joinPath(root, name);
     if (await File(path).exists()) {
       return Failure(
         FileOperationError(FileOperationErrorKind.alreadyExists, name: name),
@@ -1794,7 +1523,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// multi-root: qualquer root (habilita a aba Source Control).
   bool isGitRepo(String projectId) {
     final p = _projectById(projectId);
-    if (p != null && p.isRemoteTerminal) return _remoteGitInfo[p.id] != null;
+    if (p != null && p.isRemoteTerminal) return remote.gitInfoOf(p.id) != null;
     return git.isGitRepo(projectId);
   }
 
@@ -2263,197 +1992,47 @@ class CockpitViewModel extends ChangeNotifier {
     }
   }
 
-  // ---- mutação de arquivos (criar / renomear / deletar) ---------------------
+  // ---- mutação de arquivos + clipboard da árvore ---------------------------
+  // O motor mora no [FileOpsController]; o VM só repassa (a UI da árvore
+  // continua consumindo estes nomes) e provê os efeitos que dependem de aba.
 
-  /// Cria um arquivo vazio chamado [name] dentro de [dirPath] e o abre no pane
-  /// (quando [open]). Valida o nome (não-vazio, sem `/`). Devolve a falha
-  /// (mensagem) pra UI mostrar inline. Refaz a árvore no sucesso.
   Future<Result<void, FileOperationError>> createFileIn(
     String dirPath,
     String name, {
     bool open = true,
-  }) async {
-    final invalid = _validateName(name);
-    if (invalid != null) return Failure(invalid);
-    final path = _join(dirPath, name.trim());
-    final r = await _fileMutator.createFile(path);
-    if (r.isSuccess) {
-      _bumpFileTree();
-      if (open) await openFile(path);
-    }
-    return r;
-  }
+  }) => files.createFileIn(dirPath, name, open: open);
 
-  /// Cria uma pasta [name] dentro de [dirPath]. Refaz a árvore no sucesso.
   Future<Result<void, FileOperationError>> createDirIn(
     String dirPath,
     String name,
-  ) async {
-    final invalid = _validateName(name);
-    if (invalid != null) return Failure(invalid);
-    final r = await _fileMutator.createDirectory(_join(dirPath, name.trim()));
-    if (r.isSuccess) _bumpFileTree();
-    return r;
-  }
+  ) => files.createDirIn(dirPath, name);
 
-  /// Renomeia [path] para [newName] (mesma pasta). As abas abertas do arquivo
-  /// (ou de descendentes, se for pasta) **seguem** o novo caminho.
   Future<Result<void, FileOperationError>> renamePath(
     String path,
     String newName,
-  ) async {
-    final invalid = _validateName(newName);
-    if (invalid != null) return Failure(invalid);
-    final to = _join(_parentOf(path), newName.trim());
-    final r = await _fileMutator.rename(path, to);
-    if (r.isSuccess) {
-      await _retargetSessions(path, to);
-      _bumpFileTree();
-    }
-    return r;
-  }
+  ) => files.renamePath(path, newName);
 
-  /// Move [path] pra **dentro** de [targetDir] (drag-and-drop na árvore),
-  /// mantendo o nome. As abas abertas seguem o novo caminho, como no rename.
   Future<Result<void, FileOperationError>> movePath(
     String path,
     String targetDir,
-  ) async {
-    final name = path.split('/').where((p) => p.isNotEmpty).lastOrNull;
-    if (name == null) {
-      return const Failure(
-        FileOperationError(FileOperationErrorKind.invalidPath),
-      );
-    }
-    if (_parentOf(path) == targetDir) return const Success(null); // já está lá
-    if (_isUnder(targetDir, path)) {
-      return const Failure(
-        FileOperationError(FileOperationErrorKind.cannotMoveIntoItself),
-      );
-    }
-    final to = _join(targetDir, name);
-    final r = await _fileMutator.rename(path, to);
-    if (r.isSuccess) {
-      await _retargetSessions(path, to);
-      _bumpFileTree();
-    }
-    return r;
-  }
+  ) => files.movePath(path, targetDir);
 
-  /// Manda [path] pra lixeira. **Fecha antes** as abas do arquivo (ou de tudo
-  /// dentro da pasta), sem prompt de salvar — a deleção sobrepõe.
-  Future<Result<void, FileOperationError>> deletePath(String path) async {
-    _closeSessionsUnder(path);
-    final r = await _fileMutator.moveToTrash(path);
-    if (r.isSuccess) _bumpFileTree();
-    return r;
-  }
+  Future<Result<void, FileOperationError>> deletePath(String path) =>
+      files.deletePath(path);
 
-  // ---- clipboard da árvore (copiar / recortar / colar) ----------------------
+  bool get canPaste => files.canPaste;
 
-  /// Caminho no clipboard interno da árvore (`null` = vazio). Set por
-  /// [copyToClipboard] / [cutToClipboard], consumido por [pasteInto].
-  String? _clipboardPath;
+  void copyToClipboard(String path) => files.copyToClipboard(path);
 
-  /// `true` = recortar (move no paste), `false` = copiar (duplica no paste).
-  bool _clipboardCut = false;
+  void cutToClipboard(String path) => files.cutToClipboard(path);
 
-  /// Há algo pronto pra colar? Usado pra habilitar o item "Paste" no menu.
-  bool get canPaste => _clipboardPath != null;
-
-  /// Marca [path] pra **copiar** (o paste duplica).
-  void copyToClipboard(String path) {
-    _clipboardPath = path;
-    _clipboardCut = false;
-    notifyListeners();
-  }
-
-  /// Marca [path] pra **recortar** (o paste move e limpa o clipboard).
-  void cutToClipboard(String path) {
-    _clipboardPath = path;
-    _clipboardCut = true;
-    notifyListeners();
-  }
-
-  /// Cola o item do clipboard **dentro** de [targetDir]. Copia ou move conforme
-  /// o modo. Se o nome colidir no destino, gera um sufixo (`nome copy`,
-  /// `nome copy 2`, ...). Recorte limpa o clipboard no sucesso; cópia mantém
-  /// (permite colar várias vezes). Abas abertas seguem no move, como no rename.
-  Future<Result<void, FileOperationError>> pasteInto(String targetDir) async {
-    final from = _clipboardPath;
-    if (from == null) {
-      return const Failure(
-        FileOperationError(FileOperationErrorKind.clipboardEmpty),
-      );
-    }
-    final name = from.split('/').where((p) => p.isNotEmpty).lastOrNull;
-    if (name == null) {
-      return const Failure(
-        FileOperationError(FileOperationErrorKind.invalidPath),
-      );
-    }
-    if (_clipboardCut && _isUnder(targetDir, from)) {
-      return const Failure(
-        FileOperationError(FileOperationErrorKind.cannotMoveIntoItself),
-      );
-    }
-    final to = await _uniqueDest(targetDir, name);
-    final r = _clipboardCut
-        ? await _fileMutator.rename(from, to)
-        : await _fileMutator.copy(from, to);
-    if (r.isSuccess) {
-      if (_clipboardCut) {
-        await _retargetSessions(from, to);
-        _clipboardPath = null;
-      }
-      _bumpFileTree();
-    }
-    return r;
-  }
-
-  /// Caminho livre em [dir] pra [name]: devolve `dir/name` se não existir, senão
-  /// insere ` copy`, ` copy 2`, ... antes da extensão até achar um livre.
-  Future<String> _uniqueDest(String dir, String name) async {
-    var candidate = _join(dir, name);
-    if (!await _pathExists(candidate)) return candidate;
-    final dot = name.lastIndexOf('.');
-    final hasExt = dot > 0;
-    final stem = hasExt ? name.substring(0, dot) : name;
-    final ext = hasExt ? name.substring(dot) : '';
-    for (var i = 1; ; i++) {
-      final suffix = i == 1 ? ' copy' : ' copy $i';
-      candidate = _join(dir, '$stem$suffix$ext');
-      if (!await _pathExists(candidate)) return candidate;
-    }
-  }
-
-  Future<bool> _pathExists(String path) async =>
-      await FileSystemEntity.type(path, followLinks: false) !=
-      FileSystemEntityType.notFound;
+  Future<Result<void, FileOperationError>> pasteInto(String targetDir) =>
+      files.pasteInto(targetDir);
 
   void _bumpFileTree() {
     _fileTreeRevision++;
     notifyListeners();
   }
-
-  /// `null` se válido; senão a mensagem do erro. Nesta fase: sem aninhar (`/`).
-  FileOperationError? _validateName(String name) {
-    final n = name.trim();
-    if (n.isEmpty) {
-      return const FileOperationError(FileOperationErrorKind.emptyName);
-    }
-    if (n.contains('/')) {
-      return const FileOperationError(FileOperationErrorKind.nameHasSlash);
-    }
-    if (n == '.' || n == '..') {
-      return const FileOperationError(FileOperationErrorKind.invalidName);
-    }
-    return null;
-  }
-
-  String _join(String dir, String name) => joinPath(dir, name);
-
-  String _parentOf(String path) => dirnameOf(path);
 
   /// Um caminho é "sob" [root] se for ele mesmo ou um descendente (`root/...`).
   bool _isUnder(String path, String root) => isUnderPath(path, root);
@@ -2536,18 +2115,25 @@ class CockpitViewModel extends ChangeNotifier {
     // server o reenvia pelo protocolo, e aqui cai no MESMO caminho do local
     // (roteado por paneId → spinner/chime). Sem isso, terminal remoto não tem
     // som/spinner (o socket local do cliente é inalcançável do host).
-    _remoteTurnSub = _remoteHosts.turnStatus.listen((s) {
-      _onClaudeStatus(
-        ClaudeStatusUpdate(
-          paneId: s.paneId,
-          status: s.status,
-          event: s.event,
-          sessionId: s.sid,
-          transcriptPath: s.transcriptPath,
-          harness: s.harness,
-        ),
-      );
-    });
+    void onRemoteTurn(RemoteTurnStatus s) => _onClaudeStatus(
+      ClaudeStatusUpdate(
+        paneId: s.paneId,
+        status: s.status,
+        event: s.event,
+        sessionId: s.sid,
+        transcriptPath: s.transcriptPath,
+        harness: s.harness,
+      ),
+    );
+
+    _remoteTurnSub = _remoteHosts.turnStatus.listen(onRemoteTurn);
+    // Turn-status LOCAL pelo mesmo caminho: desde que o PTY passou a nascer no
+    // sidecar, o servidor injeta o socket de status DELE no env do shell
+    // (sobrescrevendo o `hookEnv` do cliente), então o hook do agente reporta
+    // ao sidecar — e não mais ao `_statusServer` daqui. Sem esta assinatura,
+    // terminal local ficava sem spinner/chime/notificação. O `_statusServer`
+    // continua servindo a CLI interna e o fallback in-process.
+    _sidecarTurnSub = _sidecar.turnStatus.listen(_onClaudeStatus);
     // Realms antes dos projetos: o filtro do rail e a seleção inicial dependem
     // do realm ativo. `all()` garante o Default.
     await realmCtrl.load();
@@ -2584,13 +2170,20 @@ class CockpitViewModel extends ChangeNotifier {
     // PTY, git, FS) e é a que de fato quebrou em produção. Falhando, seguimos
     // com o shell montado: melhor um workspace vazio, onde o usuário consegue
     // trocar de projeto ou remover o quebrado, do que um app travado.
-    // Marca pronto e mostra a tela (vazia) ANTES de ativar o workspace inicial.
-    // A ativação (que monta a árvore de panes + sobe os terminais) é adiada pro
-    // PÓS-primeiro-frame: montar todos os panes no first-frame FRIO faz as
-    // TerminalView irmãs cruzarem a State/attach → terminais ESPELHADOS, e isso
-    // só acontecia no primeiro workspace justamente porque era o único montado
-    // no frame de boot. Adiando um frame, ele monta QUENTE — igual à troca de
-    // workspace, que nunca espelhou.
+    // Marca pronto e mostra a tela (vazia) ANTES de ativar o workspace inicial:
+    // a ativação toca o mundo externo (spawn de PTY, git, FS) e não deve
+    // segurar o primeiro frame.
+    //
+    // NOTA HISTÓRICA: este adiamento foi introduzido como suposta cura dos
+    // "terminais espelhados" do workspace inicial, na teoria de que as
+    // TerminalView irmãs cruzavam State/attach ao montarem no frame frio. Era
+    // diagnóstico errado — as sessões, controllers e views sempre foram
+    // objetos distintos. O espelho vinha do protocolo do sidecar, que casava
+    // resposta com requisição só pelo TIPO: dois `pty.open` simultâneos
+    // (justamente o restore de dois panes) eram resolvidos pela mesma
+    // `pty.opened`, os dois panes adotavam o mesmo `sessionId` e liam o mesmo
+    // PTY. Corrigido com `rid` de correlação (ver PtyOpen.rid). O adiamento
+    // ficou por mérito próprio: tela na frente do spawn.
     _ready = true;
     notifyListeners();
     if (selected != null) {
@@ -2698,17 +2291,18 @@ class CockpitViewModel extends ChangeNotifier {
     // nas Configurações não apareceriam se só injetássemos os novos).
     for (final pin in pins) {
       final id = '${Project.remotePrefix}${pin.id}';
-      final desired = Project.remoteHost(
-        pinId: pin.id,
-        hostId: pin.hostId,
-        name: pin.name,
-        remotePath: pin.path,
-        colorValue: pin.colorValue,
-      ).copyWith(
-        imagePath: pin.imagePath,
-        realmId: pin.realmId,
-        order: pin.order,
-      );
+      final desired =
+          Project.remoteHost(
+            pinId: pin.id,
+            hostId: pin.hostId,
+            name: pin.name,
+            remotePath: pin.path,
+            colorValue: pin.colorValue,
+          ).copyWith(
+            imagePath: pin.imagePath,
+            realmId: pin.realmId,
+            order: pin.order,
+          );
       final idx = _projectList.indexWhere((p) => p.id == id);
       if (idx < 0) {
         _projectList.add(desired);
@@ -3478,7 +3072,8 @@ class CockpitViewModel extends ChangeNotifier {
     String root, {
     int limit = 100,
   }) async {
-    if (_activeRemoteHost() == null) return _gitHistory.read(root, limit: limit);
+    if (_activeRemoteHost() == null)
+      return _gitHistory.read(root, limit: limit);
     try {
       final r = await (await _activeRemoteGit()).run(root, [
         'log',
@@ -3571,19 +3166,17 @@ class CockpitViewModel extends ChangeNotifier {
       if (result.$1 != 0) return const [];
       logOut = result.$2;
     }
-    return logOut
-        .split('\u001e')
-        .where((entry) => entry.trim().isNotEmpty)
-        .map((entry) {
-          final parts = entry.trim().split('\u001f');
-          final hash = parts.first;
-          return GitCommit(
-            hash: hash,
-            subject: parts.length > 1 ? parts[1] : hash.substring(0, 7),
-            message: '',
-          );
-        })
-        .toList();
+    return logOut.split('\u001e').where((entry) => entry.trim().isNotEmpty).map(
+      (entry) {
+        final parts = entry.trim().split('\u001f');
+        final hash = parts.first;
+        return GitCommit(
+          hash: hash,
+          subject: parts.length > 1 ? parts[1] : hash.substring(0, 7),
+          message: '',
+        );
+      },
+    ).toList();
   }
 
   Future<String?> commitMessage(String hash) async {
@@ -3690,7 +3283,7 @@ class CockpitViewModel extends ChangeNotifier {
     for (final path in absPaths) {
       final root = rootContaining(pid, path);
       if (root == null) return 'File is outside the workspace roots: $path';
-      byRoot.putIfAbsent(root, () => []).add(_subOf(path, root));
+      byRoot.putIfAbsent(root, () => []).add(relativeUnder(path, root));
     }
     for (final entry in byRoot.entries) {
       final err = await git.collect(entry.key, [
@@ -3713,7 +3306,11 @@ class CockpitViewModel extends ChangeNotifier {
     }
     final root = rootContaining(pid, absPath);
     if (root == null) return 'File is outside the workspace roots.';
-    final err = await git.collect(root, ['add', '--', _subOf(absPath, root)]);
+    final err = await git.collect(root, [
+      'add',
+      '--',
+      relativeUnder(absPath, root),
+    ]);
     unawaited(git.refresh(pid));
     return err;
   }
@@ -3725,7 +3322,7 @@ class CockpitViewModel extends ChangeNotifier {
     required bool staged,
   }) async {
     final root = selectedProject?.remotePath ?? '';
-    final rels = [for (final p in absPaths) _subOf(p, root)];
+    final rels = [for (final p in absPaths) relativeUnder(p, root)];
     try {
       final service = await _activeRemoteGit();
       if (staged) {
@@ -3752,7 +3349,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (pid == null) return false;
     final root = rootContaining(pid, absPath);
     if (root == null) return false;
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     final result = await git.output(root, ['cat-file', '-e', 'HEAD:$rel']);
     return result.$1 != 0;
   }
@@ -3772,7 +3369,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (root == null) {
       return const FileOperationError(FileOperationErrorKind.invalidPath);
     }
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     if (await isNewGitFile(absPath)) {
       if (stagedFilesOfRoot(root).containsKey(rel)) {
         final err = await git.collect(root, [
@@ -3815,7 +3412,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (root.isEmpty) {
       return const FileOperationError(FileOperationErrorKind.invalidPath);
     }
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     try {
       final git = await _activeRemoteGit();
       // "Novo" = HEAD não conhece o caminho (cat-file -e falha).
@@ -3866,7 +3463,7 @@ class CockpitViewModel extends ChangeNotifier {
         AutomationError(AutomationErrorKind.fileOutsideWorkspace),
       );
     }
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     String diff;
     if (gitStatusForPath(absPath) == GitFileStatus.untracked) {
       try {
@@ -3981,7 +3578,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (pid == null) return 'No workspace selected.';
     final root = rootContaining(pid, absPath);
     if (root == null) return 'File is outside the workspace roots.';
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     if (gitStatusForPath(absPath) == GitFileStatus.untracked) {
       final err = await git.collect(root, ['add', '--', rel]);
       if (err != null) return err;
@@ -4002,7 +3599,7 @@ class CockpitViewModel extends ChangeNotifier {
     }
     final root = rootContaining(pid, absPath);
     if (root == null) return 'File is outside the workspace roots.';
-    final rel = _subOf(absPath, root);
+    final rel = relativeUnder(absPath, root);
     final err = await git.collect(root, [
       'restore',
       if (staged) '--staged',
@@ -5019,7 +4616,7 @@ class CockpitViewModel extends ChangeNotifier {
     );
     // claude rodando na aba reporta fim de turno via socket → mesma notificação
     // do agente (badge se não for a aba ativa; OS notification se desfocado).
-    t.onTurnFinished = () => unawaited(_notifyIfNeeded(t));
+    t.onTurnFinished = () => unawaited(notifications.turnFinished(t));
     // cwd vivo (OSC 7) mudou → persiste o layout pra restaurar o shell ali.
     t.onCwdChanged = () => _scheduleSave(projectId);
     // Restauração: re-arma a trava de nome sem notificar (aba ainda não montada).
@@ -5055,7 +4652,7 @@ class CockpitViewModel extends ChangeNotifier {
           ..preferredModelId = preferredModelId
           ..preferredThinking = preferredThinking;
     s.onTurnEnd = () => _onAgentTurnEnd(s);
-    s.onCrashed = () => unawaited(_notifyAgentCrashed(s));
+    s.onCrashed = () => unawaited(notifications.agentCrashed(s));
     s.onPreferenceChanged = () => _scheduleSave(project.id);
     _sessions[s.id] = s;
     unawaited(_bootAgent(s, cwd, project, restoreSessionPath));
@@ -5161,93 +4758,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (s.sessionPath == null) unawaited(_captureSessionPath(s));
     unawaited(git.refresh(s.projectId));
     unawaited(_refreshWorktrees(_rootOf(s.projectId)));
-    unawaited(_notifyIfNeeded(s));
-  }
-
-  /// Badge (ponto na aba) → só se o agente NÃO for a aba ativa.
-  /// OS notification → só se a janela não estiver focada.
-  /// Separar as duas responsabilidades evita badge preso: se o usuário já está
-  /// na aba, não há nada a marcar — ele verá a resposta ao olhar para a janela.
-  ///
-  /// Chega aqui tanto o fim de turno (`idle`) quanto o pedido de ação
-  /// (`waiting`: permissão/pergunta/plano) — o `onTurnFinished` do terminal
-  /// dispara nos dois. O status corrente da sessão decide qual [SoundEvent] é.
-  Future<void> _notifyIfNeeded(PaneItem s) async {
-    final actionRequired =
-        s is TerminalSession && s.status == TerminalStatus.waiting;
-    final event = actionRequired
-        ? SoundEvent.actionRequired
-        : SoundEvent.turnDone;
-    final isActiveTab = s.id == _focusedAgentId;
-
-    if (!isActiveTab) {
-      s.markUnseen();
-      notifyListeners();
-    }
-
-    // `window_manager` é desktop-only; no mobile `isFocused()` não vale (retorna
-    // false), o que jogaria pro caminho de notificação do SO e nunca tocaria o
-    // chime. Mobile em foreground = focado → chime (plano 60, Wave G). Em
-    // background o app é suspenso pelo SO, então não há evento a tocar.
-    final windowFocused = isMobilePlatform || await windowManager.isFocused();
-    if (kDebugMode) {
-      debugPrint(
-        '[sound] ${DateTime.now().toIso8601String().substring(11, 23)} '
-        'event=$event tab=${s.id} activeTab=$isActiveTab '
-        'focused=$windowFocused enabled=${_soundEnabledFor(event)}',
-      );
-    }
-    if (!windowFocused) {
-      // Janela em outro app → notificação do SO (tem som próprio).
-      if (_notificationsEnabled) {
-        final workspace = _projectById(s.projectId)?.name ?? '';
-        if (actionRequired) {
-          await _notifier.agentNeedsAction(
-            agentName: s.title,
-            workspace: workspace,
-          );
-        } else {
-          await _notifier.agentFinished(
-            agentName: s.title,
-            workspace: workspace,
-          );
-        }
-      }
-    } else if (_soundEnabledFor(event)) {
-      // Janela focada → som curto pra chamar atenção. Nunca junto da
-      // notificação → não se confunde com o som dela. Aba ativa não toca por
-      // padrão (o usuário está olhando a resposta/prompt), a menos que o
-      // usuário tenha ligado "tocar mesmo na aba ativa" pro evento.
-      if (isActiveTab && !(_soundOnActiveTab[event] ?? false)) return;
-      await _notifier.play(
-        event,
-        customPath: _soundOverrides[event],
-        volume: _soundVolume,
-      );
-    }
-  }
-
-  /// Processo do agente morreu sem ser pedido: badge fora da aba ativa,
-  /// notificação do SO desfocado, som de erro focado. Mesma matriz de foco do
-  /// [_notifyIfNeeded]; separado porque o gatilho não é fim de turno.
-  Future<void> _notifyAgentCrashed(AgentSession s) async {
-    if (s.id != _focusedAgentId) {
-      s.markUnseen();
-      notifyListeners();
-    }
-    final windowFocused = await windowManager.isFocused();
-    if (!windowFocused) {
-      if (_notificationsEnabled) {
-        final workspace = _projectById(s.projectId)?.name ?? '';
-        await _notifier.agentCrashed(agentName: s.title, workspace: workspace);
-      }
-    } else if (_soundEnabledFor(SoundEvent.agentError)) {
-      await _notifier.play(
-        SoundEvent.agentError,
-        customPath: _soundOverrides[SoundEvent.agentError],
-        volume: _soundVolume,
-      );
-    }
+    unawaited(notifications.turnFinished(s));
   }
 
   /// Limpa a notificação do agente que acabou de virar o focado.
@@ -5766,7 +5277,7 @@ class CockpitViewModel extends ChangeNotifier {
     if (s is TerminalSession) {
       return <String, dynamic>{
         'type': 'terminal',
-        'sub': _subOf(s.workingDirectory, project.path),
+        'sub': relativeUnder(s.workingDirectory, project.path),
         'title': s.title,
         'engine': s.terminal.engine.name,
         // Rótulo manual travado (se houver): persiste com o descritor da aba,
@@ -5828,7 +5339,7 @@ class CockpitViewModel extends ChangeNotifier {
     }
     return <String, dynamic>{
       'type': 'agent',
-      'sub': _subOf(a.workingDirectory, project.path),
+      'sub': relativeUnder(a.workingDirectory, project.path),
       'title': a.title,
       if (a.sessionPath != null) 'sessionPath': a.sessionPath,
       if (a.autoStartRelay) 'auto_start_relay': true,
@@ -5846,14 +5357,6 @@ class CockpitViewModel extends ChangeNotifier {
   /// internos são montados com `/`). Sem isso o prefixo não casaria e o `sub`
   /// sairia vazio — quebrando o posicionamento por subpasta (e a clonagem de
   /// layout pro worktree).
-  String _subOf(String cwd, String root) {
-    final c = cwd.replaceAll('\\', '/');
-    final r = root.replaceAll('\\', '/');
-    if (c == r) return '';
-    final prefix = r.endsWith('/') ? r : '$r/';
-    return c.startsWith(prefix) ? c.substring(prefix.length) : '';
-  }
-
   void _scheduleSave(String projectId) {
     // O Cockpit é efêmero (sessão só enquanto o app vive) — nunca persiste
     // layout. Chokepoint único: cobre resize, cwd, criação/fechamento de aba.
@@ -6036,9 +5539,13 @@ class CockpitViewModel extends ChangeNotifier {
     unawaited(_statusServer.stop());
     unawaited(_previewSub?.cancel());
     unawaited(_remoteTurnSub?.cancel());
+    unawaited(_sidecarTurnSub?.cancel());
     // O GitController é dono dos próprios timers/watchers; o módulo o
     // descarta junto com a rota. Aqui só desligamos o repasse de notify.
     git.removeListener(_onGitNotify);
+    remote.removeListener(notifyListeners);
+    files.removeListener(notifyListeners);
+    notifications.removeListener(notifyListeners);
     realmCtrl.removeListener(notifyListeners);
     for (final t in _saveTimers.values) {
       t.cancel();

@@ -91,7 +91,10 @@ import 'package:cockpit/app/cockpit/ui/cockpit_page.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/remote/remote_hosts_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/git_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/file_ops_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/realm_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/session_notifications_controller.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/remote_workspace_controller.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/session/task_terminal_store.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/setup_viewmodel.dart';
@@ -216,6 +219,15 @@ Future<Module> buildCockpitModule() async {
         ..addLazySingleton<SidecarTerminalConnector>(
           SidecarTerminalConnector.new,
         )
+        // MESMA instância sob o contrato de turn-status: o PTY nasce no
+        // sidecar, então é ele quem recebe o report do hook do agente e o
+        // repassa à VM (spinner/chime). Dois binds separados dariam dois
+        // connectors — e o status viria de um sidecar que ninguém usa.
+        // Parâmetro TIPADO (não `inject<T>()`): é assim que o auto_injector
+        // resolve o grafo — ver a regra de injeção no CLAUDE.md.
+        ..addLazySingleton<TurnStatusSource>(
+          (SidecarTerminalConnector sidecar) => sidecar,
+        )
         ..addLazySingleton<TerminalGatewayFactory>(
           SidecarTerminalGatewayFactory.new,
         )
@@ -259,7 +271,16 @@ Future<Module> buildCockpitModule() async {
             // Estado git extraído do CockpitViewModel (mesma vida da rota);
             // o VM o recebe no construtor e injeta o contexto de shell.
             ..addChangeNotifier<GitController>(GitController.new)
+            ..addChangeNotifier<FileOpsController>(FileOpsController.new)
             ..addChangeNotifier<RealmController>(RealmController.new)
+            ..addChangeNotifier<SessionNotificationsController>(
+              SessionNotificationsController.new,
+            )
+            // Motor dos workspaces remotos (git do host + worktrees remotos),
+            // mesmo contrato do GitController.
+            ..addChangeNotifier<RemoteWorkspaceController>(
+              RemoteWorkspaceController.new,
+            )
             ..addChangeNotifier<CockpitViewModel>(CockpitViewModel.new)
             ..addChangeNotifier<SetupViewModel>(SetupViewModel.new)
             ..addChangeNotifier<TasksViewModel>(TasksViewModel.new)

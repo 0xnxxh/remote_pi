@@ -3,7 +3,13 @@ import 'dart:typed_data';
 
 /// Versão do protocolo. Incrementa em mudança incompatível; o handshake
 /// rejeita versões diferentes (cliente decide se faz bootstrap/update).
-const int protocolVersion = 1;
+///
+/// 2: `rid` de correlação nas requisições `pty.open`/`pty.list` (ver
+/// [PtyOpen.rid]). Incompatível na prática: um cliente 2 falando com um
+/// servidor 1 nunca receberia o `rid` de volta e ficaria esperando a resposta
+/// para sempre. Melhor falhar no handshake, que já tem tratamento e oferece
+/// atualizar o servidor, do que abrir terminal que não responde.
+const int protocolVersion = 2;
 
 /// Mensagem do protocolo. Envelope JSON: `{"t": "<tipo>", ...campos}`.
 sealed class RemoteMessage {
@@ -20,7 +26,7 @@ sealed class RemoteMessage {
       HelloAck.kType => HelloAck.fromJson(json),
       PtyOpen.kType => PtyOpen.fromJson(json),
       PtyOpened.kType => PtyOpened.fromJson(json),
-      PtyList.kType => const PtyList(),
+      PtyList.kType => PtyList.fromJson(json),
       PtySessions.kType => PtySessions.fromJson(json),
       PtyAttach.kType => PtyAttach.fromJson(json),
       PtyDetach.kType => PtyDetach.fromJson(json),
@@ -97,6 +103,7 @@ class HelloAck extends RemoteMessage {
 class PtyOpen extends RemoteMessage {
   const PtyOpen({
     required this.executable,
+    this.rid,
     this.arguments = const [],
     this.workingDirectory,
     this.environment = const {},
@@ -105,6 +112,13 @@ class PtyOpen extends RemoteMessage {
     this.flowControlled = false,
   });
   static const kType = 'pty.open';
+
+  /// Correlação request/response, como no par `rpc`/`rpc.res`. Sem ela, dois
+  /// `pty.open` em voo ao mesmo tempo (restaurar um workspace com dois panes)
+  /// disputavam a MESMA `pty.opened`: os dois terminais adotavam o mesmo
+  /// `sessionId`, liam o mesmo PTY (espelho) e o segundo PTY ficava órfão.
+  /// O servidor ecoa este valor na resposta.
+  final int? rid;
 
   final String executable;
   final List<String> arguments;
@@ -118,6 +132,7 @@ class PtyOpen extends RemoteMessage {
   final bool flowControlled;
 
   factory PtyOpen.fromJson(Map<String, Object?> j) => PtyOpen(
+    rid: j['rid'] as int?,
     executable: j['cmd'] as String,
     arguments: (j['args'] as List? ?? const []).cast<String>(),
     workingDirectory: j['cwd'] as String?,
@@ -132,6 +147,7 @@ class PtyOpen extends RemoteMessage {
   @override
   Map<String, Object?> toJson() => {
     't': kType,
+    if (rid != null) 'rid': rid,
     'cmd': executable,
     'args': arguments,
     if (workingDirectory != null) 'cwd': workingDirectory,
@@ -161,49 +177,74 @@ class PtyAck extends RemoteMessage {
 }
 
 class PtyOpened extends RemoteMessage {
-  const PtyOpened({required this.sessionId, required this.pid});
+  const PtyOpened({required this.sessionId, required this.pid, this.rid});
   static const kType = 'pty.opened';
 
   final String sessionId;
   final int pid;
 
-  factory PtyOpened.fromJson(Map<String, Object?> j) =>
-      PtyOpened(sessionId: j['id'] as String, pid: j['pid'] as int);
+  /// Eco do [PtyOpen.rid] que originou esta resposta (ver lá o porquê).
+  final int? rid;
+
+  factory PtyOpened.fromJson(Map<String, Object?> j) => PtyOpened(
+    sessionId: j['id'] as String,
+    pid: j['pid'] as int,
+    rid: j['rid'] as int?,
+  );
 
   @override
   String get type => kType;
   @override
-  Map<String, Object?> toJson() => {'t': kType, 'id': sessionId, 'pid': pid};
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'id': sessionId,
+    'pid': pid,
+    if (rid != null) 'rid': rid,
+  };
 }
 
 class PtyList extends RemoteMessage {
-  const PtyList();
+  const PtyList({this.rid});
   static const kType = 'pty.list';
+
+  /// Correlação request/response (ver [PtyOpen.rid]).
+  final int? rid;
+
+  factory PtyList.fromJson(Map<String, Object?> j) =>
+      PtyList(rid: j['rid'] as int?);
 
   @override
   String get type => kType;
   @override
-  Map<String, Object?> toJson() => {'t': kType};
+  Map<String, Object?> toJson() => {'t': kType, if (rid != null) 'rid': rid};
 }
 
 class PtySessions extends RemoteMessage {
-  const PtySessions({required this.sessions});
+  const PtySessions({required this.sessions, this.rid});
   static const kType = 'pty.sessions';
 
   /// Cada item: {id, pid, cmd, rows, cols, len, exit?}
   final List<Map<String, Object?>> sessions;
+
+  /// Eco do [PtyList.rid] que originou esta resposta.
+  final int? rid;
 
   factory PtySessions.fromJson(Map<String, Object?> j) => PtySessions(
     sessions: (j['sessions'] as List)
         .cast<Map>()
         .map((m) => m.cast<String, Object?>())
         .toList(),
+    rid: j['rid'] as int?,
   );
 
   @override
   String get type => kType;
   @override
-  Map<String, Object?> toJson() => {'t': kType, 'sessions': sessions};
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'sessions': sessions,
+    if (rid != null) 'rid': rid,
+  };
 }
 
 class PtyAttach extends RemoteMessage {
@@ -496,8 +537,17 @@ class RpcResponse extends RemoteMessage {
 // ---------------------------------------------------------------------------
 
 class RemoteError extends RemoteMessage {
-  const RemoteError({required this.code, this.detail, this.sessionId});
+  const RemoteError({
+    required this.code,
+    this.detail,
+    this.sessionId,
+    this.rid,
+  });
   static const kType = 'err';
+
+  /// Eco do `rid` da requisição que falhou, quando o erro é resposta a uma
+  /// (ver [PtyOpen.rid]). `null` em erro não solicitado (ex.: handshake).
+  final int? rid;
 
   /// Código estável (ex.: `session_not_found`, `spawn_failed`,
   /// `version_mismatch`, `bad_message`). A frase nasce na UI.
@@ -509,6 +559,7 @@ class RemoteError extends RemoteMessage {
     code: j['code'] as String,
     detail: j['detail'] as String?,
     sessionId: j['id'] as String?,
+    rid: j['rid'] as int?,
   );
 
   @override
@@ -519,5 +570,6 @@ class RemoteError extends RemoteMessage {
     'code': code,
     if (detail != null) 'detail': detail,
     if (sessionId != null) 'id': sessionId,
+    if (rid != null) 'rid': rid,
   };
 }

@@ -201,7 +201,10 @@ class _Connection {
               columns: message.columns,
             ),
           );
-          _send(PtyOpened(sessionId: info.id, pid: info.pid));
+          // Ecoa o `rid`: é ele que diz ao cliente QUAL `pty.open` esta
+          // resposta atende. Sem isso, dois opens simultâneos casavam com a
+          // mesma resposta e os dois terminais adotavam o mesmo sessionId.
+          _send(PtyOpened(sessionId: info.id, pid: info.pid, rid: message.rid));
 
         case PtyList():
           final sessions = await _terminals.sessions();
@@ -219,6 +222,7 @@ class _Connection {
                     if (s.exitCode != null) 'exit': s.exitCode,
                   },
               ],
+              rid: message.rid,
             ),
           );
 
@@ -280,11 +284,22 @@ class _Connection {
           _send(const RemoteError(code: 'bad_message'));
       }
     } on TerminalException catch (e) {
-      _send(RemoteError(code: e.kind.name, detail: e.detail));
+      _send(
+        RemoteError(code: e.kind.name, detail: e.detail, rid: _ridOf(message)),
+      );
     } catch (e) {
-      _send(RemoteError(code: 'internal', detail: '$e'));
+      _send(RemoteError(code: 'internal', detail: '$e', rid: _ridOf(message)));
     }
   }
+
+  /// `rid` da requisição em tratamento, pra que o erro volte ao chamador certo
+  /// (ver [PtyOpen.rid]): sem isso, um open que falha resolveria o future de
+  /// OUTRO open em voo.
+  static int? _ridOf(RemoteMessage message) => switch (message) {
+    PtyOpen(:final rid) => rid,
+    PtyList(:final rid) => rid,
+    _ => null,
+  };
 
   /// Domínios request/response (fs.*, git.*). Erros viram RpcResponse{ok:false}
   /// com code/detail tipados — a frase nasce na UI do cliente.
@@ -339,11 +354,10 @@ class _Connection {
           await _git.commit(p['repo'] as String, p['message'] as String);
           return null;
         }(),
-        'git.run' =>
-          (await _git.run(
-            p['repo'] as String,
-            (p['args'] as List).cast<String>(),
-          )).toJson(),
+        'git.run' => (await _git.run(
+          p['repo'] as String,
+          (p['args'] as List).cast<String>(),
+        )).toJson(),
         'db.query' => _db.query(
           RemoteDbConnDescriptor.fromJson(
             (p['conn'] as Map).cast<String, Object?>(),

@@ -54,9 +54,15 @@ class RemoteTerminalService implements TerminalService {
 
   @override
   Future<PtySessionInfo> open(PtySpawnSpec spec) async {
-    final reply = _firstReply((m) => m is PtyOpened || m is RemoteError);
+    final rid = _nextRid();
+    final reply = _firstReply(
+      (m) =>
+          (m is PtyOpened && m.rid == rid) ||
+          (m is RemoteError && m.rid == rid),
+    );
     _connection.send(
       PtyOpen(
+        rid: rid,
         executable: spec.executable,
         arguments: spec.arguments,
         workingDirectory: spec.workingDirectory,
@@ -81,8 +87,13 @@ class RemoteTerminalService implements TerminalService {
 
   @override
   Future<List<PtySessionInfo>> sessions() async {
-    final reply = _firstReply((m) => m is PtySessions || m is RemoteError);
-    _connection.send(const PtyList());
+    final rid = _nextRid();
+    final reply = _firstReply(
+      (m) =>
+          (m is PtySessions && m.rid == rid) ||
+          (m is RemoteError && m.rid == rid),
+    );
+    _connection.send(PtyList(rid: rid));
     final message = await reply;
     if (message is RemoteError) throw _asException(message);
     final sessions = (message as PtySessions).sessions;
@@ -154,6 +165,14 @@ class RemoteTerminalService implements TerminalService {
 
   Future<RemoteMessage> _firstReply(bool Function(RemoteMessage) test) =>
       _connection.messages.firstWhere(test);
+
+  /// Id de correlação, crescente por conexão. O casamento request/response é
+  /// por ele — NUNCA só pelo tipo da mensagem: `messages` é broadcast, então
+  /// duas chamadas em voo ao mesmo tempo eram resolvidas as duas pela primeira
+  /// resposta que chegasse (dois panes restaurados juntos adotavam o mesmo
+  /// `sessionId` e espelhavam o mesmo PTY).
+  int _nextRid() => ++_rid;
+  int _rid = 0;
 
   static TerminalException _asException(RemoteError error) {
     final kind =

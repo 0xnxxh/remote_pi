@@ -18,6 +18,13 @@ void main() {
         columns: 100,
       ),
       const PtyOpened(sessionId: 's1', pid: 42),
+      // Correlação request/response: o `rid` precisa sobreviver ao roundtrip,
+      // senão dois opens simultâneos voltam a casar com a mesma resposta.
+      const PtyOpen(rid: 7, executable: '/bin/zsh'),
+      const PtyOpened(sessionId: 's2', pid: 43, rid: 7),
+      const PtyList(rid: 8),
+      const PtySessions(sessions: [], rid: 8),
+      const RemoteError(code: 'spawn_failed', rid: 9),
       PtyInput(sessionId: 's1', bytes: Uint8List.fromList([1, 2, 3])),
       PtyOutput(sessionId: 's1', offset: 7, bytes: Uint8List.fromList([9, 8])),
       const PtyResize(sessionId: 's1', rows: 40, columns: 120),
