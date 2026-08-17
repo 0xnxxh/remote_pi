@@ -1220,6 +1220,15 @@ class CockpitViewModel extends ChangeNotifier {
   void sendKeysToActiveTerminal(List<int> bytes) =>
       _activeTerminal()?.sendKeys(bytes);
 
+  /// Copia a seleção do terminal ativo (botão da barra de teclas do mobile).
+  /// No-op sem seleção — ou quando a aba ativa não é terminal.
+  void copyFromActiveTerminal() => _activeTerminal()?.copySelection();
+
+  /// Cola o clipboard no terminal ativo (mesmo caminho do ⌘V do desktop, com
+  /// suporte a imagem). No-op se a aba ativa não é terminal.
+  Future<void> pasteToActiveTerminal() async =>
+      _activeTerminal()?.pasteFromClipboard();
+
   /// Id da pane (folha) que contém a aba [tabId] na árvore ativa, ou `null`.
   String? _leafOf(String tabId) {
     final tree = _activeTree;

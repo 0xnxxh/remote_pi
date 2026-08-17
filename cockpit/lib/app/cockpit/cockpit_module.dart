@@ -281,6 +281,16 @@ Future<Module> buildCockpitModule() async {
             ..addChangeNotifier<RemoteWorkspaceController>(
               RemoteWorkspaceController.new,
             )
+            // O singleton dos hosts também precisa estar VISÍVEL ao `watch` da
+            // árvore desta rota (a faixa de host desconectado o observa). Como
+            // em settings_module: `addListenable` com dispose **no-op**, porque
+            // o dono do ciclo de vida é o bind lazySingleton acima —
+            // `addChangeNotifier` o destruiria ao sair da rota.
+            ..addListenable<RemoteHostsController>(
+              () => inject<RemoteHostsController>(),
+              (vm) => vm,
+              (_) {},
+            )
             ..addChangeNotifier<CockpitViewModel>(CockpitViewModel.new)
             ..addChangeNotifier<SetupViewModel>(SetupViewModel.new)
             ..addChangeNotifier<TasksViewModel>(TasksViewModel.new)

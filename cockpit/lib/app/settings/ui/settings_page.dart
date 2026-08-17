@@ -192,7 +192,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   )
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [nav, Expanded(child: panel)],
+                    children: [
+                      nav,
+                      Expanded(child: panel),
+                    ],
                   ),
           ),
         ],
@@ -2045,6 +2048,16 @@ class _RemoteHostsPanel extends StatelessWidget {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Host fora do ar: atalho pra tentar já. O retry
+                            // automático segue rodando em paralelo (backoff até
+                            // 30s); este botão só antecipa a próxima tentativa.
+                            if (controller.isDisconnected(h.id)) ...[
+                              GhostButton(
+                                onPressed: () => controller.reconnect(h.id),
+                                child: Text(tr.reconnect),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
                             GhostButton(
                               onPressed: () => _edit(context, controller, h),
                               child: Text(tr.edit),
@@ -2075,8 +2088,11 @@ class _RemoteHostsPanel extends StatelessWidget {
       RemoteHostPhase.connected => tr.statusConnected,
       RemoteHostPhase.openingTunnel ||
       RemoteHostPhase.installingServer ||
-      RemoteHostPhase.connecting ||
-      RemoteHostPhase.reconnecting => tr.statusConnecting,
+      RemoteHostPhase.connecting => tr.statusConnecting,
+      // Reconectando tem rótulo PRÓPRIO: dizer "conectando" aqui escondia a
+      // diferença entre uma abertura em curso e um host que caiu e está no
+      // ciclo de retry — os dois pareciam a mesma coisa presa para sempre.
+      RemoteHostPhase.reconnecting => tr.statusReconnecting,
       RemoteHostPhase.failed => tr.statusOffline,
       RemoteHostPhase.idle => tr.statusIdle,
     };
@@ -2325,10 +2341,7 @@ class _Row extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 16),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 16), trailing!],
         ],
       ),
     );

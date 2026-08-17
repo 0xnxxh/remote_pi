@@ -54,11 +54,20 @@ class SshTunnel {
       // exec rápido antes de abrir o túnel.
       var resolvedRemote = remoteSocketPath;
       if (remoteSocketPath.contains(r'$HOME')) {
-        final result = await Process.run('ssh', [
-          ...authOpts,
-          target,
-          r'printf %s "$HOME"',
-        ], environment: askpass?.env);
+        // `ConnectTimeout` limita o connect TCP, mas não um handshake/auth que
+        // trava depois de conectado — daí o teto explícito também aqui. Este
+        // exec roda ANTES do laço com deadline de [open]; sem teto, ele é o
+        // ponto onde a abertura fica pendurada indefinidamente.
+        final result =
+            await Process.run('ssh', [
+              ...authOpts,
+              target,
+              r'printf %s "$HOME"',
+            ], environment: askpass?.env).timeout(
+              timeout,
+              onTimeout: () =>
+                  throw SshTunnelException('timeout resolving remote home'),
+            );
         if (result.exitCode != 0) {
           throw SshTunnelException((result.stderr as String).trim());
         }
@@ -79,31 +88,31 @@ class SshTunnel {
         target,
       ], environment: askpass?.env);
 
-    final stderrBuffer = StringBuffer();
-    process.stderr.transform(utf8.decoder).listen(stderrBuffer.write);
-    unawaited(process.stdout.drain<void>());
+      final stderrBuffer = StringBuffer();
+      process.stderr.transform(utf8.decoder).listen(stderrBuffer.write);
+      unawaited(process.stdout.drain<void>());
 
-    final tunnel = SshTunnel._(process, localPath, target);
-    unawaited(
-      process.exitCode.then((_) {
-        if (!tunnel._closed.isCompleted) tunnel._closed.complete();
-      }),
-    );
+      final tunnel = SshTunnel._(process, localPath, target);
+      unawaited(
+        process.exitCode.then((_) {
+          if (!tunnel._closed.isCompleted) tunnel._closed.complete();
+        }),
+      );
 
-    // Pronto = socket local existe E o ssh não morreu. Não dá pra "testar"
-    // conectando aqui: o forward UDS só valida o lado remoto na 1ª conexão
-    // de verdade, então erros de destino aparecem na conexão do protocolo.
-    final deadline = DateTime.now().add(timeout);
-    while (!File(localPath).existsSync()) {
-      if (tunnel._closed.isCompleted) {
-        throw SshTunnelException(stderrBuffer.toString().trim());
-      }
-      if (DateTime.now().isAfter(deadline)) {
-        process.kill();
-        throw SshTunnelException(
-          'timeout waiting for tunnel; ${stderrBuffer.toString().trim()}',
-        );
-      }
+      // Pronto = socket local existe E o ssh não morreu. Não dá pra "testar"
+      // conectando aqui: o forward UDS só valida o lado remoto na 1ª conexão
+      // de verdade, então erros de destino aparecem na conexão do protocolo.
+      final deadline = DateTime.now().add(timeout);
+      while (!File(localPath).existsSync()) {
+        if (tunnel._closed.isCompleted) {
+          throw SshTunnelException(stderrBuffer.toString().trim());
+        }
+        if (DateTime.now().isAfter(deadline)) {
+          process.kill();
+          throw SshTunnelException(
+            'timeout waiting for tunnel; ${stderrBuffer.toString().trim()}',
+          );
+        }
         await Future<void>.delayed(const Duration(milliseconds: 50));
       }
       return tunnel;
@@ -114,15 +123,31 @@ class SshTunnel {
     }
   }
 
-  /// Opções de auth comuns aos execs/forward: porta custom + BatchMode (chave)
-  /// ou aceite de host key novo (senha, que chega via SSH_ASKPASS).
+  /// Teto do connect TCP de QUALQUER invocação do ssh daqui.
+  ///
+  /// Sem isto, um host desligado cujo pacote é DESCARTADO (em vez de recusado)
+  /// deixa o `ssh` pendurado sem limite prático — e o `Process.run` que resolve
+  /// a `$HOME` remota, por acontecer ANTES do laço com deadline lá em [open],
+  /// travava a abertura para sempre: a UI ficava eternamente em "conectando",
+  /// sem nunca falhar nem entrar no ciclo de retry.
+  static const int _connectTimeoutSeconds = 10;
+
+  /// Opções de auth comuns aos execs/forward: porta custom + teto de connect +
+  /// BatchMode (chave) ou aceite de host key novo (senha, via SSH_ASKPASS).
   static List<String> _authOpts({
     required int port,
     required bool usingPassword,
   }) => [
     if (port != 22) ...['-p', '$port'],
-    if (usingPassword) ...['-o', 'StrictHostKeyChecking=accept-new']
-    else ...['-o', 'BatchMode=yes'],
+    '-o',
+    'ConnectTimeout=$_connectTimeoutSeconds',
+    if (usingPassword) ...[
+      '-o',
+      'StrictHostKeyChecking=accept-new',
+    ] else ...[
+      '-o',
+      'BatchMode=yes',
+    ],
   ];
 
   /// Executa um comando no host remoto pelo MESMO ssh do sistema (usado pelo

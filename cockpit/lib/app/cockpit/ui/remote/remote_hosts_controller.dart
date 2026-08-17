@@ -38,22 +38,49 @@ class RemoteHostsController extends ChangeNotifier {
   final _turnStatus = StreamController<RemoteTurnStatus>.broadcast();
   Stream<RemoteTurnStatus> get turnStatus => _turnStatus.stream;
 
-  RemoteHostConnector _connectorFor(RemoteHost host) => _connectors.putIfAbsent(
-    host.id,
-    () {
-      final connector = RemoteHostConnector(
-        host,
-        localServerBinaryResolver: _resolveLocalServerBinary,
-        // Senha (auth por senha) lida do Keychain sob demanda; null pra auth por
-        // chave. Fica fora do JSON de hosts (decisão A).
-        passwordResolver: host.auth == RemoteHostAuth.password
-            ? () => _passwords.read(host.id)
-            : null,
-      );
-      connector.turnStatus.listen(_turnStatus.add);
-      return connector;
-    },
-  );
+  RemoteHostConnector _connectorFor(
+    RemoteHost host,
+  ) => _connectors.putIfAbsent(host.id, () {
+    final connector = RemoteHostConnector(
+      host,
+      localServerBinaryResolver: _resolveLocalServerBinary,
+      // Senha (auth por senha) lida do Keychain sob demanda; null pra auth por
+      // chave. Fica fora do JSON de hosts (decisão A).
+      passwordResolver: host.auth == RemoteHostAuth.password
+          ? () => _passwords.read(host.id)
+          : null,
+    );
+    connector.turnStatus.listen(_turnStatus.add);
+    // Fases notificam AQUI (e não só em terminalGateway): o badge e o botão
+    // de reconectar precisam repintar mesmo em host sem aba de terminal
+    // aberta — por exemplo enquanto o retry automático roda em segundo plano.
+    connector.phases.listen((_) => notifyListeners());
+    return connector;
+  });
+
+  /// Reconecta um host AGORA, ignorando o backoff em curso (botão da UI).
+  ///
+  /// A reconexão também acontece sozinha (o connector insiste indefinidamente,
+  /// com intervalo crescente até 30s); isto é o atalho pra quando o usuário sabe
+  /// que a rede/VPN já voltou e não quer esperar o próximo tique.
+  Future<void> reconnect(String hostId) async {
+    final connector = _connectors[hostId];
+    if (connector == null) return;
+    await connector.reconnectNow();
+    notifyListeners();
+  }
+
+  /// O host NÃO está pronto para uso? Gate da faixa e do botão na UI.
+  ///
+  /// Cobre tudo que não é `connected` nem `idle`, e não só reconnecting/failed:
+  /// uma abertura que fica pendurada em `connecting` (host inalcançável cujo
+  /// socket não recusa, servidor remoto que não responde) é indistinguível de
+  /// queda para quem está olhando a tela, e era justamente o estado que ficava
+  /// sem aviso nenhum.
+  bool isDisconnected(String hostId) => switch (phaseOf(hostId)) {
+    RemoteHostPhase.connected || RemoteHostPhase.idle => false,
+    _ => true,
+  };
 
   /// Fase de conexão atual de um host (pro badge do rail). `idle` se nunca
   /// conectou.
@@ -65,11 +92,10 @@ class RemoteHostsController extends ChangeNotifier {
 
   /// Gateway de terminal ligado ao [host] (via SSH). Reusa o connector do
   /// host; a UI é notificada das fases pra pintar loading/erro.
-  TerminalGateway terminalGateway(RemoteHost host) {
-    final connector = _connectorFor(host);
-    connector.phases.listen((_) => notifyListeners());
-    return RemoteHostTerminalGateway(connector);
-  }
+  TerminalGateway terminalGateway(RemoteHost host) =>
+      // A assinatura de `phases` vive no _connectorFor (uma por host). Assinar
+      // aqui somava um listener NUNCA cancelado a cada aba aberta.
+      RemoteHostTerminalGateway(_connectorFor(host));
 
   /// Serviço de arquivos do host (picker de pasta remota). Conecta se preciso.
   Future<RemoteFileService> fileServiceFor(RemoteHost host) =>
@@ -205,8 +231,9 @@ class RemoteHostsController extends ChangeNotifier {
       }
     }
     if (host == null) return;
-    final newName =
-        (name?.trim().isNotEmpty ?? false) ? name!.trim() : host.name;
+    final newName = (name?.trim().isNotEmpty ?? false)
+        ? name!.trim()
+        : host.name;
     final newTarget = (sshTarget?.trim().isNotEmpty ?? false)
         ? sshTarget!.trim()
         : host.sshTarget;

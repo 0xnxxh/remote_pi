@@ -25,6 +25,14 @@ sealed class CockpitTerminalController {
   void restore(String data);
   void paste(String text);
   List<String> plainLines();
+
+  /// Texto atualmente selecionado, ou vazio se não há seleção.
+  ///
+  /// Serve o botão de copiar da barra de teclas do mobile, que não tem como
+  /// alcançar a view. No xterm absorvido a seleção vive no controller da
+  /// **view** (`CockpitTerminal`), fora do alcance da sessão — lá devolve vazio.
+  String selectedText();
+
   void dispose();
 }
 
@@ -64,6 +72,12 @@ final class XtermTerminalController implements CockpitTerminalController {
     final lines = terminal.buffer.lines;
     return [for (var i = 0; i < lines.length; i++) lines[i].getText()];
   }
+
+  /// A seleção do xterm pertence ao controller da view (`CockpitTerminal`), que
+  /// a sessão não enxerga — o motor em si não guarda seleção. Copiar por aqui
+  /// só existe no Ghostty (o padrão dos buffers novos, inclusive no mobile).
+  @override
+  String selectedText() => '';
 
   @override
   void dispose() {}
@@ -224,6 +238,10 @@ final class GhosttyTerminalController implements CockpitTerminalController {
       formatter.dispose();
     }
   }
+
+  @override
+  String selectedText() =>
+      controller.hasSelection ? controller.selectedText() : '';
 
   @override
   void dispose() {

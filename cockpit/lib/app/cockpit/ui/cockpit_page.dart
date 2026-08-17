@@ -21,6 +21,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/tasks_viewmodel.dart';
 import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/remote_disconnected_banner.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/terminal_key_bar.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/widgets.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
@@ -591,6 +592,9 @@ class _CockpitPageState extends State<CockpitPage> {
                   // `!isPathless` desabilitava indevidamente o remoto (path='').
                   filesEnabled: shell.hasFileTree,
                 ),
+                // Host remoto fora do ar: faixa com o estado + botão de
+                // reconectar. Não ocupa espaço em workspace local.
+                const RemoteDisconnectedBanner(),
                 Expanded(
                   child: _PanelScaffold(
                     narrow: narrow,
@@ -637,7 +641,11 @@ class _CockpitPageState extends State<CockpitPage> {
                 if (isMobilePlatform &&
                     MediaQuery.viewInsetsOf(context).bottom > 0 &&
                     shell.terminalActive)
-                  TerminalKeyBar(onKeys: _vm.sendKeysToActiveTerminal),
+                  TerminalKeyBar(
+                    onKeys: _vm.sendKeysToActiveTerminal,
+                    onCopy: _vm.copyFromActiveTerminal,
+                    onPaste: _vm.pasteToActiveTerminal,
+                  ),
               ],
             ),
           ),

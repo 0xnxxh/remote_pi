@@ -1180,6 +1180,7 @@ class _Translations$settings$remoteHosts$es extends Translations$settings$remote
 	@override String get empty => 'Aún no hay hosts remotos.';
 	@override String get add => 'Añadir host';
 	@override String get edit => 'Editar';
+	@override String get reconnect => 'Reconectar';
 	@override String get remove => 'Eliminar';
 	@override String get removeTitle => 'Eliminar host';
 	@override String removeMessage({required Object name}) => '¿Eliminar "${name}" y todos sus workspaces? No se borra nada en el host.';
@@ -1190,6 +1191,7 @@ class _Translations$settings$remoteHosts$es extends Translations$settings$remote
 	@override String get deviceKeyCopied => 'Clave pública copiada';
 	@override String get statusConnected => 'Conectado';
 	@override String get statusConnecting => 'Conectando…';
+	@override String get statusReconnecting => 'Reconectando…';
 	@override String get statusOffline => 'Sin conexión';
 	@override String get statusIdle => 'No conectado';
 	@override String get helpTitle => 'Cómo funciona';
@@ -2521,6 +2523,7 @@ extension on TranslationsEs {
 			'settings.remoteHosts.empty' => 'Aún no hay hosts remotos.',
 			'settings.remoteHosts.add' => 'Añadir host',
 			'settings.remoteHosts.edit' => 'Editar',
+			'settings.remoteHosts.reconnect' => 'Reconectar',
 			'settings.remoteHosts.remove' => 'Eliminar',
 			'settings.remoteHosts.removeTitle' => 'Eliminar host',
 			'settings.remoteHosts.removeMessage' => ({required Object name}) => '¿Eliminar "${name}" y todos sus workspaces? No se borra nada en el host.',
@@ -2531,6 +2534,7 @@ extension on TranslationsEs {
 			'settings.remoteHosts.deviceKeyCopied' => 'Clave pública copiada',
 			'settings.remoteHosts.statusConnected' => 'Conectado',
 			'settings.remoteHosts.statusConnecting' => 'Conectando…',
+			'settings.remoteHosts.statusReconnecting' => 'Reconectando…',
 			'settings.remoteHosts.statusOffline' => 'Sin conexión',
 			'settings.remoteHosts.statusIdle' => 'No conectado',
 			'settings.remoteHosts.helpTitle' => 'Cómo funciona',

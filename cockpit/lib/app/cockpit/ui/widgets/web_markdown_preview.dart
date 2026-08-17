@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/ui/widgets/unzoomed_native_view.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -152,31 +153,36 @@ class _WebMarkdownPreviewState extends State<WebMarkdownPreview> {
     if (html == null) {
       return ColoredBox(color: context.colors.panel);
     }
-    return InAppWebView(
-      initialData: InAppWebViewInitialData(data: html),
-      initialSettings: InAppWebViewSettings(
-        javaScriptEnabled: true,
-        resourceCustomSchemes: ['ckp-res'],
-        isInspectable: false,
-        transparentBackground: true,
+    // Fora do zoom do app (platform view recebe mouse direto do sistema): sem
+    // isso a seleção de texto cai deslocada. Ver [UnzoomedNativeView].
+    return UnzoomedNativeView(
+      builder: (context, contentZoom) => InAppWebView(
+        initialData: InAppWebViewInitialData(data: html),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          resourceCustomSchemes: ['ckp-res'],
+          isInspectable: false,
+          transparentBackground: true,
+          pageZoom: contentZoom,
+        ),
+        onWebViewCreated: (web) => _web = web,
+        onLoadStop: (web, _) {
+          _loaded = true;
+          _push();
+        },
+        onLoadResourceWithCustomScheme: _serveLocal,
+        // Link clicado abre no browser do SO — o preview não navega pra fora.
+        shouldOverrideUrlLoading: (web, action) async {
+          final url = action.request.url;
+          if (url == null || url.scheme == 'about' || url.scheme == 'data') {
+            return NavigationActionPolicy.ALLOW;
+          }
+          if (url.scheme == 'http' || url.scheme == 'https') {
+            await launcher.launchUrl(url);
+          }
+          return NavigationActionPolicy.CANCEL;
+        },
       ),
-      onWebViewCreated: (web) => _web = web,
-      onLoadStop: (web, _) {
-        _loaded = true;
-        _push();
-      },
-      onLoadResourceWithCustomScheme: _serveLocal,
-      // Link clicado abre no browser do SO — o preview não navega pra fora.
-      shouldOverrideUrlLoading: (web, action) async {
-        final url = action.request.url;
-        if (url == null || url.scheme == 'about' || url.scheme == 'data') {
-          return NavigationActionPolicy.ALLOW;
-        }
-        if (url.scheme == 'http' || url.scheme == 'https') {
-          await launcher.launchUrl(url);
-        }
-        return NavigationActionPolicy.CANCEL;
-      },
     );
   }
 }
@@ -197,16 +203,20 @@ class WebHtmlPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InAppWebView(
-      key: ValueKey('html:$path'),
-      initialUrlRequest: URLRequest(url: WebUri.uri(Uri.file(path))),
-      initialSettings: InAppWebViewSettings(
-        javaScriptEnabled: false,
-        isInspectable: false,
-        // Leitura restrita à raiz do workspace (loadFileURL:allowingReadAccessTo:).
-        allowingReadAccessTo: workspaceRoot.isEmpty
-            ? null
-            : WebUri.uri(Uri.directory(workspaceRoot)),
+    // Mesmo motivo do preview de markdown: platform view fora do zoom do app.
+    return UnzoomedNativeView(
+      builder: (context, contentZoom) => InAppWebView(
+        key: ValueKey('html:$path'),
+        initialUrlRequest: URLRequest(url: WebUri.uri(Uri.file(path))),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: false,
+          isInspectable: false,
+          pageZoom: contentZoom,
+          // Leitura restrita à raiz do workspace (loadFileURL:allowingReadAccessTo:).
+          allowingReadAccessTo: workspaceRoot.isEmpty
+              ? null
+              : WebUri.uri(Uri.directory(workspaceRoot)),
+        ),
       ),
     );
   }

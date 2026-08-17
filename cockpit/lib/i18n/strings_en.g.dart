@@ -2346,6 +2346,9 @@ class Translations$settings$remoteHosts$en {
 	/// en: 'Edit'
 	String get edit => 'Edit';
 
+	/// en: 'Reconnect'
+	String get reconnect => 'Reconnect';
+
 	/// en: 'Remove'
 	String get remove => 'Remove';
 
@@ -2375,6 +2378,9 @@ class Translations$settings$remoteHosts$en {
 
 	/// en: 'Connecting…'
 	String get statusConnecting => 'Connecting…';
+
+	/// en: 'Reconnecting…'
+	String get statusReconnecting => 'Reconnecting…';
 
 	/// en: 'Offline'
 	String get statusOffline => 'Offline';
@@ -4331,6 +4337,7 @@ extension on Translations {
 			'settings.remoteHosts.empty' => 'No remote hosts yet.',
 			'settings.remoteHosts.add' => 'Add host',
 			'settings.remoteHosts.edit' => 'Edit',
+			'settings.remoteHosts.reconnect' => 'Reconnect',
 			'settings.remoteHosts.remove' => 'Remove',
 			'settings.remoteHosts.removeTitle' => 'Remove host',
 			'settings.remoteHosts.removeMessage' => ({required Object name}) => 'Remove "${name}" and all its workspaces? Nothing is deleted on the host itself.',
@@ -4341,6 +4348,7 @@ extension on Translations {
 			'settings.remoteHosts.deviceKeyCopied' => 'Public key copied',
 			'settings.remoteHosts.statusConnected' => 'Connected',
 			'settings.remoteHosts.statusConnecting' => 'Connecting…',
+			'settings.remoteHosts.statusReconnecting' => 'Reconnecting…',
 			'settings.remoteHosts.statusOffline' => 'Offline',
 			'settings.remoteHosts.statusIdle' => 'Not connected',
 			'settings.remoteHosts.helpTitle' => 'How it works',

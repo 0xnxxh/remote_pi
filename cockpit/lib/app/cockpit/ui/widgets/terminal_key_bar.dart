@@ -9,10 +9,22 @@ import 'package:flutter/widgets.dart';
 /// setas, Ctrl+C, F1–F12). Todas numa linha ROLÁVEL (não cabem numa tela
 /// estreita). À esquerda, fixo, o botão de baixar o teclado.
 class TerminalKeyBar extends StatelessWidget {
-  const TerminalKeyBar({super.key, required this.onKeys});
+  const TerminalKeyBar({
+    super.key,
+    required this.onKeys,
+    required this.onCopy,
+    required this.onPaste,
+  });
 
   /// Envia os bytes da tecla ao terminal ativo (a VM roteia pra aba focada).
   final void Function(List<int> bytes) onKeys;
+
+  /// Copia a seleção do terminal ativo. No mobile não há atalho de teclado nem
+  /// menu de contexto, então este botão é o único caminho.
+  final VoidCallback onCopy;
+
+  /// Cola o clipboard no terminal ativo (mesmo caminho do ⌘V do desktop).
+  final VoidCallback onPaste;
 
   // Sequências VT (xterm). Setas/F1–F4 em modo aplicação (ESC O x); F5+ em
   // ESC [ n ~ — cobre bash/vim/claude sem depender do modo do cursor.
@@ -79,6 +91,33 @@ class TerminalKeyBar extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 children: [
+                  // Copiar/colar vêm antes do ESC: no mobile são a operação
+                  // mais pedida e a que o teclado do SO não resolve dentro do
+                  // terminal. Ícones (e não rótulo) pra ocupar o mesmo espaço
+                  // de uma tecla.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 3,
+                      vertical: 6,
+                    ),
+                    child: _iconCap(
+                      context,
+                      Icons.content_copy_outlined,
+                      onCopy,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 3,
+                      vertical: 6,
+                    ),
+                    child: _iconCap(
+                      context,
+                      Icons.content_paste_outlined,
+                      onPaste,
+                    ),
+                  ),
+                  Container(width: 1, height: 22, color: colors.border),
                   for (final (label, bytes) in _keys)
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -92,6 +131,23 @@ class TerminalKeyBar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Tecla de ícone (copiar/colar) — mesma caixa e mesmo alvo de toque da tecla
+  /// de texto, só troca o miolo.
+  Widget _iconCap(BuildContext context, IconData icon, VoidCallback onTap) {
+    final colors = context.colors;
+    return HoverTap(
+      onTap: onTap,
+      color: colors.panel3,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 40),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Icon(icon, size: 17, color: colors.text),
       ),
     );
   }

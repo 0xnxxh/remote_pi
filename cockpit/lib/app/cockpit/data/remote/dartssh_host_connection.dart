@@ -79,8 +79,7 @@ class DartSshHostConnection {
   static const _hostKeyPrefix = 'cockpit.ssh.hostkey.';
   static const _connectTimeout = Duration(seconds: 15);
 
-  Future<void> get done =>
-      _client?.done ?? Future<void>.value();
+  Future<void> get done => _client?.done ?? Future<void>.value();
 
   /// Abre (autentica) a conexão SSH. Idempotente enquanto viva.
   Future<void> connect() async {
@@ -117,7 +116,14 @@ class DartSshHostConnection {
           return true;
         },
       );
-      await client.authenticated;
+      // Teto no handshake/auth: o timeout do [SSHSocket.connect] cobre só o
+      // connect TCP. Um host que aceita a conexão e não completa a autenticação
+      // (rede meia-boca, servidor sobrecarregado) deixaria isto pendurado sem
+      // limite, e a UI eternamente em "conectando" — sem falhar nem reagendar.
+      await client.authenticated.timeout(
+        _connectTimeout,
+        onTimeout: () => throw const DartSshException('ssh_auth_timeout'),
+      );
     } on DartSshException {
       rethrow;
     } catch (e) {
@@ -131,7 +137,12 @@ class DartSshHostConnection {
   Future<SSHForwardChannel> forwardUnix(String remoteSocketPath) async {
     final client = _client;
     if (client == null) throw const DartSshException('ssh_not_connected');
-    return client.forwardLocalUnix(remoteSocketPath);
+    return client
+        .forwardLocalUnix(remoteSocketPath)
+        .timeout(
+          _connectTimeout,
+          onTimeout: () => throw const DartSshException('ssh_forward_timeout'),
+        );
   }
 
   /// Executa um comando no host e devolve o stdout (trim). Usado só pra
@@ -139,7 +150,14 @@ class DartSshHostConnection {
   Future<String> run(String command) async {
     final client = _client;
     if (client == null) throw const DartSshException('ssh_not_connected');
-    final out = await client.run(command);
+    // Mesmo motivo do handshake: um exec que não volta pendurava a abertura
+    // inteira (este `run` resolve a `$HOME` remota antes do forward).
+    final out = await client
+        .run(command)
+        .timeout(
+          _connectTimeout,
+          onTimeout: () => throw const DartSshException('ssh_exec_timeout'),
+        );
     return utf8.decode(out).trim();
   }
 

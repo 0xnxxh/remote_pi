@@ -36,6 +36,22 @@ class RemoteHostTerminalGateway implements TerminalGateway {
   bool _ready = false;
   bool _killed = false;
 
+  /// Conexão caiu com a sessão VIVA no host: a aba congela (mantém buffer e
+  /// [_bytesDelivered]) e espera o connector reconectar para re-anexar. É o que
+  /// diferencia queda de transporte do fim real do processo — só o segundo
+  /// fecha a aba.
+  bool _detached = false;
+
+  /// Último tamanho pedido pela view. Reenviado no re-attach: a aba pode ter
+  /// sido redimensionada enquanto esteve desanexada, e o PTY remoto não soube.
+  int _rows = 25;
+  int _columns = 80;
+
+  StreamSubscription<RemoteTerminalService>? _reconnectSub;
+
+  /// A sessão terminou de fato (processo saiu)? Congelar aqui seria errado.
+  bool _exited = false;
+
   @override
   Stream<List<int>> get output => _output.stream;
 
@@ -57,7 +73,76 @@ class RemoteHostTerminalGateway implements TerminalGateway {
     int columns = 80,
     Map<String, String> extraEnv = const <String, String>{},
   }) {
+    _rows = rows;
+    _columns = columns;
+    // Re-anexa quando o connector refaz a conexão (o serviço é outro objeto:
+    // guardar o `_service` antigo falaria com a conexão morta).
+    _reconnectSub = _connector.reconnected.listen(_onReconnected);
     unawaited(_init(workingDirectory, profile, rows, columns, extraEnv));
+  }
+
+  /// Reassina o stream da sessão do ponto exato onde parou.
+  ///
+  /// O protocolo endereça a saída por offset absoluto desde o spawn, então
+  /// [_bytesDelivered] é o que já entregamos à view: o host manda só o que
+  /// passou durante a queda, sem buraco nem repetição.
+  Future<void> _onReconnected(RemoteTerminalService service) async {
+    // NÃO exige `_detached`: nem toda queda é percebida por aqui (um transporte
+    // pode morrer sem o stream do attach emitir done/error). Nesse caso o
+    // gateway seguia "pronto", mas escrevendo num serviço morto — o teclado
+    // ficava mudo. Reconectou, re-anexa e troca o serviço, tendo percebido ou
+    // não a queda.
+    if (_killed || _exited) return;
+    final id = _sessionId;
+    if (id == null) return;
+    _service = service;
+    try {
+      _listen(service.attach(id, fromOffset: _bytesDelivered));
+      // Destrava ANTES do resize: se o resize falhasse, a aba ficava aceitando
+      // o attach novo mas com a digitação bloqueada para sempre. O tamanho é
+      // ajuste fino; o teclado é o que o usuário sente.
+      _detached = false;
+      _flushQueue();
+      // O PTY remoto não soube dos resizes ocorridos enquanto estivemos fora.
+      await service.resize(id, _rows, _columns);
+    } on TerminalException catch (e) {
+      // Servidor reiniciou e não conhece mais a sessão: não há o que retomar.
+      if (e.kind == TerminalErrorKind.sessionNotFound) {
+        _closeOutput();
+      }
+      // Outros erros: segue congelado, o connector tenta de novo.
+    }
+  }
+
+  /// Assina o stream de eventos da sessão (usado na abertura e no re-attach).
+  void _listen(Stream<PtyEvent> events) {
+    _attachment?.cancel();
+    _attachment = events.listen(
+      (event) {
+        switch (event) {
+          case PtyOutputEvent(:final chunk):
+            _bytesDelivered += chunk.bytes.length;
+            _output.add(chunk.bytes);
+          case PtyExitEvent():
+            // Processo terminou de verdade: a aba encerra (não é queda).
+            _exited = true;
+            _closeOutput();
+        }
+      },
+      // Fim de stream sem PtyExitEvent = transporte caiu com a sessão viva no
+      // host. Congela e espera o reconnect em vez de matar a aba.
+      onError: (Object _) => _freezeOrClose(),
+      onDone: _freezeOrClose,
+    );
+  }
+
+  void _freezeOrClose() {
+    if (_killed || _exited) {
+      _closeOutput();
+      return;
+    }
+    _detached = true;
+    _ready = false;
   }
 
   Future<void> _init(
@@ -102,21 +187,7 @@ class RemoteHostTerminalGateway implements TerminalGateway {
       }
       _service = service;
       _sessionId = info.id;
-      _attachment = service
-          .attach(info.id)
-          .listen(
-            (event) {
-              switch (event) {
-                case PtyOutputEvent(:final chunk):
-                  _bytesDelivered += chunk.bytes.length;
-                  _output.add(chunk.bytes);
-                case PtyExitEvent():
-                  _closeOutput();
-              }
-            },
-            onError: (Object _) => _closeOutput(),
-            onDone: _closeOutput,
-          );
+      _listen(service.attach(info.id));
       _flushQueue();
     } on TerminalException {
       _closeOutput();
@@ -133,6 +204,11 @@ class RemoteHostTerminalGateway implements TerminalGateway {
 
   void _run(void Function() op) {
     if (_killed) return;
+    // Congelado: DESCARTA em vez de enfileirar. A fila existe pra abertura
+    // (ops que chegam antes do PTY existir); reusá-la aqui despejaria no shell,
+    // de uma vez e às cegas, tudo que foi digitado durante a queda — num shell
+    // que pode ter mudado de estado nesse meio tempo.
+    if (_detached) return;
     if (_ready) {
       op();
     } else {
@@ -154,11 +230,17 @@ class RemoteHostTerminalGateway implements TerminalGateway {
   });
 
   @override
-  void resize(int rows, int columns) => _run(() {
-    final id = _sessionId;
-    if (id == null) return;
-    unawaited(_service?.resize(id, rows, columns));
-  });
+  void resize(int rows, int columns) {
+    // Guardado FORA do _run: enquanto congelado o `op` é descartado, mas o
+    // tamanho novo precisa sobreviver pra ser reenviado no re-attach.
+    _rows = rows;
+    _columns = columns;
+    _run(() {
+      final id = _sessionId;
+      if (id == null) return;
+      unawaited(_service?.resize(id, rows, columns));
+    });
+  }
 
   @override
   void acknowledgeOutput() {
@@ -173,6 +255,7 @@ class RemoteHostTerminalGateway implements TerminalGateway {
   Future<void> kill() async {
     _killed = true;
     _queued.clear();
+    await _reconnectSub?.cancel();
     await _attachment?.cancel();
     final id = _sessionId;
     if (id != null) {

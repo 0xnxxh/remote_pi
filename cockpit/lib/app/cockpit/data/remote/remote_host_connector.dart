@@ -104,7 +104,26 @@ class RemoteHostConnector {
     if (connection != null && connection.isOpen) {
       return Future.value(_service!);
     }
-    return _inflight ??= _open().whenComplete(() => _inflight = null);
+    return _inflight ??= _open()
+        .then((service) {
+          // TODA reabertura bem-sucedida anuncia o serviço novo — não só a que
+          // vem do retry/botão. Os gateways de terminal dependem deste evento
+          // pra trocar o serviço e re-anexar; quando ele só saía pelo caminho
+          // do retry, uma reconexão disparada por qualquer outra ação deixava as
+          // abas presas ao serviço morto (teclado mudo).
+          _retryStep = 0;
+          if (!_disposed) _reconnected.add(service);
+          return service;
+        })
+        .catchError((Object e) {
+          // Falha de ABERTURA (host offline, SSH recusado, server ausente)
+          // também entra no ciclo de retry. Sem isto, só a queda de um túnel já
+          // estabelecido reagendava — e o caso mais comum, tentar abrir um host
+          // que está fora do ar, ficava parado em `failed` para sempre.
+          _scheduleRetry();
+          throw e;
+        })
+        .whenComplete(() => _inflight = null);
   }
 
   /// Serviço de arquivos do host (mesma conexão dos terminais). Conecta se
@@ -210,7 +229,7 @@ class RemoteHostConnector {
       );
       _connection = connection;
       _service = RemoteTerminalService(connection);
-    _bindTurnStatus();
+      _bindTurnStatus();
       _setPhase(RemoteHostPhase.connected);
       return _service!;
     } on TerminalException catch (e) {
@@ -330,13 +349,137 @@ class RemoteHostConnector {
     }
   }
 
+  // --- Reconexão automática -------------------------------------------------
+  //
+  // Backoff crescente que NUNCA desiste (decisão do usuário): 1s, 2s, 4s, 8s,
+  // 15s e daí 30s fixo. O teto no intervalo (e não no número de tentativas) é
+  // o que mantém "insiste pra sempre" sem martelar a rede — num iPad, um socket
+  // a cada 30s é desprezível perto de tentar a cada segundo.
+  static const List<Duration> _backoff = <Duration>[
+    Duration(seconds: 1),
+    Duration(seconds: 2),
+    Duration(seconds: 4),
+    Duration(seconds: 8),
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+  ];
+
+  Timer? _retryTimer;
+  int _retryStep = 0;
+  bool _disposed = false;
+
+  /// Emite quando a conexão é REFEITA — os gateways de terminal usam pra
+  /// re-anexar suas sessões (o serviço é outro objeto após reabrir).
+  final _reconnected = StreamController<RemoteTerminalService>.broadcast();
+  Stream<RemoteTerminalService> get reconnected => _reconnected.stream;
+
   void _onTunnelClosed() {
+    if (_disposed || _aborting) return;
     if (phase == RemoteHostPhase.connected) {
       _setPhase(RemoteHostPhase.reconnecting);
     }
+    _scheduleRetry();
   }
 
+  void _scheduleRetry() {
+    if (_disposed || _retryTimer != null) return;
+    final delay = _backoff[_retryStep.clamp(0, _backoff.length - 1)];
+    if (_retryStep < _backoff.length - 1) _retryStep++;
+    _retryTimer = Timer(delay, () {
+      _retryTimer = null;
+      _attemptReconnect();
+    });
+  }
+
+  Future<void> _attemptReconnect() async {
+    if (_disposed) return;
+    final connection = _connection;
+    if (connection != null && connection.isOpen) return;
+    try {
+      // `ensure()` dedup pelo `_inflight`, então tentativa concorrente com uma
+      // ação do usuário não abre dois túneis. Quem anuncia o serviço novo (e
+      // zera o backoff) é o próprio `ensure`, para valer em qualquer caminho.
+      await ensure();
+    } on Object {
+      // Falhou de novo: reagenda. A fase já foi pra failed dentro de _open().
+      if (!_disposed) {
+        _setPhase(RemoteHostPhase.reconnecting);
+        _scheduleRetry();
+      }
+    }
+  }
+
+  /// Reconecta AGORA (botão da UI): descarta o backoff acumulado, **aborta a
+  /// tentativa em curso** e abre uma nova. Sem efeito se a conexão está viva.
+  ///
+  /// O abort é o que faz o botão ter efeito de verdade. Sem ele, `ensure()`
+  /// devolvia o `_inflight` — e com o host fora do ar há quase sempre uma
+  /// abertura em voo (o retry automático dispara a cada 1-30s e cada tentativa
+  /// leva até 15s pra estourar), então o clique só pegava carona numa tentativa
+  /// já pendurada: da UI, parecia que o botão não fazia nada.
+  Future<void> reconnectNow() async {
+    if (_disposed) return;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryStep = 0;
+    // Feedback imediato: o abort abaixo pode levar um instante (fechar socket,
+    // esperar a tentativa pendurada morrer) e o clique não pode parecer inerte.
+    _setPhase(RemoteHostPhase.openingTunnel);
+    await _abortCurrentAttempt();
+    if (_disposed) return;
+    await _attemptReconnect();
+  }
+
+  /// Derruba conexão/transporte/tentativa atuais para que a próxima abertura
+  /// comece do zero. Fechar o transporte faz a tentativa pendurada estourar na
+  /// hora, em vez de esperar o timeout.
+  Future<void> _abortCurrentAttempt() async {
+    final inflight = _inflight;
+    final connection = _connection;
+    final tunnel = _tunnel;
+    final dartConn = _dartConn;
+    _connection = null;
+    _service = null;
+    _tunnel = null;
+    _dartConn = null;
+    // O fechamento é NOSSO, deliberado: o `closed`/`done` do transporte vai
+    // disparar [_onTunnelClosed], que agendaria um retry concorrente com o que
+    // este método está prestes a fazer.
+    _aborting = true;
+    try {
+      await connection?.close();
+    } on Object {
+      // já morto.
+    }
+    try {
+      await tunnel?.close();
+    } on Object {
+      // já morto.
+    }
+    try {
+      await dartConn?.close();
+    } on Object {
+      // já morto.
+    }
+    if (inflight != null) {
+      try {
+        await inflight;
+      } on Object {
+        // a tentativa abortada falha — é o esperado.
+      }
+    }
+    _aborting = false;
+  }
+
+  /// Fechamento provocado por nós ([_abortCurrentAttempt]) não deve agendar
+  /// retry: quem abortou já vai reabrir.
+  bool _aborting = false;
+
   Future<void> dispose() async {
+    _disposed = true;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    await _reconnected.close();
     await _turnSub?.cancel();
     await _turnStatus.close();
     await _connection?.close();

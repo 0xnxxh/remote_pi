@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/app/core/ui/widgets/unzoomed_native_view.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -23,6 +26,20 @@ class BrowserPane extends StatefulWidget {
 
 /// Página inicial das abas de navegador novas (sem URL/seed).
 const String _kHomeUrl = 'https://google.com';
+
+/// Token apendado ao User-Agent **só onde o motor é WebKit** (macOS/iOS).
+///
+/// Sem ele o UA de um `WKWebView` embutido não traz `Version/<x> Safari/...`,
+/// e sites que fazem sniffing (Google à frente) classificam a aba como
+/// navegador desconhecido e servem a interface legada. Com o token, o UA fica
+/// indistinguível do Safari — que é literalmente o mesmo motor rodando aqui.
+///
+/// No Windows (WebView2) e no Android (WebView do sistema) o motor é Chromium:
+/// o UA de lá já termina em `Safari/537.36` e os sites servem a versão moderna.
+/// Apendar um token de Safari ali produziria um UA híbrido incoerente — por
+/// isso [_safariUaToken] devolve `null` fora do WebKit.
+String? get _safariUaToken =>
+    Platform.isMacOS || Platform.isIOS ? 'Version/26.6 Safari/605.1.15' : null;
 
 class _BrowserPaneState extends State<BrowserPane> {
   InAppWebViewController? _web;
@@ -192,25 +209,33 @@ class _BrowserPaneState extends State<BrowserPane> {
             ),
           ),
           Expanded(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(initial)),
-              initialSettings: InAppWebViewSettings(
-                // Navegador de verdade: JS ligado. O preview de markdown (CSP
-                // restritiva) usa outro widget com settings próprios.
-                javaScriptEnabled: true,
-                isInspectable: false,
+            // Fora do zoom do app: platform view recebe evento de mouse direto
+            // do sistema e o clique cairia deslocado. Ver [UnzoomedNativeView].
+            child: UnzoomedNativeView(
+              builder: (context, contentZoom) => InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(initial)),
+                initialSettings: InAppWebViewSettings(
+                  // Navegador de verdade: JS ligado. O preview de markdown (CSP
+                  // restritiva) usa outro widget com settings próprios.
+                  javaScriptEnabled: true,
+                  isInspectable: false,
+                  applicationNameForUserAgent: _safariUaToken,
+                  // O zoom do app volta por dentro do WebKit (a view em si roda
+                  // em escala 1) — mesmo tamanho aparente, hit-test alinhado.
+                  pageZoom: contentZoom,
+                ),
+                onWebViewCreated: (web) {
+                  _web = web;
+                  final pending = _pendingUrl;
+                  _pendingUrl = null;
+                  if (pending != null && pending != initial) {
+                    web.loadUrl(urlRequest: URLRequest(url: WebUri(pending)));
+                  }
+                },
+                onLoadStop: _onLoadStop,
+                onTitleChanged: (web, title) =>
+                    widget.session.reportNavigation(title: title),
               ),
-              onWebViewCreated: (web) {
-                _web = web;
-                final pending = _pendingUrl;
-                _pendingUrl = null;
-                if (pending != null && pending != initial) {
-                  web.loadUrl(urlRequest: URLRequest(url: WebUri(pending)));
-                }
-              },
-              onLoadStop: _onLoadStop,
-              onTitleChanged: (web, title) =>
-                  widget.session.reportNavigation(title: title),
             ),
           ),
         ],
