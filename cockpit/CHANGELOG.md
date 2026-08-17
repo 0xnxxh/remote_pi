@@ -24,7 +24,7 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
-## [1.27.0] - 2026-08-17
+## [1.27.1] - 2026-08-17
 
 A built-in browser, git change marks in the editor, and a fix for agents
 stalling while the window sat in the background.
