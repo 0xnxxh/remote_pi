@@ -78,9 +78,12 @@ class SidecarTerminalConnector implements TurnStatusSource {
         return null;
       }
       // Bundle `bin/` + `lib/`: as dylibs (anaki via rpath, pty via env) ficam
-      // em ../lib relativo ao exe (@executable_path/../lib).
+      // em ../lib relativo ao exe (@executable_path/../lib). O nome da lib do
+      // PTY muda por plataforma; se ela não estiver em ../lib, o próprio
+      // servidor ainda a procura ao lado do seu executável (ver openPtyDylib),
+      // que é onde os bundles de Windows/Linux a colocam.
       final libDir = '${File(binary).parent.parent.path}/lib';
-      final ptyDylib = File('$libDir/libcockpit_pty.dylib');
+      final ptyDylib = File('$libDir/${_ptyLibName()}');
       _child = await Process.start(
         binary,
         ['--socket', socketPath, '--exit-on-idle', '15'],
@@ -136,23 +139,40 @@ class SidecarTerminalConnector implements TurnStatusSource {
   }
 
   /// Resolve o binário do servidor no bundle `bin/`+`lib/` (dart build cli).
-  /// Ordem: env → Resources do `.app` → app-managed (`~/.cockpit/server`) →
+  /// Ordem: env → bundle do app → app-managed (`~/.cockpit/server`) →
   /// build de dev (`build/server-bundle`, fluxo `flutter run` no repo).
   String? _resolveServerBinary() => resolveServerBundleBinary();
 
+  /// Nome da lib nativa do PTY por plataforma (o servidor a carrega por FFI).
+  static String _ptyLibName() => Platform.isMacOS
+      ? 'libcockpit_pty.dylib'
+      : Platform.isLinux
+      ? 'libcockpit_pty.so'
+      : 'cockpit_pty.dll';
+
+  /// Nome do executável do servidor no disco (Windows carrega a extensão).
+  static String get serverExeName =>
+      Platform.isWindows ? 'cockpit-server.exe' : 'cockpit-server';
+
   /// Reusado pelo bootstrap SSH (RemoteHostConnector) como fonte local.
   static String? resolveServerBundleBinary() {
+    final exe = serverExeName;
     final candidates = <String?>[
       Platform.environment['COCKPIT_SERVER_BIN'],
       if (Platform.isMacOS)
         // .app/Contents/MacOS/<exe> → ../Resources/cockpit-server-bundle/bin
         '${File(Platform.resolvedExecutable).parent.parent.path}'
-            '/Resources/cockpit-server-bundle/bin/cockpit-server',
+            '/Resources/cockpit-server-bundle/bin/$exe'
+      else
+        // Windows/Linux: o bundle é instalado ao lado do executável, mesmo
+        // lugar do cockpit-hook e da cockpit-cli (ver os CMakeLists).
+        '${File(Platform.resolvedExecutable).parent.path}'
+            '/cockpit-server-bundle/bin/$exe',
       () {
         final home = userHome();
-        return home == null ? null : '$home/.cockpit/server/bin/cockpit-server';
+        return home == null ? null : '$home/.cockpit/server/bin/$exe';
       }(),
-      '${Directory.current.path}/build/server-bundle/bin/cockpit-server',
+      '${Directory.current.path}/build/server-bundle/bin/$exe',
     ];
     for (final candidate in candidates) {
       if (candidate != null && File(candidate).existsSync()) return candidate;

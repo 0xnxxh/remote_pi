@@ -326,6 +326,16 @@ jobs:
         run: |
           flutter pub get
           flutter build windows --release
+          # Gate do sidecar: sem o bundle do cockpit-server o app cai no
+          # fallback in-process e o Windows roda uma arquitetura diferente do
+          # macOS — silenciosamente, porque o fallback só escreve no log.
+          SRV="build/windows/x64/runner/Release/cockpit-server-bundle/bin"
+          test -x "$SRV/cockpit-server.exe" || {
+            echo "::error::cockpit-server.exe ausente do bundle Windows"; exit 1; }
+          test -f "$SRV/cockpit_pty.dll" || {
+            echo "::error::cockpit_pty.dll ausente do bundle do servidor"; exit 1; }
+          # Sem executar: o cockpit-server não tem --version e, com args
+          # desconhecidos, faz bind no socket e escuta pra sempre — travaria o job.
           dart pub global run fastforge:main package --platform windows --targets exe
           EXE=$(find dist -name "*.exe" | head -1)
           test -n "$EXE"
@@ -401,6 +411,13 @@ jobs:
         run: |
           flutter pub get
           flutter build linux --release
+          # Gate do sidecar (mesma razão do Windows): sem o bundle do
+          # cockpit-server o app cai no fallback in-process, em silêncio.
+          SRV="build/linux/${{ matrix.deb_arch == 'amd64' && 'x64' || 'arm64' }}/release/bundle/cockpit-server-bundle/bin"
+          test -x "$SRV/cockpit-server" || {
+            echo "::error::cockpit-server ausente do bundle Linux ($SRV)"; exit 1; }
+          test -f "$SRV/libcockpit_pty.so" || {
+            echo "::error::libcockpit_pty.so ausente do bundle do servidor"; exit 1; }
           dart pub global run fastforge:main package --platform linux --targets deb
           dart pub global run fastforge:main package --platform linux --targets rpm
           DEB=$(find dist -name "*.deb" | head -1); test -n "$DEB"
@@ -413,6 +430,10 @@ jobs:
         run: |
           sudo apt-get install -y "./out/remote-pi-cockpit_${VERSION}_${{ matrix.deb_arch }}.deb"
           dpkg -L remote-pi-cockpit | grep -m1 "\.desktop$"
+          # O bundle do servidor chegou ao PACOTE (o gate anterior só provou que
+          # saiu do build). Sem ele o app instalado roda no fallback.
+          dpkg -L remote-pi-cockpit | grep -q "cockpit-server-bundle/bin/cockpit-server$" || {
+            echo "::error::.deb sem o bundle do cockpit-server"; exit 1; }
 
       - name: Smoke test .rpm (container fedora:40)
         run: |

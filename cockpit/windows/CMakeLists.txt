@@ -161,6 +161,49 @@ add_custom_target(cockpit_cli ALL DEPENDS "${COCKPIT_CLI_EXE}")
 install(PROGRAMS "${COCKPIT_CLI_EXE}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
+# === cockpit-server (sidecar) ===
+# Bundle `bin/` + `lib/` do servidor headless, instalado AO LADO do executável
+# (o Inno empacota o bundle inteiro). Equivale ao Run Script do macOS
+# (build_server.sh); sem isto o app cai no fallback in-process e o Windows roda
+# uma arquitetura diferente do macOS.
+#
+# `dart build cli` NÃO cross-compila, mas aqui não é problema: o runner do CI é
+# x64 nativo, a única arquitetura que publicamos no Windows.
+set(COCKPIT_SERVER_PKG "${CMAKE_SOURCE_DIR}/../packages/cockpit_server")
+set(COCKPIT_SERVER_DIR "${CMAKE_BINARY_DIR}/server-bundle")
+set(COCKPIT_SERVER_EXE "${COCKPIT_SERVER_DIR}/bin/cockpit-server.exe")
+file(GLOB_RECURSE COCKPIT_SERVER_SOURCES CONFIGURE_DEPENDS
+  "${COCKPIT_SERVER_PKG}/bin/*.dart" "${COCKPIT_SERVER_PKG}/lib/*.dart")
+add_custom_command(
+  OUTPUT "${COCKPIT_SERVER_EXE}"
+  # Bundle limpo: `dart build cli` recusa diretório de saída já existente.
+  COMMAND "${CMAKE_COMMAND}" -E rm -rf "${COCKPIT_SERVER_DIR}" "${CMAKE_BINARY_DIR}/server-out"
+  COMMAND "${CMAKE_COMMAND}" -E chdir "${COCKPIT_SERVER_PKG}" "${DART_EXE}" pub get
+  COMMAND "${CMAKE_COMMAND}" -E chdir "${COCKPIT_SERVER_PKG}" "${DART_EXE}" build cli
+          -o "${CMAKE_BINARY_DIR}/server-out"
+  # `dart build cli` gera <out>/bundle/{bin,lib}; o exe sai com underscore.
+  COMMAND "${CMAKE_COMMAND}" -E copy_directory
+          "${CMAKE_BINARY_DIR}/server-out/bundle" "${COCKPIT_SERVER_DIR}"
+  COMMAND "${CMAKE_COMMAND}" -E rename
+          "${COCKPIT_SERVER_DIR}/bin/cockpit_server.exe" "${COCKPIT_SERVER_EXE}"
+  # A lib do PTY vai ao LADO do exe do servidor: é o 2º candidato do
+  # openPtyDylib (o 1º é a env COCKPIT_PTY_DYLIB, que o sidecar preenche).
+  # Reusa o artefato do plugin em vez de compilar o mesmo .c duas vezes.
+  COMMAND "${CMAKE_COMMAND}" -E copy
+          "$<TARGET_FILE:cockpit_pty>" "${COCKPIT_SERVER_DIR}/bin/"
+  # CLI embarcada ao lado do servidor (plano 60, Wave G): o servidor instala o
+  # hook do agente apontando pra ela, e a acha na mesma pasta bin/.
+  COMMAND "${CMAKE_COMMAND}" -E copy
+          "${COCKPIT_CLI_EXE}" "${COCKPIT_SERVER_DIR}/bin/cockpit.exe"
+  DEPENDS ${COCKPIT_SERVER_SOURCES} "${COCKPIT_SERVER_PKG}/pubspec.yaml"
+          "${COCKPIT_CLI_EXE}" cockpit_pty
+  COMMENT "Compilando cockpit-server (bundle do sidecar)"
+  VERBATIM)
+add_custom_target(cockpit_server ALL DEPENDS "${COCKPIT_SERVER_EXE}")
+install(DIRECTORY "${COCKPIT_SERVER_DIR}/"
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}/cockpit-server-bundle"
+  USE_SOURCE_PERMISSIONS COMPONENT Runtime)
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"
