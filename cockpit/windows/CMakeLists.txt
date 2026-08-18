@@ -38,6 +38,10 @@ add_definitions(-DUNICODE -D_UNICODE)
 # não passa.
 add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 
+# Compilações paralelas do MSVC (cl /MP) escrevendo no mesmo .pdb estouram
+# C1041 no flutter_inappwebview_windows; /FS serializa o acesso ao PDB.
+add_compile_options(/FS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
