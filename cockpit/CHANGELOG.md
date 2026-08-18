@@ -49,6 +49,11 @@ stalling while the window sat in the background.
 
 ### Fixed
 
+- **The window no longer freezes ("Not responding") on Windows when writing to
+  a terminal whose shell stopped draining input.** ConPTY input now runs on a
+  dedicated writer thread per terminal, so a suspended or stuck child process
+  cannot block the UI, including during large pastes. macOS/Linux terminals
+  were never affected.
 - Agents no longer stall mid-request when the window is in the background:
   macOS App Nap was throttling the terminal's child processes. The machine can
   still sleep on idle as usual.

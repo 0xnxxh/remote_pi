@@ -56,6 +56,7 @@ import 'package:cockpit/app/cockpit/domain/value_objects/uid.dart';
 import 'package:cockpit/app/cockpit/domain/entities/session_info.dart';
 import 'package:cockpit/app/cockpit/domain/entities/thinking_level.dart';
 import 'package:cockpit/app/cockpit/domain/entities/worktree.dart';
+import 'package:cockpit/app/cockpit/domain/services/worktree_reconciler.dart';
 import 'package:cockpit/app/cockpit/ui/session/scm_line_decoration_coordinator.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_server_pool.dart';
 import 'package:cockpit/app/core/data/lsp/lsp_text_edit.dart';
@@ -147,6 +148,7 @@ class CockpitViewModel extends ChangeNotifier {
     this.files,
     this.notifications,
   ) {
+    _worktreeReconciler = WorktreeReconciler(_worktreeMgr);
     // Contexto do shell que o GitController precisa (page-scoped, mesma vida).
     git
       ..resolvePath = ((id) => _projectById(id)?.path)
@@ -413,6 +415,7 @@ class CockpitViewModel extends ChangeNotifier {
   /// existência mora no git, não no Hive (decisões 4, 17). Os mesmos `Project`s
   /// também entram em [_projectList] (pro IndexedStack e o lookup).
   final Map<String, List<Project>> _worktrees = <String, List<Project>>{};
+  late final WorktreeReconciler _worktreeReconciler;
 
   /// Root (path absoluto) que **originou** cada fork (fork.id → root path).
   /// Em single-root é o próprio path do pai; em multi-root, o repo filho de
@@ -5399,7 +5402,15 @@ class CockpitViewModel extends ChangeNotifier {
   /// 17, 20). Forks novos entram em [_projectList]; forks sumidos (por fora ou
   /// via remove) têm o runtime encerrado (mata `pi` + fecha panes — decisão 9) e,
   /// se selecionados, a seleção volta pro pai. Só notifica quando a lista muda.
-  Future<void> _refreshWorktrees(String rootId) async {
+  Future<void> _refreshWorktrees(String rootId) => _worktreeReconciler.run(
+    rootId,
+    (manager) => _refreshWorktreesOnce(rootId, manager),
+  );
+
+  Future<void> _refreshWorktreesOnce(
+    String rootId,
+    WorktreeManager worktreeManager,
+  ) async {
     final root = _projectById(rootId);
     // Remoto tem gestão de worktrees PRÓPRIA (_refreshRemoteWorktrees): sem
     // este guard, o refresh local acharia zero worktrees no disco e limparia
@@ -5417,7 +5428,7 @@ class CockpitViewModel extends ChangeNotifier {
     final forks = <Project>[];
     final seenForkIds = <String>{};
     for (final rootPath in rootsOf(rootId)) {
-      final wts = await _worktreeMgr.list(rootPath);
+      final wts = await worktreeManager.list(rootPath);
       for (final Worktree w in wts) {
         // Id namespaced pela raiz: o mesmo repo pode ser workspace em 2+
         // realms (paths iguais), e cada cópia reconcilia os próprios forks —

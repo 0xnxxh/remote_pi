@@ -237,7 +237,7 @@ packages:
       path: "plugins/cockpit_pty"
       relative: true
     source: path
-    version: "1.0.6"
+    version: "1.0.7"
   cockpit_remote:
     dependency: "direct main"
     description:

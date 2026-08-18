@@ -48,7 +48,6 @@ import 'package:cockpit/app/cockpit/data/remote/json_remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_connector.dart';
 import 'package:cockpit/app/cockpit/data/terminal/sidecar/sidecar_terminal_gateway_factory.dart';
-import 'package:cockpit/app/cockpit/data/terminal/pty_terminal_gateway_factory.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/process_tree_provider.dart';
 import 'package:cockpit/app/cockpit/domain/services/terminal_harness_monitor.dart';
 import 'package:cockpit/app/cockpit/data/update/auto_updater_self_updater.dart';
@@ -103,6 +102,7 @@ import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
 import 'package:cockpit/app/core/data/repositories/json_settings_store.dart';
 import 'package:cockpit/app/core/data/setup/json_state_store.dart';
 import 'package:cockpit/app/core/data/setup/storage_location.dart';
+import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -125,7 +125,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// Como o shell fica em `/` e o Settings é **empilhado** por cima (não substitui),
 /// a rota `/` nunca deixa a pilha em navegação normal → estes binds
 /// feature-scoped vivem o app inteiro na prática.
-Future<Module> buildCockpitModule() async {
+Future<Module> buildCockpitModule({
+  required WindowActivityController windowActivity,
+}) async {
   // Bootstrap async: abre os próprios stores (privados no closure), resolve a
   // versão e inicia o notifier. A migração Hive→JSON já rodou no bootstrapper.
   final stateDir = await StorageLocation.stateDir();
@@ -264,13 +266,16 @@ Future<Module> buildCockpitModule() async {
         ..addInstance<SelfUpdater>(_buildSelfUpdater(_updateTarget(appVersion)))
         ..route(
           '/',
-          // ViewModels page-scoped via tear-off `.new` → o auto_injector resolve
-          // o construtor a partir dos binds acima. Os `init()`/`check()` (que
-          // antes encadeavam no factory) agora rodam no `CockpitPage.initState`.
+          // ViewModels page-scoped. O auto_injector resolve os parâmetros
+          // tipados a partir dos binds acima; WindowActivityController vem
+          // direto do bootstrap porque não atravessa os injectors da rota.
           provide: (s) => s
             // Estado git extraído do CockpitViewModel (mesma vida da rota);
             // o VM o recebe no construtor e injeta o contexto de shell.
-            ..addChangeNotifier<GitController>(GitController.new)
+            ..addChangeNotifier<GitController>(
+              (GitStatusReader reader, GitCommandRunner runner) =>
+                  GitController(reader, runner, windowActivity),
+            )
             ..addChangeNotifier<FileOpsController>(FileOpsController.new)
             ..addChangeNotifier<RealmController>(RealmController.new)
             ..addChangeNotifier<SessionNotificationsController>(
