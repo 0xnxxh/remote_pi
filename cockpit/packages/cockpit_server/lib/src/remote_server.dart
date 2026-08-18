@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:meta/meta.dart';
+
 import 'package:cockpit_core/cockpit_core.dart';
 import 'package:cockpit_protocol/cockpit_protocol.dart';
 
@@ -43,15 +45,55 @@ class RemoteServer {
   /// ficar esse tempo sem NENHUM cliente conectado (evita órfão quando a GUI
   /// morre sem conseguir matar o filho). Zero = nunca (modo serviço).
   Duration exitOnIdle = Duration.zero;
+
+  /// Sessão viva SEGURA o servidor de pé, mesmo sem cliente conectado.
+  ///
+  /// É a diferença entre os dois usos do [exitOnIdle]:
+  ///
+  /// - **sidecar local** (`false`): a GUI morreu, ninguém vai reanexar àqueles
+  ///   PTYs e o app sempre abre sessões novas. Encerrar é o certo, senão sobra
+  ///   processo órfão na máquina do usuário.
+  /// - **servidor remoto** (`true`): desconectar é rotina (rede caiu, laptop
+  ///   dormiu) e a promessa é justamente retomar de onde parou. Encerrar aqui
+  ///   mata o trabalho em andamento — é o equivalente a derrubar o servidor
+  ///   tmux dois minutos depois de você desanexar.
+  ///
+  /// Sem cliente E sem sessão viva o servidor encerra igual, então o seguro
+  /// contra órfão continua valendo para o caso que ele foi criado para cobrir.
+  bool idleKeepsSessions = false;
+
   Timer? _idleTimer;
   void Function()? onIdleExit;
 
   void _armIdleTimer() {
     _idleTimer?.cancel();
     if (exitOnIdle == Duration.zero || _connections.isNotEmpty) return;
-    _idleTimer = Timer(exitOnIdle, () {
-      if (_connections.isEmpty) onIdleExit?.call();
+    _idleTimer = Timer(exitOnIdle, () async {
+      if (_connections.isNotEmpty) return;
+      if (idleKeepsSessions && await _hasLiveSession()) {
+        // Ainda há trabalho rodando: reagenda a checagem em vez de encerrar.
+        _armIdleTimer();
+        return;
+      }
+      onIdleExit?.call();
     });
+  }
+
+  /// Arma o timer de ociosidade como faria a saída do último cliente. Os
+  /// testes não abrem socket real; é o gatilho da regra que interessa.
+  @visibleForTesting
+  Future<void> armIdleTimerForTest() async => _armIdleTimer();
+
+  /// Alguma sessão com processo ainda vivo? Sessões já finalizadas (que só
+  /// retêm scrollback) não seguram o servidor.
+  Future<bool> _hasLiveSession() async {
+    try {
+      final sessions = await _terminals.sessions();
+      return sessions.any((s) => s.isAlive);
+    } on Object {
+      // Falha ao consultar não deve virar um servidor imortal.
+      return false;
+    }
   }
 
   Future<void> bind(String socketPath) async {

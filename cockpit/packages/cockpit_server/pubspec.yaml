@@ -24,6 +24,7 @@ dependencies:
   anaki_mssql: ^0.1.4
   anaki_redis: ^0.1.4
   anaki_mongodb: ^0.1.7
+  meta: ^1.19.0
 
 dev_dependencies:
   test: ^1.25.0

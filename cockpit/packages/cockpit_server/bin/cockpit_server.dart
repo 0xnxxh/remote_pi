@@ -32,6 +32,11 @@ Future<void> main(List<String> args) async {
   final idleSeconds = int.tryParse(_argValue(args, '--exit-on-idle') ?? '0');
   if (idleSeconds != null && idleSeconds > 0) {
     server.exitOnIdle = Duration(seconds: idleSeconds);
+    // `--idle-keeps-sessions`: sessão viva impede o encerramento por
+    // ociosidade. Usado pelo servidor REMOTO, onde desconectar é rotina e
+    // retomar de onde parou é a promessa; o sidecar local não passa a flag,
+    // porque lá a GUI já morreu e ninguém vai reanexar àqueles PTYs.
+    server.idleKeepsSessions = args.contains('--idle-keeps-sessions');
     server.onIdleExit = () async {
       stdout.writeln('cockpit-server idle, exiting');
       await server.close();

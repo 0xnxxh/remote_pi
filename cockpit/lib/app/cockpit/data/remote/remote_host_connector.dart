@@ -277,10 +277,18 @@ class RemoteHostConnector {
 
   /// "Install server": sobe binário + dylib pelo canal SSH (stdin → arquivo,
   /// sem depender de scp/rsync no host) e inicia o servidor remoto no socket
-  /// padrão. `--exit-on-idle 120`: o servidor sobrevive a um blip de túnel
-  /// (reconexão restabelece o cliente e rearma o timer), mas se encerra sozinho
-  /// ~2min depois que o app fecha de vez — sem órfão no host. Persistência 24/7
-  /// gerida por launchd/systemd fica pra Wave 3.
+  /// padrão.
+  ///
+  /// `--exit-on-idle 120` + `--idle-keeps-sessions`: o servidor encerra sozinho
+  /// ~2min depois que ninguém mais o usa (sem órfão no host), MAS nunca enquanto
+  /// houver sessão viva. Sem a segunda flag, dois minutos de desconexão matavam
+  /// o que estivesse rodando lá — um agente aberto, um build, um vim — que é o
+  /// oposto da promessa de retomar de onde parou. Persistência 24/7 gerida por
+  /// launchd/systemd fica pra Wave 3.
+  ///
+  /// Servidor antigo no host ignora a flag desconhecida (o parser dele busca
+  /// por índice), então a instalação segue funcionando; só não ganha o
+  /// comportamento novo até ser reinstalado.
   static const _remoteIdleSeconds = 120;
   Future<void> _installAndStartServer() async {
     final binary = localServerBinaryResolver();
@@ -337,6 +345,7 @@ class RemoteHostConnector {
       'nohup \$HOME/.cockpit/server/bin/cockpit-server '
       '--socket \$HOME/.cockpit/cockpit-server.sock '
       '--exit-on-idle $_remoteIdleSeconds '
+      '--idle-keeps-sessions '
       '>/dev/null 2>&1 & echo started',
       port: host.port,
       password: _password,
