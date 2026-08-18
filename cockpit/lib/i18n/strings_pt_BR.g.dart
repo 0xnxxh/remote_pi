@@ -714,6 +714,7 @@ class _Translations$cockpit$workspaceSettingsDialog$pt_BR extends Translations$c
 	@override String get changePhoto => 'Alterar foto';
 	@override String get remove => 'Remover';
 	@override String get color => 'Cor';
+	@override String get host => 'Host';
 	@override String get folder => 'Pasta';
 }
 
@@ -2026,6 +2027,7 @@ extension on TranslationsPtBr {
 			'cockpit.workspaceSettingsDialog.changePhoto' => 'Alterar foto',
 			'cockpit.workspaceSettingsDialog.remove' => 'Remover',
 			'cockpit.workspaceSettingsDialog.color' => 'Cor',
+			'cockpit.workspaceSettingsDialog.host' => 'Host',
 			'cockpit.workspaceSettingsDialog.folder' => 'Pasta',
 			'cockpit.realmDialogs.namePlaceholder' => 'Nome do realm',
 			'cockpit.realmDialogs.duplicateName' => 'Já existe um realm com esse nome.',
@@ -2188,9 +2190,9 @@ extension on TranslationsPtBr {
 			'cockpit.tasks.quit' => 'Sair',
 			'cockpit.notifications.agentFinished' => 'Agente terminou',
 			'cockpit.notifications.open' => 'Abrir',
-			'cockpit.notifications.agentNeedsAction' => 'Agente precisa de você',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.notifications.agentNeedsAction' => 'Agente precisa de você',
 			'cockpit.notifications.agentCrashed' => 'Agente parou inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: a pasta "${requested}" não existe. Este terminal abriu em "${path}".',
 			'cockpit.remoteHost.addHost' => 'Adicionar host remoto',

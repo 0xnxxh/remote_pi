@@ -1414,6 +1414,9 @@ class Translations$cockpit$workspaceSettingsDialog$en {
 	/// en: 'Color'
 	String get color => 'Color';
 
+	/// en: 'Host'
+	String get host => 'Host';
+
 	/// en: 'Folder'
 	String get folder => 'Folder';
 }
@@ -3840,6 +3843,7 @@ extension on Translations {
 			'cockpit.workspaceSettingsDialog.changePhoto' => 'Change photo',
 			'cockpit.workspaceSettingsDialog.remove' => 'Remove',
 			'cockpit.workspaceSettingsDialog.color' => 'Color',
+			'cockpit.workspaceSettingsDialog.host' => 'Host',
 			'cockpit.workspaceSettingsDialog.folder' => 'Folder',
 			'cockpit.realmDialogs.namePlaceholder' => 'Realm name',
 			'cockpit.realmDialogs.duplicateName' => 'A realm with this name already exists.',
@@ -4002,9 +4006,9 @@ extension on Translations {
 			'cockpit.tasks.quit' => 'Quit',
 			'cockpit.notifications.agentFinished' => 'Agent finished',
 			'cockpit.notifications.open' => 'Open',
-			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
 			_ => null,
 		} ?? switch (path) {
+			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',
 			'cockpit.remoteHost.addHost' => 'Add remote host',
