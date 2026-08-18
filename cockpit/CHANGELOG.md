@@ -26,6 +26,10 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
 
 ## [1.28.0] - 2026-08-18
 
+**A beta for the upcoming 2.0.0.** Everything here is meant to ship as 2.0.0
+once it settles; this release puts it in your hands first, so expect rough
+edges in the new remote and mobile paths and please report what you hit.
+
 Remote workspaces over SSH: open a folder on another machine and use it like a
 local one — terminals, files, editor, source control and databases all running
 on the host. The app also runs on iPad, iPhone and Android as a remote client.
