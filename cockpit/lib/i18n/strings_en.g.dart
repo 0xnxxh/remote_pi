@@ -1872,6 +1872,18 @@ class Translations$cockpit$projectsRail$en {
 
 	/// en: 'Create worktree'
 	String get createWorktree => 'Create worktree';
+
+	/// en: '(one) {1 worktree} (other) {${n} worktrees}'
+	String worktreeCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n,
+		one: '1 worktree',
+		other: '${n} worktrees',
+	);
+
+	/// en: 'Expand worktrees'
+	String get expandWorktrees => 'Expand worktrees';
+
+	/// en: 'Collapse worktrees'
+	String get collapseWorktrees => 'Collapse worktrees';
 }
 
 // Path: cockpit.findBar
@@ -3968,6 +3980,9 @@ extension on Translations {
 			'cockpit.projectsRail.pull' => 'Pull',
 			'cockpit.projectsRail.push' => 'Push',
 			'cockpit.projectsRail.createWorktree' => 'Create worktree',
+			'cockpit.projectsRail.worktreeCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(n, one: '1 worktree', other: '${n} worktrees', ), 
+			'cockpit.projectsRail.expandWorktrees' => 'Expand worktrees',
+			'cockpit.projectsRail.collapseWorktrees' => 'Collapse worktrees',
 			'cockpit.findBar.find' => 'Find',
 			'cockpit.findBar.matchCase' => 'Match case',
 			'cockpit.findBar.wholeWord' => 'Whole word',
@@ -4003,11 +4018,11 @@ extension on Translations {
 			'cockpit.tasks.hotRestart' => 'Hot restart',
 			'cockpit.tasks.toggleDebugPaint' => 'Toggle debug paint',
 			'cockpit.tasks.togglePlatform' => 'Toggle platform',
+			_ => null,
+		} ?? switch (path) {
 			'cockpit.tasks.quit' => 'Quit',
 			'cockpit.notifications.agentFinished' => 'Agent finished',
 			'cockpit.notifications.open' => 'Open',
-			_ => null,
-		} ?? switch (path) {
 			'cockpit.notifications.agentNeedsAction' => 'Agent needs your input',
 			'cockpit.notifications.agentCrashed' => 'Agent stopped unexpectedly',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Warning: the folder "${requested}" does not exist. This terminal opened in "${path}".',

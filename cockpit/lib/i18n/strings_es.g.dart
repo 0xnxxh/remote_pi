@@ -923,6 +923,12 @@ class _Translations$cockpit$projectsRail$es extends Translations$cockpit$project
 	@override String get pull => 'Pull';
 	@override String get push => 'Push';
 	@override String get createWorktree => 'Crear worktree';
+	@override String worktreeCount({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n,
+		one: '1 worktree',
+		other: '${n} worktrees',
+	);
+	@override String get expandWorktrees => 'Expandir worktrees';
+	@override String get collapseWorktrees => 'Contraer worktrees';
 }
 
 // Path: cockpit.findBar
@@ -2152,6 +2158,9 @@ extension on TranslationsEs {
 			'cockpit.projectsRail.pull' => 'Pull',
 			'cockpit.projectsRail.push' => 'Push',
 			'cockpit.projectsRail.createWorktree' => 'Crear worktree',
+			'cockpit.projectsRail.worktreeCount' => ({required num n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(n, one: '1 worktree', other: '${n} worktrees', ), 
+			'cockpit.projectsRail.expandWorktrees' => 'Expandir worktrees',
+			'cockpit.projectsRail.collapseWorktrees' => 'Contraer worktrees',
 			'cockpit.findBar.find' => 'Buscar',
 			'cockpit.findBar.matchCase' => 'Coincidir mayúsculas',
 			'cockpit.findBar.wholeWord' => 'Palabra completa',
@@ -2187,11 +2196,11 @@ extension on TranslationsEs {
 			'cockpit.tasks.hotRestart' => 'Hot restart',
 			'cockpit.tasks.toggleDebugPaint' => 'Alternar debug paint',
 			'cockpit.tasks.togglePlatform' => 'Alternar plataforma',
+			_ => null,
+		} ?? switch (path) {
 			'cockpit.tasks.quit' => 'Salir',
 			'cockpit.notifications.agentFinished' => 'El agente terminó',
 			'cockpit.notifications.open' => 'Abrir',
-			_ => null,
-		} ?? switch (path) {
 			'cockpit.notifications.agentNeedsAction' => 'El agente necesita tu acción',
 			'cockpit.notifications.agentCrashed' => 'El agente se detuvo inesperadamente',
 			'cockpit.terminal.cwdFallbackWarning' => ({required Object requested, required Object path}) => 'Aviso: la carpeta "${requested}" no existe. Esta terminal se abrió en "${path}".',
