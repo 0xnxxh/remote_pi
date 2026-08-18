@@ -24,6 +24,38 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.0] - 2026-08-18
+
+Remote workspaces over SSH: open a folder on another machine and use it like a
+local one — terminals, files, editor, source control and databases all running
+on the host. The app also runs on iPad, iPhone and Android as a remote client.
+
+### Added
+
+- **Remote workspaces over SSH**: connect to a host, pick any folder on it, and
+  work there. Sessions live on the host, so closing the app does not kill what
+  is running there. A workspace now also shows which machine and folder it uses.
+- **Mobile client (iPad, iPhone, Android)**: the same workspace from a tablet or
+  phone. Panels become drawers on narrow screens, and tabs scroll and reorder by
+  touch.
+- **Terminal key bar on mobile**: the keys a phone keyboard lacks — ESC, Tab,
+  Ctrl+C, arrows, F1–F12 — plus copy and paste, right above the keyboard.
+- **Automatic reconnect**: when a host drops, Cockpit keeps retrying and shows a
+  banner with a Reconnect button. Terminals freeze instead of closing and resume
+  where they stopped once the host is back.
+
+### Fixed
+
+- **Terminals no longer mirror each other** when a workspace restores with more
+  than one pane, and splitting a pane no longer crashes the terminal view.
+- **Selection in the browser and in the markdown/HTML preview lands where you
+  click** on macOS; it used to drift further the lower you went.
+- **The built-in browser no longer gets the legacy version of websites.**
+- **A remote terminal is no longer left mute after reconnecting**: if the host
+  restarted and the session is gone, the tab closes instead of ignoring input.
+- **Windows stays responsive after being minimized**, and the Windows build no
+  longer fails with error C1041. Thanks, @fabiojansenbr and @jeferson-m-bruno.
+
 ## [1.27.1] - 2026-08-17
 
 A built-in browser, git change marks in the editor, and a fix for agents
