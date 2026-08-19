@@ -80,7 +80,14 @@ jobs:
   server-x64:
     name: cockpit-server (fatia x86_64)
     needs: meta
-    runs-on: macos-13
+    # macOS INTEL: o `dart build cli` não cross-compila, então a fatia x86_64
+    # precisa de um runner Intel de verdade. O `macos-13` (último Intel gratuito)
+    # foi RETIRADO em dez/2025 e o job ficava na fila para sempre — não falhava,
+    # só nunca rodava, e o job macos (needs: server-x64) nunca começava.
+    # `macos-15-intel` é o substituto oficial, último x86_64 do Actions,
+    # disponível até ago/2027. Depois disso, a fatia Intel precisa de outra
+    # estratégia (cross via Rosetta num runner ARM, ou abrir mão do Intel).
+    runs-on: macos-15-intel
     defaults: { run: { working-directory: cockpit } }
     steps:
       - uses: actions/checkout@v4
