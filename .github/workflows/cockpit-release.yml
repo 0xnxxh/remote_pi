@@ -109,9 +109,15 @@ jobs:
           ./tool/build-sidecar.sh
           # Sanidade: o exe TEM que ser x86_64 (o runner é Intel). Se sair arm64
           # é sinal de dart/emulação errada — aborta antes de enganar o merge.
-          lipo -archs build/server-bundle/bin/cockpit-server
-          lipo -archs build/server-bundle/bin/cockpit-server | grep -q x86_64 || {
-            echo "::error::cockpit-server x64 saiu sem a fatia x86_64"; exit 1; }
+          # Checa TODO binário de bin/, não só o server: o lipo do job macos
+          # exige a fatia x64 de cada um, e quando a CLI embarcada (bin/cockpit)
+          # existia só do lado arm64 a release morria lá na frente, depois de
+          # ~15min de build. Falhar aqui aponta o binário que faltou.
+          for f in build/server-bundle/bin/*; do
+            lipo -archs "$f"
+            lipo -archs "$f" | grep -q x86_64 || {
+              echo "::error::$(basename "$f") x64 saiu sem a fatia x86_64"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: cockpit-server-x64

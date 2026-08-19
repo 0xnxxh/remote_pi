@@ -31,4 +31,18 @@ fi
 ext="$([ "$(uname -s)" = Darwin ] && echo dylib || echo so)"
 cp "build/wave0/libcockpit_pty.$ext" "$OUT/lib/" 2>/dev/null || true
 
-echo "ok: $OUT/bin/cockpit-server (+ lib/: $(ls "$OUT/lib" | tr '\n' ' '))"
+# CLI `cockpit` AO LADO do server (plano 60, Wave G): o server instala o hook do
+# agente apontando pra ela e a acha na mesma pasta bin/.
+#
+# Tem que sair daqui também, e não só do macos/build_server.sh: no macOS o .app
+# é universal, montado pelo lipo entre o bundle arm64 (build_server.sh) e o x64
+# (este script, no runner Intel). Quando só um dos lados produzia `bin/cockpit`,
+# o lipo abortava com "fatia x64 faltando para bin/cockpit" e derrubava a
+# release inteira — foi o que aconteceu na 1.28.0.
+CARGO="${CARGO:-cargo}"
+command -v "$CARGO" >/dev/null 2>&1 || CARGO="$HOME/.cargo/bin/cargo"
+( cd "$ROOT/cli" && "$CARGO" build --release >/dev/null )
+cp "$ROOT/cli/target/release/cockpit" "$OUT/bin/cockpit"
+chmod +x "$OUT/bin/cockpit"
+
+echo "ok: $OUT/bin/cockpit-server + bin/cockpit (+ lib/: $(ls "$OUT/lib" | tr '\n' ' '))"
