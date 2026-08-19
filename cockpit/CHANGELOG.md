@@ -24,6 +24,33 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.29.0] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** Connecting to a machine you have never
+connected to before now works from the app itself.
+
+### Fixed
+
+- **A remote host you had never connected to could not be added at all.** SSH
+  refused it with "Host key verification failed" and the only way out was to
+  open a terminal and connect by hand once. Cockpit now shows you the host's
+  fingerprint and asks whether to trust it, the same way it already did for
+  database tunnels. A host presenting a **different** key than the one it
+  presented before is still refused, with no way to accept it inline — that
+  case is either a reinstalled machine or an attack, and it deserves a look.
+- **Connection errors said `@` instead of the host name**, and a host that
+  answered but was not trusted was reported as unreachable, sending you to
+  check whether the machine was even turned on.
+
+### Added
+
+- **Pick the SSH private key when you register a host.** It is required for
+  key authentication on macOS, Linux and Windows, and the file dialog opens
+  straight in your `.ssh` folder. On a machine with many keys this is what
+  keeps the server from rejecting you for too many authentication attempts
+  before your real key is ever tried. Hosts you registered earlier keep
+  working as they did.
+
 ## [1.28.1] - 2026-08-19
 
 **Still a beta for the upcoming 2.0.0.** This one is about terminals opening
