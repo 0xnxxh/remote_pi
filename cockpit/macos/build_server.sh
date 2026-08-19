@@ -6,8 +6,12 @@
 # e o app resolve o binário lá (SidecarTerminalConnector). O exe carrega as
 # dylibs (anaki + pty) de ../lib via rpath.
 #
-# ATENÇÃO — arquitetura: fatia única (a do host que buildou). Mac Intel com
-# build arm64 cai no fallback in-process (pendência: fatia x64 no CI).
+# ATENÇÃO — arquitetura: fatia única (a do host que buildou), no nome sem
+# sufixo (`bin/cockpit-server`), que é o fallback do resolver. No CI, o
+# tool/lipo-server-bundle.sh troca esse arquivo pelas duas fatias
+# `cockpit-server-arm64` e `cockpit-server-x64` — o exe é um AOT do Dart e
+# NÃO sobrevive ao `lipo` (o snapshot anexado some do alcance do
+# dartaotruntime). Nunca transforme este binário num Mach-O universal.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"   # cockpit/

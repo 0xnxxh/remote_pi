@@ -57,10 +57,12 @@ class RemoteHostConnector {
 
   final RemoteHost host;
 
-  /// Resolve o binário local do cockpit-server (o mesmo do sidecar) usado
-  /// como fonte do bootstrap. Mac→Mac de mesma arquitetura; a validação de
-  /// arch remota é o `--version` pós-instalação falhar alto.
-  final String? Function() localServerBinaryResolver;
+  /// Resolve o binário local do cockpit-server (o mesmo do sidecar) usado como
+  /// fonte do bootstrap, para a arquitetura pedida (`arm64` | `x64`). Quem
+  /// manda é o `uname -sm` DO HOST, não a arquitetura desta máquina: um bundle
+  /// macOS traz as duas fatias, e mandar a errada instalava um binário que o
+  /// host não executa — falha que só aparecia como "não conectou".
+  final String? Function({String? arch}) localServerBinaryResolver;
 
   /// Resolve a senha SSH do host (auth por senha), lida do Keychain sob
   /// demanda. `null` = auth por chave (default). Plano 60, Wave C.
@@ -291,11 +293,46 @@ class RemoteHostConnector {
   /// comportamento novo até ser reinstalado.
   static const _remoteIdleSeconds = 120;
   Future<void> _installAndStartServer() async {
-    final binary = localServerBinaryResolver();
-    if (binary == null) {
-      throw const RemoteHostException(
+    // Plataforma do HOST decide tudo: qual fatia enviar e o nome da lib do
+    // PTY. `uname -sm` → "Darwin arm64", "Linux x86_64", ...
+    final (unameCode, uname, unameErr) = await SshTunnel.capture(
+      host.sshTarget,
+      'uname -sm',
+      port: host.port,
+      password: _password,
+    );
+    if (unameCode != 0) {
+      throw RemoteHostException(
         RemoteHostErrorKind.serverInstallFailed,
-        'local cockpit-server binary not found',
+        unameErr.isEmpty ? 'uname failed' : unameErr,
+      );
+    }
+    final parts = uname.split(RegExp(r'\s+'));
+    final remoteOs = parts.isEmpty ? '' : parts.first.toLowerCase();
+    final remoteMachine = parts.length > 1 ? parts[1].toLowerCase() : '';
+    final remoteArch = remoteMachine.contains('arm') || remoteMachine == 'aarch64'
+        ? 'arm64'
+        : 'x64';
+    // Cross-OS não tem como funcionar: o bundle local só traz binário desta
+    // plataforma. Antes o Mach-O do macOS era empurrado pra qualquer host e o
+    // servidor morria no `nohup` sem deixar rastro.
+    final localOs = Platform.isMacOS
+        ? 'darwin'
+        : Platform.isLinux
+        ? 'linux'
+        : 'windows';
+    if (remoteOs != localOs) {
+      throw RemoteHostException(
+        RemoteHostErrorKind.serverInstallFailed,
+        'host runs $remoteOs; this build only ships a $localOs cockpit-server',
+      );
+    }
+
+    final binary = localServerBinaryResolver(arch: remoteArch);
+    if (binary == null) {
+      throw RemoteHostException(
+        RemoteHostErrorKind.serverInstallFailed,
+        'local cockpit-server binary not found for $remoteOs/$remoteArch',
       );
     }
     // Bundle: <root>/bin/cockpit-server + <root>/lib/*.dylib (anaki + pty). O
@@ -303,6 +340,9 @@ class RemoteHostConnector {
     // layout no host (~/.cockpit/server/{bin,lib}).
     final bundleRoot = File(binary).parent.parent.path;
     final libDir = Directory('$bundleRoot/lib');
+    final ptyLib = remoteOs == 'darwin'
+        ? 'libcockpit_pty.dylib'
+        : 'libcockpit_pty.so';
 
     Future<void> push(String local, String remote) async {
       final bytes = await File(local).readAsBytes();
@@ -322,6 +362,8 @@ class RemoteHostConnector {
       }
     }
 
+    // Nome SEM sufixo de arquitetura no host: lá o bundle é de uma
+    // arquitetura só, e é assim que o próprio servidor se acha (_besideServer).
     await push(binary, '~/.cockpit/server/bin/cockpit-server');
     if (libDir.existsSync()) {
       for (final f in libDir.listSync().whereType<File>()) {
@@ -337,16 +379,20 @@ class RemoteHostConnector {
       await push(cliLocal.path, '~/.cockpit/server/bin/cockpit');
     }
 
+    const logPath = r'$HOME/.cockpit/server-boot.log';
     final (code, stderrText) = await SshTunnel.run(
       host.sshTarget,
       // nohup + redirects: o servidor sobrevive ao fim desta sessão ssh. O pty
-      // vem do ../lib do bundle; o anaki resolve por rpath.
-      'COCKPIT_PTY_DYLIB=\$HOME/.cockpit/server/lib/libcockpit_pty.dylib '
+      // vem do ../lib do bundle; o anaki resolve por rpath. A saída vai pra um
+      // LOG, não pro /dev/null: um servidor que morre no arranque (binário da
+      // arquitetura errada, dylib faltando) precisa deixar rastro — sem isso o
+      // `echo started` saía 0 e a falha chegava na UI como silêncio.
+      'COCKPIT_PTY_DYLIB=\$HOME/.cockpit/server/lib/$ptyLib '
       'nohup \$HOME/.cockpit/server/bin/cockpit-server '
       '--socket \$HOME/.cockpit/cockpit-server.sock '
       '--exit-on-idle $_remoteIdleSeconds '
       '--idle-keeps-sessions '
-      '>/dev/null 2>&1 & echo started',
+      '>$logPath 2>&1 & echo started',
       port: host.port,
       password: _password,
     );
@@ -356,7 +402,36 @@ class RemoteHostConnector {
         stderrText,
       );
     }
+    await _assertServerAlive(logPath);
   }
+
+  /// Confirma que o servidor recém-iniciado está de pé no host, e falha com o
+  /// log dele quando não está. O `nohup ... &` sempre sai 0 — sem esta
+  /// checagem, um binário inválido virava "conexão que não completa".
+  Future<void> _assertServerAlive(String logPath) async {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      await Future<void>.delayed(Duration(milliseconds: 150 + attempt * 100));
+      final (code, out, _) = await SshTunnel.capture(
+        host.sshTarget,
+        'test -S $_remoteSocketPath && echo up || echo down',
+        port: host.port,
+        password: _password,
+      );
+      if (code == 0 && out.endsWith('up')) return;
+    }
+    final (_, log, _) = await SshTunnel.capture(
+      host.sshTarget,
+      'tail -c 2000 $logPath 2>/dev/null || true',
+      port: host.port,
+      password: _password,
+    );
+    throw RemoteHostException(
+      RemoteHostErrorKind.serverInstallFailed,
+      log.isEmpty ? 'server did not start on the host' : log,
+    );
+  }
+
+  static const _remoteSocketPath = r'$HOME/.cockpit/cockpit-server.sock';
 
   // --- Reconexão automática -------------------------------------------------
   //

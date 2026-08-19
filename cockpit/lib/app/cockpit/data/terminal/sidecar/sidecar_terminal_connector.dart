@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
@@ -17,11 +18,28 @@ import 'package:flutter/foundation.dart';
 ///   se encerra sozinho ao ficar sem clientes).
 /// - `null` = sidecar indisponível (binário não empacotado/ambiente mínimo);
 ///   o chamador faz fallback pro PTY in-process e o app segue como antes.
+/// - **Veredito negativo é definitivo pela sessão do app** ([unavailableReason]):
+///   sem isso, cada aba nova repetia o backoff inteiro do passo 3 — foi o que
+///   deixou toda aba de terminal ~5.8s mais lenta na 1.28.0, com o bundle
+///   universal quebrado pelo `lipo`.
 class SidecarTerminalConnector implements TurnStatusSource {
   RemoteConnection? _connection;
   RemoteTerminalService? _service;
   Future<RemoteTerminalService?>? _inflight;
   Process? _child;
+
+  /// Por que o sidecar não está disponível, ou `null` enquanto ele serve.
+  /// Uma vez preenchido, [ensure] devolve `null` na hora (fallback in-process)
+  /// em vez de tentar spawnar de novo a cada terminal. Sobrevive à sessão do
+  /// app; um sidecar quebrado não conserta sozinho, e insistir só custa tempo
+  /// na abertura de cada aba.
+  String? unavailableReason;
+
+  RemoteTerminalService? _giveUp(String reason) {
+    unavailableReason = reason;
+    debugPrint('sidecar: $reason; using local PTY');
+    return null;
+  }
 
   /// Status de turno (spinner/chime/notificação) dos agentes rodando nas PTYs
   /// do sidecar. Mesmo mecanismo do [RemoteHostConnector], e pela mesma razão:
@@ -55,6 +73,7 @@ class SidecarTerminalConnector implements TurnStatusSource {
   /// Serviço conectado, reusando a conexão viva; reconecta (ou respawna) se
   /// o sidecar caiu. Nunca lança: falha vira `null` (fallback local).
   Future<RemoteTerminalService?> ensure() {
+    if (unavailableReason != null) return Future.value(null);
     final connection = _connection;
     if (connection != null && connection.isOpen) {
       return Future.value(_service);
@@ -65,7 +84,7 @@ class SidecarTerminalConnector implements TurnStatusSource {
   Future<RemoteTerminalService?> _connect() async {
     try {
       final socketPath = _socketPath();
-      if (socketPath == null) return null;
+      if (socketPath == null) return _giveUp('no home directory');
 
       // 1. Descoberta: já existe servidor atendendo este socket?
       final adopted = await _tryConnect(socketPath);
@@ -74,8 +93,7 @@ class SidecarTerminalConnector implements TurnStatusSource {
       // 2. Spawn do sidecar.
       final binary = _resolveServerBinary();
       if (binary == null) {
-        debugPrint('sidecar: cockpit-server binary not found, using local PTY');
-        return null;
+        return _giveUp('cockpit-server binary not found');
       }
       // Bundle `bin/` + `lib/`: as dylibs (anaki via rpath, pty via env) ficam
       // em ../lib relativo ao exe (@executable_path/../lib). O nome da lib do
@@ -93,21 +111,45 @@ class SidecarTerminalConnector implements TurnStatusSource {
         },
       );
       // Drena stdout/stderr: pipe cheio bloquearia o servidor (e SIGPIPE já
-      // é tratado no AppDelegate, lição do fechamento silencioso).
+      // é tratado no AppDelegate, lição do fechamento silencioso). O stderr,
+      // além de drenado, é GUARDADO: é a única explicação de um sidecar que
+      // morre no arranque (binário inválido, dylib faltando) — antes ia pro
+      // lixo e a falha ficava muda.
       unawaited(_child!.stdout.drain<void>());
-      unawaited(_child!.stderr.drain<void>());
+      final diagnostics = StringBuffer();
+      _child!.stderr
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .listen((chunk) {
+            if (diagnostics.length < 2000) diagnostics.write(chunk);
+          }, onError: (_) {});
+
+      // Morte do filho é resposta definitiva: para de esperar na hora. Sem
+      // isto, um servidor que nem chega a abrir o socket ainda custava os
+      // 5,75s do backoff completo — em CADA aba nova.
+      var died = false;
+      var exitCode = 0;
+      unawaited(
+        _child!.exitCode.then((code) {
+          died = true;
+          exitCode = code;
+        }),
+      );
 
       // 3. Retry com backoff curto até o listener subir.
       for (var attempt = 0; attempt < 20; attempt++) {
         await Future<void>.delayed(Duration(milliseconds: 50 + attempt * 25));
         final connection = await _tryConnect(socketPath);
         if (connection != null) return _adopt(connection);
+        if (died) {
+          final why = diagnostics.toString().trim();
+          return _giveUp(
+            'server exited with code $exitCode${why.isEmpty ? '' : ': $why'}',
+          );
+        }
       }
-      debugPrint('sidecar: server did not come up, using local PTY');
-      return null;
+      return _giveUp('server did not come up');
     } catch (e) {
-      debugPrint('sidecar: unavailable ($e), using local PTY');
-      return null;
+      return _giveUp('unavailable ($e)');
     }
   }
 
@@ -154,30 +196,69 @@ class SidecarTerminalConnector implements TurnStatusSource {
   static String get serverExeName =>
       Platform.isWindows ? 'cockpit-server.exe' : 'cockpit-server';
 
+  /// Mesmo executável, com sufixo de arquitetura (`cockpit-server-arm64`).
+  ///
+  /// Um bundle macOS universal **não pode** ter um exe fat: o AOT do Dart
+  /// carrega o snapshot anexado ao próprio arquivo e o container fat que o
+  /// `lipo` produz o esconde do `dartaotruntime` ("is not an AOT snapshot") —
+  /// o binário morre nas duas arquiteturas. Então o bundle traz uma fatia por
+  /// arquitetura, cada uma um Mach-O fino e válido, e quem escolhe é o
+  /// runtime. Ver `tool/lipo-server-bundle.sh`.
+  static String serverExeFor(String arch) =>
+      Platform.isWindows ? 'cockpit-server-$arch.exe' : 'cockpit-server-$arch';
+
+  /// Arquitetura deste processo (`arm64` | `x64`), lida do `Platform.version`
+  /// (`... on "macos_arm64"`) — a fonte confiável, como no resolver de perfis.
+  static String get hostArch =>
+      Platform.version.toLowerCase().contains('arm') ? 'arm64' : 'x64';
+
+  /// Escolhe o executável do servidor dentro de um `bin/`, preferindo a fatia
+  /// de [arch] (default: a desta máquina) e caindo no nome sem sufixo — que é
+  /// o layout de bundle de arquitetura única (dev, Windows, Linux).
+  static String? serverBinaryIn(String binDir, {String? arch}) {
+    for (final name in <String>[
+      serverExeFor(arch ?? hostArch),
+      serverExeName,
+    ]) {
+      final candidate = '$binDir/$name';
+      if (File(candidate).existsSync()) return candidate;
+    }
+    return null;
+  }
+
+  /// Resolve o binário do servidor no bundle `bin/`+`lib/` (dart build cli).
+  /// Ordem: env → bundle do app → app-managed (`~/.cockpit/server`) →
+  /// build de dev (`build/server-bundle`, fluxo `flutter run` no repo).
+  ///
   /// Reusado pelo bootstrap SSH (RemoteHostConnector) como fonte local.
-  static String? resolveServerBundleBinary() {
-    final exe = serverExeName;
-    final candidates = <String?>[
-      Platform.environment['COCKPIT_SERVER_BIN'],
+  static String? resolveServerBundleBinary({String? arch}) {
+    final fromEnv = Platform.environment['COCKPIT_SERVER_BIN'];
+    if (fromEnv != null && fromEnv.isNotEmpty && File(fromEnv).existsSync()) {
+      return fromEnv;
+    }
+    for (final dir in serverBundleBinDirs()) {
+      final found = serverBinaryIn(dir, arch: arch);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  /// Pastas `bin/` onde o bundle do servidor pode estar, em ordem de prioridade.
+  static List<String> serverBundleBinDirs() {
+    final home = userHome();
+    return <String>[
       if (Platform.isMacOS)
         // .app/Contents/MacOS/<exe> → ../Resources/cockpit-server-bundle/bin
         '${File(Platform.resolvedExecutable).parent.parent.path}'
-            '/Resources/cockpit-server-bundle/bin/$exe'
+            '/Resources/cockpit-server-bundle/bin'
       else
         // Windows/Linux: o bundle é instalado ao lado do executável, mesmo
         // lugar do cockpit-hook e da cockpit-cli (ver os CMakeLists).
         '${File(Platform.resolvedExecutable).parent.path}'
-            '/cockpit-server-bundle/bin/$exe',
-      () {
-        final home = userHome();
-        return home == null ? null : '$home/.cockpit/server/bin/$exe';
-      }(),
-      '${Directory.current.path}/build/server-bundle/bin/$exe',
+            '/cockpit-server-bundle/bin',
+      if (home != null) '$home/.cockpit/server/bin',
+      '${Directory.current.path}/build/server-bundle/bin',
     ];
-    for (final candidate in candidates) {
-      if (candidate != null && File(candidate).existsSync()) return candidate;
-    }
-    return null;
   }
 
   Future<void> dispose() async {

@@ -159,6 +159,26 @@ class SshTunnel {
     int port = 22,
     String? password,
   }) async {
+    final (code, _, stderrText) = await capture(
+      target,
+      command,
+      stdinBytes: stdinBytes,
+      port: port,
+      password: password,
+    );
+    return (code, stderrText);
+  }
+
+  /// Igual a [run], mas devolve TAMBÉM o stdout do comando remoto — precisa
+  /// dele quem interroga o host (`uname -sm` na escolha do binário do
+  /// bootstrap) ou lê o log de um servidor que não subiu.
+  static Future<(int, String, String)> capture(
+    String target,
+    String command, {
+    List<int>? stdinBytes,
+    int port = 22,
+    String? password,
+  }) async {
     final askpass = await _Askpass.create(password);
     try {
       final process = await Process.start('ssh', [
@@ -170,10 +190,14 @@ class SshTunnel {
         process.stdin.add(stdinBytes);
       }
       await process.stdin.close();
-      final stderrText = await process.stderr.transform(utf8.decoder).join();
-      unawaited(process.stdout.drain<void>());
+      // Os dois streams em paralelo: ler um de cada vez trava se o outro
+      // encher o pipe (o `cat` do push manda MBs pelo canal).
+      final outFuture = process.stdout.transform(utf8.decoder).join();
+      final errFuture = process.stderr.transform(utf8.decoder).join();
+      final stdoutText = await outFuture;
+      final stderrText = await errFuture;
       final code = await process.exitCode;
-      return (code, stderrText.trim());
+      return (code, stdoutText.trim(), stderrText.trim());
     } finally {
       await askpass?.dispose();
     }

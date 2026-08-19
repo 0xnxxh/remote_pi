@@ -32,7 +32,7 @@ void main() {
 
       final connector = RemoteHostConnector(
         RemoteHost(id: 't', name: 'test', sshTarget: target),
-        localServerBinaryResolver: () => binary.absolute.path,
+        localServerBinaryResolver: ({String? arch}) => binary.absolute.path,
       );
       addTearDown(connector.dispose);
 
