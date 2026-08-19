@@ -47,6 +47,8 @@ on the host. The app also runs on iPad, iPhone and Android as a remote client.
 - **Automatic reconnect**: when a host drops, Cockpit keeps retrying and shows a
   banner with a Reconnect button. Terminals freeze instead of closing and resume
   where they stopped once the host is back.
+- **Collapse worktrees per workspace**: each workspace remembers whether its
+  worktree list is expanded. Thanks, @fabiojansenbr.
 
 ### Fixed
 
@@ -57,6 +59,8 @@ on the host. The app also runs on iPad, iPhone and Android as a remote client.
 - **The built-in browser no longer gets the legacy version of websites.**
 - **A remote terminal is no longer left mute after reconnecting**: if the host
   restarted and the session is gone, the tab closes instead of ignoring input.
+- **Creating a worktree now carries your uncommitted changes over**, instead of
+  leaving them behind in the original checkout.
 - **Windows stays responsive after being minimized**, and the Windows build no
   longer fails with error C1041. Thanks, @fabiojansenbr and @jeferson-m-bruno.
 
