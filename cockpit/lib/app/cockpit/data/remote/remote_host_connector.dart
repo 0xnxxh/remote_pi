@@ -375,6 +375,16 @@ class RemoteHostConnector {
         await push(f.path, '~/.cockpit/server/lib/${f.uri.pathSegments.last}');
       }
     }
+    // A lib do PTY nem sempre mora em lib/: no bundle do Linux ela é copiada
+    // AO LADO do exe (CMakeLists, 2º candidato do openPtyDylib). Sem esta
+    // busca extra, um cliente Linux instalava um servidor sem PTY algum — e o
+    // servidor resolve a lib no ARRANQUE, então ele nem subia no host.
+    if (!File('$bundleRoot/lib/$ptyLib').existsSync()) {
+      final besideExe = File('$bundleRoot/bin/$ptyLib');
+      if (besideExe.existsSync()) {
+        await push(besideExe.path, '~/.cockpit/server/lib/$ptyLib');
+      }
+    }
     // CLI `cockpit` ao lado do server (plano 60, Wave G): o server a acha via
     // _besideServer e instala o hook do agente no ~/.claude do host. Só se
     // estiver no bundle local (build_server.sh a embarca).
