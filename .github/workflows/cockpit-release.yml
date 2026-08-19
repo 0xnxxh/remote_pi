@@ -431,6 +431,12 @@ jobs:
             deb_arch: arm64
             rpm_arch: aarch64
     runs-on: ${{ matrix.runner }}
+    # Rede de segurança: sem teto o default do GitHub é SEIS HORAS. Na 1.28.1
+    # um `apt-get` pendurado segurou o job por 47min (o normal é ~1min) sem
+    # nada acusar; a release só andou porque alguém foi olhar. Os tetos abaixo
+    # transformam "pendurado indefinidamente" em "falha alto, com log, e
+    # `gh run rerun --failed` refaz só este job".
+    timeout-minutes: 45
     defaults: { run: { working-directory: cockpit } }
     env:
       VERSION: ${{ needs.meta.outputs.version }}
@@ -466,17 +472,41 @@ jobs:
           version: 0.16.0
 
       - name: Deps de sistema (GTK, ninja, rpmbuild, libmpv)
+        # Medido: 55s no amd64, 1m08s no arm64. Passar de 10min aqui não é
+        # lentidão, é pendura — lista de pacotes fixa, nada a compilar.
+        timeout-minutes: 10
+        env:
+          # `needrestart` do ubuntu-24.04 abre prompt interativo no install e
+          # é uma das formas clássicas de pendurar o passo.
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update
+          # Stall de mirror costuma passar na segunda tentativa; três, com
+          # teto por tentativa, custam nada perto de um rerun manual. Falha nas
+          # três aborta AQUI: seguir pro install com o índice velho troca um
+          # erro claro por um "pacote não encontrado" mais adiante.
+          updated=0
+          for attempt in 1 2 3; do
+            if timeout 120 sudo -E apt-get update; then updated=1; break; fi
+            echo "apt-get update falhou/expirou (tentativa $attempt)"
+            sleep 5
+          done
+          [ "$updated" = 1 ] || {
+            echo "::error::apt-get update falhou nas 3 tentativas (mirror?)"
+            exit 1
+          }
           # libmpv-dev: media_kit linka contra libmpv no Linux (plano 46).
           # Runtime declarado nos pacotes: deb libmpv2 / rpm mpv-libs.
           # libsecret-1-dev: flutter_secure_storage no Linux (senha de banco,
           # plano 51). Runtime: libsecret-1-0.
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev rpm libmpv-dev libsecret-1-dev
+          sudo -E apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev rpm libmpv-dev libsecret-1-dev
           flutter --version
           dart pub global activate fastforge
 
       - name: Build + empacota
+        # Medido: 7m19s. Teto folgado de propósito — aqui se compila Flutter,
+        # o `dart build cli`, o Rust da CLI e o Zig do libghostty, e cache frio
+        # infla isso legitimamente.
+        timeout-minutes: 30
         run: |
           flutter pub get
           flutter build linux --release
@@ -512,8 +542,13 @@ jobs:
           mv "$RPM" "out/remote-pi-cockpit-${VERSION}.${{ matrix.rpm_arch }}.rpm"
 
       - name: Smoke test .deb (instala no próprio runner)
+        # Medido: 6s. O smoke sobe o servidor e espera o socket com laço
+        # próprio, então um teto curto aqui é seguro.
+        timeout-minutes: 5
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get install -y "./out/remote-pi-cockpit_${VERSION}_${{ matrix.deb_arch }}.deb"
+          sudo -E apt-get install -y "./out/remote-pi-cockpit_${VERSION}_${{ matrix.deb_arch }}.deb"
           dpkg -L remote-pi-cockpit | grep -m1 "\.desktop$"
           # O bundle do servidor chegou ao PACOTE (o gate anterior só provou que
           # saiu do build). Sem ele o app instalado roda no fallback.
@@ -535,6 +570,8 @@ jobs:
           echo "[smoke] cockpit-server do .deb subiu em $SOCK"
 
       - name: Smoke test .rpm (container fedora:40)
+        # Medido: 37s. A folga cobre o pull da imagem num dia ruim de rede.
+        timeout-minutes: 10
         run: |
           # rpm -qpl consulta o ARQUIVO (o nome interno do pacote não é
           # remote-pi-cockpit — o maker do Fastforge usa o nome do pubspec).
