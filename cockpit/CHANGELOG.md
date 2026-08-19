@@ -24,6 +24,31 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.1] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** This one is about terminals opening
+instantly again — and about the terminal engine behind them actually running
+on your machine.
+
+### Fixed
+
+- **New terminal tabs took about 6 seconds to open.** Every tab waited on a
+  background server that could never start, then quietly fell back to the old
+  in-process terminal. The server binary was being mangled while the app was
+  packaged, so it failed to launch on both Intel and Apple Silicon Macs. It is
+  packaged correctly now, and when a server does fail the app falls back
+  immediately instead of waiting.
+- **Windows: same delay, different cause.** The terminal server could not
+  listen at all on Windows. It now uses a local loopback connection with a
+  token, so it works there like it does elsewhere.
+- **Connecting to a remote host could fail without saying why.** The app now
+  picks the server build that matches the remote machine, refuses hosts it
+  cannot support with a clear message, and checks that the server really
+  started instead of assuming it did. Bootstrapping a remote host from Linux
+  installed a server that could not start at all; fixed.
+- **Accented characters were mangled in the file editor and diffs** — `ação`
+  showed up as `Ã§Ã£o`. Thanks, @pretodev.
+
 ## [1.28.0] - 2026-08-18
 
 **A beta for the upcoming 2.0.0.** Everything here is meant to ship as 2.0.0
