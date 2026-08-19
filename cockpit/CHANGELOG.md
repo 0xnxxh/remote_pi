@@ -24,7 +24,7 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
-## [1.29.0] - 2026-08-19
+## [1.28.2] - 2026-08-19
 
 **Still a beta for the upcoming 2.0.0.** Connecting to a machine you have never
 connected to before now works from the app itself.
