@@ -39,7 +39,12 @@ class RemoteServer {
   /// escreve). `null` até o [bind]. Cada linha vira um [TurnStatus] broadcast
   /// pras conexões (plano 60, Wave G).
   TurnStatusReceiver? _statusReceiver;
-  String? get _statusSocketPath => _statusReceiver?.socketPath;
+  /// Endpoint local aberto no [bind] (guarda o token, no Windows).
+  LocalListener? _endpoint;
+
+  /// Env que o hook do agente precisa pra alcançar o receptor de status: o
+  /// path do socket no POSIX, porta + token no Windows. Injetado em cada PTY.
+  Map<String, String> _statusEnv = const <String, String>{};
 
   /// Modo sidecar: quando > Duration.zero, o servidor se encerra sozinho se
   /// ficar esse tempo sem NENHUM cliente conectado (evita órfão quando a GUI
@@ -97,12 +102,11 @@ class RemoteServer {
   }
 
   Future<void> bind(String socketPath) async {
-    final file = File(socketPath);
-    if (file.existsSync()) file.deleteSync();
-    _listener = await ServerSocket.bind(
-      InternetAddress(socketPath, type: InternetAddressType.unix),
-      0,
-    );
+    // Transporte por plataforma (UDS no POSIX, TCP loopback + token no
+    // Windows, onde o dart:io não tem socket UNIX). Ver [LocalEndpoint].
+    final endpoint = await LocalEndpoint.bind(socketPath);
+    _endpoint = endpoint;
+    _listener = endpoint.listener;
     _listener!.listen(_accept);
     // Socket de status ao lado do socket principal. Falha ao bindar (ex.: path
     // longo demais) é não-fatal: o servidor segue sem turn-status.
@@ -112,6 +116,7 @@ class RemoteServer {
     } catch (_) {
       _statusReceiver = null;
     }
+    _statusEnv = _statusReceiver?.hookEnv ?? const <String, String>{};
     _armIdleTimer();
   }
 
@@ -128,6 +133,13 @@ class RemoteServer {
       await connection.close();
     }
     await _statusReceiver?.close();
+    // Fecha PELO endpoint: ele também apaga o inode/arquivo anunciado, que no
+    // Windows apontaria pra uma porta morta e enganaria a próxima descoberta.
+    if (_endpoint != null) {
+      await _endpoint!.close();
+      _endpoint = null;
+      _listener = null;
+    }
     await _listener?.close();
     await _terminals.dispose();
   }
@@ -140,7 +152,8 @@ class RemoteServer {
       _git,
       _db,
       serverVersion,
-      _statusSocketPath,
+      _statusEnv,
+      _endpoint?.token,
     );
     _connections.add(connection);
     _idleTimer?.cancel();
@@ -151,6 +164,14 @@ class RemoteServer {
   }
 }
 
+/// Variáveis pelas quais o hook do agente descobre o receptor de status (as
+/// duas formas: path do socket, ou porta + token).
+const _statusEnvKeys = <String>{
+  'COCKPIT_STATUS_SOCK',
+  'COCKPIT_STATUS_PORT',
+  'COCKPIT_STATUS_TOKEN',
+};
+
 class _Connection {
   _Connection(
     this._socket,
@@ -159,7 +180,8 @@ class _Connection {
     this._git,
     this._db,
     this._serverVersion,
-    this._statusSocketPath,
+    this._statusEnv,
+    this._expectedToken,
   ) {
     RemoteServer._codec
         .decodeStream(_socket)
@@ -182,14 +204,23 @@ class _Connection {
   final DbService _db;
   final String _serverVersion;
 
-  /// Socket local (no host) onde o hook do agente escreve o status de turno. É
-  /// injetado como `COCKPIT_STATUS_SOCK` no env de cada PTY, pra o hook alcançar
-  /// (plano 60, Wave G). `null` = turn-status desligado.
-  final String? _statusSocketPath;
+  /// Env que leva o hook do agente até o receptor de status do HOST
+  /// (`COCKPIT_STATUS_SOCK` no POSIX; `COCKPIT_STATUS_PORT` + `_TOKEN` no
+  /// Windows). Injetado no env de cada PTY (plano 60, Wave G). Vazio =
+  /// turn-status desligado.
+  final Map<String, String> _statusEnv;
+
+  /// Token exigido no `Hello` quando o transporte é TCP de loopback (Windows).
+  /// `null` sobre socket UNIX/túnel SSH, onde o canal já é a credencial.
+  final String? _expectedToken;
 
   final Map<String, StreamSubscription<PtyEvent>> _attachments = {};
   final Completer<void> _done = Completer();
   bool _handshaken = false;
+
+  /// Cliente na mesma máquina (sidecar): as PTYs dele ficam com o env de
+  /// status que ele mandou. Ver [Hello.local].
+  bool _localClient = false;
   bool _closed = false;
 
   Future<void> get done => _done.future;
@@ -215,23 +246,36 @@ class _Connection {
           );
           return close();
         }
+        // Porta de loopback aceita conexão de qualquer processo da máquina;
+        // o token é o que restringe ao dono do arquivo de rendezvous.
+        if (_expectedToken != null && message.token != _expectedToken) {
+          _send(const RemoteError(code: 'invalid_token'));
+          return close();
+        }
         _handshaken = true;
+        _localClient = message.local;
         _send(HelloAck(version: protocolVersion, server: _serverVersion));
         return;
       }
 
       switch (message) {
         case PtyOpen():
-          // Injeta o socket de status do HOST no env da PTY (o cliente já
-          // manda COCKPIT_PANE_ID); assim o hook do agente no host alcança o
-          // servidor, que reenvia o turno pelo protocolo (Wave G). O env do
-          // cliente NÃO sobrescreve isto (o socket do cliente é inalcançável do
-          // host).
-          final env = _statusSocketPath == null
+          // Injeta o endereço do receptor de status do HOST no env da PTY (o
+          // cliente já manda COCKPIT_PANE_ID); assim o hook do agente no host
+          // alcança o servidor, que reenvia o turno pelo protocolo (Wave G). O
+          // env do cliente NÃO sobrescreve isto (o socket do cliente é
+          // inalcançável do host). No Windows são porta + token, não um path:
+          // o hook já lê as duas formas (ver cli/src/hook.rs).
+          final env = _statusEnv.isEmpty || _localClient
               ? message.environment
               : {
-                  ...message.environment,
-                  'COCKPIT_STATUS_SOCK': _statusSocketPath!,
+                  // As chaves do OUTRO transporte saem juntas: o hook lê
+                  // COCKPIT_STATUS_SOCK ANTES de porta/token (cli/src/
+                  // transport.rs), então um path herdado do cliente venceria o
+                  // endereço TCP do servidor e o status sumiria no Windows.
+                  for (final e in message.environment.entries)
+                    if (!_statusEnvKeys.contains(e.key)) e.key: e.value,
+                  ..._statusEnv,
                 };
           final info = await _terminals.open(
             PtySpawnSpec(
@@ -498,25 +542,38 @@ class _Connection {
 /// UMA linha JSON por evento e fecha. Cada linha vira um [TurnStatus] entregue
 /// ao [onStatus] (que o [RemoteServer] faz broadcast pros clientes).
 ///
-/// Só POSIX: no host remoto (macOS/Linux) o transporte é UDS. O envelope do
-/// hook é `{paneId, st, ev, sid, tx, hn, tid?, tok?}` (ver cli/src/hook.rs).
+/// Transporte por plataforma, igual ao do servidor: UDS no POSIX, TCP loopback
+/// + token no Windows (ver [LocalEndpoint]). Quem diz ao hook onde escrever é o
+/// [hookEnv], injetado no env de cada PTY. O envelope do hook é
+/// `{paneId, st, ev, sid, tx, hn, tid?, tok?}` (ver cli/src/hook.rs).
 class TurnStatusReceiver {
   TurnStatusReceiver(this.onStatus);
 
   final void Function(TurnStatus status) onStatus;
 
-  ServerSocket? _listener;
+  LocalListener? _endpoint;
   String? socketPath;
 
+  /// Env que leva o hook até aqui. No POSIX é o path do socket; no Windows,
+  /// porta + token — as duas formas que o `cockpit hook` já sabe ler.
+  Map<String, String> get hookEnv {
+    final endpoint = _endpoint;
+    if (endpoint == null) return const <String, String>{};
+    final token = endpoint.token;
+    if (token == null) {
+      return <String, String>{'COCKPIT_STATUS_SOCK': endpoint.path};
+    }
+    return <String, String>{
+      'COCKPIT_STATUS_PORT': '${endpoint.listener.port}',
+      'COCKPIT_STATUS_TOKEN': token,
+    };
+  }
+
   Future<void> bind(String path) async {
-    final file = File(path);
-    if (file.existsSync()) file.deleteSync();
-    _listener = await ServerSocket.bind(
-      InternetAddress(path, type: InternetAddressType.unix),
-      0,
-    );
+    final endpoint = await LocalEndpoint.bind(path);
+    _endpoint = endpoint;
     socketPath = path;
-    _listener!.listen(_accept);
+    endpoint.listener.listen(_accept);
   }
 
   void _accept(Socket socket) {
@@ -542,6 +599,10 @@ class TurnStatusReceiver {
     }
     if (decoded is! Map) return;
     final json = decoded.cast<String, Object?>();
+    // Loopback TCP (Windows) aceita qualquer processo local: só entra quem
+    // traz o token que foi injetado no env da PTY.
+    final expected = _endpoint?.token;
+    if (expected != null && json['tok'] != expected) return;
     final paneId = json['paneId'];
     final status = json['st'];
     if (paneId is! String || status is! String) return;
@@ -558,13 +619,8 @@ class TurnStatusReceiver {
   }
 
   Future<void> close() async {
-    await _listener?.close();
-    final path = socketPath;
-    if (path != null) {
-      try {
-        final f = File(path);
-        if (f.existsSync()) f.deleteSync();
-      } catch (_) {}
-    }
+    // O endpoint fecha o listener e apaga o inode/arquivo anunciado.
+    await _endpoint?.close();
+    _endpoint = null;
   }
 }

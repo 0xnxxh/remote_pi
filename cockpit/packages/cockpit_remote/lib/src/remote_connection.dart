@@ -37,15 +37,25 @@ class RemoteConnection {
   /// Falso após queda do socket ou [close].
   bool get isOpen => _open;
 
-  /// Conecta a um socket UNIX (path) e faz o handshake — o transporte histórico
-  /// (sidecar loopback / `ssh -L`). Atalho pra [connectOn] com um
-  /// [SocketRemoteDuplex].
+  /// Conecta ao endpoint local anunciado em [socketPath] e faz o handshake —
+  /// o transporte histórico (sidecar local / ponta do `ssh -L`). Socket UNIX no
+  /// POSIX; no Windows, TCP de loopback com token, resolvido pelo
+  /// [LocalEndpoint] a partir do mesmo caminho.
+  /// [local] marca "servidor na mesma máquina" (sidecar). Não é derivável do
+  /// transporte: a ponta de um `ssh -L` também é um socket local, e ali o
+  /// servidor É remoto. Ver [Hello.local].
   static Future<RemoteConnection> connect(
     String socketPath, {
     String clientName = 'cockpit',
+    bool local = false,
   }) async {
-    final duplex = await SocketRemoteDuplex.connectUnix(socketPath);
-    return connectOn(duplex, clientName: clientName);
+    final endpoint = await LocalEndpoint.connect(socketPath);
+    return connectOn(
+      SocketRemoteDuplex(endpoint.socket),
+      clientName: clientName,
+      token: endpoint.token,
+      local: local,
+    );
   }
 
   /// Faz o handshake sobre um [RemoteDuplex] já aberto e devolve a conexão
@@ -54,6 +64,8 @@ class RemoteConnection {
   static Future<RemoteConnection> connectOn(
     RemoteDuplex duplex, {
     String clientName = 'cockpit',
+    String? token,
+    bool local = false,
   }) async {
     // Erros de escrita chegam async pelo done do canal (ex.: EPIPE quando um
     // forward SSH aceita localmente mas o lado remoto recusa) — sem este
@@ -79,7 +91,14 @@ class RemoteConnection {
     final firstReply = messages.stream.first;
     duplex.add(
       utf8.encode(
-        _codec.encode(Hello(version: protocolVersion, client: clientName)),
+        _codec.encode(
+          Hello(
+            version: protocolVersion,
+            client: clientName,
+            token: token,
+            local: local,
+          ),
+        ),
       ),
     );
 

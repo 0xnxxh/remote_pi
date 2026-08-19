@@ -166,6 +166,10 @@ class SidecarTerminalConnector implements TurnStatusSource {
       return await RemoteConnection.connect(
         socketPath,
         clientName: 'cockpit-gui',
+        // Mesma máquina: as PTYs mantêm o COCKPIT_STATUS_SOCK do app, que é
+        // por onde a CLI interna (`cockpit send`, `list-tabs`, `db`) fala. Um
+        // host remoto sobrescreve, porque lá o socket do app é inalcançável.
+        local: true,
       );
     } catch (_) {
       return null; // socket velho/morto; o bind do servidor novo o substitui.

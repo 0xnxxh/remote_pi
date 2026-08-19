@@ -259,8 +259,12 @@ class RemoteHostConnector {
         await Future<void>.delayed(Duration(milliseconds: 100 + i * 50));
       }
       try {
-        return await RemoteConnection.connect(
-          tunnel.localSocketPath,
+        // Socket UNIX explícito: esta é a PONTA LOCAL de um `ssh -L`, não um
+        // endpoint anunciado pelo servidor — não há arquivo de rendezvous nem
+        // token a resolver aqui (e o servidor do outro lado é remoto, então
+        // nada de `local: true`).
+        return await RemoteConnection.connectOn(
+          await SocketRemoteDuplex.connectUnix(tunnel.localSocketPath),
           clientName: 'cockpit-gui-ssh',
         );
       } on TerminalException catch (e) {

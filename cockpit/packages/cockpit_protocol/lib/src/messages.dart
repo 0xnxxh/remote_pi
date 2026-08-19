@@ -65,19 +65,48 @@ class UnknownMessage extends RemoteMessage {
 // ---------------------------------------------------------------------------
 
 class Hello extends RemoteMessage {
-  const Hello({required this.version, required this.client});
+  const Hello({
+    required this.version,
+    required this.client,
+    this.token,
+    this.local = false,
+  });
   static const kType = 'hello';
 
   final int version;
   final String client;
 
-  factory Hello.fromJson(Map<String, Object?> j) =>
-      Hello(version: j['v'] as int, client: j['client'] as String);
+  /// Cliente na MESMA máquina que o servidor (sidecar), e não do outro lado de
+  /// um túnel SSH. Muda uma coisa só, mas decisiva: as PTYs de um cliente local
+  /// mantêm o `COCKPIT_STATUS_SOCK` que ELE injetou, porque aquele socket é a
+  /// via da CLI interna (`cockpit send`, `list-tabs`, `db`...) além do status
+  /// de turno. Sobrescrevê-lo pelo receptor do servidor — correto para um host
+  /// remoto, cujo socket o agente não alcança — deixaria a CLI muda em toda aba.
+  final bool local;
+
+  /// Token do endpoint local, exigido onde o transporte é TCP de loopback
+  /// (Windows — ver `LocalEndpoint`). `null` sobre socket UNIX ou túnel SSH,
+  /// onde o próprio canal já é a credencial. Campo opcional: cliente e
+  /// servidor de versões diferentes seguem se entendendo no POSIX.
+  final String? token;
+
+  factory Hello.fromJson(Map<String, Object?> j) => Hello(
+    version: j['v'] as int,
+    client: j['client'] as String,
+    token: j['tok'] as String?,
+    local: j['loc'] as bool? ?? false,
+  );
 
   @override
   String get type => kType;
   @override
-  Map<String, Object?> toJson() => {'t': kType, 'v': version, 'client': client};
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'v': version,
+    'client': client,
+    if (token != null) 'tok': token,
+    if (local) 'loc': true,
+  };
 }
 
 class HelloAck extends RemoteMessage {

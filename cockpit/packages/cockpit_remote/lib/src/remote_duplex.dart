@@ -24,7 +24,11 @@ class SocketRemoteDuplex implements RemoteDuplex {
 
   final Socket _socket;
 
-  /// Conecta a um socket UNIX (path) e devolve o duplex pronto.
+  /// Conecta a um socket UNIX (path) e devolve o duplex pronto. É o caminho de
+  /// quem SABE que o outro lado é um socket UNIX — hoje a ponta local de um
+  /// `ssh -L`. Para o endpoint anunciado pelo servidor local (que no Windows é
+  /// TCP + token) use `RemoteConnection.connect`, que passa pelo
+  /// `LocalEndpoint`.
   static Future<SocketRemoteDuplex> connectUnix(String socketPath) async {
     final socket = await Socket.connect(
       InternetAddress(socketPath, type: InternetAddressType.unix),

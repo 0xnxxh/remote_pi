@@ -13,14 +13,20 @@ formato no fio para debugging e para futuros clientes.
 - **Framing**: JSONL — um objeto JSON por linha (`\n`), UTF-8. O despacho é
   por linha, nunca por `onDone` (lição do socket da CLI interna: esperar
   `onDone` deadlocka request/response).
-- **Canal**: socket local (UDS no POSIX). Remoto = o MESMO socket tunelado
-  por SSH (Wave 2); o protocolo não muda. O servidor nunca escuta em porta
-  de rede.
+- **Canal**: socket local. No POSIX é um UDS no caminho anunciado; **no Windows
+  é TCP no loopback**, porque o `dart:io` não implementa socket UNIX lá — o
+  bind estourava e o app caía no PTY in-process. O caminho anunciado passa a
+  guardar um **arquivo de rendezvous** JSON (`{"v":1,"port":…,"token":…}`), que
+  faz o papel do inode: é por ele que um cliente descobre um servidor já de pé
+  e o adota. Remoto = o MESMO socket tunelado por SSH (Wave 2); o protocolo não
+  muda. O servidor nunca escuta em porta de rede roteável.
 - **Bytes de PTY**: base64 no campo `d`. (Candidato a otimização em wave
   futura: frame binário; só se o benchmark pedir.)
-- **Autenticação**: nenhuma no canal — quem alcança o socket é dono
-  (permissão de filesystem no UDS; login SSH no túnel). Decisões G/H do
-  plano 58.
+- **Autenticação**: nenhuma no canal onde alcançá-lo já é credencial
+  (permissão de filesystem no UDS; login SSH no túnel) — decisões G/H do plano
+  58. No loopback TCP isso não vale: qualquer processo da máquina conecta,
+  então o `hello` leva um **token** (`tok`) que só quem lê o arquivo de
+  rendezvous conhece, e o servidor recusa o handshake sem ele.
 
 ## Envelope
 
@@ -39,8 +45,22 @@ rejeitada com `err{code: handshake_required}`.
 
 | Direção | Mensagem | Campos |
 |---|---|---|
-| C→S | `hello` | `v` (int, versão do protocolo), `client` (nome/versão) |
+| C→S | `hello` | `v` (int, versão do protocolo), `client` (nome/versão), `tok` (opcional), `loc` (opcional) |
 | S→C | `hello.ack` | `v`, `server` (versão do binário) |
+
+`tok` é o token do arquivo de rendezvous, obrigatório onde o transporte é TCP
+de loopback (Windows) e ausente sobre UDS/túnel SSH; token errado responde
+`err{code: invalid_token}` e fecha.
+
+`loc: true` diz "estou na mesma máquina que você" (sidecar), e não é derivável
+do transporte — a ponta de um `ssh -L` também é um socket local, e ali o
+servidor é remoto. Ele muda uma coisa: as PTYs de um cliente local mantêm o
+`COCKPIT_STATUS_SOCK` que o cliente injetou, porque aquele socket é a via da
+CLI interna (`cockpit send`, `list-tabs`, `db`) além do status de turno. Para
+um cliente remoto o servidor troca esse endereço pelo do seu próprio receptor
+(o socket do cliente é inalcançável do host), removendo junto as chaves do
+outro transporte — o hook lê `COCKPIT_STATUS_SOCK` antes de porta+token, e uma
+sobra do cliente venceria o endereço certo.
 
 `v` é comparado por igualdade nesta fase. Incompatível → o cliente oferece
 "Update server" (bootstrap pelo túnel, Wave 2).
