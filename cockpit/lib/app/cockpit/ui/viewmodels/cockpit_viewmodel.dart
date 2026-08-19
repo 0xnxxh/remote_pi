@@ -2378,6 +2378,7 @@ class CockpitViewModel extends ChangeNotifier {
     int port = 22,
     RemoteHostAuth auth = RemoteHostAuth.key,
     String? password,
+    String? identityFile,
   }) async {
     await _remoteHosts.addHost(
       name: name,
@@ -2385,6 +2386,7 @@ class CockpitViewModel extends ChangeNotifier {
       port: port,
       auth: auth,
       password: password,
+      identityFile: identityFile,
     );
     notifyListeners();
   }

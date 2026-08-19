@@ -1,4 +1,5 @@
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
+import 'package:cockpit/app/cockpit/ui/remote/ssh_key_picker.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/i18n/strings.g.dart';
@@ -15,6 +16,7 @@ class RemoteHostDraft {
     required this.port,
     required this.auth,
     this.password,
+    this.identityFile,
   });
 
   final String name;
@@ -26,6 +28,10 @@ class RemoteHostDraft {
 
   /// Senha nova (auth por senha). `null` = não alterar a senha guardada.
   final String? password;
+
+  /// Chave privada escolhida (auth por chave, desktop). `null` no mobile e na
+  /// auth por senha.
+  final String? identityFile;
 }
 
 /// Dialog "Add remote host" (plano 60, Wave C): coleta usuário, host, porta,
@@ -37,6 +43,7 @@ Future<RemoteHostDraft?> showAddRemoteHostDialog(
   String? initialSshTarget,
   int initialPort = 22,
   RemoteHostAuth initialAuth = RemoteHostAuth.key,
+  String? initialIdentityFile,
   bool hasStoredPassword = false,
   bool edit = false,
 }) {
@@ -51,6 +58,7 @@ Future<RemoteHostDraft?> showAddRemoteHostDialog(
       initialSshTarget: initialSshTarget,
       initialPort: initialPort,
       initialAuth: initialAuth,
+      initialIdentityFile: initialIdentityFile,
       hasStoredPassword: hasStoredPassword,
       edit: edit,
     ),
@@ -63,6 +71,7 @@ class _AddRemoteHostDialog extends StatefulWidget {
     this.initialSshTarget,
     this.initialPort = 22,
     this.initialAuth = RemoteHostAuth.key,
+    this.initialIdentityFile,
     this.hasStoredPassword = false,
     this.edit = false,
   });
@@ -71,6 +80,7 @@ class _AddRemoteHostDialog extends StatefulWidget {
   final String? initialSshTarget;
   final int initialPort;
   final RemoteHostAuth initialAuth;
+  final String? initialIdentityFile;
   final bool hasStoredPassword;
   final bool edit;
 
@@ -85,6 +95,7 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
   late final _name = TextEditingController(text: widget.initialName ?? '');
   late final _password = TextEditingController();
   late RemoteHostAuth _auth = widget.initialAuth;
+  late String? _identityFile = widget.initialIdentityFile;
 
   /// `true` depois de uma tentativa de submit inválida — aí as mensagens de erro
   /// aparecem (não poluem o formulário recém-aberto, ainda vazio).
@@ -121,8 +132,19 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
   bool get _valid {
     if (_userTrimmed.isEmpty || _hostTrimmed.isEmpty) return false;
     if (_passwordMissing) return false;
+    if (_identityMissing) return false;
     return true;
   }
+
+  /// Auth por chave no desktop **exige** a chave escolhida: deixar o ssh
+  /// adivinhar é o que faz uma máquina com muitas chaves estourar o
+  /// `MaxAuthTries` do servidor antes de chegar na certa. No mobile não se
+  /// pergunta — lá a identidade é a do device, guardada no Keychain.
+  bool get _identityRequired =>
+      !isMobilePlatform && _auth == RemoteHostAuth.key;
+
+  bool get _identityMissing =>
+      _identityRequired && (_identityFile == null || _identityFile!.isEmpty);
 
   /// Bloqueia espaços em branco (usuário/host SSH não os têm).
   static final _denySpaces = FilteringTextInputFormatter.deny(RegExp(r'\s'));
@@ -145,6 +167,14 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
       _password.text.isEmpty &&
       !widget.hasStoredPassword;
 
+  Future<void> _pickIdentity() async {
+    final picked = await pickSshPrivateKey(
+      dialogTitle: context.t.cockpit.remoteHost.identityDialogTitle,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _identityFile = picked);
+  }
+
   void _submit() {
     if (!_valid) {
       setState(() => _attempted = true); // revela as mensagens de erro
@@ -158,6 +188,9 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
         sshTarget: target,
         port: port,
         auth: _auth,
+        // Só faz sentido guardar a chave na auth por chave; trocar pra senha
+        // limpa a escolha em vez de deixá-la pendurada no registro.
+        identityFile: _auth == RemoteHostAuth.key ? _identityFile : null,
         // Senha vazia num edit que já tinha senha = manter a guardada (null).
         password: _auth == RemoteHostAuth.password && _password.text.isNotEmpty
             ? _password.text
@@ -263,6 +296,37 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
                 ),
               ],
             ),
+              // Chave privada: obrigatória na auth por chave (desktop). O
+              // picker abre direto em ~/.ssh — pasta oculta nas três
+              // plataformas, então navegar até ela na mão é ruim.
+              if (_identityRequired) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _identityFile ?? tr.identityEmpty,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.typo.mono.copyWith(
+                          fontSize: 11,
+                          color: _identityFile == null
+                              ? colors.text3
+                              : colors.text2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlineButton(
+                      size: ButtonSize.small,
+                      onPressed: _pickIdentity,
+                      child: Text(tr.identityChoose),
+                    ),
+                  ],
+                ),
+                if (_attempted && _identityMissing)
+                  _errorText(context, tr.errIdentity),
+              ],
               if (_auth == RemoteHostAuth.password) ...[
                 const SizedBox(height: 10),
                 TextField(

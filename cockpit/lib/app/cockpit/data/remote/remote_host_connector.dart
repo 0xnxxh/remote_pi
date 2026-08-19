@@ -3,7 +3,10 @@ import 'dart:io';
 
 import 'package:cockpit/app/cockpit/data/remote/dartssh_host_connection.dart';
 import 'package:cockpit/app/cockpit/data/remote/ssh_channel_duplex.dart';
+import 'package:cockpit/app/cockpit/data/remote/ssh_known_hosts.dart';
 import 'package:cockpit/app/cockpit/data/remote/ssh_tunnel.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart'
+    show HostKeyPrompt, HostKeyVerdict;
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit_core/cockpit_core.dart';
@@ -27,6 +30,16 @@ enum RemoteHostErrorKind {
   serverInstallFailed,
   versionMismatch,
   protocol,
+
+  /// Host nunca visto e o humano não confiou na chave (recusou, ou não havia
+  /// ninguém pra perguntar). Antes disto o `ssh` só dizia `Host key
+  /// verification failed` e não havia caminho nenhum pela GUI.
+  hostKeyUnknown,
+
+  /// O host apresenta chave diferente da que está no `known_hosts`. Não existe
+  /// aceite inline: ou é troca legítima de servidor (o usuário edita o
+  /// known_hosts) ou é ataque.
+  hostKeyChanged,
 }
 
 class RemoteHostException implements Exception {
@@ -53,6 +66,8 @@ class RemoteHostConnector {
     this.host, {
     required this.localServerBinaryResolver,
     this.passwordResolver,
+    this.hostKeyPrompt,
+    this.knownHosts = const SshKnownHosts(),
   });
 
   final RemoteHost host;
@@ -67,6 +82,15 @@ class RemoteHostConnector {
   /// Resolve a senha SSH do host (auth por senha), lida do Keychain sob
   /// demanda. `null` = auth por chave (default). Plano 60, Wave C.
   final Future<String?> Function()? passwordResolver;
+
+  /// Pergunta ao humano se confia na host key de um destino novo (TOFU),
+  /// mostrando o fingerprint. `null` = ninguém pra perguntar (testes, CLI) →
+  /// host novo falha com [RemoteHostErrorKind.hostKeyUnknown] em vez de ser
+  /// aceito em silêncio.
+  final HostKeyPrompt? hostKeyPrompt;
+
+  /// Acesso ao `known_hosts` do usuário (injetável nos testes).
+  final SshKnownHosts knownHosts;
 
   SshTunnel? _tunnel;
   DartSshHostConnection? _dartConn;
@@ -159,15 +183,26 @@ class RemoteHostConnector {
     // Mobile (plano 59): transporte dartssh2 (Dart puro), sem binário `ssh` nem
     // bootstrap (decisão D — não instala server). Desktop segue no system-ssh.
     if (isMobilePlatform) return _openMobile();
+    // Host key ANTES do túnel: com `BatchMode=yes` o ssh não pode perguntar
+    // nada, então um destino novo morria em "Host key verification failed" sem
+    // caminho pela GUI. Aqui o humano vê o fingerprint e decide.
+    await _ensureHostKeyTrusted();
     final SshTunnel tunnel;
     try {
       tunnel = await SshTunnel.open(
         target: host.sshTarget,
         port: host.port,
         password: _password,
+        identityFile: host.identityFile,
       );
     } on SshTunnelException catch (e) {
       _setPhase(RemoteHostPhase.failed);
+      // "Host key verification failed" não é host inalcançável: a máquina
+      // respondeu, o que falhou foi a confiança. Distinguir importa porque a
+      // ação do usuário é outra (conferir o fingerprint, não ligar a máquina).
+      if (e.detail.contains('Host key verification failed')) {
+        throw RemoteHostException(await _classifyHostKeyFailure(), e.detail);
+      }
       throw RemoteHostException(RemoteHostErrorKind.sshUnreachable, e.detail);
     }
     _tunnel = tunnel;
@@ -197,6 +232,44 @@ class RemoteHostConnector {
   /// Abertura no mobile: conecta via dartssh2, resolve `$HOME` do host e
   /// encaminha pro socket UNIX remoto. Sem bootstrap — se o server não está lá,
   /// falha com erro claro (o mobile não instala server, decisão D).
+  Future<void> _ensureHostKeyTrusted() async {
+    // Auth por senha já roda com `accept-new` no ssh (o canal de senha é o
+    // próprio aceite); não duplicamos a pergunta.
+    if (_password != null) return;
+    final status = await knownHosts.lookup(host.host, host.port);
+    if (status != SshHostKeyStatus.unknown) return;
+
+    final keys = await knownHosts.scan(host.host, host.port);
+    // Ninguém respondeu ao scan: não é problema de confiança, é host fora do
+    // ar — deixa o ssh falhar e reportar o motivo real.
+    if (keys.isEmpty) return;
+    final prompt = hostKeyPrompt;
+    final fingerprint = await knownHosts.fingerprintOf(keys);
+    if (prompt == null || fingerprint == null) {
+      _setPhase(RemoteHostPhase.failed);
+      throw const RemoteHostException(RemoteHostErrorKind.hostKeyUnknown);
+    }
+    final verdict = await prompt(
+      SshKnownHosts.targetOf(host.host, host.port),
+      fingerprint,
+    );
+    if (verdict != HostKeyVerdict.trust) {
+      _setPhase(RemoteHostPhase.failed);
+      throw const RemoteHostException(RemoteHostErrorKind.hostKeyUnknown);
+    }
+    await knownHosts.trust(keys);
+  }
+
+  /// `Host key verification failed` COM entrada no `known_hosts` significa
+  /// chave trocada — o caso que nunca se aceita inline. Sem entrada, é host
+  /// novo que o passo de confiança não cobriu (scan sem resposta).
+  Future<RemoteHostErrorKind> _classifyHostKeyFailure() async {
+    final status = await knownHosts.lookup(host.host, host.port);
+    return status == SshHostKeyStatus.known
+        ? RemoteHostErrorKind.hostKeyChanged
+        : RemoteHostErrorKind.hostKeyUnknown;
+  }
+
   Future<RemoteTerminalService> _openMobile() async {
     // sshTarget é `user@host` (sem porta); a porta vive em host.port.
     if (host.user.isEmpty || host.host.isEmpty) {
@@ -304,6 +377,7 @@ class RemoteHostConnector {
       'uname -sm',
       port: host.port,
       password: _password,
+      identityFile: host.identityFile,
     );
     if (unameCode != 0) {
       throw RemoteHostException(
@@ -357,6 +431,7 @@ class RemoteHostConnector {
         stdinBytes: bytes,
         port: host.port,
         password: _password,
+        identityFile: host.identityFile,
       );
       if (code != 0) {
         throw RemoteHostException(
@@ -409,6 +484,7 @@ class RemoteHostConnector {
       '>$logPath 2>&1 & echo started',
       port: host.port,
       password: _password,
+      identityFile: host.identityFile,
     );
     if (code != 0) {
       throw RemoteHostException(
@@ -430,6 +506,7 @@ class RemoteHostConnector {
         'test -S $_remoteSocketPath && echo up || echo down',
         port: host.port,
         password: _password,
+        identityFile: host.identityFile,
       );
       if (code == 0 && out.endsWith('up')) return;
     }
@@ -438,6 +515,7 @@ class RemoteHostConnector {
       'tail -c 2000 $logPath 2>/dev/null || true',
       port: host.port,
       password: _password,
+      identityFile: host.identityFile,
     );
     throw RemoteHostException(
       RemoteHostErrorKind.serverInstallFailed,

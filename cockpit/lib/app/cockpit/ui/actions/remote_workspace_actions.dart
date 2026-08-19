@@ -126,6 +126,7 @@ Future<RemoteHost?> _addRemoteHost(
     port: draft.port,
     auth: draft.auth,
     password: draft.password,
+    identityFile: draft.identityFile,
   );
   for (final h in vm.remoteHosts.hosts) {
     if (h.sshTarget == draft.sshTarget) return h;

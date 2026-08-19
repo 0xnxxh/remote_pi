@@ -5,6 +5,8 @@ import 'package:cockpit/app/cockpit/data/remote/remote_host_connector.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_password_store.dart';
 import 'package:cockpit/app/cockpit/data/remote/remote_host_terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/contracts/remote_hosts_store.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart'
+    show HostKeyPrompt, HostKeyVerdict;
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_gateway.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_host.dart';
 import 'package:cockpit/app/cockpit/domain/entities/remote_workspace_pin.dart';
@@ -22,6 +24,12 @@ class RemoteHostsController extends ChangeNotifier {
   RemoteHostsController(this._store);
 
   final RemoteHostsStore _store;
+
+  /// Pergunta ao humano se confia na host key de um destino novo. A página
+  /// pluga o dialog aqui no boot (mesmo padrão do prompt do túnel de banco);
+  /// `null` = ninguém pra perguntar → host novo falha em vez de ser aceito
+  /// em silêncio.
+  HostKeyPrompt? hostKeyPrompt;
   final Map<String, RemoteHostConnector> _connectors = {};
   final MobileSshKeyStore _deviceKeys = MobileSshKeyStore();
   final RemoteHostPasswordStore _passwords = RemoteHostPasswordStore();
@@ -49,6 +57,12 @@ class RemoteHostsController extends ChangeNotifier {
       passwordResolver: host.auth == RemoteHostAuth.password
           ? () => _passwords.read(host.id)
           : null,
+      // Indireção proposital: o prompt é plugado DEPOIS que os connectors já
+      // podem ter nascido, então lê-lo na hora do uso (e não capturá-lo no
+      // construtor) evita connector antigo com prompt nulo.
+      hostKeyPrompt: (endpoint, fingerprint) async =>
+          await hostKeyPrompt?.call(endpoint, fingerprint) ??
+          HostKeyVerdict.reject,
     );
     connector.turnStatus.listen(_turnStatus.add);
     // Fases notificam AQUI (e não só em terminalGateway): o badge e o botão
@@ -120,6 +134,7 @@ class RemoteHostsController extends ChangeNotifier {
     int port = 22,
     RemoteHostAuth auth = RemoteHostAuth.key,
     String? password,
+    String? identityFile,
   }) async {
     final id = _nextId();
     final host = RemoteHost(
@@ -128,6 +143,7 @@ class RemoteHostsController extends ChangeNotifier {
       sshTarget: sshTarget,
       port: port,
       auth: auth,
+      identityFile: identityFile,
     );
     if (auth == RemoteHostAuth.password) {
       await _passwords.write(id, password);
@@ -222,6 +238,7 @@ class RemoteHostsController extends ChangeNotifier {
     int? port,
     RemoteHostAuth? auth,
     String? password,
+    String? identityFile,
   }) async {
     RemoteHost? host;
     for (final h in _store.hosts()) {
@@ -239,6 +256,11 @@ class RemoteHostsController extends ChangeNotifier {
         : host.sshTarget;
     final newPort = port ?? host.port;
     final newAuth = auth ?? host.auth;
+    // Trocar pra senha limpa a chave: guardá-la seria estado morto que
+    // reaparece se o usuário voltar pra auth por chave.
+    final newIdentity = newAuth == RemoteHostAuth.password
+        ? null
+        : (identityFile ?? host.identityFile);
 
     // Senha: aplica a nova se veio; some do Keychain ao trocar pra chave.
     if (newAuth == RemoteHostAuth.password) {
@@ -251,7 +273,8 @@ class RemoteHostsController extends ChangeNotifier {
 
     if (newTarget != host.sshTarget ||
         newPort != host.port ||
-        newAuth != host.auth) {
+        newAuth != host.auth ||
+        newIdentity != host.identityFile) {
       // Endpoint/auth mudou → a conexão atual não vale mais.
       await _connectors.remove(id)?.dispose();
     }
@@ -261,6 +284,7 @@ class RemoteHostsController extends ChangeNotifier {
         sshTarget: newTarget,
         port: newPort,
         auth: newAuth,
+        identityFile: newIdentity,
       ),
     );
     notifyListeners();

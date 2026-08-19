@@ -1087,6 +1087,12 @@ class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHos
 	@override String get errUser => 'Usuario obligatorio';
 	@override String get errHost => 'Host obligatorio';
 	@override String get errPassword => 'Contraseña obligatoria';
+	@override String get identityChoose => 'Elegir…';
+	@override String get identityEmpty => 'Ninguna clave seleccionada';
+	@override String get identityDialogTitle => 'Selecciona la clave privada SSH';
+	@override String get errIdentity => 'Elige la clave privada para autenticarte.';
+	@override String errHostKeyUnknown({required Object host}) => 'Cockpit todavía no confía en ${host}. Conecta de nuevo y confirma la huella.';
+	@override String errHostKeyChanged({required Object host}) => '${host} presenta una clave SSH distinta de la guardada. Si no reinstalaste esa máquina, detente y compruébalo; si la reinstalaste, elimina la entrada antigua de ~/.ssh/known_hosts.';
 }
 
 // Path: cockpit.browserPane
@@ -2240,6 +2246,12 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.errUser' => 'Usuario obligatorio',
 			'cockpit.remoteHost.errHost' => 'Host obligatorio',
 			'cockpit.remoteHost.errPassword' => 'Contraseña obligatoria',
+			'cockpit.remoteHost.identityChoose' => 'Elegir…',
+			'cockpit.remoteHost.identityEmpty' => 'Ninguna clave seleccionada',
+			'cockpit.remoteHost.identityDialogTitle' => 'Selecciona la clave privada SSH',
+			'cockpit.remoteHost.errIdentity' => 'Elige la clave privada para autenticarte.',
+			'cockpit.remoteHost.errHostKeyUnknown' => ({required Object host}) => 'Cockpit todavía no confía en ${host}. Conecta de nuevo y confirma la huella.',
+			'cockpit.remoteHost.errHostKeyChanged' => ({required Object host}) => '${host} presenta una clave SSH distinta de la guardada. Si no reinstalaste esa máquina, detente y compruébalo; si la reinstalaste, elimina la entrada antigua de ~/.ssh/known_hosts.',
 			'cockpit.browserPane.back' => 'Atrás',
 			'cockpit.browserPane.forward' => 'Adelante',
 			'cockpit.browserPane.reload' => 'Recargar',

@@ -2110,6 +2110,7 @@ class _RemoteHostsPanel extends StatelessWidget {
       port: draft.port,
       auth: draft.auth,
       password: draft.password,
+      identityFile: draft.identityFile,
     );
   }
 
@@ -2126,6 +2127,7 @@ class _RemoteHostsPanel extends StatelessWidget {
       initialSshTarget: host.sshTarget,
       initialPort: host.port,
       initialAuth: host.auth,
+      initialIdentityFile: host.identityFile,
       hasStoredPassword: hasPassword,
       edit: true,
     );
@@ -2137,6 +2139,7 @@ class _RemoteHostsPanel extends StatelessWidget {
       port: draft.port,
       auth: draft.auth,
       password: draft.password,
+      identityFile: draft.identityFile,
     );
   }
 

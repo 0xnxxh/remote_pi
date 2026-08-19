@@ -38,6 +38,7 @@ class SshTunnel {
     required String target,
     int port = 22,
     String? password,
+    String? identityFile,
     String remoteSocketPath = r'$HOME/.cockpit/cockpit-server.sock',
     Duration timeout = const Duration(seconds: 15),
   }) async {
@@ -46,7 +47,11 @@ class SshTunnel {
         '${DateTime.now().microsecondsSinceEpoch}.sock';
 
     final askpass = await _Askpass.create(password);
-    final authOpts = _authOpts(port: port, usingPassword: password != null);
+    final authOpts = _authOpts(
+      port: port,
+      usingPassword: password != null,
+      identityFile: identityFile,
+    );
 
     try {
       // O forward streamlocal do OpenSSH NÃO resolve path relativo nem expande
@@ -137,8 +142,19 @@ class SshTunnel {
   static List<String> _authOpts({
     required int port,
     required bool usingPassword,
+    String? identityFile,
   }) => [
     if (port != 22) ...['-p', '$port'],
+    // Chave escolhida no cadastro: `IdentitiesOnly` impede o ssh de oferecer
+    // também as do agent/config antes dela — numa máquina com muitas chaves
+    // isso estoura o `MaxAuthTries` do servidor e a conexão morre em "too many
+    // authentication failures" sem nunca ter tentado a certa.
+    if (identityFile != null && identityFile.isNotEmpty) ...[
+      '-i',
+      identityFile,
+      '-o',
+      'IdentitiesOnly=yes',
+    ],
     '-o',
     'ConnectTimeout=$_connectTimeoutSeconds',
     if (usingPassword) ...[
@@ -158,6 +174,7 @@ class SshTunnel {
     List<int>? stdinBytes,
     int port = 22,
     String? password,
+    String? identityFile,
   }) async {
     final (code, _, stderrText) = await capture(
       target,
@@ -165,6 +182,7 @@ class SshTunnel {
       stdinBytes: stdinBytes,
       port: port,
       password: password,
+      identityFile: identityFile,
     );
     return (code, stderrText);
   }
@@ -178,11 +196,16 @@ class SshTunnel {
     List<int>? stdinBytes,
     int port = 22,
     String? password,
+    String? identityFile,
   }) async {
     final askpass = await _Askpass.create(password);
     try {
       final process = await Process.start('ssh', [
-        ..._authOpts(port: port, usingPassword: password != null),
+        ..._authOpts(
+          port: port,
+          usingPassword: password != null,
+          identityFile: identityFile,
+        ),
         target,
         command,
       ], environment: askpass?.env);

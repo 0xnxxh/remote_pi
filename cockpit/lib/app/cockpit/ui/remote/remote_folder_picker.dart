@@ -72,7 +72,7 @@ class _RemoteFolderPickerState extends State<_RemoteFolderPicker> {
     } on RemoteHostException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = remoteHostErrorMessage(context, e);
+        _error = remoteHostErrorMessage(context, e, host: widget.hostName);
         _loading = false;
       });
     }

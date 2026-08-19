@@ -197,6 +197,17 @@ class _CockpitPageState extends State<CockpitPage> {
   /// módulo porque eles precisam de `BuildContext` — e é o que separa a GUI
   /// (pode perguntar) da CLI (não pode: prompts nulos → erro honesto).
   void _wireSshPrompts() {
+    // Hosts remotos (plano 58): mesmo dialog TOFU do túnel de banco. Sem isto,
+    // um host novo no desktop morria em "Host key verification failed" — o ssh
+    // roda com BatchMode e não pode perguntar nada por conta própria.
+    _vm.remoteHosts.hostKeyPrompt = (endpoint, fingerprint) async {
+      if (!mounted) return HostKeyVerdict.reject;
+      return showSshHostKeyDialog(
+        context,
+        endpoint: endpoint,
+        fingerprint: fingerprint,
+      );
+    };
     final service = _dbService = context.read<DatabaseViewModel>().service;
     service
       ..passphrasePrompt = (connectionName, keyPath) async {
@@ -436,6 +447,7 @@ class _CockpitPageState extends State<CockpitPage> {
     _workspaceMenu?.setWorkspace(hasWorkspace: false);
     // Túneis SSH abertos morrem com o shell — e os prompts vão junto, senão
     // ficariam apontando pra um contexto desmontado.
+    _vm.remoteHosts.hostKeyPrompt = null;
     _dbService
       ?..passphrasePrompt = null
       ..hostKeyPrompt = null

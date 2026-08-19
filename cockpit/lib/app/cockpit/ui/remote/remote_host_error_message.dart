@@ -6,14 +6,27 @@ import 'package:flutter/widgets.dart';
 /// Wave 2). A mensagem nasce AQUI: `data/` produz só o tipo + `detail` cru;
 /// stderr do ssh nunca é traduzido, entra interpolado. Mesmo padrão dos
 /// tradutores de erro do `core/ui/`.
-String remoteHostErrorMessage(BuildContext context, RemoteHostException error) {
+/// [host] é o nome/endereço mostrado na frase. Era um `'@'` hardcoded, o que
+/// produzia "Não foi possível alcançar @ via SSH" — a mensagem nunca dizia de
+/// QUAL host falava.
+String remoteHostErrorMessage(
+  BuildContext context,
+  RemoteHostException error, {
+  String host = '',
+}) {
   final tr = context.t.cockpit.remoteHost;
   final base = switch (error.kind) {
-    RemoteHostErrorKind.sshUnreachable => tr.errSshUnreachable(host: '@'),
-    RemoteHostErrorKind.serverInstallFailed => tr.errInstallFailed(host: '@'),
+    RemoteHostErrorKind.sshUnreachable => tr.errSshUnreachable(host: host),
+    RemoteHostErrorKind.serverInstallFailed => tr.errInstallFailed(host: host),
     RemoteHostErrorKind.versionMismatch => tr.errVersionMismatch,
-    RemoteHostErrorKind.protocol => tr.errInstallFailed(host: '@'),
+    RemoteHostErrorKind.protocol => tr.errInstallFailed(host: host),
+    RemoteHostErrorKind.hostKeyUnknown => tr.errHostKeyUnknown(host: host),
+    RemoteHostErrorKind.hostKeyChanged => tr.errHostKeyChanged(host: host),
   };
+  // Chave trocada tem stderr gigante do ssh (o bloco "REMOTE HOST
+  // IDENTIFICATION HAS CHANGED", com arte ASCII) — a frase traduzida já diz o
+  // que fazer, e colar aquilo dentro dela só piora a leitura.
+  if (error.kind == RemoteHostErrorKind.hostKeyChanged) return base;
   final detail = error.detail?.trim();
   if (detail == null || detail.isEmpty) return base;
   return '$base ${tr.errDetail(detail: detail)}';

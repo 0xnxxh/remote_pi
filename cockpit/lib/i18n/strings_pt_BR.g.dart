@@ -1087,6 +1087,12 @@ class _Translations$cockpit$remoteHost$pt_BR extends Translations$cockpit$remote
 	@override String get errUser => 'Usuário obrigatório';
 	@override String get errHost => 'Host obrigatório';
 	@override String get errPassword => 'Senha obrigatória';
+	@override String get identityChoose => 'Escolher…';
+	@override String get identityEmpty => 'Nenhuma chave selecionada';
+	@override String get identityDialogTitle => 'Selecione a chave privada SSH';
+	@override String get errIdentity => 'Escolha a chave privada para autenticar.';
+	@override String errHostKeyUnknown({required Object host}) => 'O Cockpit ainda não confia em ${host}. Conecte de novo e confirme o fingerprint.';
+	@override String errHostKeyChanged({required Object host}) => '${host} está apresentando uma chave SSH diferente da guardada. Se você não reinstalou essa máquina, pare e verifique — se reinstalou, remova a entrada antiga do ~/.ssh/known_hosts.';
 }
 
 // Path: cockpit.browserPane
@@ -2240,6 +2246,12 @@ extension on TranslationsPtBr {
 			'cockpit.remoteHost.errUser' => 'Usuário obrigatório',
 			'cockpit.remoteHost.errHost' => 'Host obrigatório',
 			'cockpit.remoteHost.errPassword' => 'Senha obrigatória',
+			'cockpit.remoteHost.identityChoose' => 'Escolher…',
+			'cockpit.remoteHost.identityEmpty' => 'Nenhuma chave selecionada',
+			'cockpit.remoteHost.identityDialogTitle' => 'Selecione a chave privada SSH',
+			'cockpit.remoteHost.errIdentity' => 'Escolha a chave privada para autenticar.',
+			'cockpit.remoteHost.errHostKeyUnknown' => ({required Object host}) => 'O Cockpit ainda não confia em ${host}. Conecte de novo e confirme o fingerprint.',
+			'cockpit.remoteHost.errHostKeyChanged' => ({required Object host}) => '${host} está apresentando uma chave SSH diferente da guardada. Se você não reinstalou essa máquina, pare e verifique — se reinstalou, remova a entrada antiga do ~/.ssh/known_hosts.',
 			'cockpit.browserPane.back' => 'Voltar',
 			'cockpit.browserPane.forward' => 'Avançar',
 			'cockpit.browserPane.reload' => 'Recarregar',

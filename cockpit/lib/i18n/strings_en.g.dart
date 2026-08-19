@@ -2196,6 +2196,24 @@ class Translations$cockpit$remoteHost$en {
 
 	/// en: 'Password required'
 	String get errPassword => 'Password required';
+
+	/// en: 'Choose…'
+	String get identityChoose => 'Choose…';
+
+	/// en: 'No key selected'
+	String get identityEmpty => 'No key selected';
+
+	/// en: 'Select the SSH private key'
+	String get identityDialogTitle => 'Select the SSH private key';
+
+	/// en: 'Pick the private key to authenticate with.'
+	String get errIdentity => 'Pick the private key to authenticate with.';
+
+	/// en: 'Cockpit does not trust ${host} yet. Connect again and confirm the fingerprint.'
+	String errHostKeyUnknown({required Object host}) => 'Cockpit does not trust ${host} yet. Connect again and confirm the fingerprint.';
+
+	/// en: '${host} is presenting a different SSH key than the one stored. If you did not reinstall that machine, stop and check it — otherwise remove the old entry from ~/.ssh/known_hosts.'
+	String errHostKeyChanged({required Object host}) => '${host} is presenting a different SSH key than the one stored. If you did not reinstall that machine, stop and check it — otherwise remove the old entry from ~/.ssh/known_hosts.';
 }
 
 // Path: cockpit.browserPane
@@ -4062,6 +4080,12 @@ extension on Translations {
 			'cockpit.remoteHost.errUser' => 'Username required',
 			'cockpit.remoteHost.errHost' => 'Host required',
 			'cockpit.remoteHost.errPassword' => 'Password required',
+			'cockpit.remoteHost.identityChoose' => 'Choose…',
+			'cockpit.remoteHost.identityEmpty' => 'No key selected',
+			'cockpit.remoteHost.identityDialogTitle' => 'Select the SSH private key',
+			'cockpit.remoteHost.errIdentity' => 'Pick the private key to authenticate with.',
+			'cockpit.remoteHost.errHostKeyUnknown' => ({required Object host}) => 'Cockpit does not trust ${host} yet. Connect again and confirm the fingerprint.',
+			'cockpit.remoteHost.errHostKeyChanged' => ({required Object host}) => '${host} is presenting a different SSH key than the one stored. If you did not reinstall that machine, stop and check it — otherwise remove the old entry from ~/.ssh/known_hosts.',
 			'cockpit.browserPane.back' => 'Back',
 			'cockpit.browserPane.forward' => 'Forward',
 			'cockpit.browserPane.reload' => 'Reload',

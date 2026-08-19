@@ -20,6 +20,7 @@ class RemoteHost {
     required this.sshTarget,
     this.port = 22,
     this.auth = RemoteHostAuth.key,
+    this.identityFile,
   });
 
   /// UUID estável do registro (não muda se o endpoint mudar).
@@ -38,6 +39,19 @@ class RemoteHost {
   /// Modo de autenticação. Ver [RemoteHostAuth].
   final RemoteHostAuth auth;
 
+  /// Chave PRIVADA a usar na autenticação (auth por chave, desktop): vira
+  /// `-i <caminho> -o IdentitiesOnly=yes` no ssh.
+  ///
+  /// Não é a mesma coisa que a host key do `known_hosts`: esta é a identidade
+  /// do CLIENTE. Escolher explicitamente evita o ssh desfilar uma chave por vez
+  /// numa máquina com muitas e estourar o `MaxAuthTries` do servidor antes de
+  /// chegar na certa ("too many authentication failures").
+  ///
+  /// `null` em registros antigos e no mobile (lá as identidades vêm do
+  /// Keychain, não de `~/.ssh`) — nesse caso o ssh decide como sempre decidiu,
+  /// respeitando o `~/.ssh/config`.
+  final String? identityFile;
+
   /// `user` do `user@host` (vazio se não houver `@`).
   String get user {
     final at = sshTarget.indexOf('@');
@@ -55,12 +69,14 @@ class RemoteHost {
     String? sshTarget,
     int? port,
     RemoteHostAuth? auth,
+    String? identityFile,
   }) => RemoteHost(
     id: id,
     name: name ?? this.name,
     sshTarget: sshTarget ?? this.sshTarget,
     port: port ?? this.port,
     auth: auth ?? this.auth,
+    identityFile: identityFile ?? this.identityFile,
   );
 
   factory RemoteHost.fromJson(Map<String, Object?> json) {
@@ -86,6 +102,9 @@ class RemoteHost {
       auth: (json['auth'] as String?) == 'password'
           ? RemoteHostAuth.password
           : RemoteHostAuth.key,
+      identityFile: (json['identity'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : (json['identity'] as String).trim(),
     );
   }
 
@@ -95,5 +114,6 @@ class RemoteHost {
     'ssh': sshTarget,
     'port': port,
     'auth': auth == RemoteHostAuth.password ? 'password' : 'key',
+    if (identityFile != null) 'identity': identityFile,
   };
 }
