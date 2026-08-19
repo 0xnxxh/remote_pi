@@ -213,9 +213,16 @@ jobs:
           for f in "$SERVER_BUNDLE"/lib/*.dylib; do
             codesign --force --options runtime --timestamp -s "$SIGN_ID" "$f"
           done
-          codesign --force --options runtime --timestamp \
-            --entitlements macos/cockpit_hook.entitlements \
-            --sign "$SIGN_ID" "$SERVER_BUNDLE/bin/cockpit-server"
+          # TODO binário de bin/, não só o cockpit-server: a CLI embarcada
+          # (bin/cockpit, plano 60 Wave G1) entrou depois e ninguém a assinava.
+          # O `--deep` do app NÃO alcança Mach-O em subpasta de Resources/, então
+          # ela chegava crua na notarização e a reprovava com "not signed",
+          # "no secure timestamp" e "hardened runtime not enabled".
+          for f in "$SERVER_BUNDLE"/bin/*; do
+            codesign --force --options runtime --timestamp \
+              --entitlements macos/cockpit_hook.entitlements \
+              --sign "$SIGN_ID" "$f"
+          done
           # Gate do Intel (mesmo espírito do cockpit-cli): sem a fatia x86_64 o
           # sidecar/host remoto não sobem em Mac Intel.
           lipo -archs "$SERVER_BUNDLE/bin/cockpit-server" | grep -q x86_64 || {
@@ -247,6 +254,16 @@ jobs:
             --entitlements macos/Runner/Release.entitlements \
             --sign "$SIGN_ID" "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
+          # O --deep --strict acima NÃO inspeciona Mach-O solto em subpasta de
+          # Resources/ — foi assim que a CLI do bundle do servidor passou crua
+          # daqui e só foi barrada pela Apple, 10 minutos depois. Verifica cada
+          # um explicitamente, antes de gastar a submissão.
+          for f in "$SERVER_BUNDLE"/bin/* "$SERVER_BUNDLE"/lib/*.dylib; do
+            codesign --verify --strict --verbose=2 "$f" || {
+              echo "::error::$(basename "$f") do bundle do servidor não passou na verificação de assinatura"
+              exit 1
+            }
+          done
           # Gate do Intel: a CLI (que também atende os hooks do Claude via
           # `cockpit hook`) precisa das DUAS fatias. Checar a arquitetura não
           # basta — `lipo -verify_arch` passa até em binário quebrado —, então
