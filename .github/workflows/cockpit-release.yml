@@ -498,10 +498,16 @@ jobs:
       - name: Gera SHA256SUMS e latest.json
         run: |
           cd release
-          sha256sum * > SHA256SUMS
+          # Só ARQUIVOS: o artefato `cockpit-server-x64` (insumo do job macos, não
+          # entregável) vem como os diretórios bin/ e lib/, e `sha256sum *`
+          # falhava com "Is a directory" — derrubando o job inteiro sob `bash -e`
+          # depois de todo o build já ter passado.
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+            | xargs -0 sha256sum > SHA256SUMS
           BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}"
           : > artifacts.ndjson
           for f in *; do
+            [ -f "$f" ] || continue   # pula bin/ e lib/ do artefato do servidor
             case "$f" in
               *macos-universal.dmg) p=macos   a=universal fmt=dmg ;;
               *windows-x64.exe)     p=windows a=x64       fmt=exe ;;
