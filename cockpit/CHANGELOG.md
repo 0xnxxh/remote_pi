@@ -24,6 +24,26 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.5] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** One crash that could take every
+terminal down at once, and remote terminals working from Windows.
+
+### Fixed
+
+- **All your terminals could go dead at once.** The background server that owns
+  them quit outright whenever a client disconnected at the wrong moment, taking
+  every workspace's terminals with it. It now survives that, shuts down within
+  seconds when asked instead of hanging around, and a leftover server from a
+  previous window closes itself rather than lingering forever.
+- **Windows: remote terminals opened empty.** Picking the folder worked and the
+  workspace appeared, but the tab never showed anything, because Cockpit asked
+  the remote machine to start *its own* shell — PowerShell on a Mac. The host
+  now chooses its shell, and Cockpit no longer sends its local `PATH` along,
+  which would have broken the remote shell anyway.
+- The markdown preview scrolls like the rest of the app, without the rubber
+  band bounce at the edges (macOS 13+).
+
 ## [1.28.4] - 2026-08-19
 
 **Still a beta for the upcoming 2.0.0.** The markdown preview looks like the
