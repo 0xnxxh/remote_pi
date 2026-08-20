@@ -503,18 +503,24 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
     startupInfo.StartupInfo.cb = sizeof(startupInfo);
 
     // Clear the child's inherited std handles (STARTF_USESTDHANDLES with NULL)
-    // ONLY when this host process itself owns a real console (e.g. `flutter
-    // run`, launched from a terminal). There, without it, the child would
-    // inherit the host's real console instead of the ConPTY and its output
-    // would never reach our pipe — the terminal view stays blank.
+    // ONLY when the CALLER asks AND this process owns a console (e.g. the
+    // Flutter app under `flutter run`, launched from a terminal). There,
+    // without it, the child would inherit the host's real console instead of
+    // the ConPTY and its output would never reach our pipe.
     //
-    // In a GUI build (release, no console) the hack is both unnecessary and
-    // harmful: NULL std handles make console programs see their stdio as
-    // *redirected*, so PowerShell disables PSReadLine ("console is running
-    // without PSReadLine"). Without the hack, the pseudoconsole attribute plus
-    // bInheritHandles=FALSE already route all I/O through the ConPTY — the
-    // canonical ConPTY pattern — and PSReadLine loads normally.
-    if (GetConsoleWindow() != NULL)
+    // The caller decides because owning a console does not mean owning a
+    // TERMINAL: the cockpit-server sidecar is a console app with redirected
+    // stdio, and there the hack is fatal — NULL std handles make the shell see
+    // stdin as an invalid handle, so it reads EOF and exits immediately. That
+    // is how every local terminal on Windows died the moment the sidecar
+    // started creating the PTYs (cmd/powershell exited after 16 bytes, pwsh
+    // after printing its banner). The milder symptom of the same cause is
+    // PowerShell disabling PSReadLine ("console is running without
+    // PSReadLine").
+    //
+    // Without the hack, the pseudoconsole attribute plus bInheritHandles=FALSE
+    // already route all I/O through the ConPTY — the canonical pattern.
+    if (options->clearStdHandles && GetConsoleWindow() != NULL)
     {
         startupInfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
         startupInfo.StartupInfo.hStdInput = NULL;

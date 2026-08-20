@@ -101,6 +101,11 @@ class Pty {
     options.ref.stdout_port = _stdoutPort.sendPort.nativePort;
     options.ref.exit_port = _exitPort.sendPort.nativePort;
     options.ref.ackRead = ackRead;
+    // O app pede o atalho dos handles padrão: sob `flutter run` ele possui um
+    // terminal de verdade, e sem isso a saída do filho iria pro console do
+    // host em vez do ConPTY. O `cockpit-server` NÃO pede — lá o atalho mata o
+    // shell (ver cockpit_pty.h). A checagem de "tenho console" continua no C.
+    options.ref.clearStdHandles = true;
 
     if (workingDirectory != null) {
       options.ref.working_directory = workingDirectory.toNativeUtf8().cast();

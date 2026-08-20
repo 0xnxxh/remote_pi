@@ -118,7 +118,11 @@ class NativeTerminalService implements TerminalService {
             : nullptr
         ..stdoutPort = stdoutPort.sendPort.nativePort
         ..exitPort = exitPort.sendPort.nativePort
-        ..ackRead = spec.flowControlled;
+        ..ackRead = spec.flowControlled
+        // NUNCA: este processo é o cockpit-server, um app de console com
+        // stdio redirecionado. Limpar os handles padrão do filho aqui faz o
+        // shell ver stdin inválido e sair na hora (ver cockpit_pty.h).
+        ..clearStdHandles = false;
 
       handle = _bindings.create(options);
     } finally {
