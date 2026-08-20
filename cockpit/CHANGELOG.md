@@ -24,6 +24,20 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.6] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** Fixes local terminals on Windows,
+broken by 1.28.5.
+
+### Fixed
+
+- **Windows: local terminals stopped opening in 1.28.5.** A tab would open and
+  stay blank forever. The background terminal server had never actually run on
+  Windows — it died on startup, and Cockpit quietly used its built-in terminal
+  instead. A fix in 1.28.5 kept the server alive, which exposed a second bug in
+  it: a terminal started without a folder failed to launch the shell at all.
+  Both are fixed. Remote terminals from Windows keep working.
+
 ## [1.28.5] - 2026-08-20
 
 **Still a beta for the upcoming 2.0.0.** One crash that could take every
