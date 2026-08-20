@@ -67,6 +67,28 @@ td {
 th {
   background: var(--ckp-code-bg, #2a2a2a);
 }
+/* Frontmatter (cabeçalho de SKILL.md/agent.md): tabela chave/valor, o mesmo
+   formato do MarkdownFrontmatterTable no Flutter. Chave alinhada à esquerda e
+   estreita — sem isso o <th> herda o centralizado e o negrito de cabeçalho de
+   tabela, que aqui não é o papel dele. */
+table.ckp-frontmatter {
+  /* `display: table` sobrescreve o `display: block` da regra genérica (que
+     existe pra dar rolagem horizontal em tabelas largas do documento): aqui o
+     que se quer é o contrário — chave estreita, valor ocupando o resto e
+     quebrando linha em vez de rolar. */
+  display: table;
+  table-layout: auto;
+  margin: 0 0 16px;
+  width: 100%;
+}
+table.ckp-frontmatter th {
+  text-align: left;
+  white-space: nowrap;
+  width: 1%;
+}
+table.ckp-frontmatter td {
+  width: 100%;
+}
 img {
   max-width: 100%;
 }

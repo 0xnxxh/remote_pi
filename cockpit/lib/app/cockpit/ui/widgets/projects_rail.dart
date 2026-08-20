@@ -519,16 +519,12 @@ class _WorktreeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Row(
-      children: [
-        Icon(Icons.call_split, size: 12, color: colors.text3),
-        const SizedBox(width: 6),
-        Text(
-          context.t.cockpit.projectsRail.worktreeCount(n: count),
-          style: context.typo.label.copyWith(color: colors.text2),
-        ),
-      ],
+    // Sem ícone: aqui é só a CONTAGEM, e o ícone de ramificação pertence às
+    // linhas das worktrees de fato, logo abaixo. Repetido no subtítulo, ele
+    // competia com elas e sugeria que a própria contagem era uma worktree.
+    return Text(
+      context.t.cockpit.projectsRail.worktreeCount(n: count),
+      style: context.typo.label.copyWith(color: context.colors.text2),
     );
   }
 }
