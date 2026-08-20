@@ -332,12 +332,17 @@ class RemoteHostConnector {
         await Future<void>.delayed(Duration(milliseconds: 100 + i * 50));
       }
       try {
-        // Socket UNIX explícito: esta é a PONTA LOCAL de um `ssh -L`, não um
-        // endpoint anunciado pelo servidor — não há arquivo de rendezvous nem
-        // token a resolver aqui (e o servidor do outro lado é remoto, então
-        // nada de `local: true`).
+        // PONTA LOCAL de um `ssh -L`, não um endpoint anunciado pelo servidor:
+        // não há arquivo de rendezvous nem token a resolver aqui, e o servidor
+        // do outro lado é remoto (nada de `local: true`). Socket UNIX no POSIX;
+        // no Windows, a porta de loopback do forward — ver [SshTunnel.localPort].
+        final port = tunnel.localPort;
         return await RemoteConnection.connectOn(
-          await SocketRemoteDuplex.connectUnix(tunnel.localSocketPath),
+          port != null
+              ? SocketRemoteDuplex(
+                  await Socket.connect(InternetAddress.loopbackIPv4, port),
+                )
+              : await SocketRemoteDuplex.connectUnix(tunnel.localSocketPath),
           clientName: 'cockpit-gui-ssh',
         );
       } on TerminalException catch (e) {
@@ -369,6 +374,9 @@ class RemoteHostConnector {
   /// por índice), então a instalação segue funcionando; só não ganha o
   /// comportamento novo até ser reinstalado.
   static const _remoteIdleSeconds = 120;
+
+  /// Caminho do servidor no host (sempre o mesmo layout, qualquer plataforma).
+  static const _remoteServerBin = r'$HOME/.cockpit/server/bin/cockpit-server';
   Future<void> _installAndStartServer() async {
     // Plataforma do HOST decide tudo: qual fatia enviar e o nome da lib do
     // PTY. `uname -sm` → "Darwin arm64", "Linux x86_64", ...
@@ -385,6 +393,19 @@ class RemoteHostConnector {
         unameErr.isEmpty ? 'uname failed' : unameErr,
       );
     }
+    // Servidor JÁ instalado no host: só falta subir. Isto é o que permite um
+    // cliente Windows reusar o servidor de um Mac (o binário está lá desde a
+    // instalação feita por outro cliente) — empurrar um exe de Windows pra um
+    // Mac nunca funcionaria, mas iniciar o que já existe funciona igual.
+    final (probeCode, probeOut, _) = await SshTunnel.capture(
+      host.sshTarget,
+      'test -x $_remoteServerBin && echo yes || echo no',
+      port: host.port,
+      password: _password,
+      identityFile: host.identityFile,
+    );
+    final alreadyInstalled = probeCode == 0 && probeOut.endsWith('yes');
+
     final parts = uname.split(RegExp(r'\s+'));
     final remoteOs = parts.isEmpty ? '' : parts.first.toLowerCase();
     final remoteMachine = parts.length > 1 ? parts[1].toLowerCase() : '';
@@ -399,15 +420,18 @@ class RemoteHostConnector {
         : Platform.isLinux
         ? 'linux'
         : 'windows';
-    if (remoteOs != localOs) {
+    // Instalar exige binário DESTA plataforma pro host; iniciar, não.
+    if (!alreadyInstalled && remoteOs != localOs) {
       throw RemoteHostException(
         RemoteHostErrorKind.serverInstallFailed,
         'host runs $remoteOs; this build only ships a $localOs cockpit-server',
       );
     }
 
-    final binary = localServerBinaryResolver(arch: remoteArch);
-    if (binary == null) {
+    final binary = alreadyInstalled
+        ? null
+        : localServerBinaryResolver(arch: remoteArch);
+    if (!alreadyInstalled && binary == null) {
       throw RemoteHostException(
         RemoteHostErrorKind.serverInstallFailed,
         'local cockpit-server binary not found for $remoteOs/$remoteArch',
@@ -416,8 +440,7 @@ class RemoteHostConnector {
     // Bundle: <root>/bin/cockpit-server + <root>/lib/*.dylib (anaki + pty). O
     // exe resolve as dylibs em @executable_path/../lib, então preservamos o
     // layout no host (~/.cockpit/server/{bin,lib}).
-    final bundleRoot = File(binary).parent.parent.path;
-    final libDir = Directory('$bundleRoot/lib');
+    final bundleRoot = binary == null ? null : File(binary).parent.parent.path;
     final ptyLib = remoteOs == 'darwin'
         ? 'libcockpit_pty.dylib'
         : 'libcockpit_pty.so';
@@ -441,31 +464,40 @@ class RemoteHostConnector {
       }
     }
 
-    // Nome SEM sufixo de arquitetura no host: lá o bundle é de uma
-    // arquitetura só, e é assim que o próprio servidor se acha (_besideServer).
-    await push(binary, '~/.cockpit/server/bin/cockpit-server');
-    if (libDir.existsSync()) {
-      for (final f in libDir.listSync().whereType<File>()) {
-        if (!f.path.endsWith('.dylib') && !f.path.endsWith('.so')) continue;
-        await push(f.path, '~/.cockpit/server/lib/${f.uri.pathSegments.last}');
+    // Instalação (só quando o host ainda não tem o servidor). Com ele já lá,
+    // pula direto pro start — é o que deixa um cliente de OUTRO sistema
+    // (Windows falando com um Mac) reusar o que outro cliente instalou.
+    if (bundleRoot != null && binary != null) {
+      final libDir = Directory('$bundleRoot/lib');
+      // Nome SEM sufixo de arquitetura no host: lá o bundle é de uma
+      // arquitetura só, e é assim que o servidor se acha (_besideServer).
+      await push(binary, '~/.cockpit/server/bin/cockpit-server');
+      if (libDir.existsSync()) {
+        for (final f in libDir.listSync().whereType<File>()) {
+          if (!f.path.endsWith('.dylib') && !f.path.endsWith('.so')) continue;
+          await push(
+            f.path,
+            '~/.cockpit/server/lib/${f.uri.pathSegments.last}',
+          );
+        }
       }
-    }
-    // A lib do PTY nem sempre mora em lib/: no bundle do Linux ela é copiada
-    // AO LADO do exe (CMakeLists, 2º candidato do openPtyDylib). Sem esta
-    // busca extra, um cliente Linux instalava um servidor sem PTY algum — e o
-    // servidor resolve a lib no ARRANQUE, então ele nem subia no host.
-    if (!File('$bundleRoot/lib/$ptyLib').existsSync()) {
-      final besideExe = File('$bundleRoot/bin/$ptyLib');
-      if (besideExe.existsSync()) {
-        await push(besideExe.path, '~/.cockpit/server/lib/$ptyLib');
+      // A lib do PTY nem sempre mora em lib/: no bundle do Linux ela é copiada
+      // AO LADO do exe (CMakeLists, 2º candidato do openPtyDylib). Sem esta
+      // busca extra, um cliente Linux instalava um servidor sem PTY algum — e
+      // o servidor resolve a lib no ARRANQUE, então ele nem subia no host.
+      if (!File('$bundleRoot/lib/$ptyLib').existsSync()) {
+        final besideExe = File('$bundleRoot/bin/$ptyLib');
+        if (besideExe.existsSync()) {
+          await push(besideExe.path, '~/.cockpit/server/lib/$ptyLib');
+        }
       }
-    }
-    // CLI `cockpit` ao lado do server (plano 60, Wave G): o server a acha via
-    // _besideServer e instala o hook do agente no ~/.claude do host. Só se
-    // estiver no bundle local (build_server.sh a embarca).
-    final cliLocal = File('$bundleRoot/bin/cockpit');
-    if (cliLocal.existsSync()) {
-      await push(cliLocal.path, '~/.cockpit/server/bin/cockpit');
+      // CLI `cockpit` ao lado do server (plano 60, Wave G): o server a acha
+      // via _besideServer e instala o hook do agente no ~/.claude do host. Só
+      // se estiver no bundle local (build_server.sh a embarca).
+      final cliLocal = File('$bundleRoot/bin/cockpit');
+      if (cliLocal.existsSync()) {
+        await push(cliLocal.path, '~/.cockpit/server/bin/cockpit');
+      }
     }
 
     const logPath = r'$HOME/.cockpit/server-boot.log';
@@ -477,7 +509,7 @@ class RemoteHostConnector {
       // arquitetura errada, dylib faltando) precisa deixar rastro — sem isso o
       // `echo started` saía 0 e a falha chegava na UI como silêncio.
       'COCKPIT_PTY_DYLIB=\$HOME/.cockpit/server/lib/$ptyLib '
-      'nohup \$HOME/.cockpit/server/bin/cockpit-server '
+      'nohup $_remoteServerBin '
       '--socket \$HOME/.cockpit/cockpit-server.sock '
       '--exit-on-idle $_remoteIdleSeconds '
       '--idle-keeps-sessions '

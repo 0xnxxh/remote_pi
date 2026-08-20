@@ -11,12 +11,31 @@ import 'dart:io';
 /// (nunca expõe porta de rede) e este túnel materializa aquele socket num
 /// path local. Pro cliente, o resultado é indistinguível do loopback.
 class SshTunnel {
-  SshTunnel._(this._process, this.localSocketPath, this.target);
+  SshTunnel._(
+    this._process,
+    this.localSocketPath,
+    this.target, {
+    this.localPort,
+  });
 
   final Process _process;
 
-  /// Socket local que espelha o socket remoto do cockpit-server.
+  /// Socket local que espelha o socket remoto do cockpit-server. Vazio quando
+  /// a ponta local é TCP (Windows — ver [localPort]).
   final String localSocketPath;
+
+  /// Porta de loopback que espelha o socket remoto, no Windows.
+  ///
+  /// O OpenSSH do Windows não faz forward de socket UNIX na ponta LOCAL, e o
+  /// caminho nem chega a ser parseado: `-L C:\...\x.sock:/home/u/y.sock` morre
+  /// em `Bad local forwarding specification`, porque o `C:` já é um separador
+  /// pro parser. A forma suportada é `-L 127.0.0.1:<porta>:<socket remoto>` —
+  /// TCP local → UDS remoto, que o OpenSSH faz desde a 6.7. O lado REMOTO
+  /// continua sendo o socket UNIX de sempre: nada muda no host.
+  final int? localPort;
+
+  /// A ponta local é TCP (Windows) em vez de socket UNIX.
+  bool get usesTcpEndpoint => localPort != null;
   final String target;
 
   final Completer<void> _closed = Completer();
@@ -42,9 +61,16 @@ class SshTunnel {
     String remoteSocketPath = r'$HOME/.cockpit/cockpit-server.sock',
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    final localPath =
-        '${Directory.systemTemp.path}/cockpit-ssh-'
-        '${DateTime.now().microsecondsSinceEpoch}.sock';
+    // Ponta local: socket UNIX no POSIX; porta de loopback no Windows.
+    final useTcp = Platform.isWindows;
+    final localPath = useTcp
+        ? ''
+        : '${Directory.systemTemp.path}/cockpit-ssh-'
+              '${DateTime.now().microsecondsSinceEpoch}.sock';
+    // Porta livre pedida ao SO e devolvida na hora. Há uma janela em que outro
+    // processo pode tomá-la; `ExitOnForwardFailure=yes` faz o ssh morrer alto
+    // nesse caso, em vez de fingir que o túnel subiu.
+    final localTcpPort = useTcp ? await _freeLoopbackPort() : null;
 
     final askpass = await _Askpass.create(password);
     final authOpts = _authOpts(
@@ -88,8 +114,12 @@ class SshTunnel {
         '-o', 'ExitOnForwardFailure=yes',
         '-o', 'ServerAliveInterval=10',
         '-o', 'ServerAliveCountMax=3',
-        '-o', 'StreamLocalBindUnlink=yes',
-        '-L', '$localPath:$resolvedRemote',
+        // Só faz sentido com socket UNIX local (remove o inode órfão).
+        if (!useTcp) ...['-o', 'StreamLocalBindUnlink=yes'],
+        '-L',
+        useTcp
+            ? '127.0.0.1:$localTcpPort:$resolvedRemote'
+            : '$localPath:$resolvedRemote',
         target,
       ], environment: askpass?.env);
 
@@ -97,7 +127,12 @@ class SshTunnel {
       process.stderr.transform(utf8.decoder).listen(stderrBuffer.write);
       unawaited(process.stdout.drain<void>());
 
-      final tunnel = SshTunnel._(process, localPath, target);
+      final tunnel = SshTunnel._(
+        process,
+        localPath,
+        target,
+        localPort: localTcpPort,
+      );
       unawaited(
         process.exitCode.then((_) {
           if (!tunnel._closed.isCompleted) tunnel._closed.complete();
@@ -108,7 +143,7 @@ class SshTunnel {
       // conectando aqui: o forward UDS só valida o lado remoto na 1ª conexão
       // de verdade, então erros de destino aparecem na conexão do protocolo.
       final deadline = DateTime.now().add(timeout);
-      while (!File(localPath).existsSync()) {
+      while (!await _tunnelReady(localPath, localTcpPort)) {
         if (tunnel._closed.isCompleted) {
           throw SshTunnelException(stderrBuffer.toString().trim());
         }
@@ -126,6 +161,33 @@ class SshTunnel {
       // senha não é mais necessário. Removê-lo evita deixar a senha no disco.
       await askpass?.dispose();
     }
+  }
+
+  /// O forward já está de pé? No POSIX basta o socket local existir; no
+  /// Windows, o sinal equivalente é a porta aceitar conexão (o ssh só binda
+  /// depois de autenticar). Nos dois casos o destino remoto só é validado na
+  /// primeira conexão de verdade, feita pelo protocolo.
+  static Future<bool> _tunnelReady(String localPath, int? port) async {
+    if (port == null) return File(localPath).existsSync();
+    try {
+      final probe = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        port,
+        timeout: const Duration(milliseconds: 300),
+      );
+      probe.destroy();
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Porta de loopback livre: abre em `:0`, lê a porta e fecha.
+  static Future<int> _freeLoopbackPort() async {
+    final probe = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final port = probe.port;
+    await probe.close();
+    return port;
   }
 
   /// Teto do connect TCP de QUALQUER invocação do ssh daqui.
@@ -229,6 +291,7 @@ class SshTunnel {
   Future<void> close() async {
     _process.kill();
     await _closed.future;
+    if (localSocketPath.isEmpty) return; // ponta TCP: nada a remover.
     try {
       File(localSocketPath).deleteSync();
     } catch (_) {
