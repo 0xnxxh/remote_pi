@@ -43,7 +43,12 @@ class LocalEndpoint {
         InternetAddress(path, type: InternetAddressType.unix),
         0,
       );
-      return LocalListener._(listener, path, null);
+      return LocalListener._(
+        listener,
+        path,
+        null,
+        boundAt: _modifiedAt(path),
+      );
     }
 
     final listener = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
@@ -54,7 +59,20 @@ class LocalEndpoint {
       jsonEncode({'v': 1, 'port': listener.port, 'token': token}),
       flush: true,
     );
-    return LocalListener._(listener, path, token);
+    return LocalListener._(
+      listener,
+      path,
+      token,
+      boundAt: _modifiedAt(path),
+    );
+  }
+
+  static DateTime? _modifiedAt(String path) {
+    try {
+      return File(path).statSync().modified;
+    } on FileSystemException {
+      return null;
+    }
   }
 
   /// Conecta ao servidor que escuta em [path]. Lança se não há ninguém lá
@@ -96,7 +114,40 @@ class LocalEndpoint {
 
 /// Listener aberto por [LocalEndpoint.bind].
 class LocalListener {
-  LocalListener._(this.listener, this.path, this.token);
+  LocalListener._(this.listener, this.path, this.token, {this.boundAt});
+
+  /// Quando o anúncio foi criado — a impressão digital do POSIX (um bind novo
+  /// por cima cria inode novo, com mtime novo).
+  final DateTime? boundAt;
+
+  /// O caminho anunciado ainda é NOSSO?
+  ///
+  /// Um segundo Cockpit subindo binda o mesmo caminho por cima e o servidor
+  /// antigo fica órfão: ninguém mais o encontra, mas ele continua vivo
+  /// segurando PTYs inalcançáveis. Isto é o que permite ele perceber e sair.
+  ///
+  /// No Windows a checagem é exata (o arquivo de rendezvous guarda o NOSSO
+  /// token); no POSIX é o mtime do inode do socket, que muda a cada bind.
+  bool stillOwned() {
+    final file = File(path);
+    if (!file.existsSync()) return false;
+    final expected = token;
+    if (expected != null) {
+      try {
+        final decoded = jsonDecode(file.readAsStringSync());
+        return decoded is Map && decoded['token'] == expected;
+      } on Object {
+        return false;
+      }
+    }
+    final at = boundAt;
+    if (at == null) return true; // sem impressão digital: não acusa nada.
+    try {
+      return file.statSync().modified == at;
+    } on FileSystemException {
+      return false;
+    }
+  }
 
   final ServerSocket listener;
 

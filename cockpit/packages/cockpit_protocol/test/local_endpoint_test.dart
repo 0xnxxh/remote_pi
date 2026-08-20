@@ -57,6 +57,8 @@ void main() {
     await expectLater(LocalEndpoint.connect(path), throwsA(anything));
   });
 
+  ownershipTests();
+
   test('Hello leva token e flag local no wire', () {
     const hello = Hello(
       version: protocolVersion,
@@ -80,5 +82,45 @@ void main() {
     });
     expect(old.token, isNull);
     expect(old.local, isFalse);
+  });
+}
+
+/// Posse do caminho anunciado: um Cockpit novo bindando por cima deixa o
+/// servidor antigo órfão — vivo, mas inalcançável. Sem esta checagem ele fica
+/// para sempre (foi o que aconteceu em produção, com dois apps abertos).
+void ownershipTests() {
+  late Directory dir;
+  late String path;
+
+  setUp(() {
+    dir = Directory.systemTemp.createTempSync('cockpit-owner');
+    path = '${dir.path}/cockpit-server.sock';
+  });
+  tearDown(() => dir.deleteSync(recursive: true));
+
+  test('recém-bindado, o caminho é nosso', () async {
+    final endpoint = await LocalEndpoint.bind(path);
+    addTearDown(endpoint.close);
+    expect(endpoint.stillOwned(), isTrue);
+  });
+
+  test('outro servidor bindando por cima tira a posse', () async {
+    final first = await LocalEndpoint.bind(path);
+    // Um segundo de diferença: no POSIX a impressão digital é o mtime do
+    // inode, e dois binds no mesmo segundo seriam indistinguíveis.
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    final second = await LocalEndpoint.bind(path);
+    addTearDown(second.close);
+
+    expect(second.stillOwned(), isTrue);
+    expect(first.stillOwned(), isFalse);
+  });
+
+  test('anúncio apagado também tira a posse', () async {
+    final endpoint = await LocalEndpoint.bind(path);
+    addTearDown(endpoint.close);
+    File(path).deleteSync();
+
+    expect(endpoint.stillOwned(), isFalse);
   });
 }

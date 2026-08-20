@@ -12,6 +12,19 @@ import 'package:cockpit_engine/cockpit_engine.dart';
 import 'package:cockpit_server/cockpit_server.dart';
 
 Future<void> main(List<String> args) async {
+  // Rede de proteção do daemon: erro assíncrono solto (socket que morre no
+  // meio de uma escrita, isolate de driver que estoura) NÃO pode derrubar o
+  // processo e levar junto os terminais de todos os workspaces. Um servidor de
+  // longa vida registra e segue; quem trata o caso específico é quem o conhece.
+  await runZonedGuarded(() async {
+    await _run(args);
+  }, (error, stack) {
+    stderr.writeln('cockpit-server: erro não tratado: $error');
+    stderr.writeln(stack.toString());
+  });
+}
+
+Future<void> _run(List<String> args) async {
   final socketPath =
       _argValue(args, '--socket') ??
       '${Directory.systemTemp.path}/cockpit-server-$pid.sock';
@@ -59,14 +72,22 @@ Future<void> main(List<String> args) async {
   // Saída em inglês por decisão (CLI interna não se traduz).
   stdout.writeln('cockpit-server listening on $socketPath');
 
-  ProcessSignal.sigint.watch().listen((_) async {
-    await server.close();
+  // Desligamento com TETO: `close()` fecha conexões, sessões e PTYs, e
+  // qualquer uma dessas etapas pode ficar presa (PTY que não reporta saída,
+  // socket que não responde). Sem o teto, um SIGTERM educado não mata o
+  // processo — foi assim que um sidecar órfão sobreviveu a `kill` e só saiu
+  // com SIGKILL.
+  Future<void> shutdown() async {
+    try {
+      await server.close().timeout(const Duration(seconds: 3));
+    } on Object catch (e) {
+      stderr.writeln('cockpit-server: desligamento forçado ($e)');
+    }
     exit(0);
-  });
-  ProcessSignal.sigterm.watch().listen((_) async {
-    await server.close();
-    exit(0);
-  });
+  }
+
+  ProcessSignal.sigint.watch().listen((_) => shutdown());
+  ProcessSignal.sigterm.watch().listen((_) => shutdown());
 }
 
 String? _argValue(List<String> args, String name) {

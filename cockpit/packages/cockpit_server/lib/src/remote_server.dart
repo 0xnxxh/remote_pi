@@ -70,6 +70,24 @@ class RemoteServer {
   Timer? _idleTimer;
   void Function()? onIdleExit;
 
+  /// Vigia a posse do caminho anunciado. Um Cockpit novo bindando por cima
+  /// deixa este servidor órfão: ninguém mais o acha, mas ele segue vivo. Sem
+  /// cliente algum, sair é o certo — com cliente conectado, não: quem já está
+  /// falando conosco continua sendo atendido, e a checagem se repete.
+  void _armOwnershipWatch() {
+    _ownershipTimer?.cancel();
+    _ownershipTimer = Timer.periodic(_ownershipCheckInterval, (_) {
+      final endpoint = _endpoint;
+      if (endpoint == null || endpoint.stillOwned()) return;
+      if (_connections.isNotEmpty) return;
+      _ownershipTimer?.cancel();
+      onIdleExit?.call();
+    });
+  }
+
+  static const _ownershipCheckInterval = Duration(seconds: 30);
+  Timer? _ownershipTimer;
+
   void _armIdleTimer() {
     _idleTimer?.cancel();
     if (exitOnIdle == Duration.zero || _connections.isNotEmpty) return;
@@ -117,6 +135,7 @@ class RemoteServer {
       _statusReceiver = null;
     }
     _statusEnv = _statusReceiver?.hookEnv ?? const <String, String>{};
+    _armOwnershipWatch();
     _armIdleTimer();
   }
 
@@ -129,6 +148,8 @@ class RemoteServer {
   }
 
   Future<void> close() async {
+    _ownershipTimer?.cancel();
+    _idleTimer?.cancel();
     for (final connection in _connections.toList()) {
       await connection.close();
     }
@@ -183,6 +204,10 @@ class _Connection {
     this._statusEnv,
     this._expectedToken,
   ) {
+    // Erro no socket chega TAMBÉM por aqui (assíncrono, fora de qualquer
+    // try/catch de escrita); sem o catch, vira exceção não tratada e mata o
+    // processo.
+    unawaited(_socket.done.then((_) => close()).catchError((Object _) => close()));
     RemoteServer._codec
         .decodeStream(_socket)
         .listen(
@@ -225,9 +250,20 @@ class _Connection {
 
   Future<void> get done => _done.future;
 
+  /// Escreve no cliente, tolerando que ele tenha sumido.
+  ///
+  /// Sem este try/catch, um cliente que morre enquanto o servidor despeja
+  /// saída de PTY derruba o PROCESSO INTEIRO com `SocketException: Broken
+  /// pipe` — e com ele os terminais de todos os workspaces daquele sidecar.
+  /// Escrita em socket morto é evento esperado num servidor de longa vida,
+  /// não erro fatal: a conexão se encerra e o resto segue.
   void _send(RemoteMessage message) {
     if (_closed) return;
-    _socket.add(utf8.encode(RemoteServer._codec.encode(message)));
+    try {
+      _socket.add(utf8.encode(RemoteServer._codec.encode(message)));
+    } on Object {
+      unawaited(close());
+    }
   }
 
   Future<void> _dispatch(RemoteMessage message) async {
