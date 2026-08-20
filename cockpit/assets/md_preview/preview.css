@@ -7,6 +7,14 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* Scroll CLAMP, a regra do app (ver ClampingScrollBehavior no Flutter): sem
+     isto o WKWebView faz o rubber-band do macOS e o preview destoa de todo o
+     resto da UI. `overscroll-behavior` é a propriedade de especificação para
+     isso — no WebKit ela vale a partir do Safari 16 / macOS 13, e nas versões
+     anteriores o efeito continua sendo o do sistema. Não há caminho nativo:
+     `alwaysBounceVertical` do flutter_inappwebview é iOS-only (UIScrollView),
+     e o WKWebView do macOS não expõe equivalente. */
+  overscroll-behavior: none;
   background: var(--ckp-bg, #1e1e1e);
   color: var(--ckp-text, #d4d4d4);
   font-family: var(--ckp-font, -apple-system, "Segoe UI", sans-serif);
@@ -43,6 +51,9 @@ pre {
   border-radius: 6px;
   padding: 12px 14px;
   overflow-x: auto;
+  /* Rolagem interna não encadeia na página: chegar ao fim de um bloco de
+     código largo não pode empurrar o documento (e voltar quicando). */
+  overscroll-behavior: contain;
 }
 pre code {
   background: none;
@@ -58,6 +69,7 @@ table {
   border-collapse: collapse;
   display: block;
   overflow-x: auto;
+  overscroll-behavior: contain; /* mesmo motivo do `pre` */
 }
 th,
 td {
