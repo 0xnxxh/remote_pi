@@ -24,6 +24,25 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.4] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** The markdown preview looks like the
+rest of the app again.
+
+### Fixed
+
+- **The markdown preview ignored your theme entirely** — white background and a
+  serif font, no matter which theme the app was using. Its stylesheet was never
+  reaching the page. It now follows the theme, and switching between light and
+  dark while a preview is open recolors it right away instead of waiting for
+  the file to be reopened.
+- **Frontmatter is rendered again.** The `---` header block at the top of
+  `SKILL.md` and `agent.md` files was being spilled into the document as loose
+  text; it is shown as a key/value table, the same one you already saw
+  elsewhere in the app.
+- The workspace list no longer repeats the branch icon next to the "N
+  worktrees" line — it belongs to the worktrees listed underneath.
+
 ## [1.28.3] - 2026-08-19
 
 **Still a beta for the upcoming 2.0.0.** Windows can reach remote hosts again.
