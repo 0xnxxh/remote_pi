@@ -145,7 +145,11 @@ static LPWSTR build_environment(char **environment)
 
 static LPWSTR build_working_directory(char *working_directory)
 {
-    if (working_directory == NULL)
+    // Vazio é o mesmo que ausente. O CreateProcessW recusa
+    // `lpCurrentDirectory = L""` com ERROR_INVALID_NAME (123) e o processo não
+    // nasce; NULL significa "herde o do pai", que é o que se quer. O lado
+    // POSIX já tratava isso (testa strlen antes do chdir).
+    if (working_directory == NULL || working_directory[0] == 0)
     {
         return NULL;
     }

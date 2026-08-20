@@ -107,9 +107,15 @@ class NativeTerminalService implements TerminalService {
           }.entries)
             '${e.key}=${e.value}',
         ])
-        ..workingDirectory = (spec.workingDirectory ?? '')
-            .toNativeUtf8(allocator: arena)
-            .cast()
+        // Sem working directory = ponteiro NULO, nunca string vazia. No
+        // Windows, `lpCurrentDirectory = L""` faz o CreateProcessW falhar com
+        // ERROR_INVALID_NAME (123) e o shell não nasce — o PTY abre, o
+        // conhost sobe e a aba fica eternamente vazia. O POSIX tolerava
+        // porque o lado nativo já testava `strlen > 0` antes do chdir.
+        ..workingDirectory =
+            (spec.workingDirectory?.isNotEmpty ?? false)
+            ? spec.workingDirectory!.toNativeUtf8(allocator: arena).cast()
+            : nullptr
         ..stdoutPort = stdoutPort.sendPort.nativePort
         ..exitPort = exitPort.sendPort.nativePort
         ..ackRead = spec.flowControlled;

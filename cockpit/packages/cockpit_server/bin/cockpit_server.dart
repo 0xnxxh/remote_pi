@@ -86,8 +86,16 @@ Future<void> _run(List<String> args) async {
     exit(0);
   }
 
+  // SIGTERM não existe no Windows: `watch()` lança `SignalException: Failed to
+  // listen for SIGTERM` (errno 50, "não há suporte para o pedido"). Isso
+  // matava o servidor no ARRANQUE — o sidecar do Windows nunca chegou a
+  // funcionar, e o app caía no PTY in-process sem ninguém notar. Quando o
+  // runZonedGuarded passou a segurar a exceção, o servidor sobreviveu e o
+  // caminho quebrado do PTY dele veio à tona.
   ProcessSignal.sigint.watch().listen((_) => shutdown());
-  ProcessSignal.sigterm.watch().listen((_) => shutdown());
+  if (!Platform.isWindows) {
+    ProcessSignal.sigterm.watch().listen((_) => shutdown());
+  }
 }
 
 String? _argValue(List<String> args, String name) {
