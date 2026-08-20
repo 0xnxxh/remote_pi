@@ -24,6 +24,22 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.3] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** Windows can reach remote hosts again.
+
+### Fixed
+
+- **Connecting to a remote host from Windows always failed** with `Bad local
+  forwarding specification`. Cockpit was asking SSH to open the local end of
+  the tunnel as a Unix socket, which Windows does not have — the path was not
+  even parsed, because the `C:` in it reads as a separator. Windows now uses a
+  local loopback port instead. Nothing changes on the machine you connect to.
+- **A host that already had the server installed could refuse to start it**
+  when the two machines ran different operating systems. Cockpit now starts the
+  server that is already there, and only declines when it would actually need
+  to copy a new one over.
+
 ## [1.28.2] - 2026-08-19
 
 **Still a beta for the upcoming 2.0.0.** Connecting to a machine you have never
