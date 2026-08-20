@@ -292,8 +292,15 @@ class RemoteHostTerminalGateway implements TerminalGateway {
   /// TERM/COLORTERM como nos outros gateways; o servidor remoto funde por cima
   /// do ambiente dele. Não herda `Platform.environment` local (é outra
   /// máquina) — o env do host vem do próprio servidor.
+  /// Capacidades do EMULADOR (que é daqui) anunciadas pra PTY do host.
+  ///
+  /// `TERM` vai sempre: a condição de plataforma que existia aqui olhava para
+  /// o CLIENTE, e o PTY nasce no HOST — de um Windows falando com um Mac, o
+  /// shell de lá subia sem `TERM` e as TUIs ncurses degradavam. Quem sabe se o
+  /// `TERM` faz sentido é o servidor, e é ele quem o descarta quando roda em
+  /// Windows (ver `remote_server.dart`, caso `PtyOpen`).
   Map<String, String> _terminalEnv(Map<String, String> extraEnv) => {
-    if (!Platform.isWindows) 'TERM': 'xterm-256color',
+    'TERM': 'xterm-256color',
     'COLORTERM': 'truecolor',
     ...extraEnv,
   };

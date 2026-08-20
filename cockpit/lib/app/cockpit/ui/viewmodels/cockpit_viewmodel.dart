@@ -4642,7 +4642,14 @@ class CockpitViewModel extends ChangeNotifier {
       projectId: projectId,
       workingDirectory: cwd,
       gateway: _gatewayForProject(projectId),
-      profile: profile ?? defaultTerminalProfile,
+      // Workspace REMOTO sem escolha explícita: quem decide o shell é o host.
+      // O padrão local não vale do outro lado — um cliente Windows pedia
+      // `powershell.exe` num host macOS e a aba abria vazia, sem erro.
+      profile:
+          profile ??
+          (_isRemoteWorkspace(projectId)
+              ? TerminalProfile.hostLoginShell
+              : defaultTerminalProfile),
       engine: engine ?? _defaultTerminalEngine,
       title: title,
       // Persistência do scrollback: grava a saída pra replay no próximo boot.
@@ -4663,7 +4670,11 @@ class CockpitViewModel extends ChangeNotifier {
         'COCKPIT_PANE_ID': id,
         ..._statusServer.hookEnv,
         // PATH escopado → o binário `cockpit` (CLI interna) resolve só nas abas.
-        ..._cliPathEnv(),
+        // SÓ no local: esse caminho é desta máquina e não existe no host. Pior,
+        // ele leva junto o PATH INTEIRO do cliente — mandar um
+        // `C:\...;C:\Windows\system32` pra uma PTY de macOS destrói o PATH do
+        // shell de lá, e nem `ls` resolve.
+        if (!_isRemoteWorkspace(projectId)) ..._cliPathEnv(),
       },
     );
     // claude rodando na aba reporta fim de turno via socket → mesma notificação
@@ -4796,6 +4807,13 @@ class CockpitViewModel extends ChangeNotifier {
   ///
   /// O diretório é por flavor (`bin` / `bin-debug`), então uma aba da build de
   /// dev enxerga a CLI da build de dev — nunca a da instalada.
+  /// O workspace é servido por um host remoto (SSH)? Decide o que NÃO pode ser
+  /// imposto de cá: shell padrão e PATH da CLI local.
+  bool _isRemoteWorkspace(String projectId) {
+    final project = _projectById(projectId);
+    return project != null && project.isRemoteTerminal;
+  }
+
   Map<String, String> _cliPathEnv() {
     final binDir = cockpitCliDir();
     if (binDir == null) return const <String, String>{};

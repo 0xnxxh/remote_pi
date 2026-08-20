@@ -266,14 +266,24 @@ class _Connection {
           // env do cliente NÃO sobrescreve isto (o socket do cliente é
           // inalcançável do host). No Windows são porta + token, não um path:
           // o hook já lê as duas formas (ver cli/src/hook.rs).
+          // `TERM` é conceito Unix (terminfo) e, no PowerShell nativo, sua
+          // simples presença quebra o auto-load do PSReadLine. O cliente não
+          // tem como saber a plataforma daqui, então manda sempre e QUEM
+          // DESCARTA é o servidor (mesma regra do PTY local do app).
+          final fromClient = Platform.isWindows
+              ? {
+                  for (final e in message.environment.entries)
+                    if (e.key != 'TERM') e.key: e.value,
+                }
+              : message.environment;
           final env = _statusEnv.isEmpty || _localClient
-              ? message.environment
+              ? fromClient
               : {
                   // As chaves do OUTRO transporte saem juntas: o hook lê
                   // COCKPIT_STATUS_SOCK ANTES de porta/token (cli/src/
                   // transport.rs), então um path herdado do cliente venceria o
                   // endereço TCP do servidor e o status sumiria no Windows.
-                  for (final e in message.environment.entries)
+                  for (final e in fromClient.entries)
                     if (!_statusEnvKeys.contains(e.key)) e.key: e.value,
                   ..._statusEnv,
                 };
