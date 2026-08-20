@@ -24,6 +24,20 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.7] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** Finishes the Windows terminal fix
+started in 1.28.6.
+
+### Fixed
+
+- **Windows: local terminals opened and immediately froze.** The tab appeared,
+  even picked up a title, and then nothing — no prompt, no reaction to typing.
+  The shell was being started with an invalid input handle, so it read
+  end-of-input and quit the moment it launched. PowerShell users may also stop
+  seeing the "console is running without PSReadLine" warning, which had the
+  same cause.
+
 ## [1.28.6] - 2026-08-20
 
 **Still a beta for the upcoming 2.0.0.** Fixes local terminals on Windows,
