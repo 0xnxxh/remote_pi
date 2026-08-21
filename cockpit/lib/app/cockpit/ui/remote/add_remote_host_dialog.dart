@@ -97,6 +97,9 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
   late RemoteHostAuth _auth = widget.initialAuth;
   late String? _identityFile = widget.initialIdentityFile;
 
+  /// Problema da chave escolhida, se houver (pública, ilegível, não é chave).
+  SshKeyProblem? _identityProblem;
+
   /// `true` depois de uma tentativa de submit inválida — aí as mensagens de erro
   /// aparecem (não poluem o formulário recém-aberto, ainda vazio).
   bool _attempted = false;
@@ -146,6 +149,18 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
   bool get _identityMissing =>
       _identityRequired && (_identityFile == null || _identityFile!.isEmpty);
 
+  /// Mensagem do problema da chave, ou `null` quando ela serve.
+  String? _identityProblemText(BuildContext context) {
+    final tr = context.t.cockpit.remoteHost;
+    return switch (_identityProblem) {
+      null => null,
+      SshKeyProblem.missing => tr.errIdentityMissingFile,
+      SshKeyProblem.unreadable => tr.errIdentityUnreadable,
+      SshKeyProblem.isPublicKey => tr.errIdentityPublic,
+      SshKeyProblem.notAPrivateKey => tr.errIdentityNotKey,
+    };
+  }
+
   /// Bloqueia espaços em branco (usuário/host SSH não os têm).
   static final _denySpaces = FilteringTextInputFormatter.deny(RegExp(r'\s'));
 
@@ -172,7 +187,13 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
       dialogTitle: context.t.cockpit.remoteHost.identityDialogTitle,
     );
     if (picked == null || !mounted) return;
-    setState(() => _identityFile = picked);
+    // Valida AQUI, não na conexão: escolher o `.pub` ao lado da privada é o
+    // engano fácil, e o ssh o reporta como problema de PERMISSÃO ("0644 are
+    // too open"), mandando investigar a coisa errada.
+    setState(() {
+      _identityFile = picked;
+      _identityProblem = inspectSshPrivateKey(picked);
+    });
   }
 
   void _submit() {
@@ -326,6 +347,8 @@ class _AddRemoteHostDialogState extends State<_AddRemoteHostDialog> {
                 ),
                 if (_attempted && _identityMissing)
                   _errorText(context, tr.errIdentity),
+                if (_identityProblemText(context) case final problema?)
+                  _errorText(context, problema),
               ],
               if (_auth == RemoteHostAuth.password) ...[
                 const SizedBox(height: 10),

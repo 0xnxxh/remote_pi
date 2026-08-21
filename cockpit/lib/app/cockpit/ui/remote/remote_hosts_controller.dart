@@ -32,7 +32,14 @@ class RemoteHostsController extends ChangeNotifier {
   HostKeyPrompt? hostKeyPrompt;
   final Map<String, RemoteHostConnector> _connectors = {};
   final MobileSshKeyStore _deviceKeys = MobileSshKeyStore();
-  final RemoteHostPasswordStore _passwords = RemoteHostPasswordStore();
+  RemoteHostPasswordStore _passwords = RemoteHostPasswordStore();
+
+  /// Troca o store de senhas. Só os testes usam: o construtor é registrado por
+  /// tear-off no módulo (`RemoteHostsController.new`), e o auto_injector
+  /// resolve parâmetros pelo grafo — acrescentar um aqui só para o teste
+  /// cobraria um bind que não existe.
+  @visibleForTesting
+  set passwordStoreForTest(RemoteHostPasswordStore store) => _passwords = store;
 
   /// Linha `authorized_keys` da chave deste dispositivo (mobile): o usuário cola
   /// no `~/.ssh/authorized_keys` do host pra autorizar o iPad/Android. Gera a
@@ -262,15 +269,6 @@ class RemoteHostsController extends ChangeNotifier {
         ? null
         : (identityFile ?? host.identityFile);
 
-    // Senha: aplica a nova se veio; some do Keychain ao trocar pra chave.
-    if (newAuth == RemoteHostAuth.password) {
-      if (password != null && password.isNotEmpty) {
-        await _passwords.write(id, password);
-      }
-    } else {
-      await _passwords.remove(id);
-    }
-
     if (newTarget != host.sshTarget ||
         newPort != host.port ||
         newAuth != host.auth ||
@@ -288,6 +286,19 @@ class RemoteHostsController extends ChangeNotifier {
       ),
     );
     notifyListeners();
+
+    // Senha DEPOIS do save, e sem segurar a operação: o Keychain é acessório
+    // (a fonte da verdade dos hosts é o JSON) e é IPC com um serviço do
+    // sistema, que pode falhar ou não responder. Quando ele vinha ANTES e
+    // travava, editar simplesmente não salvava — sem erro na tela, porque o
+    // future do onPressed é descartado.
+    unawaited(
+      newAuth == RemoteHostAuth.password
+          ? (password != null && password.isNotEmpty
+                ? _passwords.write(id, password)
+                : Future<void>.value())
+          : _passwords.remove(id),
+    );
   }
 
   /// Remove o host, seus workspaces (pins) e encerra a conexão.
@@ -296,9 +307,10 @@ class RemoteHostsController extends ChangeNotifier {
       await _store.removePin(pin.id);
     }
     await _connectors.remove(id)?.dispose();
-    await _passwords.remove(id);
     await _store.remove(id);
     notifyListeners();
+    // Limpeza da senha por último e sem esperar — ver editHost.
+    unawaited(_passwords.remove(id));
   }
 
   // id determinístico simples (Date.now/Random não estão disponíveis em alguns

@@ -193,7 +193,7 @@ class RemoteHostConnector {
         target: host.sshTarget,
         port: host.port,
         password: _password,
-        identityFile: host.identityFile,
+        identityFile: host.effectiveIdentityFile,
       );
     } on SshTunnelException catch (e) {
       _setPhase(RemoteHostPhase.failed);
@@ -385,7 +385,7 @@ class RemoteHostConnector {
       'uname -sm',
       port: host.port,
       password: _password,
-      identityFile: host.identityFile,
+      identityFile: host.effectiveIdentityFile,
     );
     if (unameCode != 0) {
       throw RemoteHostException(
@@ -402,7 +402,7 @@ class RemoteHostConnector {
       'test -x $_remoteServerBin && echo yes || echo no',
       port: host.port,
       password: _password,
-      identityFile: host.identityFile,
+      identityFile: host.effectiveIdentityFile,
     );
     final alreadyInstalled = probeCode == 0 && probeOut.endsWith('yes');
 
@@ -454,7 +454,7 @@ class RemoteHostConnector {
         stdinBytes: bytes,
         port: host.port,
         password: _password,
-        identityFile: host.identityFile,
+        identityFile: host.effectiveIdentityFile,
       );
       if (code != 0) {
         throw RemoteHostException(
@@ -516,7 +516,7 @@ class RemoteHostConnector {
       '>$logPath 2>&1 & echo started',
       port: host.port,
       password: _password,
-      identityFile: host.identityFile,
+      identityFile: host.effectiveIdentityFile,
     );
     if (code != 0) {
       throw RemoteHostException(
@@ -538,7 +538,7 @@ class RemoteHostConnector {
         'test -S $_remoteSocketPath && echo up || echo down',
         port: host.port,
         password: _password,
-        identityFile: host.identityFile,
+        identityFile: host.effectiveIdentityFile,
       );
       if (code == 0 && out.endsWith('up')) return;
     }
@@ -547,7 +547,7 @@ class RemoteHostConnector {
       'tail -c 2000 $logPath 2>/dev/null || true',
       port: host.port,
       password: _password,
-      identityFile: host.identityFile,
+      identityFile: host.effectiveIdentityFile,
     );
     throw RemoteHostException(
       RemoteHostErrorKind.serverInstallFailed,

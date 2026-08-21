@@ -657,7 +657,11 @@
       "identityDialogTitle": "Selecciona la clave privada SSH",
       "errIdentity": "Elige la clave privada para autenticarte.",
       "errHostKeyUnknown": "Cockpit todavía no confía en ${host}. Conecta de nuevo y confirma la huella.",
-      "errHostKeyChanged": "${host} presenta una clave SSH distinta de la guardada. Si no reinstalaste esa máquina, detente y compruébalo; si la reinstalaste, elimina la entrada antigua de ~/.ssh/known_hosts."
+      "errHostKeyChanged": "${host} presenta una clave SSH distinta de la guardada. Si no reinstalaste esa máquina, detente y compruébalo; si la reinstalaste, elimina la entrada antigua de ~/.ssh/known_hosts.",
+      "errIdentityPublic": "Solo está la clave pública. Eso funciona solo si la privada está en tu agente SSH; si no, elige la privada (mismo nombre, sin .pub).",
+      "errIdentityNotKey": "Ese archivo no parece una clave privada.",
+      "errIdentityMissingFile": "Ese archivo ya no existe.",
+      "errIdentityUnreadable": "No se pudo leer ese archivo."
     },
     "browserPane": {
       "back": "Atrás",

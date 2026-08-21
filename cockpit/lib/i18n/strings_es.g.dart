@@ -1093,6 +1093,10 @@ class _Translations$cockpit$remoteHost$es extends Translations$cockpit$remoteHos
 	@override String get errIdentity => 'Elige la clave privada para autenticarte.';
 	@override String errHostKeyUnknown({required Object host}) => 'Cockpit todavía no confía en ${host}. Conecta de nuevo y confirma la huella.';
 	@override String errHostKeyChanged({required Object host}) => '${host} presenta una clave SSH distinta de la guardada. Si no reinstalaste esa máquina, detente y compruébalo; si la reinstalaste, elimina la entrada antigua de ~/.ssh/known_hosts.';
+	@override String get errIdentityPublic => 'Solo está la clave pública. Eso funciona solo si la privada está en tu agente SSH; si no, elige la privada (mismo nombre, sin .pub).';
+	@override String get errIdentityNotKey => 'Ese archivo no parece una clave privada.';
+	@override String get errIdentityMissingFile => 'Ese archivo ya no existe.';
+	@override String get errIdentityUnreadable => 'No se pudo leer ese archivo.';
 }
 
 // Path: cockpit.browserPane
@@ -2252,6 +2256,10 @@ extension on TranslationsEs {
 			'cockpit.remoteHost.errIdentity' => 'Elige la clave privada para autenticarte.',
 			'cockpit.remoteHost.errHostKeyUnknown' => ({required Object host}) => 'Cockpit todavía no confía en ${host}. Conecta de nuevo y confirma la huella.',
 			'cockpit.remoteHost.errHostKeyChanged' => ({required Object host}) => '${host} presenta una clave SSH distinta de la guardada. Si no reinstalaste esa máquina, detente y compruébalo; si la reinstalaste, elimina la entrada antigua de ~/.ssh/known_hosts.',
+			'cockpit.remoteHost.errIdentityPublic' => 'Solo está la clave pública. Eso funciona solo si la privada está en tu agente SSH; si no, elige la privada (mismo nombre, sin .pub).',
+			'cockpit.remoteHost.errIdentityNotKey' => 'Ese archivo no parece una clave privada.',
+			'cockpit.remoteHost.errIdentityMissingFile' => 'Ese archivo ya no existe.',
+			'cockpit.remoteHost.errIdentityUnreadable' => 'No se pudo leer ese archivo.',
 			'cockpit.browserPane.back' => 'Atrás',
 			'cockpit.browserPane.forward' => 'Adelante',
 			'cockpit.browserPane.reload' => 'Recargar',

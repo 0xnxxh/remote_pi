@@ -657,7 +657,11 @@
       "identityDialogTitle": "Select the SSH private key",
       "errIdentity": "Pick the private key to authenticate with.",
       "errHostKeyUnknown": "Cockpit does not trust ${host} yet. Connect again and confirm the fingerprint.",
-      "errHostKeyChanged": "${host} is presenting a different SSH key than the one stored. If you did not reinstall that machine, stop and check it — otherwise remove the old entry from ~/.ssh/known_hosts."
+      "errHostKeyChanged": "${host} is presenting a different SSH key than the one stored. If you did not reinstall that machine, stop and check it — otherwise remove the old entry from ~/.ssh/known_hosts.",
+      "errIdentityPublic": "Only the public key is here. That works only if the private key is in your SSH agent; otherwise pick the private file (same name, without .pub).",
+      "errIdentityNotKey": "That file does not look like a private key.",
+      "errIdentityMissingFile": "That file no longer exists.",
+      "errIdentityUnreadable": "That file could not be read."
     },
     "browserPane": {
       "back": "Back",

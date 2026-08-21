@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Modo de autenticação SSH escolhido para o host (plano 60, Wave C).
 enum RemoteHostAuth {
   /// Chave do dispositivo (default): desktop usa `~/.ssh`/agent; mobile usa a
@@ -62,6 +64,22 @@ class RemoteHost {
   String get host {
     final at = sshTarget.indexOf('@');
     return at < 0 ? sshTarget : sshTarget.substring(at + 1);
+  }
+
+  /// A chave a passar pro `ssh -i`, corrigindo o engano mais comum do
+  /// cadastro: escolher o `.pub` em vez da privada.
+  ///
+  /// As duas moram lado a lado em `~/.ssh` com nomes quase idênticos, e o
+  /// `ssh` recusa a pública com uma mensagem sobre PERMISSÕES ("0644 are too
+  /// open"), que manda o usuário investigar a coisa errada. Quando existe a
+  /// privada correspondente, a intenção é inequívoca — usamos ela.
+  ///
+  /// Corrige também registros já salvos, sem exigir reedição.
+  String? get effectiveIdentityFile {
+    final path = identityFile;
+    if (path == null || !path.endsWith('.pub')) return path;
+    final private = path.substring(0, path.length - 4);
+    return File(private).existsSync() ? private : path;
   }
 
   RemoteHost copyWith({
