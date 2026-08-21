@@ -772,8 +772,19 @@ jobs:
             gh release create "$RELEASE_TAG" release/* \
               --title "Remote Pi Cockpit ${VERSION}" \
               --notes-file "$NOTES_FILE" \
-              --latest=false
+              --latest
           fi
+          # O badge "Latest" também no re-run (ali em cima só o create passa a
+          # flag). Idempotente.
+          #
+          # O repositório publica DUAS linhas de release (cockpit-v* e app-v*) e
+          # o GitHub só tem um "Latest" — a flag era `false` nas duas, herdada
+          # do workflow do app, e sobrava marcar na mão a cada release. O
+          # Cockpit fica com o badge por ser a linha ativa; o app mobile, raro,
+          # segue sem. Nada no projeto depende da URL /releases/latest (os
+          # downloads vão pelo latest.json do rp-s3 e pelos appcasts), então
+          # isto é cosmético — e o cosmético estava dando trabalho manual.
+          gh release edit "$RELEASE_TAG" --latest
 
       # Publica os manifests no rp-s3 (substitui o gate manual). Roda DEPOIS da
       # release existir no GitHub: as URLs dentro do latest.json/appcasts apontam
