@@ -24,6 +24,18 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.8] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** The Windows terminal fix, this time
+verified on Windows before shipping.
+
+### Fixed
+
+- **Windows: local terminals opened empty and ignored typing.** The shell was
+  inheriting the wrong input and output, so its screen never reached the tab and
+  it saw its input as already finished. 1.28.7 aimed at the wrong half of this
+  and did not fix it; this one was tested against the real setup before release.
+
 ## [1.28.7] - 2026-08-20
 
 **Still a beta for the upcoming 2.0.0.** Finishes the Windows terminal fix
