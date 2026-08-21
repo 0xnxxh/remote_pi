@@ -19,7 +19,13 @@ class RemoteRpcException implements Exception {
 /// Conexão de cliente com um cockpit-server (Wave 0: socket UDS local;
 /// o túnel SSH da Wave 2 entrega exatamente o mesmo socket).
 class RemoteConnection {
-  RemoteConnection._(this._duplex, this.serverVersion, this._messages);
+  RemoteConnection._(
+    this._duplex,
+    this.serverVersion,
+    this._messages, {
+    this.serverExecutable,
+    this.serverPid,
+  });
 
   static const _codec = RemoteMessageCodec();
 
@@ -27,6 +33,11 @@ class RemoteConnection {
 
   /// Versão reportada pelo servidor no handshake.
   final String serverVersion;
+
+  /// Executável e pid do servidor, quando ele os informa (ver [HelloAck]).
+  /// O cliente LOCAL usa para decidir se adota um servidor já de pé.
+  final String? serverExecutable;
+  final int? serverPid;
 
   final StreamController<RemoteMessage> _messages;
   bool _open = true;
@@ -114,7 +125,13 @@ class RemoteConnection {
         'unexpected handshake reply',
       );
     }
-    final connection = RemoteConnection._(duplex, ack.server, messages);
+    final connection = RemoteConnection._(
+      duplex,
+      ack.server,
+      messages,
+      serverExecutable: ack.executable,
+      serverPid: ack.pid,
+    );
     unawaited(messages.done.then((_) => connection._open = false));
     return connection;
   }

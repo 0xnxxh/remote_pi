@@ -290,7 +290,16 @@ class _Connection {
         }
         _handshaken = true;
         _localClient = message.local;
-        _send(HelloAck(version: protocolVersion, server: _serverVersion));
+        // Identidade do processo: é por ela que um cliente local decide se
+        // adota este servidor ou sobe o dele (ver SidecarTerminalConnector).
+        _send(
+          HelloAck(
+            version: protocolVersion,
+            server: _serverVersion,
+            executable: Platform.resolvedExecutable,
+            pid: pid,
+          ),
+        );
         return;
       }
 

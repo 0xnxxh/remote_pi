@@ -59,6 +59,33 @@ void main() {
 
   ownershipTests();
 
+  test('HelloAck leva a identidade do servidor (adoção do sidecar)', () {
+    const ack = HelloAck(
+      version: protocolVersion,
+      server: '0.1.0',
+      executable: r'C:\Program Files\Cockpit\cockpit-server.exe',
+      pid: 4242,
+    );
+    final json = ack.toJson();
+    expect(json['exe'], r'C:\Program Files\Cockpit\cockpit-server.exe');
+    expect(json['pid'], 4242);
+
+    final back = HelloAck.fromJson(json);
+    expect(back.executable, ack.executable);
+    expect(back.pid, 4242);
+
+    // Servidor de versão anterior não informa nada disso. O cliente trata a
+    // ausência como "não é o meu binário" e sobe o próprio — é justamente o
+    // caso que fez um app novo seguir falando com uma build antiga.
+    final antigo = HelloAck.fromJson({
+      't': 'hello.ack',
+      'v': protocolVersion,
+      'server': '0.1.0',
+    });
+    expect(antigo.executable, isNull);
+    expect(antigo.pid, isNull);
+  });
+
   test('Hello leva token e flag local no wire', () {
     const hello = Hello(
       version: protocolVersion,

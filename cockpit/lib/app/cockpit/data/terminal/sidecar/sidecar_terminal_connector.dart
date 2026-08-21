@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cockpit/app/cockpit/domain/contracts/terminal_status_server.dart';
+import 'package:cockpit/app/core/utils/child_process_lifetime.dart';
 import 'package:cockpit/app/core/utils/user_home.dart';
 import 'package:cockpit_remote/cockpit_remote.dart';
 import 'package:flutter/foundation.dart';
@@ -87,11 +88,22 @@ class SidecarTerminalConnector implements TurnStatusSource {
       if (socketPath == null) return _giveUp('no home directory');
 
       // 1. Descoberta: já existe servidor atendendo este socket?
+      final binary = _resolveServerBinary();
       final adopted = await _tryConnect(socketPath);
-      if (adopted != null) return _adopt(adopted);
+      if (adopted != null) {
+        if (_isOurBinary(adopted, binary)) return _adopt(adopted);
+        // Servidor de OUTRA instalação (release anterior, pasta temporária).
+        // Adotar em silêncio faz o app novo seguir rodando código velho — foi
+        // assim que uma correção publicada não chegou a rodar na máquina do
+        // usuário. Encerra o intruso e sobe o nosso.
+        debugPrint(
+          'sidecar: servidor alheio no socket '
+          '(${adopted.serverExecutable}); encerrando e subindo o meu',
+        );
+        await _evict(adopted);
+      }
 
       // 2. Spawn do sidecar.
-      final binary = _resolveServerBinary();
       if (binary == null) {
         return _giveUp('cockpit-server binary not found');
       }
@@ -110,6 +122,9 @@ class SidecarTerminalConnector implements TurnStatusSource {
           if (ptyDylib.existsSync()) 'COCKPIT_PTY_DYLIB': ptyDylib.path,
         },
       );
+      // Windows: o filho morre com o app (Job Object). Órfão vivo no caminho
+      // anunciado é o que faz um app novo conversar com build antiga.
+      tieChildToThisProcess(_child!.pid);
       // Drena stdout/stderr: pipe cheio bloquearia o servidor (e SIGPIPE já
       // é tratado no AppDelegate, lição do fechamento silencioso). O stderr,
       // além de drenado, é GUARDADO: é a única explicação de um sidecar que
@@ -150,6 +165,50 @@ class SidecarTerminalConnector implements TurnStatusSource {
       return _giveUp('server did not come up');
     } catch (e) {
       return _giveUp('unavailable ($e)');
+    }
+  }
+
+  /// O servidor que atendeu é o MESMO binário que este app subiria?
+  ///
+  /// A versão do handshake não serve para decidir: ela é a do pacote
+  /// `cockpit_server`, que raramente muda entre releases do app. O caminho do
+  /// executável distingue. Servidor antigo demais para informar o caminho é
+  /// tratado como alheio — ele é, por definição, de outra build.
+  bool _isOurBinary(RemoteConnection connection, String? binary) {
+    final theirs = connection.serverExecutable;
+    if (theirs == null || binary == null) return false;
+    return _samePath(theirs, binary);
+  }
+
+  /// Comparação de caminho tolerante ao que muda sem mudar o arquivo:
+  /// separador e caixa no Windows.
+  static bool _samePath(String a, String b) {
+    String norm(String p) {
+      final unified = p.replaceAll(r'\', '/');
+      return Platform.isWindows ? unified.toLowerCase() : unified;
+    }
+
+    return norm(a) == norm(b);
+  }
+
+  /// Fecha a conexão com o servidor alheio e o encerra, para o nosso poder
+  /// bindar o socket. Sem matá-lo, ele continuaria dono do caminho anunciado.
+  Future<void> _evict(RemoteConnection intruder) async {
+    final pid = intruder.serverPid;
+    await intruder.close();
+    if (pid == null) return;
+    final announced = _socketPath();
+    try {
+      // SIGTERM: o servidor tem desligamento com teto e limpa o anúncio.
+      Process.killPid(pid);
+      for (var i = 0; i < 20; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        if (announced == null || !File(announced).existsSync()) return;
+      }
+      // Insistente (SIGTERM não existe no Windows): força.
+      Process.killPid(pid, ProcessSignal.sigkill);
+    } on Object {
+      // Sem permissão / já morto: o bind por cima ainda costuma funcionar.
     }
   }
 

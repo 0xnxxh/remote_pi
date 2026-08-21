@@ -110,19 +110,47 @@ class Hello extends RemoteMessage {
 }
 
 class HelloAck extends RemoteMessage {
-  const HelloAck({required this.version, required this.server});
+  const HelloAck({
+    required this.version,
+    required this.server,
+    this.executable,
+    this.pid,
+  });
   static const kType = 'hello.ack';
 
   final int version;
   final String server;
 
-  factory HelloAck.fromJson(Map<String, Object?> j) =>
-      HelloAck(version: j['v'] as int, server: j['server'] as String);
+  /// Caminho do executável do servidor. Serve para o cliente LOCAL decidir se
+  /// adota um servidor que já estava de pé: `server` é a versão do pacote
+  /// `cockpit_server`, que quase nunca muda entre releases do app e portanto
+  /// não distingue um sidecar velho de um novo — o caminho distingue.
+  ///
+  /// Sem isso, um app recém-atualizado adotava em silêncio o servidor de uma
+  /// instalação anterior (ou de uma pasta temporária) e seguia rodando o
+  /// binário antigo. Foi assim que uma correção publicada não chegou a rodar.
+  final String? executable;
+
+  /// Pid do servidor, para o cliente encerrar um adotado que não serve.
+  final int? pid;
+
+  factory HelloAck.fromJson(Map<String, Object?> j) => HelloAck(
+    version: j['v'] as int,
+    server: j['server'] as String,
+    executable: j['exe'] as String?,
+    pid: j['pid'] as int?,
+  );
 
   @override
   String get type => kType;
   @override
-  Map<String, Object?> toJson() => {'t': kType, 'v': version, 'server': server};
+  Map<String, Object?> toJson() => {
+    't': kType,
+    'v': version,
+    'server': server,
+    if (executable != null) 'exe': executable,
+    if (pid != null) 'pid': pid,
+  };
 }
 
 // ---------------------------------------------------------------------------
