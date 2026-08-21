@@ -2604,21 +2604,22 @@ class CockpitViewModel extends ChangeNotifier {
   /// troca pro Default antes.
   Future<void> deleteRealm(String id) async {
     if (id == Realm.defaultId || !realmCtrl.exists(id)) return;
+    // Migra na memória primeiro e persiste em LOTE: um realm cheio salvava um
+    // workspace por vez, e cada gravação espera a própria janela de debounce
+    // do store (mesma conta que fazia o reorder do rail custar ~2s).
+    final locais = <Project>[]; // forks são runtime, não persistem
+    final remotos = <Project>[];
     for (var i = 0; i < _projectList.length; i++) {
       final p = _projectList[i];
       if (p.realmId != id) continue;
       final moved = p.copyWith(realmId: Realm.defaultId);
       _projectList[i] = moved;
-      if (p.parentId == null && !p.isSystemTerminal) {
-        if (p.isRemoteTerminal) {
-          await _remoteHosts.updatePin(
-            _pinIdOf(p.id),
-            realmId: Realm.defaultId,
-          );
-        } else {
-          await _projects.save(moved); // forks são runtime, não persistem
-        }
-      }
+      if (p.parentId != null || p.isSystemTerminal) continue;
+      (p.isRemoteTerminal ? remotos : locais).add(moved);
+    }
+    if (locais.isNotEmpty) await _projects.saveAll(locais);
+    for (final p in remotos) {
+      await _remoteHosts.updatePin(_pinIdOf(p.id), realmId: Realm.defaultId);
     }
     if (realmCtrl.activeId == id) await switchRealm(Realm.defaultId);
     await realmCtrl.remove(id);
