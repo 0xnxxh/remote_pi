@@ -14,7 +14,21 @@ class FileViewerSession extends PaneItem {
     this.isPreview = false,
     this.scratch = false,
     this.scratchTitle,
+    this.loading = false,
   });
+
+  /// `true` enquanto o conteúdo ainda está sendo lido (relevante em workspace
+  /// REMOTO, onde `fs.read` viaja pela rede — plano 60, Wave A). A aba abre na
+  /// hora mostrando um skeleton; vira `false` quando [view] é preenchido. O
+  /// `FileViewer` mostra o loading em vez do conteúdo enquanto isto for `true`.
+  bool loading;
+
+  /// Marca o fim do carregamento e reconstrói a aba.
+  void finishLoading(FileView loaded) {
+    view = loaded;
+    loading = false;
+    notifyListeners();
+  }
 
   /// `true` = buffer **untitled** (VSCode-style): não há arquivo no disco até
   /// o primeiro save. O `path` é sintético; [title] usa [scratchTitle]. Vira

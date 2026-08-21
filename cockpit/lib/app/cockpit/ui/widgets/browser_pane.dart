@@ -1,9 +1,11 @@
+import 'dart:io';
+
 import 'package:cockpit/app/cockpit/ui/session/browser_session.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/widgets/app_tooltip.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
+import 'package:cockpit/app/core/ui/widgets/unzoomed_native_view.dart';
 import 'package:cockpit/i18n/strings.g.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -22,6 +24,23 @@ class BrowserPane extends StatefulWidget {
   State<BrowserPane> createState() => _BrowserPaneState();
 }
 
+/// Página inicial das abas de navegador novas (sem URL/seed).
+const String _kHomeUrl = 'https://google.com';
+
+/// Token apendado ao User-Agent **só onde o motor é WebKit** (macOS/iOS).
+///
+/// Sem ele o UA de um `WKWebView` embutido não traz `Version/<x> Safari/...`,
+/// e sites que fazem sniffing (Google à frente) classificam a aba como
+/// navegador desconhecido e servem a interface legada. Com o token, o UA fica
+/// indistinguível do Safari — que é literalmente o mesmo motor rodando aqui.
+///
+/// No Windows (WebView2) e no Android (WebView do sistema) o motor é Chromium:
+/// o UA de lá já termina em `Safari/537.36` e os sites servem a versão moderna.
+/// Apendar um token de Safari ali produziria um UA híbrido incoerente — por
+/// isso [_safariUaToken] devolve `null` fora do WebKit.
+String? get _safariUaToken =>
+    Platform.isMacOS || Platform.isIOS ? 'Version/26.6 Safari/605.1.15' : null;
+
 class _BrowserPaneState extends State<BrowserPane> {
   InAppWebViewController? _web;
   late final TextEditingController _urlCtrl;
@@ -39,12 +58,8 @@ class _BrowserPaneState extends State<BrowserPane> {
     widget.session.addListener(_onSession);
     final seed = widget.session.takeSeedUrl();
     if (seed != null) _pendingUrl = seed;
-    // Aba nova em branco: foco direto no campo de URL.
-    if (widget.session.url.isEmpty && _pendingUrl == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.active) _urlFocus.requestFocus();
-      });
-    }
+    // Aba nova em branco não foca mais o campo de URL: agora carrega a home
+    // (Google), então mostramos a página em vez de abrir o teclado por cima.
   }
 
   @override
@@ -119,8 +134,9 @@ class _BrowserPaneState extends State<BrowserPane> {
           ),
         );
 
+    // Aba nova (sem URL e sem seed) abre no Google por padrão.
     final initial = widget.session.url.isEmpty
-        ? (_pendingUrl ?? 'about:blank')
+        ? (_pendingUrl ?? _kHomeUrl)
         : widget.session.url;
 
     return ColoredBox(
@@ -146,30 +162,45 @@ class _BrowserPaneState extends State<BrowserPane> {
                 navBtn(Icons.refresh, tr.reload, true, () => _web?.reload()),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: CallbackShortcuts(
-                    bindings: {
-                      const SingleActivator(LogicalKeyboardKey.enter): () =>
-                          _go(_urlCtrl.text),
-                    },
-                    child: TextField(
-                      controller: _urlCtrl,
-                      focusNode: _urlFocus,
-                      placeholder: Text(
-                        tr.urlHint,
-                        style: typo.body.copyWith(
-                          fontSize: 12,
-                          color: colors.text4,
-                        ),
-                      ),
+                  // `onSubmitted` (Enter) é o caminho confiável: o CallbackShortcuts
+                  // em volta não pegava o Enter (a TextField do shadcn consome a
+                  // tecla internamente) e a página não abria.
+                  child: TextField(
+                    controller: _urlCtrl,
+                    focusNode: _urlFocus,
+                    onSubmitted: (value) => _go(value),
+                    placeholder: Text(
+                      tr.urlHint,
                       style: typo.body.copyWith(
                         fontSize: 12,
-                        color: colors.text,
+                        color: colors.text4,
                       ),
-                      border: Border.all(color: colors.border),
-                      borderRadius: BorderRadius.circular(6),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                    ),
+                    style: typo.body.copyWith(fontSize: 12, color: colors.text),
+                    border: Border.all(color: colors.border),
+                    borderRadius: BorderRadius.circular(6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // Botão "Ir": abre a URL digitada (à direita da barra).
+                HoverTap(
+                  borderRadius: BorderRadius.circular(6),
+                  color: colors.accentSoft,
+                  onTap: () => _go(_urlCtrl.text),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    child: Text(
+                      tr.go,
+                      style: typo.label.copyWith(
+                        fontSize: 12,
+                        color: colors.accentText,
                       ),
                     ),
                   ),
@@ -178,25 +209,33 @@ class _BrowserPaneState extends State<BrowserPane> {
             ),
           ),
           Expanded(
-            child: InAppWebView(
-              initialUrlRequest: URLRequest(url: WebUri(initial)),
-              initialSettings: InAppWebViewSettings(
-                // Navegador de verdade: JS ligado. O preview de markdown (CSP
-                // restritiva) usa outro widget com settings próprios.
-                javaScriptEnabled: true,
-                isInspectable: false,
+            // Fora do zoom do app: platform view recebe evento de mouse direto
+            // do sistema e o clique cairia deslocado. Ver [UnzoomedNativeView].
+            child: UnzoomedNativeView(
+              builder: (context, contentZoom) => InAppWebView(
+                initialUrlRequest: URLRequest(url: WebUri(initial)),
+                initialSettings: InAppWebViewSettings(
+                  // Navegador de verdade: JS ligado. O preview de markdown (CSP
+                  // restritiva) usa outro widget com settings próprios.
+                  javaScriptEnabled: true,
+                  isInspectable: false,
+                  applicationNameForUserAgent: _safariUaToken,
+                  // O zoom do app volta por dentro do WebKit (a view em si roda
+                  // em escala 1) — mesmo tamanho aparente, hit-test alinhado.
+                  pageZoom: contentZoom,
+                ),
+                onWebViewCreated: (web) {
+                  _web = web;
+                  final pending = _pendingUrl;
+                  _pendingUrl = null;
+                  if (pending != null && pending != initial) {
+                    web.loadUrl(urlRequest: URLRequest(url: WebUri(pending)));
+                  }
+                },
+                onLoadStop: _onLoadStop,
+                onTitleChanged: (web, title) =>
+                    widget.session.reportNavigation(title: title),
               ),
-              onWebViewCreated: (web) {
-                _web = web;
-                final pending = _pendingUrl;
-                _pendingUrl = null;
-                if (pending != null && pending != initial) {
-                  web.loadUrl(urlRequest: URLRequest(url: WebUri(pending)));
-                }
-              },
-              onLoadStop: _onLoadStop,
-              onTitleChanged: (web, title) =>
-                  widget.session.reportNavigation(title: title),
             ),
           ),
         ],

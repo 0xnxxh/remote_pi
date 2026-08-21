@@ -5,8 +5,13 @@ import 'package:cockpit/app/cockpit/domain/contracts/git_history_reader.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_history_commit.dart';
 import 'package:cockpit/app/cockpit/domain/entities/git_history_file_change.dart';
 import 'package:cockpit/app/cockpit/domain/exceptions/git_history_error.dart';
+import 'package:cockpit/app/cockpit/domain/git_history_parsers.dart';
 import 'package:cockpit/app/core/data/setup/remote_pi_resolver.dart';
 import 'package:cockpit/app/core/domain/result.dart';
+
+// Os parsers moraram aqui; migraram pro dominio (compartilhados com o caminho
+// remoto, plano 58). Reexporta pra nao quebrar quem importava daqui (testes).
+export 'package:cockpit/app/cockpit/domain/git_history_parsers.dart';
 
 /// Leitor estruturado do `git log`; os separadores de controle evitam depender
 /// de alinhamento, locale ou do desenho textual de `--graph`.
@@ -89,65 +94,5 @@ class GitHistoryReaderImpl implements GitHistoryReader {
         ),
       );
     }
-  }
-}
-
-/// Parser publico para manter o formato do processo testavel sem um repo real.
-class GitHistoryParser {
-  static List<GitHistoryCommit> parse(String output) {
-    final commits = <GitHistoryCommit>[];
-    for (final record in output.split('\u001e')) {
-      if (record.trim().isEmpty) continue;
-      // `git log` acrescenta uma quebra de linha apos cada record separator.
-      // Sem remove-la do inicio, todo hash apos o primeiro vira uma revisao
-      // invalida quando usado em `git show`.
-      final fields = record.trim().split('\u001f');
-      if (fields.length < 6 || fields.first.isEmpty) continue;
-      final decorations = fields[2].trim();
-      commits.add(
-        GitHistoryCommit(
-          hash: fields[0],
-          parents: fields[1].trim().isEmpty
-              ? const []
-              : fields[1].trim().split(RegExp(r'\s+')),
-          refs: decorations.isEmpty
-              ? const []
-              : decorations.split(',').map((ref) => ref.trim()).toList(),
-          author: fields[3],
-          authoredAt: DateTime.tryParse(fields[4]),
-          subject: fields.sublist(5).join('\u001f'),
-        ),
-      );
-    }
-    return commits;
-  }
-}
-
-/// Parser do formato NUL-delimitado de `git show --name-status -z`.
-class GitHistoryFileChangeParser {
-  static List<GitHistoryFileChange> parse(String output) {
-    final fields = output.split('\u0000');
-    final changes = <GitHistoryFileChange>[];
-    for (var index = 0; index < fields.length - 1;) {
-      final status = fields[index++];
-      if (status.isEmpty || index >= fields.length) continue;
-      if (status.startsWith('R') || status.startsWith('C')) {
-        if (index + 1 >= fields.length) break;
-        final previousPath = fields[index++];
-        final path = fields[index++];
-        changes.add(
-          GitHistoryFileChange(
-            status: status,
-            path: path,
-            previousPath: previousPath,
-          ),
-        );
-      } else {
-        changes.add(
-          GitHistoryFileChange(status: status, path: fields[index++]),
-        );
-      }
-    }
-    return changes;
   }
 }

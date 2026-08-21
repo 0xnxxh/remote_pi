@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
 import 'package:cockpit/app/core/ui/themes/themes.dart';
+import 'package:cockpit/app/core/ui/widgets/unzoomed_native_view.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -38,6 +41,9 @@ class _WebMarkdownPreviewState extends State<WebMarkdownPreview> {
   bool _loaded = false;
   String? _html;
 
+  /// Último tema injetado na página, pra não reinjetar igual a cada rebuild.
+  Map<String, String>? _pushedTheme;
+
   /// Página montada uma vez por processo: esqueleto + CSS + os três motores JS
   /// inlined sob nonce (a CSP não deixa a página pedir nada além de imagem).
   static String? _cachedPage;
@@ -59,7 +65,10 @@ class _WebMarkdownPreviewState extends State<WebMarkdownPreview> {
     );
     final page = results[0]
         .replaceAll('__NONCE__', nonce)
-        .replaceFirst('__CSS__', results[1])
+        // replaceAll, não replaceFirst: qualquer outra ocorrência do token
+        // (um comentário no HTML, por exemplo) roubava a substituição e o
+        // <style> ficava com o literal — página sem estilo, fundo branco.
+        .replaceAll('__CSS__', results[1])
         .replaceFirst('__JS_MARKDOWN_IT__;', results[2])
         .replaceFirst('__JS_PURIFY__;', results[3])
         .replaceFirst('__JS_MORPHDOM__;', results[4])
@@ -81,6 +90,28 @@ class _WebMarkdownPreviewState extends State<WebMarkdownPreview> {
     if (old.text != widget.text || old.docDir != widget.docDir) _push();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Troca de tema chega POR AQUI: os parâmetros do widget não mudam, então
+    // `didUpdateWidget` não dispara e o preview ficava com as cores do tema
+    // anterior até ser reaberto.
+    final vars = _themeVars(context);
+    if (mapEquals(vars, _pushedTheme)) return;
+    _pushedTheme = vars;
+    unawaited(_pushTheme(vars));
+  }
+
+  /// Só as variáveis de cor — o conteúdo não precisa ser reenviado numa troca
+  /// de tema (o CSS reage sozinho às variáveis).
+  Future<void> _pushTheme(Map<String, String> vars) async {
+    final web = _web;
+    if (web == null || !_loaded || !mounted) return;
+    await web.evaluateJavascript(
+      source: 'window.__cockpit.setTheme(${jsonEncode(vars)});',
+    );
+  }
+
   Map<String, String> _themeVars(BuildContext context) {
     final colors = context.colors;
     String hex(Color c) =>
@@ -98,7 +129,9 @@ class _WebMarkdownPreviewState extends State<WebMarkdownPreview> {
   Future<void> _push() async {
     final web = _web;
     if (web == null || !_loaded || !mounted) return;
-    final theme = jsonEncode(_themeVars(context));
+    final vars = _themeVars(context);
+    _pushedTheme = vars;
+    final theme = jsonEncode(vars);
     final text = jsonEncode(widget.text);
     final dir = jsonEncode(widget.docDir);
     await web.evaluateJavascript(
@@ -152,31 +185,36 @@ class _WebMarkdownPreviewState extends State<WebMarkdownPreview> {
     if (html == null) {
       return ColoredBox(color: context.colors.panel);
     }
-    return InAppWebView(
-      initialData: InAppWebViewInitialData(data: html),
-      initialSettings: InAppWebViewSettings(
-        javaScriptEnabled: true,
-        resourceCustomSchemes: ['ckp-res'],
-        isInspectable: false,
-        transparentBackground: true,
+    // Fora do zoom do app (platform view recebe mouse direto do sistema): sem
+    // isso a seleção de texto cai deslocada. Ver [UnzoomedNativeView].
+    return UnzoomedNativeView(
+      builder: (context, contentZoom) => InAppWebView(
+        initialData: InAppWebViewInitialData(data: html),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          resourceCustomSchemes: ['ckp-res'],
+          isInspectable: false,
+          transparentBackground: true,
+          pageZoom: contentZoom,
+        ),
+        onWebViewCreated: (web) => _web = web,
+        onLoadStop: (web, _) {
+          _loaded = true;
+          _push();
+        },
+        onLoadResourceWithCustomScheme: _serveLocal,
+        // Link clicado abre no browser do SO — o preview não navega pra fora.
+        shouldOverrideUrlLoading: (web, action) async {
+          final url = action.request.url;
+          if (url == null || url.scheme == 'about' || url.scheme == 'data') {
+            return NavigationActionPolicy.ALLOW;
+          }
+          if (url.scheme == 'http' || url.scheme == 'https') {
+            await launcher.launchUrl(url);
+          }
+          return NavigationActionPolicy.CANCEL;
+        },
       ),
-      onWebViewCreated: (web) => _web = web,
-      onLoadStop: (web, _) {
-        _loaded = true;
-        _push();
-      },
-      onLoadResourceWithCustomScheme: _serveLocal,
-      // Link clicado abre no browser do SO — o preview não navega pra fora.
-      shouldOverrideUrlLoading: (web, action) async {
-        final url = action.request.url;
-        if (url == null || url.scheme == 'about' || url.scheme == 'data') {
-          return NavigationActionPolicy.ALLOW;
-        }
-        if (url.scheme == 'http' || url.scheme == 'https') {
-          await launcher.launchUrl(url);
-        }
-        return NavigationActionPolicy.CANCEL;
-      },
     );
   }
 }
@@ -197,16 +235,20 @@ class WebHtmlPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InAppWebView(
-      key: ValueKey('html:$path'),
-      initialUrlRequest: URLRequest(url: WebUri.uri(Uri.file(path))),
-      initialSettings: InAppWebViewSettings(
-        javaScriptEnabled: false,
-        isInspectable: false,
-        // Leitura restrita à raiz do workspace (loadFileURL:allowingReadAccessTo:).
-        allowingReadAccessTo: workspaceRoot.isEmpty
-            ? null
-            : WebUri.uri(Uri.directory(workspaceRoot)),
+    // Mesmo motivo do preview de markdown: platform view fora do zoom do app.
+    return UnzoomedNativeView(
+      builder: (context, contentZoom) => InAppWebView(
+        key: ValueKey('html:$path'),
+        initialUrlRequest: URLRequest(url: WebUri.uri(Uri.file(path))),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: false,
+          isInspectable: false,
+          pageZoom: contentZoom,
+          // Leitura restrita à raiz do workspace (loadFileURL:allowingReadAccessTo:).
+          allowingReadAccessTo: workspaceRoot.isEmpty
+              ? null
+              : WebUri.uri(Uri.directory(workspaceRoot)),
+        ),
       ),
     );
   }

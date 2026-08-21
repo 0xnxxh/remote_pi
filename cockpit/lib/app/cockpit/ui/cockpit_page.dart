@@ -1,6 +1,10 @@
 import 'dart:async' show StreamSubscription, unawaited;
 import 'dart:io';
 
+import 'package:cockpit/app/cockpit/ui/actions/agent_actions.dart';
+import 'package:cockpit/app/cockpit/ui/actions/remote_workspace_actions.dart';
+import 'package:cockpit/app/cockpit/ui/actions/workspace_actions.dart';
+import 'package:cockpit/app/cockpit/ui/actions/worktree_actions.dart';
 import 'package:cockpit/app/core/app_intents.dart';
 import 'package:cockpit/app/cockpit/domain/entities/project.dart';
 import 'package:cockpit/app/core/domain/entities/app_settings.dart';
@@ -9,15 +13,21 @@ import 'package:cockpit/app/core/routes.dart';
 import 'package:cockpit/app/core/ui/menu/workspace_menu_bridge.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/states/pane_node.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_db_executor.dart';
+import 'package:cockpit/app/cockpit/data/remote/remote_task_gateway.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/task_discovery.dart';
+import 'package:cockpit/app/cockpit/domain/contracts/task_runner_gateway.dart';
+import 'package:cockpit/app/cockpit/ui/viewmodels/tasks_viewmodel.dart';
+import 'package:cockpit/app/cockpit/domain/entities/db_connection.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/update_viewmodel.dart';
-import 'package:cockpit/app/cockpit/domain/contracts/git_command_runner.dart';
-import 'package:cockpit/app/cockpit/ui/widgets/git_process_dialog.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/remote_disconnected_banner.dart';
+import 'package:cockpit/app/cockpit/ui/widgets/terminal_key_bar.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/widgets.dart';
 import 'package:cockpit/app/core/ui/themes/themes.dart';
 import 'package:cockpit/app/core/ui/settings_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/hover_tap.dart';
-import 'package:cockpit/app/core/utils/native_folder_picker.dart';
+import 'package:cockpit/app/core/utils/platform_kind.dart';
 import 'package:cockpit/i18n/strings.g.dart';
 import 'package:flutter/gestures.dart' show PointerDownEvent, kBackMouseButton;
 import 'package:flutter/services.dart'
@@ -36,6 +46,17 @@ import 'package:cockpit/app/cockpit/domain/contracts/ssh_tunnel.dart';
 import 'package:cockpit/app/cockpit/domain/services/db_query_service.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/database_viewmodel.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/ssh_prompts.dart';
+
+/// Os únicos valores do `CockpitViewModel` de que o shell (top bar + arranjo
+/// das panes) depende. Isolados num record pra o `select` comparar por valor.
+typedef _ShellState = ({
+  bool ready,
+  bool railVisible,
+  bool treeVisible,
+  bool hasFileTree,
+  String? title,
+  bool terminalActive,
+});
 
 /// Shell do Cockpit: top bar + rail de projetos + multiplexador (árvore de
 /// splits). Cada folha é uma [PaneView] com abas; cada aba é um agente.
@@ -59,6 +80,31 @@ class _CockpitPageState extends State<CockpitPage> {
   static const double _railMin = 190;
   static const double _railMax = 420;
 
+  /// Abaixo deste valor de largura (mobile) as panes laterais (workspaces e
+  /// arquivos) viram DRAWERS sobrepostos, em vez de dividir a Row (plano 60,
+  /// Wave F). Cobre portrait de celular; landscape/tablet largo seguem inline.
+  static const double _drawerBreakpoint = 600;
+
+  /// Estado dos drawers no modo estreito (default fechados). No modo largo a
+  /// visibilidade das panes segue `vm.railVisible`/`vm.treeVisible`.
+  bool _leftDrawer = false;
+  bool _rightDrawer = false;
+
+  void _dismissDrawers() {
+    if (!_leftDrawer && !_rightDrawer) return;
+    setState(() {
+      _leftDrawer = false;
+      _rightDrawer = false;
+    });
+  }
+
+  /// Preserva o subtree central (terminais/editores) ao alternar entre layout
+  /// largo (Row) e estreito (Stack/drawers) — ex.: rotação portrait↔landscape.
+  /// Sem um GlobalKey, a troca de tipo de pai REMONTA o subtree, e o novo
+  /// TerminalView do flterm faz attach antes do antigo desanexar → "controller
+  /// already has an active view". Com a key, o elemento é reparentado (movido).
+  final GlobalKey _centerKey = GlobalKey();
+
   /// Sobe a cada Cmd+Shift+F → o [ContentSearchPanel] foca o campo de busca.
   final ValueNotifier<int> _searchFocusSignal = ValueNotifier<int>(0);
 
@@ -77,7 +123,7 @@ class _CockpitPageState extends State<CockpitPage> {
     requestFocusActiveComposer = _focusActiveComposer;
     // Pontes do menu nativo (PlatformMenuBar vive acima da rota, sem acesso aos
     // ViewModels page-scoped): abrir projeto e verificar atualizações.
-    requestOpenProject = () => unawaited(_addProject());
+    requestOpenProject = () => unawaited(addProject(context));
     // `checkNow()` (não `check()`): o menu é uma checagem pedida pelo usuário →
     // foreground, com resposta visível e ignorando "Skip this version".
     requestCheckForUpdates = () =>
@@ -98,7 +144,11 @@ class _CockpitPageState extends State<CockpitPage> {
     context.read<CockpitViewModel>().init();
     final updateVm = context.read<UpdateViewModel>();
     updateVm.attachSettings(context.read<SettingsController>());
-    updateVm.check();
+    // Self-update (Sparkle/WinSparkle) é desktop-only; no mobile a loja atualiza.
+    // Evita também o notify-durante-build do setLastUpdateCheckTime no boot iOS.
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      updateVm.check();
+    }
     // Publica o estado do workspace no menu File (New Agent / New Terminal): só
     // habilitam quando há workspace ativo. Re-sincroniza a cada mudança da VM.
     _workspaceMenu = context.read<WorkspaceMenuBridge>();
@@ -126,9 +176,13 @@ class _CockpitPageState extends State<CockpitPage> {
     // Restaura a visibilidade dos painéis (rail/árvore) salva na sessão anterior
     // e persiste de volta a cada toggle. A VM é a fonte de verdade em runtime.
     final vm = context.read<CockpitViewModel>();
+    // Mobile (iPad/Android): layout diferente — rail e painel de arquivos já
+    // começam abertos. A pane direita só aparece de fato quando há árvore
+    // (o layout gateia por `treeVisible && activeHasFileTree`), então na
+    // WelcomeView ela fica oculta até haver workspace com pasta.
     vm.restorePanelVisibility(
-      rail: _settings!.settings.railVisible,
-      tree: _settings!.settings.treeVisible,
+      rail: isMobilePlatform || _settings!.settings.railVisible,
+      tree: isMobilePlatform || _settings!.settings.treeVisible,
     );
     vm.onPanelVisibilityChanged = (rail, tree) =>
         _settings!.setPanelVisibility(rail: rail, tree: tree);
@@ -143,6 +197,17 @@ class _CockpitPageState extends State<CockpitPage> {
   /// módulo porque eles precisam de `BuildContext` — e é o que separa a GUI
   /// (pode perguntar) da CLI (não pode: prompts nulos → erro honesto).
   void _wireSshPrompts() {
+    // Hosts remotos (plano 58): mesmo dialog TOFU do túnel de banco. Sem isto,
+    // um host novo no desktop morria em "Host key verification failed" — o ssh
+    // roda com BatchMode e não pode perguntar nada por conta própria.
+    _vm.remoteHosts.hostKeyPrompt = (endpoint, fingerprint) async {
+      if (!mounted) return HostKeyVerdict.reject;
+      return showSshHostKeyDialog(
+        context,
+        endpoint: endpoint,
+        fingerprint: fingerprint,
+      );
+    };
     final service = _dbService = context.read<DatabaseViewModel>().service;
     service
       ..passphrasePrompt = (connectionName, keyPath) async {
@@ -160,7 +225,67 @@ class _CockpitPageState extends State<CockpitPage> {
           endpoint: endpoint,
           fingerprint: fingerprint,
         );
-      };
+      }
+      // DB remoto (plano 58, Wave 4): quando o workspace é de um host remoto,
+      // a query roda no cockpit-server do host. Resolvido por workspace pra
+      // não confundir workspaces locais e remotos abertos ao mesmo tempo.
+      ..remoteExecutorFor = (wsId) {
+        final host = _vm.remoteHostForWorkspace(wsId);
+        if (host == null) return null;
+        return buildRemoteDbExecutor(() => _vm.remoteHosts.dbServiceFor(host));
+      }
+      // Redis/Mongo remotos: mesmo host, mesmo serviço — só o comando muda.
+      ..remoteNoSqlFor = (wsId) {
+        final host = _vm.remoteHostForWorkspace(wsId);
+        if (host == null) return null;
+        return buildRemoteNoSqlRunner(() => _vm.remoteHosts.dbServiceFor(host));
+      }
+      // As conexões de um workspace remoto vivem no host
+      // (.cockpit/databases.json) — resolução da query E leitura do painel.
+      ..remoteConnectionsFor = _remoteConnectionsFor;
+    context.read<DatabaseViewModel>().remoteConnectionsFor =
+        _remoteConnectionsFor;
+    // Task Run remoto (plano 58): descoberta via fs.read + execução via terminal
+    // do host, roteados quando o workspace ativo é remoto.
+    context.read<TasksViewModel>().remoteContextFor = _remoteTaskContextFor;
+  }
+
+  /// Contexto de Task remoto do workspace ativo (host resolvido do projeto
+  /// selecionado), cacheado por host — o runner precisa sobreviver às trocas de
+  /// cwd pra manter as tasks rodando. `null` quando o ativo é local.
+  final Map<String, ({TaskDiscovery discovery, TaskRunnerGateway runner})>
+  _remoteTaskCtx = {};
+
+  ({TaskDiscovery discovery, TaskRunnerGateway runner})? _remoteTaskContextFor(
+    String cwd,
+  ) {
+    final host = _vm.remoteHostForWorkspace(_vm.selectedProjectId);
+    if (host == null) return null;
+    return _remoteTaskCtx.putIfAbsent(host.id, () {
+      final runner = RemoteTaskRunner(
+        () => _vm.remoteHosts.terminalServiceFor(host),
+      );
+      // Liga o output deste runner ao store de terminais (senão a aba de output
+      // da task remota fica vazia — plano 60, Wave D).
+      _vm.taskTerminals.registerRunner(runner);
+      return (
+        discovery: RemoteTaskDiscovery(
+          () => _vm.remoteHosts.fileServiceFor(host),
+        ),
+        runner: runner,
+      );
+    });
+  }
+
+  /// Loader remoto de conexões, compartilhado pelo [DbQueryService] (resolução
+  /// da query) e pelo [DatabaseViewModel] (listagem do painel).
+  Future<List<DbConnection>>? _remoteConnectionsFor(String wsId, String root) {
+    final host = _vm.remoteHostForWorkspace(wsId);
+    if (host == null) return null;
+    return loadRemoteConnections(
+      () => _vm.remoteHosts.fileServiceFor(host),
+      root,
+    );
   }
 
   /// Capturado no initState pra uso seguro no dispose (sem `context`).
@@ -185,11 +310,11 @@ class _CockpitPageState extends State<CockpitPage> {
       hasWorkspace: vm.selectedProject != null,
       agentTabsInUse: vm.hasAgentTabsInUse,
       // Cockpit é terminal-only → sem "New Agent" no menu File.
-      agentsAllowed: !vm.isSystemTerminal(vm.selectedProjectId),
+      agentsAllowed: !vm.isPathless(vm.selectedProjectId),
       // Agente pergunta a subpasta onde vai atuar (igual ao fluxo direto de
       // criar agente); terminal abre direto na raiz do workspace.
       onNewAgent: () => unawaited(
-        _pickSubfolderThen((sub) => vm.newTabIn(sub, terminal: false)),
+        pickSubfolderThen(context, (sub) => vm.newTabIn(sub, terminal: false)),
       ),
       onNewTerminal: () => vm.newTabIn('', terminal: true),
       onSplitRight: () => _splitFocused(SplitDir.vertical),
@@ -213,10 +338,15 @@ class _CockpitPageState extends State<CockpitPage> {
     if (projectId == null) return;
     final paneId = vm.focusedPaneId(projectId);
     if (paneId == null) return;
-    if (vm.paneActiveIsTerminal(paneId)) {
-      vm.splitPane(paneId, dir, '');
+    // Só agente pergunta a subpasta; terminal/browser/viewer/db abrem na raiz.
+    if (vm.paneActiveIsEmpty(paneId)) {
+      vm.splitPaneEmpty(paneId, dir);
+    } else if (vm.paneActiveIsAgent(paneId)) {
+      unawaited(
+        pickSubfolderThen(context, (sub) => vm.splitPane(paneId, dir, sub)),
+      );
     } else {
-      unawaited(_pickSubfolderThen((sub) => vm.splitPane(paneId, dir, sub)));
+      vm.splitPane(paneId, dir, '');
     }
   }
 
@@ -300,6 +430,12 @@ class _CockpitPageState extends State<CockpitPage> {
 
   @override
   void dispose() {
+    // Runners de Task remotos (cacheados por host): mata as tasks e fecha os
+    // streams. Não fecha a conexão SSH (compartilhada com os outros serviços).
+    for (final ctx in _remoteTaskCtx.values) {
+      unawaited(ctx.runner.disposeAll());
+    }
+    _remoteTaskCtx.clear();
     HardwareKeyboard.instance.removeHandler(_handlePaneNavKey);
     HardwareKeyboard.instance.removeHandler(_realmKeyHandler);
     _settings?.removeListener(_syncLspCommands);
@@ -311,6 +447,7 @@ class _CockpitPageState extends State<CockpitPage> {
     _workspaceMenu?.setWorkspace(hasWorkspace: false);
     // Túneis SSH abertos morrem com o shell — e os prompts vão junto, senão
     // ficariam apontando pra um contexto desmontado.
+    _vm.remoteHosts.hostKeyPrompt = null;
     _dbService
       ?..passphrasePrompt = null
       ..hostKeyPrompt = null
@@ -350,382 +487,6 @@ class _CockpitPageState extends State<CockpitPage> {
   void _focusActiveComposer() {
     final agent = _vm.focusedAgent;
     if (agent is AgentSession) agent.requestComposerFocus?.call();
-  }
-
-  /// Garante um projeto selecionado (pede uma pasta se não houver). Retorna
-  /// `true` se há projeto pronto para uso.
-  Future<bool> _ensureProject() async {
-    if (_vm.selectedProject != null) return true;
-    return _addProject();
-  }
-
-  Future<bool> _addProject() async {
-    final vm = _vm;
-    final path = await NativeFolderPicker.pick(
-      dialogTitle: context.t.cockpit.cockpitPage.chooseProjectFolderDialogTitle,
-      initialDirectory: vm.selectedProject?.path,
-    );
-    if (path == null) return false;
-    await vm.addProject(path);
-    return true;
-  }
-
-  /// Fluxo "Criar Workspace": escolhe a pasta, abre o dialog de configurações
-  /// (nome pré-preenchido com o da pasta + cor sugerida, ambos editáveis) e cria.
-  // DEBUG (temporário): marcadores síncronos pra localizar o segfault no
-  // Windows. Escrita síncrona+flush sobrevive a um crash nativo (print não).
-  // Arquivo: <temp>/ck_trace.log
-  void _mark(String m) {
-    try {
-      File(
-        '${Directory.systemTemp.path}/ck_trace.log',
-      ).writeAsStringSync('$m\n', mode: FileMode.append, flush: true);
-    } catch (_) {}
-  }
-
-  Future<bool> _createWorkspace() async {
-    final vm = _vm;
-    _mark('picker:start');
-    final path = await NativeFolderPicker.pick(
-      dialogTitle:
-          context.t.cockpit.cockpitPage.chooseWorkspaceFolderDialogTitle,
-      initialDirectory: vm.selectedProject?.path,
-    );
-    _mark('picker:done path=$path mounted=$mounted');
-    if (path == null || !mounted) return false;
-    final suggestedName = path.split('/').where((p) => p.isNotEmpty).lastOrNull;
-    final suggestedColor =
-        kWorkspacePalette[vm.rootProjects.length % kWorkspacePalette.length];
-    _mark('dialog:show');
-    final result = await showWorkspaceSettingsDialog(
-      context,
-      name: suggestedName ?? path,
-      colorValue: suggestedColor,
-      path: path,
-    );
-    _mark('dialog:done result=$result');
-    if (result == null) return false;
-    _mark('addProject:start');
-    await vm.addProject(
-      path,
-      name: result.name,
-      colorValue: result.colorValue,
-      imagePath: result.imagePath,
-    );
-    _mark('addProject:done');
-    return true;
-  }
-
-  /// "Configurações" do workspace: editar nome + cor do avatar.
-  Future<void> _configureProject(Project project) async {
-    final vm = _vm;
-    final result = await showWorkspaceSettingsDialog(
-      context,
-      name: project.name,
-      colorValue: project.colorValue,
-      path: project.path,
-      imagePath: project.imagePath,
-    );
-    if (result == null) return;
-    await vm.updateProject(
-      project.id,
-      name: result.name,
-      colorValue: result.colorValue,
-      imagePath: result.imagePath,
-    );
-    if (!mounted) return;
-    if (result.name != project.name) {
-      await showInfoDialog(
-        context,
-        title: context.t.cockpit.cockpitPage.workspaceRenamedTitle,
-        message: context.t.cockpit.cockpitPage.workspaceRenamedMessage(
-          name: result.name,
-        ),
-      );
-    }
-  }
-
-  /// Rótulo da operação git: nome do workspace em single-root; basename da
-  /// root em multi-root (a root já veio escolhida do submenu do kebab).
-  String _gitOpLabel(Project project, String rootPath) =>
-      rootPath == project.path ? project.name : rootPath.split('/').last;
-
-  /// "Criar worktree": busca o namespace (branches + worktrees) pra validação ao
-  /// vivo e abre o dialog. O dialog roda o `git worktree add` via `onCreate` e a
-  /// VM auto-seleciona o fork novo (decisões 14, 21).
-  /// Sync (pull → push) do workspace, com o processo ao vivo num dialog.
-  Future<void> _syncProject(Project project, String rootPath) async {
-    final run = _vm.gitSync(rootPath);
-    await showGitProcessDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.syncTitle(
-        label: _gitOpLabel(project, rootPath),
-      ),
-      output: run.output,
-      success: run.exitCode.then((c) => c == 0),
-    );
-    await _vm.refreshGitProject(project.id);
-  }
-
-  Future<void> _pullProject(Project project, String rootPath) async {
-    final run = _vm.gitPull(rootPath);
-    await showGitProcessDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.pullTitle(
-        label: _gitOpLabel(project, rootPath),
-      ),
-      output: run.output,
-      success: run.exitCode.then((c) => c == 0),
-    );
-    await _vm.refreshGitProject(project.id);
-  }
-
-  Future<void> _pushProject(Project project, String rootPath) async {
-    final run = _vm.gitPush(rootPath);
-    await showGitProcessDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.pushTitle(
-        label: _gitOpLabel(project, rootPath),
-      ),
-      output: run.output,
-      success: run.exitCode.then((c) => c == 0),
-    );
-    await _vm.refreshGitProject(project.id);
-  }
-
-  /// "Fork Worktree": nova worktree ramificada da branch do fork [base] —
-  /// mesmo dialog do criar, validando contra o namespace do repo de origem.
-  Future<void> _forkWorktree(Project base) async {
-    final vm = _vm;
-    final namespace = await vm.forkWorktreeNamespace(base.id);
-    final hasHook = await vm.hasPostCheckoutHookForFork(base.id);
-    if (!mounted) return;
-    await showWorktreeCreateDialog(
-      context,
-      rootName: base.name,
-      namespace: namespace,
-      fork: true,
-      hasPostCheckout: hasHook,
-      onCreate:
-          (
-            name, {
-            baseRef,
-            copyIgnored = false,
-            copyUntracked = false,
-            fetchRemote = true,
-          }) => vm.forkWorktree(
-            base.id,
-            name,
-            copyIgnored: copyIgnored,
-            copyUntracked: copyUntracked,
-            fetchRemote: fetchRemote,
-          ),
-    );
-  }
-
-  /// "Update from Parent": mergeia a branch do pai (root de origem) no
-  /// worktree — o inverso do merge. Conflito fica no worktree pro usuário
-  /// resolver (o dialog mostra a saída do git).
-  Future<void> _updateWorktree(Project fork) async {
-    final run = _vm.updateWorktreeFromParent(fork);
-    await showGitProcessDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.updateFromParentTitle(
-        name: fork.name,
-      ),
-      output: run.output,
-      success: run.exitCode.then((c) => c == 0),
-    );
-  }
-
-  /// "Merge to Parent": mergeia a branch do worktree no pai. Bloqueia se o
-  /// worktree tem mudanças não commitadas; conflito → aborta e mostra o erro;
-  /// sucesso → o VM remove o worktree e volta pro pai. Processo ao vivo no dialog.
-  Future<void> _mergeWorktree(Project fork) async {
-    final outcome = _vm.mergeWorktreeToParent(fork);
-    await showGitProcessDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.mergeToParentTitle(name: fork.name),
-      output: outcome.output,
-      success: outcome.status.then((s) => s == GitMergeStatus.merged),
-      finalMessage: (ok) => ok
-          ? context.t.cockpit.cockpitPage.worktreeMergedAndRemoved
-          : context.t.cockpit.cockpitPage.nothingWasChanged,
-    );
-  }
-
-  Future<void> _createWorktree(Project root, String rootPath) async {
-    final vm = _vm;
-    // Multi-root: a worktree é de UMA root — a escolha já veio do submenu do
-    // kebab (o fork nasce como filho single-root apontando pro checkout dela).
-    final namespace = await vm.worktreeNamespace(root.id, rootPath: rootPath);
-    final hasHook = await vm.hasPostCheckoutHook(rootPath);
-    if (!mounted) return;
-    await showWorktreeCreateDialog(
-      context,
-      rootName: _gitOpLabel(root, rootPath),
-      namespace: namespace,
-      hasPostCheckout: hasHook,
-      onCreate:
-          (
-            name, {
-            baseRef,
-            copyIgnored = false,
-            copyUntracked = false,
-            fetchRemote = true,
-          }) => vm.createWorktree(
-            root.id,
-            name,
-            rootPath: rootPath,
-            baseRef: baseRef,
-            copyIgnored: copyIgnored,
-            copyUntracked: copyUntracked,
-            fetchRemote: fetchRemote,
-          ),
-    );
-  }
-
-  /// Destinos de "Move to realm" do kebab: todos os realms menos o atual do
-  /// workspace; destino que já tem o mesmo path vem desabilitado. Com um realm
-  /// só, lista vazia → item nem aparece.
-  List<RealmTarget> _moveTargets(CockpitViewModel vm, String projectId) {
-    if (vm.realms.length < 2) return const [];
-    final matches = vm.projects.where((p) => p.id == projectId);
-    if (matches.isEmpty) return const [];
-    final project = matches.first;
-    return [
-      for (final realm in vm.realms)
-        if (realm.id != project.realmId)
-          (
-            id: realm.id,
-            name: realm.name,
-            enabled: !vm.pathExistsInRealm(project.path, realm.id),
-          ),
-    ];
-  }
-
-  /// "New realm…" do dropdown do footer: pede o nome e já troca pro realm novo
-  /// (nasce vazio — o rail mostra o estado vazio pra adicionar workspaces).
-  Future<void> _createRealm() async {
-    final vm = _vm;
-    final name = await showRealmNameDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.newRealmTitle,
-      confirmLabel: context.t.common.create,
-      takenNames: vm.realms.map((r) => r.name).toSet(),
-    );
-    if (name == null) return;
-    final realm = await vm.createRealm(name);
-    await vm.switchRealm(realm.id);
-  }
-
-  Future<void> _manageRealms() => showRealmManagerDialog(context, vm: _vm);
-
-  /// "Fechar" o workspace (confirma → remove da lista local + encerra agentes).
-  /// **Não deleta** a pasta no disco — só sai do cockpit.
-  Future<void> _deleteProject(Project project) async {
-    final vm = _vm;
-    final ok = await showConfirmDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.closeWorkspaceTitle,
-      message: context.t.cockpit.cockpitPage.closeWorkspaceMessage(
-        name: project.name,
-      ),
-      confirmLabel: context.t.cockpit.cockpitPage.closeAction,
-      danger: true,
-    );
-    if (!ok) return;
-    await vm.removeProject(project.id);
-  }
-
-  /// "Remover" a worktree (fork): confirma (aviso reforçado se a branch ainda
-  /// não foi mergeada) → `git worktree remove` + `git branch -D`, encerra os
-  /// agentes do fork e volta a seleção pro pai (decisões 6, 9). Erro do git →
-  /// dialog de informação.
-  Future<void> _removeWorktree(Project fork) async {
-    final vm = _vm;
-    final merged = await vm.isWorktreeBranchMerged(fork.id);
-    if (!mounted) return;
-    final warn = merged
-        ? ''
-        : context.t.cockpit.cockpitPage.removeWorktreeWarning(name: fork.name);
-    final ok = await showConfirmDialog(
-      context,
-      title: context.t.cockpit.cockpitPage.removeWorktreeTitle,
-      message: context.t.cockpit.cockpitPage.removeWorktreeMessage(
-        name: fork.name,
-        warn: warn,
-      ),
-      confirmLabel: context.t.common.remove,
-      danger: true,
-    );
-    if (!ok) return;
-    final res = await vm.removeWorktree(fork.id);
-    if (!mounted) return;
-    final err = res.fold<String?>((_) => null, (e) => e.message);
-    if (err != null) {
-      await showInfoDialog(
-        context,
-        title: context.t.cockpit.cockpitPage.failedToRemoveWorktreeTitle,
-        message: err,
-      );
-    }
-  }
-
-  /// Pede a subpasta onde o agente vai atuar e dispara [action] com o caminho
-  /// relativo escolhido (`''` = raiz do projeto).
-  Future<void> _pickSubfolderThen(void Function(String sub) action) async {
-    final vm = _vm;
-    if (!await _ensureProject()) return;
-    if (!mounted) return;
-    final project = vm.selectedProject;
-    if (project == null) return;
-    final chosen = await showSubfolderDialog(
-      context,
-      projectName: project.name,
-      loadSubfolders: vm.subfolders,
-    );
-    if (chosen == null) return;
-    action(chosen);
-  }
-
-  /// "Histórico": lista as sessões salvas do pi para a pasta do agente ativo e,
-  /// ao escolher, substitui o transcript pela sessão carregada.
-  Future<void> _openHistory(String agentId) async {
-    final vm = _vm;
-    final session = vm.session(agentId);
-    if (session is! AgentSession || !session.isAlive) return; // agente vivo
-    final sessions = await vm.historyFor(session.workingDirectory);
-    if (!mounted) return;
-    final picked = await showHistoryDialog(context, sessions: sessions);
-    if (picked == null) return;
-    await session.loadHistory(picked.path);
-  }
-
-  void _renameAgent(String agentId, String name) {
-    final vm = _vm;
-    final session = vm.session(agentId);
-    if (session is! AgentSession) return;
-    unawaited(
-      vm.saveAgentConfig(
-        agentId,
-        agentName: name,
-        autoStartRelay: session.autoStartRelay,
-      ),
-    );
-  }
-
-  void _toggleRelayAgent(String agentId) {
-    final vm = _vm;
-    final session = vm.session(agentId);
-    if (session is! AgentSession) return;
-    unawaited(
-      vm.saveAgentConfig(
-        agentId,
-        agentName: session.title,
-        autoStartRelay: !session.autoStartRelay,
-      ),
-    );
   }
 
   /// ⌘L (macOS) / Ctrl+L (Win/Linux): foca o input do agente focado quando o
@@ -780,17 +541,38 @@ class _CockpitPageState extends State<CockpitPage> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<CockpitViewModel>();
-    final settings = context.watch<SettingsController>().settings;
-    final configuredHarnessId = settings.automationHarnessId;
+    // `select` e não `watch`: o shell só depende destes cinco escalares. Com
+    // `watch`, QUALQUER notify do VM (status de agente, git, output de terminal)
+    // reconstruía a página inteira; agora cada painel (`_RailPanel`,
+    // `_CenterPanel`, `_TreePanel`) observa o VM por conta própria e o shell só
+    // reconstrói quando um destes valores muda de fato.
+    final shell = context.select<CockpitViewModel, _ShellState>(
+      (vm) => (
+        ready: vm.ready,
+        railVisible: vm.railVisible,
+        treeVisible: vm.treeVisible,
+        hasFileTree: vm.activeHasFileTree,
+        title: vm.selectedDisplayTitle,
+        terminalActive: vm.activeTabIsTerminal,
+      ),
+    );
     final colors = context.colors;
 
-    if (!vm.ready) {
+    if (!shell.ready) {
       return Scaffold(
         backgroundColor: colors.bg,
         child: const Center(child: CircularProgressIndicator(size: 20)),
       );
     }
+
+    // Modo estreito (mobile portrait): panes laterais viram drawers. No largo, a
+    // visibilidade segue vm.railVisible/treeVisible (comportamento desktop).
+    final narrow =
+        isMobilePlatform &&
+        MediaQuery.sizeOf(context).width < _drawerBreakpoint;
+    final railVisibleEff = narrow ? _leftDrawer : shell.railVisible;
+    final treeVisibleEff =
+        (narrow ? _rightDrawer : shell.treeVisible) && shell.hasFileTree;
 
     return Listener(
       onPointerDown: _onPointerDown,
@@ -806,271 +588,225 @@ class _CockpitPageState extends State<CockpitPage> {
             child: Column(
               children: [
                 CockpitTopbar(
-                  projectName: vm.selectedDisplayTitle ?? 'Cockpit',
-                  railVisible: vm.railVisible,
-                  treeVisible: vm.treeVisible,
-                  onToggleRail: vm.toggleRail,
-                  onToggleTree: vm.toggleTree,
-                  filesEnabled: !vm.isSystemTerminal(vm.selectedProjectId),
+                  projectName: shell.title ?? 'Cockpit',
+                  // No modo estreito os toggles abrem/fecham os drawers; no largo
+                  // seguem alternando a visibilidade inline da VM.
+                  railVisible: railVisibleEff,
+                  treeVisible: treeVisibleEff,
+                  onToggleRail: narrow
+                      ? () => setState(() => _leftDrawer = !_leftDrawer)
+                      : _vm.toggleRail,
+                  onToggleTree: narrow
+                      ? () => setState(() => _rightDrawer = !_rightDrawer)
+                      : _vm.toggleTree,
+                  // Remoto TEM árvore (a pasta do host); só o Cockpit
+                  // (systemTerminal) não. `activeHasFileTree` cobre os dois —
+                  // `!isPathless` desabilitava indevidamente o remoto (path='').
+                  filesEnabled: shell.hasFileTree,
                 ),
+                // Host remoto fora do ar: faixa com o estado + botão de
+                // reconectar. Não ocupa espaço em workspace local.
+                const RemoteDisconnectedBanner(),
                 Expanded(
-                  child: Row(
-                    children: [
-                      if (vm.railVisible)
-                        Stack(
-                          children: [
-                            ProjectsRail(
-                              width: _railWidth,
-                              projects: vm.rootProjects,
-                              worktreesOf: vm.worktreesOf,
-                              selectedId: vm.selectedProjectId,
-                              notificationCount: vm.notificationCount,
-                              gitInfo: vm.gitInfo,
-                              rootsSummary: vm.rootsGitSummary,
-                              forkOriginName: vm.forkOriginName,
-                              rootsOf: (id) => [
-                                for (final r in vm.rootsOf(id))
-                                  (
-                                    path: r,
-                                    name: r.split('/').last,
-                                    git: vm.gitInfoForRoot(r),
-                                  ),
-                              ],
-                              onSelect: vm.selectProject,
-                              onAdd: _createWorkspace,
-                              onConfigure: _configureProject,
-                              onDelete: _deleteProject,
-                              onCreateWorktree: _createWorktree,
-                              onRemoveWorktree: _removeWorktree,
-                              onUpdateWorktree: _updateWorktree,
-                              onForkWorktree: _forkWorktree,
-                              onMergeWorktree: _mergeWorktree,
-                              onSync: _syncProject,
-                              onPull: _pullProject,
-                              onPush: _pushProject,
-                              onReorder: (moved, target, before) =>
-                                  vm.reorderWorkspace(
-                                    moved,
-                                    target,
-                                    before: before,
-                                  ),
-                              onOpenSettings: () =>
-                                  context.pushNamed(RoutePaths.settings),
-                              realms: vm.realms,
-                              activeRealm: vm.activeRealm,
-                              onSwitchRealm: (id) =>
-                                  unawaited(vm.switchRealm(id)),
-                              onCreateRealm: _createRealm,
-                              onManageRealms: _manageRealms,
-                              moveTargetsOf: (projectId) =>
-                                  _moveTargets(vm, projectId),
-                              onMoveToRealm: (projectId, realmId) => unawaited(
-                                vm.moveWorkspaceToRealm(projectId, realmId),
-                              ),
-                              cockpit: vm.cockpitWorkspace,
-                              onSelectCockpit: () =>
-                                  vm.selectProject(Project.cockpitId),
-                            ),
-                            // Alça de arraste na borda direita (direita = alarga).
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: _ResizeHandle(
-                                onDelta: (dx) => setState(() {
-                                  _railWidth = (_railWidth + dx).clamp(
-                                    _railMin,
-                                    _railMax,
-                                  );
-                                }),
-                              ),
-                            ),
-                          ],
-                        ),
-                      Expanded(
-                        child: vm.selectedProjectId == null
-                            ? WelcomeView(onCreateWorkspace: _createWorkspace)
-                            : IndexedStack(
-                                index: _activeIndex(vm),
-                                sizing: StackFit.expand,
-                                children: [
-                                  // Um multiplexador por projeto — todos montados, só
-                                  // o ativo pintado → estado preservado ao trocar.
-                                  for (final project in vm.projects)
-                                    KeyedSubtree(
-                                      key: ValueKey(project.id),
-                                      child: ColoredBox(
-                                        color: colors.border,
-                                        child: _multiplexer(
-                                          vm,
-                                          project.id,
-                                          active:
-                                              project.id ==
-                                              vm.selectedProjectId,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                      ),
-                      // Cockpit (sem pasta) nunca mostra a árvore/tasks/busca,
-                      // mesmo com `treeVisible` persistido de outro workspace.
-                      if (vm.treeVisible &&
-                          !vm.isSystemTerminal(vm.selectedProjectId))
-                        Stack(
-                          children: [
-                            FileTreePanel(
-                              // Pasta do workspace; reseta ao trocar de workspace.
-                              key: ValueKey(vm.selectedProject?.path ?? ''),
-                              width: _treeWidth,
-                              rootPath: vm.selectedProject?.path ?? '',
-                              sourceControlViewMode: _sourceControlViewMode,
-                              onSourceControlViewModeChanged: context
-                                  .read<SettingsController>()
-                                  .setSourceControlViewMode,
-                              // Roots derivadas (multi-root = seções por repo).
-                              roots: [
-                                for (final r
-                                    in vm.selectedProject == null
-                                        ? const <String>[]
-                                        : vm.rootsOf(vm.selectedProject!.id))
-                                  WorkspaceRoot(
-                                    path: r,
-                                    name: r.split('/').last,
-                                    git: vm.gitInfoForRoot(r),
-                                  ),
-                              ],
-                              onStageFile: vm.stageFile,
-                              onStageFiles: vm.stageFiles,
-                              onUnstageFile: vm.unstageFile,
-                              onUnstageFiles: vm.unstageFiles,
-                              onDiscardFile: vm.discardFile,
-                              isNewGitFile: vm.isNewGitFile,
-                              onCommitFile: vm.commitFile,
-                              onCommitStaged: vm.commitStaged,
-                              onLoadCommits: vm.recentCommits,
-                              onLoadCommitMessage: vm.commitMessage,
-                              onLoadGitHistory: vm.loadGitHistory,
-                              onLoadGitHistoryFiles: vm.loadGitHistoryFiles,
-                              onOpenGitHistoryDiff: vm.openCommitDiff,
-                              gitHistoryRevision: vm.git.revision,
-                              commitMessageGeneratorLabel:
-                                  configuredHarnessId?.label,
-                              onGenerateCommitMessage:
-                                  configuredHarnessId != null
-                                  ? vm.generateCommitMessageForFile
-                                  : null,
-                              onGenerateStagedCommitMessage:
-                                  configuredHarnessId != null
-                                  ? vm.generateStagedCommitMessage
-                                  : null,
-                              onCancelCommitMessageGeneration:
-                                  vm.cancelCommitMessageGeneration,
-                              revision: vm.fileTreeRevision,
-                              selectedPath: vm.selectedFileInTree,
-                              listChildren: vm.listChildren,
-                              gitStatusOf: vm.gitStatusForPath,
-                              onOpenFile: (path) =>
-                                  vm.openFile(path, isPreview: false),
-                              onOpenChangedFile: vm.openChangedFile,
-                              onTapFile: vm.openFile, // clique único = preview
-                              onSelectFile:
-                                  vm.selectFileInTree, // atualiza highlight
-                              onClearSelection: vm.clearFileSelection,
-                              revealPath: vm.treeRevealPath,
-                              revealGen: vm.treeRevealGen,
-                              onOpenDiff: (path) =>
-                                  vm.openDiff(path, isPreview: false),
-                              onTapDiff: vm.openDiff, // clique único = preview
-                              isGitRepo:
-                                  vm.selectedProject != null &&
-                                  vm.isGitRepo(vm.selectedProject!.id),
-                              changedPaths: vm.changedAbsolutePaths(),
-                              stagedPaths: vm.stagedAbsolutePaths(),
-                              unstagedPaths: vm.unstagedAbsolutePaths(),
-                              onOpenWith: vm.openWithDefaultApp,
-                              onOpenLayout: (path) async {
-                                final res = await vm.applyLayoutFile(path);
-                                if (!context.mounted) return;
-                                if (res case Failure(:final error)) {
-                                  await showInfoDialog(
-                                    context,
-                                    title: context
-                                        .t
-                                        .cockpit
-                                        .cockpitPage
-                                        .openLayoutTitle,
-                                    message: error,
-                                  );
-                                }
-                              },
-                              onCreateInFolder: (sub, terminal) =>
-                                  vm.newTabIn(sub, terminal: terminal),
-                              onCreate: (parentDir, name, isFolder) => isFolder
-                                  ? vm.createDirIn(parentDir, name)
-                                  : vm.createFileIn(parentDir, name),
-                              onRename: vm.renamePath,
-                              onDelete: vm.deletePath,
-                              onMove: vm.movePath,
-                              onCopy: vm.copyToClipboard,
-                              onCut: vm.cutToClipboard,
-                              onPaste: vm.pasteInto,
-                              canPaste: vm.canPaste,
-                              searchPanel: vm.selectedProject == null
-                                  ? null
-                                  : ContentSearchPanel(
-                                      fill: true,
-                                      search: vm.searchContent,
-                                      onOpenResult: vm.openSearchResult,
-                                      focusSignal: _searchFocusSignal,
-                                    ),
-                              searchFocusSignal: _searchFocusSignal,
-                              databasePanel: vm.selectedProject == null
-                                  ? null
-                                  : DbPanel(
-                                      workspaceId: vm.selectedProject!.id,
-                                      workspaceRoot: vm.selectedProject!.path,
-                                    ),
-                              tasksPanel: vm.selectedProject == null
-                                  ? null
-                                  : TasksPanel(
-                                      cwd: vm.selectedProject!.path,
-                                      listHeight: _tasksHeight,
-                                      onResizeDelta: (dy) => setState(() {
-                                        _tasksHeight = (_tasksHeight - dy)
-                                            .clamp(_tasksMin, _tasksMax);
-                                      }),
-                                      onResizeEnd: () => context
-                                          .read<SettingsController>()
-                                          .setTasksPanelHeight(_tasksHeight),
-                                    ),
-                              footer: const _LspStatusBar(),
-                            ),
-                            // Alça de arraste sobre a borda esquerda do painel
-                            // (esquerda = alarga; direita = estreita).
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: _ResizeHandle(
-                                onDelta: (dx) => setState(() {
-                                  _treeWidth = (_treeWidth - dx).clamp(
-                                    _treeMin,
-                                    _treeMax,
-                                  );
-                                }),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
+                  child: _PanelScaffold(
+                    narrow: narrow,
+                    railOpen: railVisibleEff,
+                    treeOpen: treeVisibleEff,
+                    onDismiss: _dismissDrawers,
+                    rail: _RailPanel(
+                      width: _railWidth,
+                      onDismiss: _dismissDrawers,
+                      onResize: (dx) => setState(() {
+                        _railWidth = (_railWidth + dx).clamp(
+                          _railMin,
+                          _railMax,
+                        );
+                      }),
+                    ),
+                    center: _CenterPanel(centerKey: _centerKey),
+                    tree: _TreePanel(
+                      treeWidth: _treeWidth,
+                      tasksHeight: _tasksHeight,
+                      sourceControlViewMode: _sourceControlViewMode,
+                      searchFocusSignal: _searchFocusSignal,
+                      onDismiss: _dismissDrawers,
+                      onResizeTree: (dx) => setState(() {
+                        _treeWidth = (_treeWidth - dx).clamp(
+                          _treeMin,
+                          _treeMax,
+                        );
+                      }),
+                      onTasksResize: (dy) => setState(() {
+                        _tasksHeight = (_tasksHeight - dy).clamp(
+                          _tasksMin,
+                          _tasksMax,
+                        );
+                      }),
+                      onTasksResizeEnd: () => context
+                          .read<SettingsController>()
+                          .setTasksPanelHeight(_tasksHeight),
+                    ),
                   ),
                 ),
+                // Barra de teclas do terminal (mobile): aparece acima do teclado
+                // virtual quando a aba ativa é terminal (plano 60, Wave F).
+                if (isMobilePlatform &&
+                    MediaQuery.viewInsetsOf(context).bottom > 0 &&
+                    shell.terminalActive)
+                  TerminalKeyBar(
+                    onKeys: _vm.sendKeysToActiveTerminal,
+                    onCopy: _vm.copyFromActiveTerminal,
+                    onPaste: _vm.pasteToActiveTerminal,
+                  ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Alça fina pra redimensionar um painel lateral. Hit-area de 8px (cursor de
+/// resize); o visual fica por conta da borda do próprio painel. Quem usa decide
+/// o sinal do delta (borda esquerda vs direita).
+/// Rail de workspaces. Widget próprio (e não um trecho do `build` da página)
+/// para que um notify do VM reconstrua só este painel — não a página inteira
+/// com o multiplexador e a árvore junto.
+class _RailPanel extends StatelessWidget {
+  const _RailPanel({
+    required this.width,
+    required this.onDismiss,
+    required this.onResize,
+  });
+
+  final double width;
+  final VoidCallback onDismiss;
+  final ValueChanged<double> onResize;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<CockpitViewModel>();
+    return Stack(
+      children: [
+        ProjectsRail(
+          width: width,
+          projects: vm.rootProjects,
+          worktreesOf: vm.worktreesOf,
+          worktreesExpanded: vm.worktreesExpanded,
+          onWorktreesExpanded: vm.setWorktreesExpanded,
+          selectedId: vm.selectedProjectId,
+          notificationCount: vm.notificationCount,
+          gitInfo: vm.gitInfo,
+          rootsSummary: vm.rootsGitSummary,
+          forkOriginName: vm.forkOriginName,
+          rootsOf: (id) => [
+            for (final r in vm.rootsOf(id))
+              (path: r, name: r.split('/').last, git: vm.gitInfoForRoot(r)),
+          ],
+          onSelect: (id) {
+            vm.selectProject(id);
+            onDismiss(); // fecha o drawer no mobile
+          },
+          onAdd: () => createWorkspace(context),
+          onConfigure: (project) => configureProject(context, project),
+          onDelete: (project) => deleteProject(context, project),
+          onCreateWorktree: (root, rootPath) =>
+              createWorktree(context, root, rootPath),
+          onRemoveWorktree: (fork) => removeWorktree(context, fork),
+          onUpdateWorktree: (fork) => updateWorktree(context, fork),
+          onForkWorktree: (base) => forkWorktree(context, base),
+          onMergeWorktree: (fork) => mergeWorktree(context, fork),
+          onSync: (project, rootPath) =>
+              syncProject(context, project, rootPath),
+          onPull: (project, rootPath) =>
+              pullProject(context, project, rootPath),
+          onPush: (project, rootPath) =>
+              pushProject(context, project, rootPath),
+          onReorder: (moved, target, before) =>
+              vm.reorderWorkspace(moved, target, before: before),
+          onOpenSettings: () => context.pushNamed(RoutePaths.settings),
+          realms: vm.realms,
+          activeRealm: vm.activeRealm,
+          onSwitchRealm: (id) => unawaited(vm.switchRealm(id)),
+          onCreateRealm: () => createRealm(context),
+          onManageRealms: () => manageRealms(context),
+          moveTargetsOf: (projectId) => moveTargets(vm, projectId),
+          onMoveToRealm: (projectId, realmId) =>
+              unawaited(vm.moveWorkspaceToRealm(projectId, realmId)),
+          cockpit: vm.cockpitWorkspace,
+          onSelectCockpit: () {
+            vm.selectProject(Project.cockpitId);
+            onDismiss();
+          },
+          onNewWorkspace: (anchor) => newWorkspaceMenu(context, vm, anchor),
+          onSelectRemote: (id) {
+            vm.selectProject(id);
+            onDismiss();
+          },
+          onRemoveRemoteWorkspace: (wsId) =>
+              unawaited(vm.removeRemoteWorkspace(wsId)),
+          remoteGitInfoOf: vm.remoteGitInfoOf,
+          onRemoteWorkspaceAction: (wsId, action) =>
+              handleRemoteWorkspaceAction(context, wsId, action),
+        ),
+        // Alça de arraste na borda direita (direita = alarga).
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          child: _ResizeHandle(onDelta: onResize),
+        ),
+      ],
+    );
+  }
+}
+
+/// Multiplexador (árvore de splits) do workspace ativo — um por projeto, todos
+/// montados no `IndexedStack` pra preservar estado ao trocar de workspace.
+class _CenterPanel extends StatelessWidget {
+  const _CenterPanel({required this.centerKey});
+
+  final GlobalKey centerKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<CockpitViewModel>();
+    final colors = context.colors;
+    return KeyedSubtree(
+      key: centerKey,
+      child: vm.selectedProjectId == null
+          ? WelcomeView(
+              hasHosts: vm.remoteHosts.hosts.isNotEmpty,
+              onCreateWorkspace: () => createWorkspace(context),
+              onConnectHost: (anchor) =>
+                  newRemoteWorkspace(context, vm, anchor),
+              onConfigureHost: () => context.pushNamed(
+                RoutePaths.settings,
+                arguments: SettingsTab.remoteHosts,
+              ),
+            )
+          : IndexedStack(
+              index: _activeIndex(vm),
+              sizing: StackFit.expand,
+              children: [
+                // Um multiplexador por projeto — todos montados, só
+                // o ativo pintado → estado preservado ao trocar.
+                for (final project in vm.projects)
+                  KeyedSubtree(
+                    key: ValueKey(project.id),
+                    child: ColoredBox(
+                      color: colors.border,
+                      child: _multiplexer(
+                        context,
+                        vm,
+                        project.id,
+                        active: project.id == vm.selectedProjectId,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 
@@ -1080,16 +816,18 @@ class _CockpitPageState extends State<CockpitPage> {
   }
 
   Widget _multiplexer(
+    BuildContext context,
     CockpitViewModel vm,
     String projectId, {
     required bool active,
   }) {
     final tree = vm.tree(projectId);
     if (tree == null) return const SizedBox.shrink();
-    return _renderNode(vm, projectId, tree, active: active);
+    return _renderNode(context, vm, projectId, tree, active: active);
   }
 
   Widget _renderNode(
+    BuildContext context,
     CockpitViewModel vm,
     String projectId,
     PaneNode node, {
@@ -1114,20 +852,26 @@ class _CockpitPageState extends State<CockpitPage> {
           onSplit: (dir) {
             if (vm.paneActiveIsEmpty(node.id)) {
               vm.splitPaneEmpty(node.id, dir);
-            } else if (vm.paneActiveIsTerminal(node.id)) {
-              vm.splitPane(node.id, dir, '');
+            } else if (vm.paneActiveIsAgent(node.id)) {
+              // Só agente pergunta a subpasta; terminal/browser/viewer/db abrem
+              // direto na raiz do workspace (sem modal).
+              pickSubfolderThen(
+                context,
+                (sub) => vm.splitPane(node.id, dir, sub),
+              );
             } else {
-              _pickSubfolderThen((sub) => vm.splitPane(node.id, dir, sub));
+              vm.splitPane(node.id, dir, '');
             }
           },
           onFillEmpty: (emptyId, terminal) => terminal
               ? vm.fillEmpty(node.id, emptyId, '', terminal: true)
-              : _pickSubfolderThen(
+              : pickSubfolderThen(
+                  context,
                   (sub) => vm.fillEmpty(node.id, emptyId, sub, terminal: false),
                 ),
-          onHistoryAgent: _openHistory,
-          onRenameAgent: _renameAgent,
-          onToggleRelayAgent: _toggleRelayAgent,
+          onHistoryAgent: (agentId) => openAgentHistory(context, agentId),
+          onRenameAgent: (agentId, name) => renameAgent(context, agentId, name),
+          onToggleRelayAgent: (agentId) => toggleRelayAgent(context, agentId),
         ),
       );
     }
@@ -1136,65 +880,304 @@ class _CockpitPageState extends State<CockpitPage> {
     // Largura da região de arraste (a linha visual continua 1px, centralizada).
     const handle = 12.0;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final total = isRow ? constraints.maxWidth : constraints.maxHeight;
-        final aSize = total * split.frac;
-        final bSize = total - aSize;
-        final first = SizedBox(
-          width: isRow ? aSize : null,
-          height: isRow ? null : aSize,
-          child: _renderNode(vm, projectId, split.a, active: active),
-        );
-        final second = SizedBox(
-          width: isRow ? bSize : null,
-          height: isRow ? null : bSize,
-          child: _renderNode(vm, projectId, split.b, active: active),
-        );
-        final divider = PaneDivider(
-          dir: split.dir,
-          onDelta: (delta) {
-            if (total <= 0) return;
-            // Delta incremental → fração; acumula sobre o frac ATUAL da árvore
-            // (não o `aSize` do build, que fica velho entre eventos do mesmo
-            // frame e fazia o divisor atrasar em relação ao mouse). `total` é
-            // estável durante o arraste (o container não muda de tamanho).
-            vm.resizeSplitBy(split.id, delta / total);
-          },
-        );
-        return Stack(
-          children: [
-            // Base: as duas panes adjacentes (a linha vem do handle por cima).
-            isRow
-                ? Row(children: [first, second])
-                : Column(children: [first, second]),
-            // Overlay: handle largo centralizado na divisória (hit-test real).
-            if (isRow)
-              Positioned(
-                left: aSize - handle / 2,
-                width: handle,
-                top: 0,
-                bottom: 0,
-                child: divider,
-              )
-            else
-              Positioned(
-                top: aSize - handle / 2,
-                height: handle,
-                left: 0,
-                right: 0,
-                child: divider,
-              ),
-          ],
-        );
-      },
+    // Panes dimensionados por PESO (flex), NÃO por LayoutBuilder. Crítico: um
+    // LayoutBuilder envolvendo os panes reconstrói a subárvore a cada mudança de
+    // constraint (abrir/fechar/redimensionar pane), e a TerminalView do flterm
+    // faz attach de view no initState — reconstruir = novo attach antes do
+    // detach do antigo → "already has an active view", e no restore (mount
+    // simultâneo) cruza a State entre panes → terminais ESPELHADOS. Com Flex os
+    // panes são filhos diretos e estáveis; só o RenderFlex recalcula tamanhos.
+    final fa = (split.frac * 100000).round().clamp(1, 99999);
+    final fb = 100000 - fa;
+    final panes = Flex(
+      direction: isRow ? Axis.horizontal : Axis.vertical,
+      children: [
+        Expanded(
+          flex: fa,
+          child: _renderNode(context, vm, projectId, split.a, active: active),
+        ),
+        Expanded(
+          flex: fb,
+          child: _renderNode(context, vm, projectId, split.b, active: active),
+        ),
+      ],
+    );
+
+    return Stack(
+      children: [
+        // Base: as duas panes adjacentes (a linha vem do handle por cima).
+        panes,
+        // Overlay do divisor. O LayoutBuilder AQUI é seguro: envolve só o handle
+        // (stateless, barato de remontar), NUNCA os panes — precisa do tamanho
+        // total pra posicionar a linha e converter o arraste px→fração.
+        Positioned.fill(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final total = isRow
+                  ? constraints.maxWidth
+                  : constraints.maxHeight;
+              final pos = total * split.frac;
+              final divider = PaneDivider(
+                dir: split.dir,
+                onDelta: (delta) {
+                  if (total <= 0) return;
+                  // Delta incremental → fração, acumulado sobre o frac ATUAL da
+                  // árvore. `total` é estável durante o arraste.
+                  vm.resizeSplitBy(split.id, delta / total);
+                },
+              );
+              return Stack(
+                children: [
+                  if (isRow)
+                    Positioned(
+                      left: pos - handle / 2,
+                      width: handle,
+                      top: 0,
+                      bottom: 0,
+                      child: divider,
+                    )
+                  else
+                    Positioned(
+                      top: pos - handle / 2,
+                      height: handle,
+                      left: 0,
+                      right: 0,
+                      child: divider,
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// Alça fina pra redimensionar um painel lateral. Hit-area de 8px (cursor de
-/// resize); o visual fica por conta da borda do próprio painel. Quem usa decide
-/// o sinal do delta (borda esquerda vs direita).
+/// Painel direito: árvore de arquivos, busca, DB e Tasks.
+class _TreePanel extends StatelessWidget {
+  const _TreePanel({
+    required this.treeWidth,
+    required this.tasksHeight,
+    required this.sourceControlViewMode,
+    required this.searchFocusSignal,
+    required this.onDismiss,
+    required this.onResizeTree,
+    required this.onTasksResize,
+    required this.onTasksResizeEnd,
+  });
+
+  final double treeWidth;
+  final double tasksHeight;
+  final SourceControlViewMode sourceControlViewMode;
+  final ValueNotifier<int> searchFocusSignal;
+  final VoidCallback onDismiss;
+  final ValueChanged<double> onResizeTree;
+  final ValueChanged<double> onTasksResize;
+  final VoidCallback onTasksResizeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<CockpitViewModel>();
+    final configuredHarnessId = context
+        .watch<SettingsController>()
+        .settings
+        .automationHarnessId;
+    return Stack(
+      children: [
+        FileTreePanel(
+          // Pasta do workspace; reseta ao trocar de workspace.
+          key: ValueKey(vm.treeRootPath),
+          width: treeWidth,
+          rootPath: vm.treeRootPath,
+          sourceControlViewMode: sourceControlViewMode,
+          onSourceControlViewModeChanged: context
+              .read<SettingsController>()
+              .setSourceControlViewMode,
+          // Roots derivadas (multi-root local = seções por
+          // repo; remoto = a pasta do host).
+          roots: [
+            for (final r in vm.treeRoots)
+              WorkspaceRoot(
+                path: r,
+                name: r.split('/').last,
+                git: vm.gitInfoForRoot(r),
+              ),
+          ],
+          onStageFile: vm.stageFile,
+          onStageFiles: vm.stageFiles,
+          onUnstageFile: vm.unstageFile,
+          onUnstageFiles: vm.unstageFiles,
+          onDiscardFile: vm.discardFile,
+          isNewGitFile: vm.isNewGitFile,
+          onCommitFile: vm.commitFile,
+          onCommitStaged: vm.commitStaged,
+          onLoadCommits: vm.recentCommits,
+          onLoadCommitMessage: vm.commitMessage,
+          onLoadGitHistory: vm.loadGitHistory,
+          onLoadGitHistoryFiles: vm.loadGitHistoryFiles,
+          onOpenGitHistoryDiff: vm.openCommitDiff,
+          gitHistoryRevision: vm.git.revision,
+          commitMessageGeneratorLabel: configuredHarnessId?.label,
+          onGenerateCommitMessage: configuredHarnessId != null
+              ? vm.generateCommitMessageForFile
+              : null,
+          onGenerateStagedCommitMessage: configuredHarnessId != null
+              ? vm.generateStagedCommitMessage
+              : null,
+          onCancelCommitMessageGeneration: vm.cancelCommitMessageGeneration,
+          revision: vm.fileTreeRevision,
+          selectedPath: vm.selectedFileInTree,
+          listChildren: vm.listChildren,
+          gitStatusOf: vm.gitStatusForPath,
+          onOpenFile: (path) {
+            vm.openFile(path, isPreview: false);
+            onDismiss(); // fecha o drawer no mobile
+          },
+          onOpenChangedFile: vm.openChangedFile,
+          onTapFile: (path) {
+            vm.openFile(path); // clique único = preview
+            onDismiss();
+          },
+          onSelectFile: vm.selectFileInTree, // atualiza highlight
+          onClearSelection: vm.clearFileSelection,
+          revealPath: vm.treeRevealPath,
+          revealGen: vm.treeRevealGen,
+          onOpenDiff: (path) => vm.openDiff(path, isPreview: false),
+          onTapDiff: vm.openDiff, // clique único = preview
+          isGitRepo:
+              vm.selectedProject != null &&
+              vm.isGitRepo(vm.selectedProject!.id),
+          changedPaths: vm.changedAbsolutePaths(),
+          stagedPaths: vm.stagedAbsolutePaths(),
+          unstagedPaths: vm.unstagedAbsolutePaths(),
+          onOpenWith: vm.openWithDefaultApp,
+          onOpenLayout: (path) async {
+            final res = await vm.applyLayoutFile(path);
+            if (!context.mounted) return;
+            if (res case Failure(:final error)) {
+              await showInfoDialog(
+                context,
+                title: context.t.cockpit.cockpitPage.openLayoutTitle,
+                message: error,
+              );
+            }
+          },
+          onCreateInFolder: (sub, terminal) =>
+              vm.newTabIn(sub, terminal: terminal),
+          onCreate: (parentDir, name, isFolder) => isFolder
+              ? vm.createDirIn(parentDir, name)
+              : vm.createFileIn(parentDir, name),
+          onRename: vm.renamePath,
+          onDelete: vm.deletePath,
+          onMove: vm.movePath,
+          onCopy: vm.copyToClipboard,
+          onCut: vm.cutToClipboard,
+          onPaste: vm.pasteInto,
+          canPaste: vm.canPaste,
+          searchPanel: vm.selectedProject == null
+              ? null
+              : ContentSearchPanel(
+                  fill: true,
+                  search: vm.searchContent,
+                  onOpenResult: vm.openSearchResult,
+                  focusSignal: searchFocusSignal,
+                ),
+          searchFocusSignal: searchFocusSignal,
+          databasePanel: vm.selectedProject == null
+              ? null
+              : DbPanel(
+                  workspaceId: vm.selectedProject!.id,
+                  // Remoto: a root é a pasta do host
+                  // (project.path é vazio).
+                  workspaceRoot: vm.treeRootPath,
+                ),
+          // Task Run funciona local E remoto: no remoto a
+          // descoberta lê o tasks.json do host (RemoteTask
+          // Discovery) e a execução spawna PTY no host
+          // (RemoteTaskRunner). É um dos modos do painel
+          // direito (Files/Search/DB/Tasks), exposto também
+          // no drawer do mobile (plano 60, Wave F3).
+          tasksPanel: vm.selectedProject == null
+              ? null
+              : TasksPanel(
+                  // Remoto: a raiz é a pasta do host
+                  // (treeRootPath = remotePath); local usa o
+                  // path do projeto.
+                  cwd: vm.treeRootPath,
+                  listHeight: tasksHeight,
+                  onResizeDelta: onTasksResize,
+                  onResizeEnd: onTasksResizeEnd,
+                ),
+          footer: const _LspStatusBar(),
+        ),
+        // Alça de arraste sobre a borda esquerda do painel
+        // (esquerda = alarga; direita = estreita).
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: _ResizeHandle(onDelta: onResizeTree),
+        ),
+      ],
+    );
+  }
+}
+
+/// Arranja as três panes (workspaces | centro | arquivos). Largo: uma Row com
+/// as laterais inline (comportamento clássico do desktop). Estreito (mobile
+/// portrait): as laterais viram DRAWERS sobrepostos ao centro, com um scrim que
+/// fecha ao tocar (plano 60, Wave F). As panes já trazem sua própria largura
+/// (ProjectsRail/FileTreePanel) e fundo.
+class _PanelScaffold extends StatelessWidget {
+  const _PanelScaffold({
+    required this.narrow,
+    required this.railOpen,
+    required this.treeOpen,
+    required this.rail,
+    required this.center,
+    required this.tree,
+    required this.onDismiss,
+  });
+
+  final bool narrow;
+  final bool railOpen;
+  final bool treeOpen;
+  final Widget rail;
+  final Widget center;
+  final Widget tree;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!narrow) {
+      return Row(
+        children: [
+          if (railOpen) rail,
+          Expanded(child: center),
+          if (treeOpen) tree,
+        ],
+      );
+    }
+    return Stack(
+      children: [
+        Positioned.fill(child: center),
+        if (railOpen || treeOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onDismiss,
+              child: ColoredBox(color: context.colors.scrim),
+            ),
+          ),
+        // top/bottom = 0 estica a pane em altura total; a largura vem da própria.
+        if (railOpen) Positioned(left: 0, top: 0, bottom: 0, child: rail),
+        if (treeOpen) Positioned(right: 0, top: 0, bottom: 0, child: tree),
+      ],
+    );
+  }
+}
+
 class _ResizeHandle extends StatelessWidget {
   const _ResizeHandle({required this.onDelta});
 

@@ -30,18 +30,25 @@ class LocalNotifier implements Notifier {
 
   @override
   Future<void> init() async {
+    // O chime (media_kit) vale em TODAS as plataformas, inclusive iOS/Android —
+    // é o player do som de turno. Criar SEMPRE, antes de qualquer coisa que
+    // possa lançar, senão `play()` fica mudo no mobile (plano 60, Wave G).
     _chime = Player();
+    const darwin = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+      // Desktop app está sempre em foreground: sem esses flags o
+      // UNUserNotificationCenter suprime o banner silenciosamente.
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
+    );
     final settings = InitializationSettings(
-      macOS: DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-        // Desktop app está sempre em foreground: sem esses flags o
-        // UNUserNotificationCenter suprime o banner silenciosamente.
-        defaultPresentAlert: true,
-        defaultPresentBadge: true,
-        defaultPresentSound: true,
-      ),
+      // Sem o bloco `iOS` o `initialize` lança "iOS settings must be set" —
+      // era por isso que o init morria no mobile (e levava o chime junto).
+      iOS: darwin,
+      macOS: darwin,
       linux: LinuxInitializationSettings(
         defaultActionName: t.cockpit.notifications.open,
       ),
@@ -53,7 +60,13 @@ class LocalNotifier implements Notifier {
         guid: _windowsNotifierGuid,
       ),
     );
-    await _plugin.initialize(settings: settings);
+    // O init do plugin de notificações do SO é best-effort — se falhar (ex.:
+    // Android sem o bloco android:), não pode derrubar o chime já criado.
+    try {
+      await _plugin.initialize(settings: settings);
+    } catch (_) {
+      // notificação do SO indisponível; o chime segue funcionando.
+    }
   }
 
   @override

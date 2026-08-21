@@ -534,7 +534,7 @@ class _TerminalPaneState extends State<TerminalPane>
     // uma superfície que não pode aparecer.
     if (!widget.active) return const SizedBox.expand();
 
-    return MouseRegion(
+    final terminal = MouseRegion(
       cursor: _cursor,
       onHover: (e) {
         _lastHoverGlobal = e.position;
@@ -570,6 +570,10 @@ class _TerminalPaneState extends State<TerminalPane>
         ),
       ),
     );
+
+    // O botão de baixar o teclado vive na top bar (sempre visível, fora da área
+    // do teclado) — ver CockpitTopbar. Aqui a pane é só o terminal.
+    return terminal;
   }
 }
 

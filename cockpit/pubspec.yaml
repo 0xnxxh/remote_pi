@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.27.1+62
+version: 1.28.9+72
 
 environment:
   sdk: ^3.12.0
@@ -46,6 +46,14 @@ hooks:
 dependencies:
   flutter:
     sdk: flutter
+
+  # Plano 58 (Cockpit Remote): contratos compartilhados + proxies do
+  # cockpit-server. O app NUNCA importa cockpit_engine (guardrail mobile:
+  # código nativo só existe no servidor).
+  cockpit_core:
+    path: packages/cockpit_core
+  cockpit_remote:
+    path: packages/cockpit_remote
 
   # Parse dos layouts `.ckp` (orquestração de panes) — YAML puro-Dart.
   yaml: ^3.1.2
@@ -224,6 +232,8 @@ dependencies:
   # tipadas em lib/i18n/strings.g.dart a partir dos .i18n.json; `slang_flutter`
   # é o runtime (TranslationProvider, LocaleSettings, `t` global).
   slang_flutter: ^4.18.0
+  launch_at_startup: ^0.5.1
+  pinenacl: ^0.6.0
 
 dev_dependencies:
   flutter_test:
@@ -244,6 +254,19 @@ dev_dependencies:
   # Codegen do i18n: lê lib/i18n/*.i18n.json (config em slang.yaml) e gera
   # lib/i18n/strings.g.dart. Rodar via `dart run slang`.
   slang: ^4.18.0
+  # Gera os ícones de app iOS/Android a partir do ícone único (plano 60, Wave
+  # E). Só mobile — macOS/Windows mantêm os próprios. Rodar via
+  # `dart run flutter_launcher_icons`.
+  flutter_launcher_icons: ^0.14.4
+
+# Ícone do app mobile (plano 60, Wave E). Fonte = o ícone real do desktop; o
+# mesmo símbolo, gerado nos tamanhos de iOS/Android. `remove_alpha_ios` porque
+# a App Store rejeita ícone com canal alfa.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

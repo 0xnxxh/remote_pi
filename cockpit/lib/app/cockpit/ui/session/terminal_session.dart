@@ -356,6 +356,22 @@ class TerminalSession extends PaneItem {
   /// (ex.: caminho de arquivo arrastado até o terminal).
   void insertText(String text) => _gateway.write(utf8.encode(text));
 
+  /// Envia bytes CRUS ao PTY (sequências de controle: ESC, setas, F-keys,
+  /// Ctrl+C...). Usado pela barra de teclas do mobile — plano 60, Wave F.
+  void sendKeys(List<int> bytes) => _gateway.write(bytes);
+
+  /// Copia a seleção do terminal pro clipboard. No-op sem seleção.
+  ///
+  /// Existe para o botão de copiar da barra de teclas do mobile: lá não há
+  /// atalho de teclado nem menu de contexto, então o único caminho é este.
+  /// Usa o mesmo `Pasteboard` do paste (e não o `Clipboard` do Flutter) pra a
+  /// aba ficar com um clipboard só, coerente nos dois sentidos.
+  void copySelection() {
+    final text = terminal.selectedText();
+    if (text.isEmpty) return;
+    Pasteboard.writeText(text);
+  }
+
   /// Cola do clipboard no terminal, com suporte a **imagem**.
   ///
   /// Se há uma imagem no clipboard, manda o byte de Ctrl+V (`\x16`) pro harness

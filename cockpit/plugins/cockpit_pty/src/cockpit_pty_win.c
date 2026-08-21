@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <Windows.h>
 
 #include "cockpit_pty.h"
@@ -144,7 +145,11 @@ static LPWSTR build_environment(char **environment)
 
 static LPWSTR build_working_directory(char *working_directory)
 {
-    if (working_directory == NULL)
+    // Vazio é o mesmo que ausente. O CreateProcessW recusa
+    // `lpCurrentDirectory = L""` com ERROR_INVALID_NAME (123) e o processo não
+    // nasce; NULL significa "herde o do pai", que é o que se quer. O lado
+    // POSIX já tratava isso (testa strlen antes do chdir).
+    if (working_directory == NULL || working_directory[0] == 0)
     {
         return NULL;
     }
@@ -302,6 +307,136 @@ static void start_wait_exit_thread(HANDLE pid, Dart_Port port, HANDLE mutex)
     }
 }
 
+// --- Writer thread ----------------------------------------------------------
+//
+// pty_write é FFI síncrono na thread de plataforma (= thread de UI no Flutter
+// Windows). Fazer I/O bloqueante ali congela a janela inteira: um
+// FlushFileBuffers herdado do kyroon_pty bloqueava até o ConPTY consumir TUDO
+// que foi escrito e travou a UI em produção (plano 58); e o próprio WriteFile
+// bloqueia quando o buffer do pipe enche e o filho não drena (mesma classe de
+// bug, só mais rara). Pipes anônimos não suportam overlapped I/O, então a
+// saída é uma writer thread por PTY com fila FIFO: pty_write só copia o
+// buffer, enfileira e sinaliza — nunca bloqueia.
+
+typedef struct WriteChunk
+{
+    struct WriteChunk *next;
+
+    int length;
+
+    char data[1]; // alocado com sizeof(WriteChunk) + length
+
+} WriteChunk;
+
+typedef struct WriteQueue
+{
+    HANDLE fd;
+
+    CRITICAL_SECTION lock;
+
+    CONDITION_VARIABLE hasData;
+
+    WriteChunk *head;
+
+    WriteChunk *tail;
+
+    // WriteFile falhou (pipe fechado) — writes futuros são descartados.
+    BOOL broken;
+
+} WriteQueue;
+
+static DWORD WINAPI write_loop(LPVOID arg)
+{
+    WriteQueue *queue = (WriteQueue *)arg;
+
+    while (1)
+    {
+        EnterCriticalSection(&queue->lock);
+
+        while (queue->head == NULL)
+        {
+            SleepConditionVariableCS(&queue->hasData, &queue->lock, INFINITE);
+        }
+
+        WriteChunk *chunk = queue->head;
+        queue->head = chunk->next;
+
+        if (queue->head == NULL)
+        {
+            queue->tail = NULL;
+        }
+
+        LeaveCriticalSection(&queue->lock);
+
+        DWORD bytesWritten;
+
+        BOOL ok = WriteFile(queue->fd, chunk->data, chunk->length, &bytesWritten, NULL);
+
+        free(chunk);
+
+        if (!ok)
+        {
+            // Pipe fechado (ConPTY/filho encerrou). Marca, descarta o que
+            // sobrou e sai. A WriteQueue em si vive até o fim do processo —
+            // mesmo ciclo de vida do PtyHandle e do read_loop, que também
+            // não têm caminho de destruição.
+            EnterCriticalSection(&queue->lock);
+
+            queue->broken = TRUE;
+
+            WriteChunk *pending = queue->head;
+            queue->head = NULL;
+            queue->tail = NULL;
+
+            LeaveCriticalSection(&queue->lock);
+
+            while (pending != NULL)
+            {
+                WriteChunk *next = pending->next;
+                free(pending);
+                pending = next;
+            }
+
+            return 0;
+        }
+    }
+}
+
+static WriteQueue *start_write_thread(HANDLE fd)
+{
+    WriteQueue *queue = malloc(sizeof(WriteQueue));
+
+    if (queue == NULL)
+    {
+        return NULL;
+    }
+
+    queue->fd = fd;
+    queue->head = NULL;
+    queue->tail = NULL;
+    queue->broken = FALSE;
+
+    InitializeCriticalSection(&queue->lock);
+    InitializeConditionVariable(&queue->hasData);
+
+    DWORD thread_id;
+
+    HANDLE thread = CreateThread(NULL, 0, write_loop, queue, 0, &thread_id);
+
+    if (thread == NULL)
+    {
+        DeleteCriticalSection(&queue->lock);
+        free(queue);
+        return NULL;
+    }
+
+    // Mesma razão do start_read_thread: a thread é dona da própria vida;
+    // reter o HANDLE só vazaria um objeto de kernel por terminal.
+    CloseHandle(thread);
+
+    return queue;
+}
+
 typedef struct PtyHandle
 {
     PHANDLE inputWriteSide;
@@ -316,6 +451,8 @@ typedef struct PtyHandle
 
     HANDLE hMutex;
 
+    WriteQueue *writeQueue;
+
 } PtyHandle;
 
 char *error_message = NULL;
@@ -324,6 +461,78 @@ char *error_message = NULL;
 // GetLastError code). pty_error() returns this so the exact Win32 failure
 // surfaces in the Dart exception instead of only a printf the GUI swallows.
 static char error_buf[512];
+
+// Serializa a troca dos std handles do processo: eles são GLOBAIS, e o app
+// abre várias abas de uma vez (na restauração de layout, três PTYs nascem no
+// mesmo instante). Sem o lock, um spawn restaura os handles enquanto o outro
+// ainda depende deles estarem limpos.
+static INIT_ONCE spawn_lock_once = INIT_ONCE_STATIC_INIT;
+static CRITICAL_SECTION spawn_lock;
+
+static BOOL CALLBACK init_spawn_lock(PINIT_ONCE once, PVOID param, PVOID *ctx)
+{
+    (void)once;
+    (void)param;
+    (void)ctx;
+    InitializeCriticalSection(&spawn_lock);
+    return TRUE;
+}
+
+// Cria o processo com os std handles DESTE processo temporariamente zerados.
+//
+// O filho não pode herdar o stdio do host: sob `flutter run` isso o mandaria
+// pro console do terminal em vez do ConPTY, e dentro do cockpit-server o
+// mandaria pros PIPES do servidor — que a GUI drena, então nenhum byte chega à
+// aba, e o shell lê EOF no stdin e morre. Foi assim que todo terminal local do
+// Windows ficou vazio quando o sidecar passou a criar os PTYs.
+//
+// Zerar com SetStdHandle NÃO é o mesmo que declarar STARTF_USESTDHANDLES com
+// NULL: aqui o filho simplesmente não tem o que herdar, e quem preenche seu
+// stdio é o pseudoconsole — então o PowerShell segue vendo console de verdade
+// e o PSReadLine carrega. A checagem antiga (`GetConsoleWindow()`) respondia
+// "tenho janela de console?", quando a pergunta é "meus handles estão
+// limpos?" — o sidecar não tem janela E tem handles sujos, o caso que faltava.
+static BOOL spawn_with_clean_std_handles(LPWSTR command,
+                                         LPWSTR environment_block,
+                                         LPWSTR working_directory,
+                                         STARTUPINFOEXW *startupInfo,
+                                         PROCESS_INFORMATION *processInfo)
+{
+    InitOnceExecuteOnce(&spawn_lock_once, init_spawn_lock, NULL, NULL);
+    EnterCriticalSection(&spawn_lock);
+
+    HANDLE previous_in = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE previous_out = GetStdHandle(STD_OUTPUT_HANDLE);
+    HANDLE previous_err = GetStdHandle(STD_ERROR_HANDLE);
+
+    SetStdHandle(STD_INPUT_HANDLE, NULL);
+    SetStdHandle(STD_OUTPUT_HANDLE, NULL);
+    SetStdHandle(STD_ERROR_HANDLE, NULL);
+
+    BOOL ok = CreateProcessW(NULL,
+                             command,
+                             NULL,
+                             NULL,
+                             FALSE,
+                             EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
+                             environment_block,
+                             working_directory,
+                             &startupInfo->StartupInfo,
+                             processInfo);
+
+    DWORD last_error = GetLastError();
+
+    // Restaura SEMPRE, inclusive no erro: o host continua precisando do seu
+    // próprio stdio (o cockpit-server escreve log no stderr).
+    SetStdHandle(STD_INPUT_HANDLE, previous_in);
+    SetStdHandle(STD_OUTPUT_HANDLE, previous_out);
+    SetStdHandle(STD_ERROR_HANDLE, previous_err);
+
+    LeaveCriticalSection(&spawn_lock);
+
+    SetLastError(last_error);
+    return ok;
+}
 
 FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
 {
@@ -360,30 +569,20 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
         return NULL;
     }
 
-    STARTUPINFOEX startupInfo;
+    // Explicitamente a variante WIDE: sem o sufixo, `STARTUPINFOEX` vira a
+    // ANSI quando a unidade não é compilada com UNICODE, e o CreateProcessW
+    // recebe um ponteiro do tipo errado (aviso C4133). Os layouts coincidem,
+    // então funcionava por acidente.
+    STARTUPINFOEXW startupInfo;
 
     ZeroMemory(&startupInfo, sizeof(startupInfo));
     startupInfo.StartupInfo.cb = sizeof(startupInfo);
 
-    // Clear the child's inherited std handles (STARTF_USESTDHANDLES with NULL)
-    // ONLY when this host process itself owns a real console (e.g. `flutter
-    // run`, launched from a terminal). There, without it, the child would
-    // inherit the host's real console instead of the ConPTY and its output
-    // would never reach our pipe — the terminal view stays blank.
-    //
-    // In a GUI build (release, no console) the hack is both unnecessary and
-    // harmful: NULL std handles make console programs see their stdio as
-    // *redirected*, so PowerShell disables PSReadLine ("console is running
-    // without PSReadLine"). Without the hack, the pseudoconsole attribute plus
-    // bInheritHandles=FALSE already route all I/O through the ConPTY — the
-    // canonical ConPTY pattern — and PSReadLine loads normally.
-    if (GetConsoleWindow() != NULL)
-    {
-        startupInfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-        startupInfo.StartupInfo.hStdInput = NULL;
-        startupInfo.StartupInfo.hStdOutput = NULL;
-        startupInfo.StartupInfo.hStdError = NULL;
-    }
+    // Sem STARTF_USESTDHANDLES: o atributo do pseudoconsole é quem preenche o
+    // stdio do filho. Declarar handles NULL explicitamente faz o PowerShell
+    // enxergar stdio REDIRECIONADO e desligar o PSReadLine — foi o motivo de
+    // 6ec33f2. O que o filho não pode é herdar o stdio DESTE processo; disso
+    // cuida `spawn_with_clean_std_handles`, logo abaixo.
 
     SIZE_T bytesRequired;
     InitializeProcThreadAttributeList(NULL, 1, 0, &bytesRequired);
@@ -425,16 +624,11 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
     // for a full second on every spawn. ConPTY is ready as soon as the pseudo
     // console + attribute list are set up above, so the wait is unnecessary.
 
-    ok = CreateProcessW(NULL,
-                        command,
-                        NULL,
-                        NULL,
-                        FALSE,
-                        EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
-                        environment_block,
-                        working_directory,
-                        &startupInfo.StartupInfo,
-                        &processInfo);
+    ok = spawn_with_clean_std_handles(command,
+                                      environment_block,
+                                      working_directory,
+                                      &startupInfo,
+                                      &processInfo);
 
     if (command != NULL)
     {
@@ -500,19 +694,70 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
     pty->dwProcessId = processInfo.dwProcessId;
     pty->ackRead = options->ackRead;
     pty->hMutex = mutex;
+    pty->writeQueue = start_write_thread(inputWriteSide);
 
     return pty;
 }
 
 FFI_PLUGIN_EXPORT void pty_write(PtyHandle *handle, char *buffer, int length)
 {
-    DWORD bytesWritten;
+    // NB: NADA de I/O síncrono aqui. Esta função roda na thread de plataforma
+    // (UI) via FFI — a escrita real acontece na writer thread (ver o bloco
+    // "Writer thread" acima). Em particular, NÃO reintroduza FlushFileBuffers:
+    // em pipe ele bloqueia até o consumidor ler tudo e congelou a UI em
+    // produção (plano 58).
 
-    WriteFile(handle->inputWriteSide, buffer, length, &bytesWritten, NULL);
+    if (length <= 0)
+    {
+        return;
+    }
 
-    FlushFileBuffers(handle->inputWriteSide);
+    WriteQueue *queue = handle->writeQueue;
 
-    return;
+    if (queue == NULL)
+    {
+        // Writer thread não subiu (falha rara no spawn): escreve direto em
+        // vez de perder input. Pode bloquear com o pipe cheio, mas é o
+        // degradê menos ruim.
+        DWORD bytesWritten;
+        WriteFile(handle->inputWriteSide, buffer, length, &bytesWritten, NULL);
+        return;
+    }
+
+    WriteChunk *chunk = malloc(sizeof(WriteChunk) + (size_t)length);
+
+    if (chunk == NULL)
+    {
+        return;
+    }
+
+    chunk->next = NULL;
+    chunk->length = length;
+    memcpy(chunk->data, buffer, (size_t)length);
+
+    EnterCriticalSection(&queue->lock);
+
+    if (queue->broken)
+    {
+        LeaveCriticalSection(&queue->lock);
+        free(chunk);
+        return;
+    }
+
+    if (queue->tail != NULL)
+    {
+        queue->tail->next = chunk;
+    }
+    else
+    {
+        queue->head = chunk;
+    }
+
+    queue->tail = chunk;
+
+    LeaveCriticalSection(&queue->lock);
+
+    WakeConditionVariable(&queue->hasData);
 }
 
 FFI_PLUGIN_EXPORT void pty_ack_read(PtyHandle *handle)

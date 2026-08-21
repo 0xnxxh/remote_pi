@@ -122,3 +122,14 @@ abstract class TerminalStatusServer {
   /// Derruba o servidor (e remove o socket no POSIX).
   Future<void> stop();
 }
+
+/// Fonte alternativa de turn-status, para as PTYs que **não** nascem dentro do
+/// app e portanto não reportam ao [TerminalStatusServer] daqui.
+///
+/// É o caso do sidecar: o servidor que hospeda o PTY injeta o socket de status
+/// DELE no ambiente do shell (sobrescrevendo o `hookEnv` do cliente), então o
+/// hook do agente reporta lá e o status volta pelo protocolo. A `ui/` assina
+/// esta fonte e a trata igual ao status local — mesmo spinner, mesmo chime.
+abstract class TurnStatusSource {
+  Stream<ClaudeStatusUpdate> get turnStatus;
+}

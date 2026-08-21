@@ -22,6 +22,14 @@ Numeração `00-` é proposital: este arquivo carrega antes dos planos numerados
 | **Relay stateless** | Sem persistência. Encaminha ciphertext entre dois peers identificados por pubkey. ~200 linhas de Rust |
 | **Relay open-source + self-hostável** | Compromisso de credibilidade. Usuário paranoico roda o próprio. Não vira ponto único de comprometimento |
 
+## Cockpit — motor de agente (fechado 2026-08-12 — plano 58)
+
+| Decisão | Razão / nota |
+|---|---|
+| **`pi --mode rpc` DEPRECADO como motor do Cockpit** | ~~Cockpit spawna `pi --mode rpc` como motor do agente (plano 37, decisão B/C)~~ **revertido**. O Cockpit virou **terminal-first**: harnesses (Pi, Claude Code, Codex CLI) rodam como **programas de terminal** comuns, não via harness RPC. A flag `enableAgent` nasce **OFF** (terminal puro); o RPC era um acoplamento a mais sem ganho pro fluxo real |
+| **Domínios estruturados = `cockpit-server`, não RPC** | Terminais/arquivos/git/databases (local via sidecar loopback, remoto via SSH) rodam no **`cockpit-server`** (Dart AOT, plano 58) — protocolo JSONL próprio, não o `pi --mode rpc`. Local-only (decisão B do plano 37) reaberto: o Cockpit alcança hosts remotos por SSH |
+| **Sem remoção imediata do código RPC** | Deprecação é de **direção**, não big-bang: o harness RPC (`lib/app/cockpit/data/rpc/`) e os docs (`docs/rpc-protocol.md`) seguem no repo enquanto houver quem os use; feature nova não deve depender de `pi --mode rpc` |
+
 ## Pareamento
 
 | Decisão | Razão / nota |

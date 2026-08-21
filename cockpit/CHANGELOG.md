@@ -24,6 +24,217 @@ As versões seguem o `version:` do `pubspec.yaml` (SSOT). O campo `notes` do
     linhas não-vazias — o começo da seção deve fazer sentido sozinho.
 -->
 
+## [1.28.9] - 2026-08-21
+
+**Still a beta for the upcoming 2.0.0.** Several fixes around remote hosts,
+databases and the workspace list.
+
+### Fixed
+
+- **Editing or removing a remote host did nothing.** The change was never
+  saved, and no error showed up — adding a host worked, which made it look
+  arbitrary. Picking your SSH key is also friendlier now: choosing the `.pub`
+  file by mistake no longer fails with a confusing message about file
+  permissions, and hosts already saved that way are corrected automatically.
+- **Databases reordered themselves.** Saving a connection sent it to the bottom
+  of the list. Connections are now always listed alphabetically, and the
+  `databases.json` file in your repository is written in that order too, so
+  saving stops producing noisy diffs.
+- **Reordering workspaces took about two seconds** to settle after the drop.
+  It is immediate now. Deleting a realm with many workspaces was slow for the
+  same reason and is fixed as well.
+- **Markdown containing a LaTeX formula could crash the app.**
+- After an update, Cockpit no longer keeps talking to the background server
+  left behind by the previous version — which is how a shipped fix could end
+  up never running.
+
+## [1.28.8] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** The Windows terminal fix, this time
+verified on Windows before shipping.
+
+### Fixed
+
+- **Windows: local terminals opened empty and ignored typing.** The shell was
+  inheriting the wrong input and output, so its screen never reached the tab and
+  it saw its input as already finished. 1.28.7 aimed at the wrong half of this
+  and did not fix it; this one was tested against the real setup before release.
+
+## [1.28.7] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** Finishes the Windows terminal fix
+started in 1.28.6.
+
+### Fixed
+
+- **Windows: local terminals opened and immediately froze.** The tab appeared,
+  even picked up a title, and then nothing — no prompt, no reaction to typing.
+  The shell was being started with an invalid input handle, so it read
+  end-of-input and quit the moment it launched. PowerShell users may also stop
+  seeing the "console is running without PSReadLine" warning, which had the
+  same cause.
+
+## [1.28.6] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** Fixes local terminals on Windows,
+broken by 1.28.5.
+
+### Fixed
+
+- **Windows: local terminals stopped opening in 1.28.5.** A tab would open and
+  stay blank forever. The background terminal server had never actually run on
+  Windows — it died on startup, and Cockpit quietly used its built-in terminal
+  instead. A fix in 1.28.5 kept the server alive, which exposed a second bug in
+  it: a terminal started without a folder failed to launch the shell at all.
+  Both are fixed. Remote terminals from Windows keep working.
+
+## [1.28.5] - 2026-08-20
+
+**Still a beta for the upcoming 2.0.0.** One crash that could take every
+terminal down at once, and remote terminals working from Windows.
+
+### Fixed
+
+- **All your terminals could go dead at once.** The background server that owns
+  them quit outright whenever a client disconnected at the wrong moment, taking
+  every workspace's terminals with it. It now survives that, shuts down within
+  seconds when asked instead of hanging around, and a leftover server from a
+  previous window closes itself rather than lingering forever.
+- **Windows: remote terminals opened empty.** Picking the folder worked and the
+  workspace appeared, but the tab never showed anything, because Cockpit asked
+  the remote machine to start *its own* shell — PowerShell on a Mac. The host
+  now chooses its shell, and Cockpit no longer sends its local `PATH` along,
+  which would have broken the remote shell anyway.
+- The markdown preview scrolls like the rest of the app, without the rubber
+  band bounce at the edges (macOS 13+).
+
+## [1.28.4] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** The markdown preview looks like the
+rest of the app again.
+
+### Fixed
+
+- **The markdown preview ignored your theme entirely** — white background and a
+  serif font, no matter which theme the app was using. Its stylesheet was never
+  reaching the page. It now follows the theme, and switching between light and
+  dark while a preview is open recolors it right away instead of waiting for
+  the file to be reopened.
+- **Frontmatter is rendered again.** The `---` header block at the top of
+  `SKILL.md` and `agent.md` files was being spilled into the document as loose
+  text; it is shown as a key/value table, the same one you already saw
+  elsewhere in the app.
+- The workspace list no longer repeats the branch icon next to the "N
+  worktrees" line — it belongs to the worktrees listed underneath.
+
+## [1.28.3] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** Windows can reach remote hosts again.
+
+### Fixed
+
+- **Connecting to a remote host from Windows always failed** with `Bad local
+  forwarding specification`. Cockpit was asking SSH to open the local end of
+  the tunnel as a Unix socket, which Windows does not have — the path was not
+  even parsed, because the `C:` in it reads as a separator. Windows now uses a
+  local loopback port instead. Nothing changes on the machine you connect to.
+- **A host that already had the server installed could refuse to start it**
+  when the two machines ran different operating systems. Cockpit now starts the
+  server that is already there, and only declines when it would actually need
+  to copy a new one over.
+
+## [1.28.2] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** Connecting to a machine you have never
+connected to before now works from the app itself.
+
+### Fixed
+
+- **A remote host you had never connected to could not be added at all.** SSH
+  refused it with "Host key verification failed" and the only way out was to
+  open a terminal and connect by hand once. Cockpit now shows you the host's
+  fingerprint and asks whether to trust it, the same way it already did for
+  database tunnels. A host presenting a **different** key than the one it
+  presented before is still refused, with no way to accept it inline — that
+  case is either a reinstalled machine or an attack, and it deserves a look.
+- **Connection errors said `@` instead of the host name**, and a host that
+  answered but was not trusted was reported as unreachable, sending you to
+  check whether the machine was even turned on.
+
+### Added
+
+- **Pick the SSH private key when you register a host.** It is required for
+  key authentication on macOS, Linux and Windows, and the file dialog opens
+  straight in your `.ssh` folder. On a machine with many keys this is what
+  keeps the server from rejecting you for too many authentication attempts
+  before your real key is ever tried. Hosts you registered earlier keep
+  working as they did.
+
+## [1.28.1] - 2026-08-19
+
+**Still a beta for the upcoming 2.0.0.** This one is about terminals opening
+instantly again — and about the terminal engine behind them actually running
+on your machine.
+
+### Fixed
+
+- **New terminal tabs took about 6 seconds to open.** Every tab waited on a
+  background server that could never start, then quietly fell back to the old
+  in-process terminal. The server binary was being mangled while the app was
+  packaged, so it failed to launch on both Intel and Apple Silicon Macs. It is
+  packaged correctly now, and when a server does fail the app falls back
+  immediately instead of waiting.
+- **Windows: same delay, different cause.** The terminal server could not
+  listen at all on Windows. It now uses a local loopback connection with a
+  token, so it works there like it does elsewhere.
+- **Connecting to a remote host could fail without saying why.** The app now
+  picks the server build that matches the remote machine, refuses hosts it
+  cannot support with a clear message, and checks that the server really
+  started instead of assuming it did. Bootstrapping a remote host from Linux
+  installed a server that could not start at all; fixed.
+- **Accented characters were mangled in the file editor and diffs** — `ação`
+  showed up as `Ã§Ã£o`. Thanks, @pretodev.
+
+## [1.28.0] - 2026-08-18
+
+**A beta for the upcoming 2.0.0.** Everything here is meant to ship as 2.0.0
+once it settles; this release puts it in your hands first, so expect rough
+edges in the new remote and mobile paths and please report what you hit.
+
+Remote workspaces over SSH: open a folder on another machine and use it like a
+local one — terminals, files, editor, source control and databases all running
+on the host. The app also runs on iPad, iPhone and Android as a remote client.
+
+### Added
+
+- **Remote workspaces over SSH**: connect to a host, pick any folder on it, and
+  work there. Sessions live on the host, so closing the app does not kill what
+  is running there. A workspace now also shows which machine and folder it uses.
+- **Mobile client (iPad, iPhone, Android)**: the same workspace from a tablet or
+  phone. Panels become drawers on narrow screens, and tabs scroll and reorder by
+  touch.
+- **Terminal key bar on mobile**: the keys a phone keyboard lacks — ESC, Tab,
+  Ctrl+C, arrows, F1–F12 — plus copy and paste, right above the keyboard.
+- **Automatic reconnect**: when a host drops, Cockpit keeps retrying and shows a
+  banner with a Reconnect button. Terminals freeze instead of closing and resume
+  where they stopped once the host is back.
+- **Collapse worktrees per workspace**: each workspace remembers whether its
+  worktree list is expanded. Thanks, @fabiojansenbr.
+
+### Fixed
+
+- **Terminals no longer mirror each other** when a workspace restores with more
+  than one pane, and splitting a pane no longer crashes the terminal view.
+- **Selection in the browser and in the markdown/HTML preview lands where you
+  click** on macOS; it used to drift further the lower you went.
+- **The built-in browser no longer gets the legacy version of websites.**
+- **A remote terminal is no longer left mute after reconnecting**: if the host
+  restarted and the session is gone, the tab closes instead of ignoring input.
+- **Creating a worktree now carries your uncommitted changes over**, instead of
+  leaving them behind in the original checkout.
+- **Windows stays responsive after being minimized**, and the Windows build no
+  longer fails with error C1041. Thanks, @fabiojansenbr and @jeferson-m-bruno.
+
 ## [1.27.1] - 2026-08-17
 
 A built-in browser, git change marks in the editor, and a fix for agents
@@ -49,6 +260,11 @@ stalling while the window sat in the background.
 
 ### Fixed
 
+- **The window no longer freezes ("Not responding") on Windows when writing to
+  a terminal whose shell stopped draining input.** ConPTY input now runs on a
+  dedicated writer thread per terminal, so a suspended or stuck child process
+  cannot block the UI, including during large pastes. macOS/Linux terminals
+  were never affected.
 - Agents no longer stall mid-request when the window is in the background:
   macOS App Nap was throttling the terminal's child processes. The machine can
   still sleep on idle as usual.

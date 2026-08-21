@@ -256,8 +256,12 @@
     },
     "welcomeView": {
       "title": "Welcome to Cockpit",
-      "subtitle": "Open a folder to start a workspace.",
-      "createWorkspace": "Create workspace"
+      "subtitle": "Open a folder or connect to a remote host to start.",
+      "createWorkspace": "Create workspace",
+      "openLocalFolder": "Open local folder",
+      "connectHost": "Connect to host",
+      "configureHost": "Configure host",
+      "addWorkspace": "Add workspace"
     },
     "modelPicker": {
       "search": "Search model (${count})"
@@ -277,16 +281,11 @@
       "newTerminal": "New terminal…",
       "splitRight": "Split right",
       "splitDown": "Split down",
-      "openBrowser": "Open browser",
       "closePane": "Close pane",
       "dropHereToMove": "Drop here to move the tab",
-      "dockAsTab": "Dock as tab"
-    },
-    "browserPane": {
-      "back": "Back",
-      "forward": "Forward",
-      "reload": "Reload",
-      "urlHint": "Enter URL or address"
+      "dockAsTab": "Dock as tab",
+      "openBrowser": "Open browser",
+      "openTerminal": "Open terminal"
     },
     "fileTreePanel": {
       "viewDiff": "View Diff",
@@ -399,6 +398,7 @@
       "changePhoto": "Change photo",
       "remove": "Remove",
       "color": "Color",
+      "host": "Host",
       "folder": "Folder"
     },
     "realmDialogs": {
@@ -542,6 +542,7 @@
       "remove": "Remove",
       "moveToRealm": "Move to realm",
       "copyWorkspaceId": "Copy workspace id",
+      "rename": "Rename",
       "close": "Close",
       "newRealm": "New realm…",
       "manageRealms": "Manage realms…",
@@ -549,7 +550,13 @@
       "sync": "Sync",
       "pull": "Pull",
       "push": "Push",
-      "createWorktree": "Create worktree"
+      "createWorktree": "Create worktree",
+      "worktreeCount": {
+        "one": "1 worktree",
+        "other": "${n} worktrees"
+      },
+      "expandWorktrees": "Expand worktrees",
+      "collapseWorktrees": "Collapse worktrees"
     },
     "findBar": {
       "find": "Find",
@@ -582,7 +589,8 @@
     "topbar": {
       "collapseSidebar": "Collapse sidebar",
       "toggleFiles": "Show/hide files",
-      "filesUnavailable": "Files unavailable in Cockpit"
+      "filesUnavailable": "Files unavailable in Cockpit",
+      "hideKeyboard": "Hide keyboard"
     },
     "transcript": {
       "cancel": "Cancel",
@@ -606,6 +614,61 @@
     },
     "terminal": {
       "cwdFallbackWarning": "Warning: the folder \"${requested}\" does not exist. This terminal opened in \"${path}\"."
+    },
+    "remoteHost": {
+      "addHost": "Add remote host",
+      "hostName": "Name",
+      "sshTarget": "SSH target (user@host)",
+      "connecting": "Connecting to ${host}…",
+      "openingTunnel": "SSH tunnel",
+      "installingServer": "Installing server",
+      "handshake": "Server ${version}",
+      "loadingWorkspace": "Loading workspace…",
+      "reconnecting": "Reconnecting to ${host}…",
+      "offline": "${host} offline",
+      "remove": "Remove",
+      "reconnect": "Reconnect",
+      "installServer": "Install server",
+      "errSshUnreachable": "Cannot reach ${host} over SSH. Is it on, and is Remote Login enabled?",
+      "errInstallFailed": "Could not install the server on ${host}.",
+      "errVersionMismatch": "Server version incompatible; update it.",
+      "errDetail": "Details: ${detail}",
+      "pickFolderTitle": "Open folder on ${host}",
+      "openHere": "Open here",
+      "emptyFolder": "No subfolders",
+      "newLocal": "New local workspace",
+      "newRemote": "New remote workspace",
+      "chooseHost": "Choose a host",
+      "newHostEntry": "New host…",
+      "editHost": "Edit host",
+      "userLabel": "Username",
+      "hostLabel": "Host / IP",
+      "portLabel": "Port",
+      "authLabel": "Authentication",
+      "authKey": "SSH key",
+      "authPassword": "Password",
+      "passwordLabel": "Password",
+      "passwordKeep": "Leave blank to keep current",
+      "errUser": "Username required",
+      "errHost": "Host required",
+      "errPassword": "Password required",
+      "identityChoose": "Choose…",
+      "identityEmpty": "No key selected",
+      "identityDialogTitle": "Select the SSH private key",
+      "errIdentity": "Pick the private key to authenticate with.",
+      "errHostKeyUnknown": "Cockpit does not trust ${host} yet. Connect again and confirm the fingerprint.",
+      "errHostKeyChanged": "${host} is presenting a different SSH key than the one stored. If you did not reinstall that machine, stop and check it — otherwise remove the old entry from ~/.ssh/known_hosts.",
+      "errIdentityPublic": "Only the public key is here. That works only if the private key is in your SSH agent; otherwise pick the private file (same name, without .pub).",
+      "errIdentityNotKey": "That file does not look like a private key.",
+      "errIdentityMissingFile": "That file no longer exists.",
+      "errIdentityUnreadable": "That file could not be read."
+    },
+    "browserPane": {
+      "back": "Back",
+      "forward": "Forward",
+      "reload": "Reload",
+      "urlHint": "Enter URL or address",
+      "go": "Go"
     }
   },
   "settings": {
@@ -652,7 +715,8 @@
         "connectivity": "Connectivity",
         "daemonAgents": "Daemon Agents",
         "schedules": "Schedules",
-        "automations": "Automations"
+        "automations": "Automations",
+        "remoteHosts": "Remote hosts"
       },
       "general": {
         "sectionAgent": "Agent",
@@ -660,6 +724,8 @@
         "enableAgentsDesc": "Show the option to open agent tabs (pi). When off, Cockpit works as a terminal-only workspace.",
         "showCockpitTitle": "Show Cockpit terminal",
         "showCockpitDesc": "Keep a pathless, terminal-only workspace pinned at the top of the rail. Turning it off closes its terminals.",
+        "launchAtStartupTitle": "Launch at login",
+        "launchAtStartupDesc": "Start Cockpit automatically when you sign in to your computer.",
         "sectionUpdates": "Updates",
         "checkUpdatesTitle": "Check for updates",
         "checkUpdatesDesc": "How often Cockpit should look for new versions.",
@@ -927,6 +993,29 @@
         "staleModel": "Model \"${model}\" is no longer available for ${harness}. Using the CLI default — pick another model in Settings if needed.",
         "recommendedSuffix": "Recommended"
       }
+    },
+    "remoteHosts": {
+      "title": "Remote hosts",
+      "description": "Machines you reach over SSH. Adding a host here is the same as adding one from the workspace \"+\" menu.",
+      "empty": "No remote hosts yet.",
+      "add": "Add host",
+      "edit": "Edit",
+      "reconnect": "Reconnect",
+      "remove": "Remove",
+      "removeTitle": "Remove host",
+      "removeMessage": "Remove \"${name}\" and all its workspaces? Nothing is deleted on the host itself.",
+      "workspacesCount": "${count} workspace(s)",
+      "deviceKeyTitle": "This device's key",
+      "deviceKeyDesc": "Add this public key to ~/.ssh/authorized_keys on the host so this device can connect.",
+      "deviceKeyCopy": "Copy public key",
+      "deviceKeyCopied": "Public key copied",
+      "statusConnected": "Connected",
+      "statusConnecting": "Connecting…",
+      "statusReconnecting": "Reconnecting…",
+      "statusOffline": "Offline",
+      "statusIdle": "Not connected",
+      "helpTitle": "How it works",
+      "helpBody": "Cockpit connects to your machine over SSH and talks to a small server that runs the terminals, files and git there. The host must have Cockpit (desktop) or the cockpit-server installed and running, and this device’s public key added to its ~/.ssh/authorized_keys."
     }
   },
   "automation": {

@@ -10,6 +10,8 @@ import 'package:cockpit/app/cockpit/domain/entities/rpc_event.dart'
 import 'package:cockpit/app/cockpit/domain/entities/thinking_level.dart';
 import 'package:cockpit/app/cockpit/ui/session/agent_session.dart';
 import 'package:cockpit/app/cockpit/ui/viewmodels/cockpit_viewmodel.dart';
+import 'package:cockpit/app/core/ui/activity_periodic_timer.dart';
+import 'package:cockpit/app/core/ui/window_activity_controller.dart';
 import 'package:cockpit/app/core/ui/widgets/app_menu.dart';
 import 'package:cockpit/app/cockpit/ui/widgets/model_picker.dart';
 import 'package:cockpit/app/core/ui/file_icons/file_icons.dart';
@@ -939,19 +941,40 @@ class _TurnIndicator extends StatefulWidget {
 }
 
 class _TurnIndicatorState extends State<_TurnIndicator> {
-  Timer? _ticker;
+  ActivityPeriodicTimer? _ticker;
+  WindowActivityController? _activity;
+  WindowActivityController? _fallbackActivity;
 
   @override
   void initState() {
     super.initState();
     widget.session.addListener(_onSession);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final activity =
+        WindowActivityScope.maybeOf(context) ??
+        (_fallbackActivity ??= WindowActivityController());
+    if (identical(activity, _activity)) return;
+    _ticker?.dispose();
+    _activity = activity;
+    _ticker = ActivityPeriodicTimer(
+      activity: activity,
+      interval: const Duration(seconds: 1),
+      onTick: () {
+        if (mounted) setState(() {});
+      },
+    );
     _sync();
   }
 
   @override
   void dispose() {
     widget.session.removeListener(_onSession);
-    _ticker?.cancel();
+    _ticker?.dispose();
+    _fallbackActivity?.dispose();
     super.dispose();
   }
 
@@ -964,13 +987,10 @@ class _TurnIndicatorState extends State<_TurnIndicator> {
   void _sync() {
     final active =
         widget.session.isStreaming && widget.session.turnStartedAt != null;
-    if (active && _ticker == null) {
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
-      });
-    } else if (!active && _ticker != null) {
-      _ticker!.cancel();
-      _ticker = null;
+    if (active) {
+      _ticker?.start();
+    } else {
+      _ticker?.stop();
     }
   }
 
