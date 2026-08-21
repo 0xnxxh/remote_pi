@@ -29,12 +29,6 @@ final class PtyOptionsNative extends Struct {
 
   @Bool()
   external bool ackRead;
-
-  /// Ver `clearStdHandles` em cockpit_pty.h: no Windows, limpar os handles
-  /// padrão do filho é decisão do chamador. O SERVIDOR nunca pede — ele é um
-  /// app de console com stdio redirecionado, e ali o atalho mata o shell.
-  @Bool()
-  external bool clearStdHandles;
 }
 
 typedef PtyInitC = IntPtr Function(Pointer<Void>);

@@ -462,6 +462,78 @@ char *error_message = NULL;
 // surfaces in the Dart exception instead of only a printf the GUI swallows.
 static char error_buf[512];
 
+// Serializa a troca dos std handles do processo: eles são GLOBAIS, e o app
+// abre várias abas de uma vez (na restauração de layout, três PTYs nascem no
+// mesmo instante). Sem o lock, um spawn restaura os handles enquanto o outro
+// ainda depende deles estarem limpos.
+static INIT_ONCE spawn_lock_once = INIT_ONCE_STATIC_INIT;
+static CRITICAL_SECTION spawn_lock;
+
+static BOOL CALLBACK init_spawn_lock(PINIT_ONCE once, PVOID param, PVOID *ctx)
+{
+    (void)once;
+    (void)param;
+    (void)ctx;
+    InitializeCriticalSection(&spawn_lock);
+    return TRUE;
+}
+
+// Cria o processo com os std handles DESTE processo temporariamente zerados.
+//
+// O filho não pode herdar o stdio do host: sob `flutter run` isso o mandaria
+// pro console do terminal em vez do ConPTY, e dentro do cockpit-server o
+// mandaria pros PIPES do servidor — que a GUI drena, então nenhum byte chega à
+// aba, e o shell lê EOF no stdin e morre. Foi assim que todo terminal local do
+// Windows ficou vazio quando o sidecar passou a criar os PTYs.
+//
+// Zerar com SetStdHandle NÃO é o mesmo que declarar STARTF_USESTDHANDLES com
+// NULL: aqui o filho simplesmente não tem o que herdar, e quem preenche seu
+// stdio é o pseudoconsole — então o PowerShell segue vendo console de verdade
+// e o PSReadLine carrega. A checagem antiga (`GetConsoleWindow()`) respondia
+// "tenho janela de console?", quando a pergunta é "meus handles estão
+// limpos?" — o sidecar não tem janela E tem handles sujos, o caso que faltava.
+static BOOL spawn_with_clean_std_handles(LPWSTR command,
+                                         LPWSTR environment_block,
+                                         LPWSTR working_directory,
+                                         STARTUPINFOEXW *startupInfo,
+                                         PROCESS_INFORMATION *processInfo)
+{
+    InitOnceExecuteOnce(&spawn_lock_once, init_spawn_lock, NULL, NULL);
+    EnterCriticalSection(&spawn_lock);
+
+    HANDLE previous_in = GetStdHandle(STD_INPUT_HANDLE);
+    HANDLE previous_out = GetStdHandle(STD_OUTPUT_HANDLE);
+    HANDLE previous_err = GetStdHandle(STD_ERROR_HANDLE);
+
+    SetStdHandle(STD_INPUT_HANDLE, NULL);
+    SetStdHandle(STD_OUTPUT_HANDLE, NULL);
+    SetStdHandle(STD_ERROR_HANDLE, NULL);
+
+    BOOL ok = CreateProcessW(NULL,
+                             command,
+                             NULL,
+                             NULL,
+                             FALSE,
+                             EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
+                             environment_block,
+                             working_directory,
+                             &startupInfo->StartupInfo,
+                             processInfo);
+
+    DWORD last_error = GetLastError();
+
+    // Restaura SEMPRE, inclusive no erro: o host continua precisando do seu
+    // próprio stdio (o cockpit-server escreve log no stderr).
+    SetStdHandle(STD_INPUT_HANDLE, previous_in);
+    SetStdHandle(STD_OUTPUT_HANDLE, previous_out);
+    SetStdHandle(STD_ERROR_HANDLE, previous_err);
+
+    LeaveCriticalSection(&spawn_lock);
+
+    SetLastError(last_error);
+    return ok;
+}
+
 FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
 {
     HANDLE inputReadSide = NULL;
@@ -497,36 +569,20 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
         return NULL;
     }
 
-    STARTUPINFOEX startupInfo;
+    // Explicitamente a variante WIDE: sem o sufixo, `STARTUPINFOEX` vira a
+    // ANSI quando a unidade não é compilada com UNICODE, e o CreateProcessW
+    // recebe um ponteiro do tipo errado (aviso C4133). Os layouts coincidem,
+    // então funcionava por acidente.
+    STARTUPINFOEXW startupInfo;
 
     ZeroMemory(&startupInfo, sizeof(startupInfo));
     startupInfo.StartupInfo.cb = sizeof(startupInfo);
 
-    // Clear the child's inherited std handles (STARTF_USESTDHANDLES with NULL)
-    // ONLY when the CALLER asks AND this process owns a console (e.g. the
-    // Flutter app under `flutter run`, launched from a terminal). There,
-    // without it, the child would inherit the host's real console instead of
-    // the ConPTY and its output would never reach our pipe.
-    //
-    // The caller decides because owning a console does not mean owning a
-    // TERMINAL: the cockpit-server sidecar is a console app with redirected
-    // stdio, and there the hack is fatal — NULL std handles make the shell see
-    // stdin as an invalid handle, so it reads EOF and exits immediately. That
-    // is how every local terminal on Windows died the moment the sidecar
-    // started creating the PTYs (cmd/powershell exited after 16 bytes, pwsh
-    // after printing its banner). The milder symptom of the same cause is
-    // PowerShell disabling PSReadLine ("console is running without
-    // PSReadLine").
-    //
-    // Without the hack, the pseudoconsole attribute plus bInheritHandles=FALSE
-    // already route all I/O through the ConPTY — the canonical pattern.
-    if (options->clearStdHandles && GetConsoleWindow() != NULL)
-    {
-        startupInfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-        startupInfo.StartupInfo.hStdInput = NULL;
-        startupInfo.StartupInfo.hStdOutput = NULL;
-        startupInfo.StartupInfo.hStdError = NULL;
-    }
+    // Sem STARTF_USESTDHANDLES: o atributo do pseudoconsole é quem preenche o
+    // stdio do filho. Declarar handles NULL explicitamente faz o PowerShell
+    // enxergar stdio REDIRECIONADO e desligar o PSReadLine — foi o motivo de
+    // 6ec33f2. O que o filho não pode é herdar o stdio DESTE processo; disso
+    // cuida `spawn_with_clean_std_handles`, logo abaixo.
 
     SIZE_T bytesRequired;
     InitializeProcThreadAttributeList(NULL, 1, 0, &bytesRequired);
@@ -568,16 +624,11 @@ FFI_PLUGIN_EXPORT PtyHandle *pty_create(PtyOptions *options)
     // for a full second on every spawn. ConPTY is ready as soon as the pseudo
     // console + attribute list are set up above, so the wait is unnecessary.
 
-    ok = CreateProcessW(NULL,
-                        command,
-                        NULL,
-                        NULL,
-                        FALSE,
-                        EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
-                        environment_block,
-                        working_directory,
-                        &startupInfo.StartupInfo,
-                        &processInfo);
+    ok = spawn_with_clean_std_handles(command,
+                                      environment_block,
+                                      working_directory,
+                                      &startupInfo,
+                                      &processInfo);
 
     if (command != NULL)
     {

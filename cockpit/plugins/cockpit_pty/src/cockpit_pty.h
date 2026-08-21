@@ -33,14 +33,6 @@ typedef struct PtyOptions
 
     bool ackRead;
 
-    /// Limpar os handles padrão herdados pelo filho (STARTF_USESTDHANDLES com
-    /// NULL), no Windows. É decisão de QUEM CHAMA, não do processo: só o
-    /// chamador sabe se o console que ele possui é um terminal de verdade
-    /// (`flutter run`) ou o console técnico de um serviço com stdio
-    /// redirecionado (o cockpit-server). No segundo caso o atalho é fatal — o
-    /// shell enxerga stdin inválido, lê EOF e encerra na hora.
-    bool clearStdHandles;
-
 } PtyOptions;
 
 typedef struct PtyHandle PtyHandle;
